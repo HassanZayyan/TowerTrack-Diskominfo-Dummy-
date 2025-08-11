@@ -15,8 +15,8 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const links: AppBarLink[] = [
-    { href: '/data-tower', label: 'Data Tower', icon: 'table_chart' },
-    { href: '/complaint', label: 'Form Keluhan', icon: 'message-report' },
+    { href: '/data-tower', label: 'Data Tower', icon: 'cell_tower' },
+    { href: '/complaint', label: 'Form Keluhan', icon: 'report_problem' },
   ];
 
   const toggleMobileMenu = () => {
@@ -26,13 +26,13 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   return (
     <>
       {/* Desktop & Mobile App Bar */}
-      <header className="bg-white shadow-md app-bar">
+      <header className="shadow-md app-bar" style={{ backgroundColor: '#B71C1C' }}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             {/* Logo/Brand */}
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-purple-700">TowerTrack</h1>
-              <p className="hidden md:block ml-3 text-sm text-gray-500">Sistem Monitoring Tower</p>
+              <h1 className="text-2xl font-bold" style={{ color: '#FFD700' }}>TowerTrack</h1>
+              <p className="hidden md:block ml-3 text-sm text-white opacity-90">Sistem Monitoring Tower</p>
             </div>
 
             {/* Desktop Navigation */}
@@ -44,10 +44,14 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                   className={`
                     flex items-center px-4 py-2 rounded-lg transition-colors
                     ${currentPage === link.href ? 
-                      'bg-purple-100 text-purple-700 font-medium' : 
-                      'hover:bg-gray-100 text-gray-700'
+                      'font-medium' : 
+                      'hover:bg-white hover:bg-opacity-10'
                     }
                   `}
+                  style={currentPage === link.href ? 
+                    { backgroundColor: '#FFD700', color: '#212121' } : 
+                    { color: 'white' }
+                  }
                 >
                   <span className="material-icons-outlined mr-2 text-lg">{link.icon}</span>
                   <span>{link.label}</span>
@@ -57,7 +61,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
 
             {/* Mobile menu button */}
             <button 
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+              className="md:hidden p-2 rounded-lg hover:bg-white hover:bg-opacity-10 text-white"
               onClick={toggleMobileMenu}
             >
               <span className="material-icons-outlined">
@@ -70,7 +74,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white shadow-md border-t">
+        <div className="md:hidden shadow-md border-t" style={{ backgroundColor: '#B71C1C', borderTopColor: '#FFD700' }}>
           <nav className="container mx-auto px-4 py-2">
             <ul className="space-y-1">
               {links.map((link) => (
@@ -80,10 +84,14 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     className={`
                       flex items-center p-3 rounded-lg transition-colors
                       ${currentPage === link.href ? 
-                        'bg-purple-100 text-purple-700 font-medium' : 
-                        'hover:bg-gray-100 text-gray-700'
+                        'font-medium' : 
+                        'hover:bg-white hover:bg-opacity-10'
                       }
                     `}
+                    style={currentPage === link.href ? 
+                      { backgroundColor: '#FFD700', color: '#212121' } : 
+                      { color: 'white' }
+                    }
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <span className="material-icons-outlined mr-3 text-lg">{link.icon}</span>
