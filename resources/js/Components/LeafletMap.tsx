@@ -54,13 +54,9 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     const distanceLabelRef = useRef<L.Marker | null>(null);
     const isInitializedRef = useRef<boolean>(false);
 
+    // Initialize map only once on mount
     useEffect(() => {
-        if (!mapRef.current) return;
-
-        console.log('=== MAP INITIALIZATION START ===');
-        console.log('Map ref exists:', !!mapRef.current);
-        console.log('Center:', center);
-        console.log('Zoom:', zoom);
+        if (!mapRef.current || mapInstanceRef.current) return;
 
         // Ensure default icon URLs work when bundling
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -72,33 +68,23 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             shadowUrl: markerShadowUrl,
         });
 
-        // Initialize map
-        const map = L.map(mapRef.current).setView(center, zoom);
-        console.log('Map instance created:', !!map);
+        const map = L.map(mapRef.current);
+        map.setView(center, zoom);
 
-        // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Store map instance
         mapInstanceRef.current = map;
-        
-        // Create layers in correct order
+
+        // Create layers in correct order so measurement sits above tiles but below markers
         coverageLayerRef.current = L.layerGroup().addTo(map);
         measureLayerRef.current = L.layerGroup().addTo(map);
         markersLayerRef.current = L.layerGroup().addTo(map);
 
-        console.log('Layers created:');
-        console.log('- Coverage layer:', !!coverageLayerRef.current);
-        console.log('- Measure layer:', !!measureLayerRef.current);
-        console.log('- Markers layer:', !!markersLayerRef.current);
-
         isInitializedRef.current = true;
 
-        // Cleanup function
         return () => {
-            console.log('=== MAP CLEANUP ===');
             if (mapInstanceRef.current) {
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
@@ -117,6 +103,19 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             }
             isInitializedRef.current = false;
         };
+    }, []);
+
+    // Update view if center/zoom props change meaningfully
+    useEffect(() => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        const current = map.getCenter();
+        const [lat, lng] = center;
+        const zoomChanged = map.getZoom() !== zoom;
+        const centerChanged = Math.abs(current.lat - lat) > 1e-9 || Math.abs(current.lng - lng) > 1e-9;
+        if (centerChanged || zoomChanged) {
+            map.setView([lat, lng], zoom);
+        }
     }, [center, zoom]);
 
     // Expose map methods via ref
