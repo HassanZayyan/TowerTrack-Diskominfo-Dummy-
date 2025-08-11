@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('tower_id')->constrained('towers')->onDelete('cascade');
             $table->string('reporter_name');
             $table->string('reporter_email');
+            $table->string('reporter_phone')->nullable();
+            $table->string('category');
             $table->text('message');
             $table->enum('status', ['pending', 'in_progress', 'resolved', 'closed'])->default('pending');
             $table->timestamps();

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -11,19 +11,27 @@ interface ComplaintProps {
 }
 
 const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredTowers, setFilteredTowers] = useState(towers);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({
     nama: '',
     email: '',
     telepon: '',
     kategori: '',
-    lokasi_tower: '',
+    lokasi_tower: '', // This will store site_name for display purposes
+    lokasi_tower_display: '', // Display value for the selected tower
+    tower_id: '', // Added to store the tower ID for the foreign key
     pesan: '',
   });
   
   const [validation, setValidation] = useState({
     nama: false,
     email: false,
+    telepon: false,
     kategori: false,
+    lokasi_tower: false,
     pesan: false
   });
 
@@ -33,6 +41,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isOtherCategory, setIsOtherCategory] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -43,6 +52,33 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
       setValidation(prev => ({ ...prev, [name]: false }));
     }
   };
+  
+  // Effect untuk filter towers berdasarkan pencarian
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredTowers(towers);
+    } else {
+      const filtered = towers.filter(tower => 
+        tower.site_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (tower.alamat_menara || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredTowers(filtered);
+    }
+  }, [searchTerm, towers]);
+  
+  // Event handler untuk klik di luar dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -95,7 +131,9 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     const newValidation = {
       nama: !form.nama,
       email: !form.email || !/^\S+@\S+\.\S+$/.test(form.email),
+      telepon: !form.telepon,
       kategori: !form.kategori,
+      lokasi_tower: !form.lokasi_tower,
       pesan: !form.pesan
     };
     
@@ -129,9 +167,12 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
           telepon: '',
           kategori: '',
           lokasi_tower: '',
+          lokasi_tower_display: '',
+          tower_id: '',
           pesan: '',
         });
         setFiles([]);
+        setIsOtherCategory(false);
         setIsSubmitting(false);
       },
       onError: (errors: Record<string, string>) => {
@@ -148,13 +189,18 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
       telepon: '',
       kategori: '',
       lokasi_tower: '',
+      lokasi_tower_display: '',
+      tower_id: '',
       pesan: '',
     });
     setFiles([]);
+    setIsOtherCategory(false);
     setValidation({
       nama: false,
       email: false,
+      telepon: false,
       kategori: false,
+      lokasi_tower: false,
       pesan: false
     });
     setErrorMessage('');
@@ -231,34 +277,68 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
-                    No. Telepon
+                    No. Telepon <span className="text-red-600">*</span>
                   </label>
                   <input
                     type="text"
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
                     placeholder="Masukkan nomor telepon"
                   />
+                  {validation.telepon && (
+                    <p className="text-red-500 text-sm mt-1">Nomor telepon harus diisi</p>
+                  )}
                 </div>
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
                     Kategori Keluhan <span className="text-red-600">*</span>
                   </label>
-                  <select
-                    name="kategori"
-                    value={form.kategori}
-                    onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
-                  >
-                    <option value="">Pilih kategori</option>
-                    <option value="Kerusakan">Kerusakan</option>
-                    <option value="Gangguan Sinyal">Gangguan Sinyal</option>
-                    <option value="Kebisingan">Kebisingan</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
+                  {!isOtherCategory ? (
+                    <select
+                      name="kategori"
+                      value={form.kategori}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "Lainnya") {
+                          setIsOtherCategory(true);
+                          setForm(prev => ({ ...prev, kategori: "" }));
+                        } else {
+                          handleChange(e);
+                        }
+                      }}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                    >
+                      <option value="">Pilih kategori</option>
+                      <option value="Kerusakan">Kerusakan</option>
+                      <option value="Gangguan Sinyal">Gangguan Sinyal</option>
+                      <option value="Kebisingan">Kebisingan</option>
+                      <option value="Lainnya">Lainnya</option>
+                    </select>
+                  ) : (
+                    <div className="flex">
+                      <input
+                        type="text"
+                        name="kategori"
+                        value={form.kategori}
+                        onChange={handleChange}
+                        className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                        placeholder="Masukkan kategori keluhan lainnya"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOtherCategory(false);
+                          setForm(prev => ({ ...prev, kategori: "" }));
+                        }}
+                        className="ml-2 px-3 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-700"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  )}
                   {validation.kategori && (
                     <p className="text-red-500 text-sm mt-1">Kategori harus dipilih</p>
                   )}
@@ -267,21 +347,84 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
               
               <div className="mb-6">
                 <label className="block text-gray-700 font-medium mb-2">
-                  Lokasi Tower
+                  Lokasi Tower <span className="text-red-600">*</span>
                 </label>
-                <select
-                  name="lokasi_tower"
-                  value={form.lokasi_tower}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                >
-                  <option value="">Pilih lokasi tower (opsional)</option>
-                  {towers.map(tower => (
-                    <option key={tower.id} value={tower.site_name}>
-                      {tower.site_name} - {tower.alamat_menara || 'Alamat tidak tersedia'}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={dropdownRef}>
+                  <input
+                    type="text"
+                    placeholder="Cari dan pilih lokasi tower..."
+                    value={form.lokasi_tower ? form.lokasi_tower_display : searchTerm}
+                    onChange={(e) => {
+                      // Only allow typing when no tower is selected
+                      if (!form.lokasi_tower) {
+                        setSearchTerm(e.target.value);
+                        setShowDropdown(true);
+                      }
+                    }}
+                    onClick={() => {
+                      // Only show dropdown when no tower is selected
+                      if (!form.lokasi_tower) {
+                        setShowDropdown(true);
+                      }
+                    }}
+                    readOnly={!!form.lokasi_tower} // Make the field read-only when a tower is selected
+                    className={`w-full rounded-lg border ${validation.lokasi_tower ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500 p-2 ${form.lokasi_tower ? 'bg-gray-100' : ''}`}
+                  />
+                  
+                  {/* Sengaja dikosongkan karena lokasi yang dipilih akan langsung ditampilkan di dalam input */}
+                  
+                  {/* Clear button - more visible when tower is selected */}
+                  {(form.lokasi_tower || searchTerm) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm(prev => ({ ...prev, lokasi_tower: '', lokasi_tower_display: '', tower_id: '' }));
+                        setSearchTerm('');
+                      }}
+                      className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${form.lokasi_tower ? 'bg-gray-300 hover:bg-gray-400 w-6 h-6 flex items-center justify-center rounded-full text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}
+                      title="Hapus pilihan"
+                    >
+                      &times;
+                    </button>
+                  )}
+                  
+                  {/* Dropdown */}
+                  {showDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-lg max-h-60 overflow-auto border border-gray-300">
+                      {filteredTowers.length === 0 ? (
+                        <div className="p-3 text-gray-500">Tidak ada lokasi yang sesuai</div>
+                      ) : (
+                        filteredTowers.map(tower => (
+                          <div
+                            key={tower.id}
+                            onClick={() => {
+                              // Store tower_id, site_name, and full address for display
+                              const fullAddress = `${tower.site_name} - ${tower.alamat_menara || 'Alamat tidak tersedia'}`;
+                              setForm(prev => ({ 
+                                ...prev, 
+                                tower_id: String(tower.id), // Store tower ID as string
+                                lokasi_tower: tower.site_name,
+                                lokasi_tower_display: fullAddress
+                              }));
+                              setSearchTerm('');
+                              setShowDropdown(false);
+                              // Clear validation error
+                              if (validation.lokasi_tower) {
+                                setValidation(prev => ({ ...prev, lokasi_tower: false }));
+                              }
+                            }}
+                            className="p-3 hover:bg-gray-100 cursor-pointer"
+                          >
+                            {tower.site_name} - {tower.alamat_menara || 'Alamat tidak tersedia'}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                {validation.lokasi_tower && (
+                  <p className="text-red-500 text-sm mt-1">Lokasi tower harus dipilih</p>
+                )}
               </div>
               
               <div className="mb-6">
