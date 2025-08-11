@@ -1,3 +1,60 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Import Material Icons */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons+Outlined');
+
+/* Leaflet Map Styles */
+.leaflet-map {
+    z-index: 1;
+}
+
+/* Ensure polyline is visible */
+.leaflet-interactive {
+    pointer-events: auto;
+}
+
+/* Distance label styles */
+.distance-label {
+    z-index: 1000 !important;
+}
+
+/* Ensure measure layer is above other layers */
+.leaflet-overlay-pane {
+    z-index: 400;
+}
+
+/* Make sure polylines are visible */
+.leaflet-overlay-pane svg {
+    z-index: 400;
+}
+
+/* App Bar styles */
+.app-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+}
+
+/* Map marker styles */
+.map-marker-green {
+    background-color: #22c55e;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.map-marker-red {
+    background-color: #ef4444;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.map-marker-yellow {
+    background-color: #f59e0b;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
