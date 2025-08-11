@@ -110,15 +110,37 @@ Route::post('/complaint', function () {
     request()->validate([
         'nama' => 'required|string|max:255',
         'email' => 'required|email|max:255',
-        'telepon' => 'nullable|string|max:20',
-        'kategori' => 'required|string|max:50',
-        'lokasi_tower' => 'nullable|string|max:255',
+        'telepon' => 'required|string|max:20',
+        'kategori' => 'required|string|max:100',
+        'lokasi_tower' => 'required|string|max:255',
+        'tower_id' => 'required|exists:towers,id',
         'pesan' => 'required|string|max:500',
         'foto.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // 5MB
     ]);
     
-    // Here you would process the complaint
-    // For now just return success
+    // Simpan data report ke database
+    $report = \App\Models\Report::create([
+        'tower_id' => request('tower_id'), // Use tower_id for foreign key
+        'reporter_name' => request('nama'),
+        'reporter_email' => request('email'),
+        'reporter_phone' => request('telepon'),
+        'category' => request('kategori'),
+        'message' => request('pesan'),
+        'status' => 'pending', // Status default
+    ]);
+    
+    // Upload dan simpan foto jika ada
+    if (request()->hasFile('foto')) {
+        foreach (request()->file('foto') as $photo) {
+            $path = $photo->store('report-photos', 'public');
+            
+            \App\Models\ReportImage::create([
+                'report_id' => $report->id,
+                'image_path' => $path,
+            ]);
+        }
+    }
+    
     return redirect()->back()->with('success', 'Keluhan berhasil dikirim');
 })->name('complaint.store');
 
