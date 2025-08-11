@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import LeafletMap from '@/Components/LeafletMap';
 import TowerDetailModal from '@/Components/TowerDetailModal';
+import Footer from '@/Components/Footer';
 
 interface Tower {
   id: number;
@@ -98,16 +99,25 @@ const DataTower: React.FC<DataTowerProps> = ({
     <MainLayout title="Data Tower" currentPage="/data-tower">
       <Head title="Data Tower" />
 
+      {/* Welcome Card */}
+      <div className="text-white px-8 py-10 mb-6 text-center" style={{ backgroundColor: '#C21807' }}>
+        <h2 className="text-3xl font-bold leading-snug" style={{ color: '#FFD700' }}>Selamat datang di TowerTrack!</h2>
+        <p className="mt-3 text-xl opacity-90 leading-relaxed">
+        Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
+        </p>
+      </div>
+
+
       <div className="p-6">
         {/* Statistics Header */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-700">Total Tower</h3>
-            <p className="text-5xl font-bold text-blue-500 mt-2">{total}</p>
+          <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderLeftColor: '#B71C1C' }}>
+            <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Total Tower</h3>
+            <p className="text-5xl font-bold mt-2" style={{ color: '#B71C1C' }}>{total}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-700">Tower Aktif</h3>
-            <p className="text-5xl font-bold text-green-500 mt-2">
+          <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderLeftColor: '#1B5E20' }}>
+            <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Tower Aktif</h3>
+            <p className="text-5xl font-bold mt-2" style={{ color: '#1B5E20' }}>
               {towers.filter(t => t.status === 'Aktif' || t.status === 'AKTIF').length}
             </p>
           </div>
@@ -177,13 +187,15 @@ const DataTower: React.FC<DataTowerProps> = ({
                 <input 
                   type="text"
                   placeholder="Cari tower..."
-                  className="w-full rounded-full border-gray-300 pr-10 focus:border-purple-500 focus:ring-purple-500"
+                  className="w-full rounded-full border-gray-300 pr-10 focus:outline-none focus:ring-2"
+                  style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <button 
                   type="submit" 
-                  className="absolute right-0 top-0 rounded-r-full px-4 h-full bg-purple-600 text-white"
+                  className="absolute right-0 top-0 rounded-r-full px-4 h-full text-white hover:opacity-90"
+                  style={{ backgroundColor: '#B71C1C' }}
                 >
                   <span className="material-icons text-sm">search</span>
                 </button>
@@ -222,9 +234,12 @@ const DataTower: React.FC<DataTowerProps> = ({
                     <td className="px-4 py-3 border-b">{tower.owner || 'TELKOM'}</td>
                     <td className="px-4 py-3 border-b">{tower.alamat_menara || '-'}</td>
                     <td className="px-4 py-3 border-b">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                        tower.status === 'Aktif' || tower.status === 'AKTIF' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span 
+                        className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                        style={{ 
+                          backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                        }}
+                      >
                         {tower.status || 'Aktif'}
                       </span>
                     </td>
@@ -279,9 +294,10 @@ const DataTower: React.FC<DataTowerProps> = ({
                       onClick={() => onPageChange(pageNum)}
                       className={`px-3 py-1 border-t border-b ${
                         pageNum === currentPage
-                          ? 'bg-purple-100 text-purple-700 font-medium'
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
+                          ? 'font-medium text-white'
+                          : 'bg-white hover:bg-gray-50'
                       }`}
+                      style={pageNum === currentPage ? { backgroundColor: '#B71C1C' } : { color: '#212121' }}
                     >
                       {pageNum}
                     </button>
@@ -330,6 +346,8 @@ const DataTower: React.FC<DataTowerProps> = ({
           }
         }}
       />
+      
+      <Footer />
     </MainLayout>
   );
 };

@@ -21,7 +21,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       <AppBar currentPage={currentPage} />
       
       {/* Main Content */}
-      <div className="container mx-auto mt-2">
+      <div className="container mx-auto">
         <main>{children}</main>
       </div>
     </div>

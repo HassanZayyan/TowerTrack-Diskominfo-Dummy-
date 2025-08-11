@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import Footer from '@/Components/Footer';
 
 interface ComplaintProps {
   towers: Array<{
@@ -225,7 +226,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
         
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-6">
-            <h2 className="text-xl font-medium text-yellow-600 mb-6">Form Keluhan</h2>
+            <h2 className="text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
             
             {successMessage && (
               <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
@@ -250,7 +251,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     name="nama"
                     value={form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2`}
+                    style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                     placeholder="Masukkan nama lengkap"
                   />
                   {validation.nama && (
@@ -267,7 +269,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2`}
+                    style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                     placeholder="Masukkan email"
                   />
                   {validation.email && (
@@ -284,7 +287,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2`}
+                    style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                     placeholder="Masukkan nomor telepon"
                   />
                   {validation.telepon && (
@@ -309,7 +313,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                           handleChange(e);
                         }
                       }}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2`}
+                      style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                     >
                       <option value="">Pilih kategori</option>
                       <option value="Kerusakan">Kerusakan</option>
@@ -324,7 +329,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                         name="kategori"
                         value={form.kategori}
                         onChange={handleChange}
-                        className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                        className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2`}
+                        style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                         placeholder="Masukkan kategori keluhan lainnya"
                       />
                       <button
@@ -333,7 +339,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                           setIsOtherCategory(false);
                           setForm(prev => ({ ...prev, kategori: "" }));
                         }}
-                        className="ml-2 px-3 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-700"
+                        className="ml-2 px-3 py-2 rounded-lg hover:opacity-90 text-white"
+                        style={{ backgroundColor: '#212121' }}
                       >
                         Batal
                       </button>
@@ -368,7 +375,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                       }
                     }}
                     readOnly={!!form.lokasi_tower} // Make the field read-only when a tower is selected
-                    className={`w-full rounded-lg border ${validation.lokasi_tower ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500 p-2 ${form.lokasi_tower ? 'bg-gray-100' : ''}`}
+                    className={`w-full rounded-lg border ${validation.lokasi_tower ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 p-2 ${form.lokasi_tower ? 'bg-gray-100' : ''}`}
+                    style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                   />
                   
                   {/* Sengaja dikosongkan karena lokasi yang dipilih akan langsung ditampilkan di dalam input */}
@@ -483,7 +491,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                   name="pesan"
                   value={form.pesan}
                   onChange={handleChange}
-                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 focus:ring-purple-500`}
+                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2`}
+                  style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                   rows={6}
                   placeholder="Jelaskan keluhan Anda secara detail..."
                   maxLength={500}
@@ -500,14 +509,16 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="px-6 py-3 border rounded-lg hover:opacity-90 text-white"
+                  style={{ backgroundColor: '#212121', borderColor: '#212121' }}
                   disabled={isSubmitting}
                 >
                   Reset
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-yellow-400 text-yellow-900 font-medium rounded-lg hover:bg-yellow-500"
+                  className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white"
+                  style={{ backgroundColor: '#B71C1C' }}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Mengirim...' : 'Kirim Keluhan'}
@@ -517,6 +528,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
           </div>
         </div>
       </div>
+      
+      <Footer />
     </MainLayout>
   );
 };

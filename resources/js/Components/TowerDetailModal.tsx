@@ -74,9 +74,9 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="bg-purple-500 text-white p-4 rounded-t-lg flex items-center">
-          <span className="material-icons-outlined mr-2">info</span>
-          <h3 className="text-xl font-semibold">Detail Tower - {tower.site_name}</h3>
+        <div className="text-white p-4 rounded-t-lg flex items-center" style={{ backgroundColor: '#B71C1C' }}>
+          <span className="material-icons-outlined mr-2" style={{ color: '#FFD700' }}>info</span>
+          <h3 className="text-xl font-semibold" style={{ color: '#FFD700' }}>Detail Tower - {tower.site_name}</h3>
         </div>
         
         {/* Body */}
@@ -86,7 +86,8 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
             <select 
               value={selectedDetail}
               onChange={handleDetailChange}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent focus:outline-none"
+              style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
             >
               <option>-- Pilih Detail --</option>
               {availableFields.map(field => (
@@ -140,9 +141,12 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
             <div>
               <h4 className="font-medium">Status:</h4>
               <p>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                  tower.status === 'Aktif' || tower.status === 'AKTIF' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
-                }`}>
+                <span 
+                  className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                  style={{ 
+                    backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                  }}
+                >
                   {tower.status || 'Aktif'}
                 </span>
               </p>
@@ -155,26 +159,29 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
           <div>
             <button 
               onClick={() => onViewMap(tower)} 
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center mr-2"
+              className="text-white px-4 py-2 rounded-lg flex items-center hover:opacity-90"
+              style={{ backgroundColor: '#1B5E20' }}
             >
               <span className="material-icons-outlined mr-1">place</span>
               Lihat di Peta
             </button>
           </div>
-          <div>
-            <button 
-              onClick={handleDownloadReport}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center mr-2"
-            >
-              <span className="material-icons-outlined mr-1">download</span>
-              Download Report
-            </button>
+          <div className="flex space-x-2">
             <button 
               onClick={onClose} 
-              className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center"
+              className="text-white px-4 py-2 rounded-lg flex items-center hover:opacity-90"
+              style={{ backgroundColor: '#212121' }}
             >
               <span className="material-icons-outlined mr-1">close</span>
               Tutup
+            </button>
+            <button 
+              onClick={handleDownloadReport}
+              className="text-white px-4 py-2 rounded-lg flex items-center hover:opacity-90"
+              style={{ backgroundColor: '#B71C1C' }}
+            >
+              <span className="material-icons-outlined mr-1" style={{ color: '#FFD700' }}>download</span>
+              Download Report
             </button>
           </div>
         </div>
