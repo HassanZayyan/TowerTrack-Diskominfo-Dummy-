@@ -26,7 +26,6 @@ interface LeafletMapProps {
     defaultRadiusMeters?: number;
     onDistanceChange?: (distance: number) => void;
     resetLinesTrigger?: number;
-    featureType?: 'polyline' | 'polygon';
 }
 
 const LeafletMap = forwardRef<any, LeafletMapProps>(({
@@ -40,7 +39,6 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     defaultRadiusMeters = 500,
     onDistanceChange,
     resetLinesTrigger,
-    featureType = 'polyline',
 }, ref) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
@@ -50,7 +48,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     const markerInstancesRef = useRef<L.Marker[]>([]);
     const selectedPointsRef = useRef<L.LatLng[]>([]);
     const measurePolylineRef = useRef<L.Polyline | null>(null);
-    const measurePolygonRef = useRef<L.Polygon | null>(null);
+    // Polygon measurement is not used anymore
     const distanceLabelRef = useRef<L.Marker | null>(null);
     const isInitializedRef = useRef<boolean>(false);
 
@@ -105,18 +103,8 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         };
     }, []);
 
-    // Update view if center/zoom props change meaningfully
-    useEffect(() => {
-        const map = mapInstanceRef.current;
-        if (!map) return;
-        const current = map.getCenter();
-        const [lat, lng] = center;
-        const zoomChanged = map.getZoom() !== zoom;
-        const centerChanged = Math.abs(current.lat - lat) > 1e-9 || Math.abs(current.lng - lng) > 1e-9;
-        if (centerChanged || zoomChanged) {
-            map.setView([lat, lng], zoom);
-        }
-    }, [center, zoom]);
+    // We intentionally do not auto-sync view to props on subsequent renders
+    // to avoid overriding manual panning/zooming and programmatic flyTo calls.
 
     // Expose map methods via ref
     useImperativeHandle(ref, () => ({
@@ -202,12 +190,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             measurePolylineRef.current = null;
         }
         
-        // Remove polygon if exists
-        if (measurePolygonRef.current) {
-            console.log('Removing polygon');
-            measurePolygonRef.current.remove();
-            measurePolygonRef.current = null;
-        }
+        // no polygon cleanup needed
         
         if (distanceLabelRef.current) {
             console.log('Removing distance label');
@@ -272,39 +255,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                         const isSamePoint = firstPoint.lat === latlng.lat && firstPoint.lng === latlng.lng;
                         
                         if (isSamePoint) {
-                            console.log('Clicked same marker, showing 0m distance');
-                            // Create a small circle or point to show 0m measurement
-                            const distanceMeters = 0;
-                            
-                            // Create a small circle at the point to indicate measurement
-                            const circle = L.circle(latlng, {
-                                radius: 10,
-                                color: '#dc2626',
-                                weight: 3,
-                                fillColor: '#dc2626',
-                                fillOpacity: 0.7,
-                            });
-                            
-                            circle.addTo(measureLayer);
-                            console.log('Zero distance circle added to measure layer');
-
-                            if (onDistanceChange) onDistanceChange(distanceMeters);
-
-                            // Add distance label
-                            const labelText = '0 m';
-                            distanceLabelRef.current = L.marker(latlng, {
-                                icon: L.divIcon({
-                                    className: 'distance-label',
-                                    html: `<div style="background:#dc2626;color:#fff;padding:6px 10px;border-radius:6px;font-size:14px;font-weight:600;box-shadow:0 4px 8px rgba(0,0,0,0.4);border:2px solid #fff;">${labelText}</div>`,
-                                    iconSize: [0, 0],
-                                    iconAnchor: [0, 0],
-                                }),
-                                interactive: false,
-                            });
-                            
-                            distanceLabelRef.current.addTo(measureLayer);
-                            console.log('Zero distance label added to measure layer');
-                            
+                            if (onDistanceChange) onDistanceChange(0);
                             return;
                         }
                         
@@ -318,67 +269,17 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                         const distanceMeters = points[0].distanceTo(points[1]);
                         console.log('Distance calculated:', distanceMeters, 'meters');
                         
-                        // Create feature based on featureType
-                        if (featureType === 'polyline') {
-                            // Create polyline
-                            console.log('About to create polyline with points:', [points[0], points[1]]);
-                            measurePolylineRef.current = L.polyline([points[0], points[1]], {
-                                color: '#dc2626',
-                                weight: 8,
-                                opacity: 1.0,
-                                dashArray: '10, 5'
-                            });
-                            
-                            console.log('Polyline created:', !!measurePolylineRef.current);
-                            
-                            // Add polyline directly to map first to test
-                            if (mapInstanceRef.current) {
-                                measurePolylineRef.current.addTo(mapInstanceRef.current);
-                                console.log('Polyline added directly to map');
-                            }
-                            
-                            // Also add to measure layer
-                            measurePolylineRef.current.addTo(measureLayer);
-                            console.log('Polyline added to measure layer successfully');
-                        } else {
-                            // Create polygon
-                            console.log('About to create polygon with points:', [points[0], points[1]]);
-                            
-                            // For polygon, we need at least 3 points, so create a triangle
-                            // We'll create a triangle using the two points and a third point that forms a right angle
-                            const dx = points[1].lng - points[0].lng;
-                            const dy = points[1].lat - points[0].lat;
-                            
-                            // Create a point perpendicular to the line between points[0] and points[1]
-                            const thirdPoint = L.latLng(
-                                points[0].lat + dy * 0.3, 
-                                points[0].lng - dx * 0.3
-                            );
-                            
-                            measurePolygonRef.current = L.polygon([
-                                points[0],
-                                points[1],
-                                thirdPoint
-                            ], {
-                                color: '#dc2626',
-                                weight: 3,
-                                opacity: 1.0,
-                                fillColor: '#dc2626',
-                                fillOpacity: 0.2
-                            });
-                            
-                            console.log('Polygon created:', !!measurePolygonRef.current);
-                            
-                            // Add polygon to map
-                            if (mapInstanceRef.current) {
-                                measurePolygonRef.current.addTo(mapInstanceRef.current);
-                                console.log('Polygon added directly to map');
-                            }
-                            
-                            // Also add to measure layer
-                            measurePolygonRef.current.addTo(measureLayer);
-                            console.log('Polygon added to measure layer successfully');
+                        // Create polyline measurement
+                        measurePolylineRef.current = L.polyline([points[0], points[1]], {
+                            color: '#dc2626',
+                            weight: 8,
+                            opacity: 1.0,
+                            dashArray: '10, 5'
+                        });
+                        if (mapInstanceRef.current) {
+                            measurePolylineRef.current.addTo(mapInstanceRef.current);
                         }
+                        measurePolylineRef.current.addTo(measureLayer);
                         
                         // Force a redraw
                         if (mapInstanceRef.current) {
@@ -387,25 +288,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
 
                         if (onDistanceChange) onDistanceChange(distanceMeters);
 
-                        // Add distance label
-                        const midLat = (points[0].lat + points[1].lat) / 2;
-                        const midLng = (points[0].lng + points[1].lng) / 2;
-                        const labelText = distanceMeters > 1000
-                            ? `${(distanceMeters / 1000).toFixed(2)} km`
-                            : `${distanceMeters.toFixed(0)} m`;
-
-                        distanceLabelRef.current = L.marker([midLat, midLng], {
-                            icon: L.divIcon({
-                                className: 'distance-label',
-                                html: `<div style="background:#dc2626;color:#fff;padding:6px 10px;border-radius:6px;font-size:14px;font-weight:600;box-shadow:0 4px 8px rgba(0,0,0,0.4);border:2px solid #fff;">${labelText}</div>`,
-                                iconSize: [0, 0],
-                                iconAnchor: [0, 0],
-                            }),
-                            interactive: false,
-                        });
-                        
-                        distanceLabelRef.current.addTo(measureLayer);
-                        console.log('Distance label added to measure layer successfully');
+                        // Do not add any distance label marker; display distance only in UI panel
                         
                         console.log('=== MEASUREMENT COMPLETED ===');
                         return;
@@ -422,7 +305,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         } else {
             console.log('showLines is false, not attaching click handlers');
         }
-    }, [showLines, onDistanceChange]);
+    }, [showLines, markers, onDistanceChange]);
 
     // Coverage circles toggle
     useEffect(() => {
@@ -451,8 +334,52 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
 
         console.log('=== EXTERNAL RESET TRIGGERED ===');
         clearMeasurement();
+        // Also detach any stale click handlers then reattach
+        markerInstancesRef.current.forEach((m) => m.off('click'));
+        // Re-attach when showLines true
+        if (showLines) {
+            markerInstancesRef.current.forEach((marker, index) => {
+                marker.on('click', (e: L.LeafletMouseEvent) => {
+                    const latlng = marker.getLatLng();
+                    const pts = selectedPointsRef.current;
+                    if (pts.length === 0) {
+                        clearMeasurement();
+                        selectedPointsRef.current.push(latlng);
+                        return;
+                    }
+                    if (pts.length === 1) {
+                        const firstPoint = selectedPointsRef.current[0];
+                        const isSamePoint = firstPoint.lat === latlng.lat && firstPoint.lng === latlng.lng;
+                        if (isSamePoint) {
+                            if (onDistanceChange) onDistanceChange(0);
+                            return;
+                        }
+                        selectedPointsRef.current.push(latlng);
+                        const points = selectedPointsRef.current;
+                        const distanceMeters = points[0].distanceTo(points[1]);
+                        measurePolylineRef.current = L.polyline([points[0], points[1]], {
+                            color: '#dc2626',
+                            weight: 8,
+                            opacity: 1.0,
+                            dashArray: '10, 5'
+                        });
+                        if (mapInstanceRef.current) {
+                            measurePolylineRef.current.addTo(mapInstanceRef.current);
+                        }
+                        measurePolylineRef.current.addTo(measureLayerRef.current as L.LayerGroup);
+                        if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
+                        if (onDistanceChange) onDistanceChange(distanceMeters);
+                        return;
+                    }
+                    if (pts.length >= 2) {
+                        clearMeasurement();
+                        selectedPointsRef.current.push(latlng);
+                    }
+                });
+            });
+        }
         console.log('=== EXTERNAL RESET COMPLETED ===');
-    }, [resetLinesTrigger, onDistanceChange]);
+    }, [resetLinesTrigger, onDistanceChange, showLines]);
 
     // Clear measurement when showLines is disabled (coverage mode)
     useEffect(() => {

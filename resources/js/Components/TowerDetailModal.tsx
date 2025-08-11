@@ -75,7 +75,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
       <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="bg-purple-500 text-white p-4 rounded-t-lg flex items-center">
-          <span className="material-icons mr-2">info</span>
+          <span className="material-icons-outlined mr-2">info</span>
           <h3 className="text-xl font-semibold">Detail Tower - {tower.site_name}</h3>
         </div>
         
@@ -157,7 +157,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
               onClick={() => onViewMap(tower)} 
               className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center mr-2"
             >
-              <span className="material-icons mr-1">place</span>
+              <span className="material-icons-outlined mr-1">place</span>
               Lihat di Peta
             </button>
           </div>
@@ -166,14 +166,14 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
               onClick={handleDownloadReport}
               className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center mr-2"
             >
-              <span className="material-icons mr-1">download</span>
+              <span className="material-icons-outlined mr-1">download</span>
               Download Report
             </button>
             <button 
               onClick={onClose} 
               className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center"
             >
-              <span className="material-icons mr-1">close</span>
+              <span className="material-icons-outlined mr-1">close</span>
               Tutup
             </button>
           </div>

@@ -41,12 +41,7 @@ const DataTower: React.FC<DataTowerProps> = ({
   type Mode = 'none' | 'coverage';
   const [mode, setMode] = useState<Mode>('coverage'); // Default to coverage mode
   
-  // Feature type for polyline/polygon
-  type FeatureType = 'polyline' | 'polygon';
-  const [featureType, setFeatureType] = useState<FeatureType>('polyline');
-  
-  // Radius for coverage circles
-  const [radius, setRadius] = useState<number>(500);
+  // Radius diukur otomatis per menara berdasarkan data; tidak ada input manual
   
   // For tower detail modal
   const [selectedTower, setSelectedTower] = useState<Tower | null>(null);
@@ -94,6 +89,8 @@ const DataTower: React.FC<DataTowerProps> = ({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // Trigger map measurement reset when searching
+    setResetLinesCounter(c => c + 1);
     router.get('/data-tower', { search: searchTerm, page: 1 }, { preserveState: true });
   };
 
@@ -118,12 +115,12 @@ const DataTower: React.FC<DataTowerProps> = ({
 
         {/* Map Section */}
         <div id="map-section" className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center">
+            <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3">
             <h2 className="text-xl font-medium mb-3 md:mb-0">Peta Lokasi Tower</h2>
             
-            <div className="flex gap-4 items-center">
-              {/* Mode Selector */}
-              <div className="w-40">
+              <div className="flex gap-4 items-center w-full md:w-auto md:justify-end">
+                {/* Mode Selector */}
+                <div className="w-40">
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as Mode)}
@@ -134,34 +131,23 @@ const DataTower: React.FC<DataTowerProps> = ({
                 </select>
               </div>
               
-              {/* Feature Type or Radius Selector */}
-              {mode === 'none' ? (
-                <div className="w-40">
-                  <select
-                    value={featureType}
-                    onChange={(e) => {
-                      setFeatureType(e.target.value as FeatureType);
-                      setResetLinesCounter(c => c + 1); // Reset when changing feature type
-                    }}
-                    className="w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
-                  >
-                    <option value="polyline">Polyline (garis)</option>
-                    <option value="polygon">Polygon (area)</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="w-40">
-                  <input
-                    type="number"
-                    min={10}
-                    step={10}
-                    value={radius}
-                    onChange={(e) => setRadius(Number(e.target.value) || 0)}
-                    placeholder="Radius (m)"
-                    className="w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
-                  />
-                </div>
-              )}
+                {/* Panel jarak dan reset di kanan */}
+                {mode === 'none' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-700 whitespace-nowrap">
+                      Jarak: <span className="text-purple-600 font-semibold">
+                        {distance > 0 ? `${distance.toFixed(1)} m${distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}` : '-'}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setResetLinesCounter(c => c + 1)}
+                      className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium border"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
           
@@ -174,31 +160,10 @@ const DataTower: React.FC<DataTowerProps> = ({
               markers={markers}
               showLines={mode === 'none'}
               showCoverage={mode === 'coverage'}
-              defaultRadiusMeters={radius}
+                defaultRadiusMeters={500}
               onDistanceChange={setDistance}
               resetLinesTrigger={resetLinesCounter}
-              featureType={featureType}
             />
-            
-            {/* Distance measurement display */}
-            {mode === 'none' && distance > 0 && (
-              <div className="p-3 bg-gray-50 border-t">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium text-gray-700">
-                    Jarak: <span className="text-purple-600 font-semibold">
-                      {distance.toFixed(1)} m{distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setResetLinesCounter(c => c + 1)}
-                    className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium border"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

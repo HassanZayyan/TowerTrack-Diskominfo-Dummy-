@@ -20,6 +20,20 @@
     z-index: 1000 !important;
 }
 
+/* Better distance label box for readability and number fit */
+.distance-label-box {
+    background: #dc2626;
+    color: #fff;
+    padding: 4px 8px;
+    line-height: 1.1;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    border: 2px solid #ffffff;
+    white-space: nowrap;
+}
+
 /* Ensure measure layer is above other layers */
 .leaflet-overlay-pane {
     z-index: 400;
