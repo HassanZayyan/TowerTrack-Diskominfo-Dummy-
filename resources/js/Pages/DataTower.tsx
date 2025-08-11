@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import LeafletMap from '@/Components/LeafletMap';
 import TowerDetailModal from '@/Components/TowerDetailModal';
+import AlertToast from '@/Components/AlertToast';
 
 interface Tower {
   id: number;
@@ -35,6 +36,12 @@ const DataTower: React.FC<DataTowerProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [distance, setDistance] = useState<number>(0);
+  const [coordFilter, setCoordFilter] = useState<'all' | 'with' | 'without'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('coord');
+    if (v === 'with' || v === 'without') return v;
+    return 'all';
+  });
   const [resetLinesCounter, setResetLinesCounter] = useState<number>(0);
   
   // Mode state
@@ -48,6 +55,9 @@ const DataTower: React.FC<DataTowerProps> = ({
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
   const mapRef = useRef<any>(null);
 
+  // Pretty toast alert for UX
+  const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'warning' });
+
   // Use mapTowers (all towers with coordinates) for the map display
   const markers = useMemo(() => mapTowers
     .map(t => {
@@ -55,7 +65,11 @@ const DataTower: React.FC<DataTowerProps> = ({
       const lon = Number(t.longitude);
       return { t, lat, lon };
     })
-    .filter(({ lat, lon }) => Number.isFinite(lat) && Number.isFinite(lon))
+    .filter(({ lat, lon }) => 
+      Number.isFinite(lat) && Number.isFinite(lon) &&
+      lat !== 0 && lon !== 0 &&
+      Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+    )
     .map(({ t, lat, lon }) => {
       let radiusMeters: number | undefined = undefined;
       
@@ -84,14 +98,14 @@ const DataTower: React.FC<DataTowerProps> = ({
     }), [mapTowers]);
 
   const onPageChange = (page: number) => {
-    router.get('/data-tower', { page }, { preserveState: true });
+    router.get('/data-tower', { page, search: searchTerm, coord: coordFilter }, { preserveState: true });
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Trigger map measurement reset when searching
     setResetLinesCounter(c => c + 1);
-    router.get('/data-tower', { search: searchTerm, page: 1 }, { preserveState: true });
+    router.get('/data-tower', { search: searchTerm, coord: coordFilter, page: 1 }, { preserveState: true });
   };
 
   return (
@@ -169,26 +183,46 @@ const DataTower: React.FC<DataTowerProps> = ({
 
         {/* Table Section */}
         <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center">
-            <h2 className="text-xl font-medium mb-3 md:mb-0">Data Tower</h2>
-            
-            <form onSubmit={handleSearch} className="w-full md:w-64">
-              <div className="relative">
-                <input 
-                  type="text"
-                  placeholder="Cari tower..."
-                  className="w-full rounded-full border-gray-300 pr-10 focus:border-purple-500 focus:ring-purple-500"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button 
-                  type="submit" 
-                  className="absolute right-0 top-0 rounded-r-full px-4 h-full bg-purple-600 text-white"
-                >
-                  <span className="material-icons text-sm">search</span>
-                </button>
+          <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3">
+            <h2 className="text-xl font-medium">Data Tower</h2>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="w-full md:w-64">
+                <form onSubmit={handleSearch}>
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      placeholder="Cari tower..."
+                      className="w-full rounded-full border-gray-300 pr-10 focus:border-purple-500 focus:ring-purple-500"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <button 
+                      type="submit" 
+                      className="absolute right-0 top-0 rounded-r-full px-4 h-full bg-purple-600 text-white"
+                    >
+                      <span className="material-icons text-sm">search</span>
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+
+              <div className="w-full md:w-56">
+                <select
+                  value={coordFilter}
+                  onChange={(e) => {
+                    const v = e.target.value as 'all' | 'with' | 'without';
+                    setCoordFilter(v);
+                    router.get('/data-tower', { search: searchTerm, coord: v, page: 1 }, { preserveState: true });
+                  }}
+                  className="w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                >
+                  <option value="all">Semua data (dengan & tanpa koordinat)</option>
+                  <option value="with">Hanya yang punya koordinat</option>
+                  <option value="without">Hanya yang tanpa koordinat</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -215,8 +249,22 @@ const DataTower: React.FC<DataTowerProps> = ({
                   >
                     <td className="px-4 py-3 border-b">{tower.site_name}</td>
                     <td className="px-4 py-3 border-b">
-                      Lat: {typeof tower.latitude === 'number' ? tower.latitude.toFixed(4) : tower.latitude}<br/>
-                      Lng: {typeof tower.longitude === 'number' ? tower.longitude.toFixed(4) : tower.longitude}
+                      {(() => {
+                        const lat = Number(tower.latitude);
+                        const lon = Number(tower.longitude);
+                        const latStr = Number.isFinite(lat)
+                          ? lat.toFixed(6)
+                          : (typeof tower.latitude === 'string' && tower.latitude.trim() !== '' ? tower.latitude : '-');
+                        const lonStr = Number.isFinite(lon)
+                          ? lon.toFixed(6)
+                          : (typeof tower.longitude === 'string' && tower.longitude.trim() !== '' ? tower.longitude : '-');
+                        return (
+                          <>
+                            Lat: {latStr}<br/>
+                            Lng: {lonStr}
+                          </>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 border-b">{tower.tinggi_menara}m</td>
                     <td className="px-4 py-3 border-b">{tower.owner || 'TELKOM'}</td>
@@ -318,17 +366,37 @@ const DataTower: React.FC<DataTowerProps> = ({
           const lat = Number(tower.latitude);
           const lng = Number(tower.longitude);
           
-          // If we have the map ref available, we can programmatically focus on the tower
-          if (mapRef.current && typeof mapRef.current.flyTo === 'function') {
-            mapRef.current.flyTo([lat, lng], 17);
-          }
-          
-          // Scroll to the map section
-          const mapElement = document.getElementById('map-section');
-          if (mapElement) {
-            mapElement.scrollIntoView({ behavior: 'smooth' });
+          const hasValidCoords = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+          // If valid coordinates, programmatically focus on the tower
+          if (hasValidCoords) {
+            if (mapRef.current && typeof mapRef.current.flyTo === 'function') {
+              mapRef.current.flyTo([lat, lng], 17);
+            }
+            // Scroll to the map section only when we actually focus the map
+            const mapElement = document.getElementById('map-section');
+            if (mapElement) {
+              mapElement.scrollIntoView({ behavior: 'smooth' });
+            }
+          } else {
+            setToast({
+              show: true,
+              type: 'warning',
+              title: 'Koordinat belum tersedia',
+              message: 'Tower ini belum memiliki titik koordinat yang valid, sehingga tidak dapat ditampilkan di peta.',
+            });
           }
         }}
+      />
+
+      {/* Toast */}
+      <AlertToast
+        show={toast.show}
+        type={toast.type}
+        title={toast.title}
+        message={toast.message}
+        durationMs={3500}
+        onClose={() => setToast({ ...toast, show: false })}
       />
     </MainLayout>
   );
