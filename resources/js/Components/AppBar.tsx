@@ -15,7 +15,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const links: AppBarLink[] = [
-    { href: '/tower-map', label: 'Peta Tower', icon: 'map' },
+    { href: '/data-tower', label: 'Data Tower', icon: 'table_chart' },
     { href: '/complaint', label: 'Form Keluhan', icon: 'message-report' },
   ];
 

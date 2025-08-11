@@ -30,7 +30,6 @@ class Tower extends Model
         'jenis_ijin',
         'status_ijin',
         'prs',
-        'prs_id',
     ];
 }
 

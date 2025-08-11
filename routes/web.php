@@ -7,7 +7,7 @@ use Inertia\Inertia;
 use App\Models\Tower;
 
 Route::get('/', function () {
-    return redirect()->route('tower.map');
+    return redirect()->route('data.tower');
 });
 
 Route::get('/dashboard', function () {
@@ -15,43 +15,84 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Public Routes
-Route::get('/tower-map', function () {
+Route::get('/data-tower', function () {
     $search = request('search');
     $perPage = 10;
     
-    $query = Tower::query()
+    // Base query for both map and table
+    $baseQuery = Tower::query()
         ->whereNotNull('latitude')
         ->whereNotNull('longitude');
     
+    // Apply search filter to the paginated table query
+    $tableQuery = clone $baseQuery;
     if ($search) {
-        $query->where(function ($q) use ($search) {
+        $tableQuery->where(function ($q) use ($search) {
             $q->where('site_name', 'like', "%{$search}%")
               ->orWhere('alamat_menara', 'like', "%{$search}%");
         });
     }
     
-    $totalTowers = $query->count();
+    $totalTowers = $tableQuery->count();
     
-    $towers = $query->select([
+    // Get paginated towers for table display with available fields
+    $paginatedTowers = $tableQuery->select([
             'id',
             'site_name',
+            'site_id',
+            'site_sap',
             'latitude',
             'longitude',
-            'alamat_menara',
             'tinggi_menara',
+            'tinggi_bangunan',
+            'jumlah_pengguna',
+            'jumlah_kaki',
+            'alamat_menara',
+            'tower_type',
             'site_type',
-            'status_ijin as status' // Using status_ijin column and aliasing it as status
+            'no_ijin',
+            'tanggal_ijin',
+            'berlaku_hingga',
+            'jenis_ijin',
+            'status_ijin as status', // Using status_ijin column and aliasing it as status
+            'prs'
         ])
         ->orderBy('site_name')
         ->paginate($perPage);
+    
+    // Get all towers with coordinates for map display with available fields
+    $allMapTowers = $baseQuery->select([
+            'id',
+            'site_name',
+            'site_id',
+            'site_sap',
+            'latitude',
+            'longitude',
+            'tinggi_menara',
+            'tinggi_bangunan',
+            'jumlah_pengguna',
+            'jumlah_kaki',
+            'alamat_menara',
+            'tower_type',
+            'site_type',
+            'no_ijin',
+            'tanggal_ijin',
+            'berlaku_hingga',
+            'jenis_ijin',
+            'status_ijin as status',
+            'prs'
+        ])
+        ->get();
 
-    return Inertia::render('TowerMap', [
-        'towers' => $towers->items(),
-        'currentPage' => $towers->currentPage(),
+    return Inertia::render('DataTower', [
+        'towers' => $paginatedTowers->items(),
+        'mapTowers' => $allMapTowers,
+        'currentPage' => $paginatedTowers->currentPage(),
         'perPage' => $perPage,
         'total' => $totalTowers,
+        'lastPage' => $paginatedTowers->lastPage(),
     ]);
-})->name('tower.map');
+})->name('data.tower');
 
 Route::get('/complaint', function () {
     // Get towers list for dropdown
@@ -86,18 +127,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
-    Route::get('/map-tower', function () {
-        $towers = Tower::query()
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->select(['id','site_name','latitude','longitude','alamat_menara','tinggi_menara','site_type'])
-            ->get();
-
-        return Inertia::render('MapTower', [
-            'towers' => $towers,
-        ]);
-    })->name('map.tower');
 });
 
 require __DIR__.'/auth.php';

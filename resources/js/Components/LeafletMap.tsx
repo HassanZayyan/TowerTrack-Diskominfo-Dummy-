@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import L from 'leaflet';
 // Fix marker icon paths under Vite
 // @ts-ignore
@@ -26,9 +26,10 @@ interface LeafletMapProps {
     defaultRadiusMeters?: number;
     onDistanceChange?: (distance: number) => void;
     resetLinesTrigger?: number;
+    featureType?: 'polyline' | 'polygon';
 }
 
-const LeafletMap: React.FC<LeafletMapProps> = ({
+const LeafletMap = forwardRef<any, LeafletMapProps>(({
     center = [0, 0],
     zoom = 13,
     className = '',
@@ -39,7 +40,8 @@ const LeafletMap: React.FC<LeafletMapProps> = ({
     defaultRadiusMeters = 500,
     onDistanceChange,
     resetLinesTrigger,
-}) => {
+    featureType = 'polyline',
+}, ref) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const markersLayerRef = useRef<L.LayerGroup | null>(null);
@@ -48,6 +50,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({
     const markerInstancesRef = useRef<L.Marker[]>([]);
     const selectedPointsRef = useRef<L.LatLng[]>([]);
     const measurePolylineRef = useRef<L.Polyline | null>(null);
+    const measurePolygonRef = useRef<L.Polygon | null>(null);
     const distanceLabelRef = useRef<L.Marker | null>(null);
     const isInitializedRef = useRef<boolean>(false);
 
@@ -116,6 +119,16 @@ const LeafletMap: React.FC<LeafletMapProps> = ({
         };
     }, [center, zoom]);
 
+    // Expose map methods via ref
+    useImperativeHandle(ref, () => ({
+      flyTo: (center: [number, number], zoom: number = 15) => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo(center, zoom);
+        }
+      },
+      getMap: () => mapInstanceRef.current
+    }));
+    
     // Create markers only once when component mounts or markers change significantly
     useEffect(() => {
         const map = mapInstanceRef.current;
@@ -188,6 +201,13 @@ const LeafletMap: React.FC<LeafletMapProps> = ({
             console.log('Removing polyline');
             measurePolylineRef.current.remove();
             measurePolylineRef.current = null;
+        }
+        
+        // Remove polygon if exists
+        if (measurePolygonRef.current) {
+            console.log('Removing polygon');
+            measurePolygonRef.current.remove();
+            measurePolygonRef.current = null;
         }
         
         if (distanceLabelRef.current) {
@@ -299,26 +319,67 @@ const LeafletMap: React.FC<LeafletMapProps> = ({
                         const distanceMeters = points[0].distanceTo(points[1]);
                         console.log('Distance calculated:', distanceMeters, 'meters');
                         
-                        // Create polyline
-                        console.log('About to create polyline with points:', [points[0], points[1]]);
-                        measurePolylineRef.current = L.polyline([points[0], points[1]], {
-                            color: '#dc2626',
-                            weight: 8,
-                            opacity: 1.0,
-                            dashArray: '10, 5'
-                        });
-                        
-                        console.log('Polyline created:', !!measurePolylineRef.current);
-                        
-                        // Add polyline directly to map first to test
-                        if (mapInstanceRef.current) {
-                            measurePolylineRef.current.addTo(mapInstanceRef.current);
-                            console.log('Polyline added directly to map');
+                        // Create feature based on featureType
+                        if (featureType === 'polyline') {
+                            // Create polyline
+                            console.log('About to create polyline with points:', [points[0], points[1]]);
+                            measurePolylineRef.current = L.polyline([points[0], points[1]], {
+                                color: '#dc2626',
+                                weight: 8,
+                                opacity: 1.0,
+                                dashArray: '10, 5'
+                            });
+                            
+                            console.log('Polyline created:', !!measurePolylineRef.current);
+                            
+                            // Add polyline directly to map first to test
+                            if (mapInstanceRef.current) {
+                                measurePolylineRef.current.addTo(mapInstanceRef.current);
+                                console.log('Polyline added directly to map');
+                            }
+                            
+                            // Also add to measure layer
+                            measurePolylineRef.current.addTo(measureLayer);
+                            console.log('Polyline added to measure layer successfully');
+                        } else {
+                            // Create polygon
+                            console.log('About to create polygon with points:', [points[0], points[1]]);
+                            
+                            // For polygon, we need at least 3 points, so create a triangle
+                            // We'll create a triangle using the two points and a third point that forms a right angle
+                            const dx = points[1].lng - points[0].lng;
+                            const dy = points[1].lat - points[0].lat;
+                            
+                            // Create a point perpendicular to the line between points[0] and points[1]
+                            const thirdPoint = L.latLng(
+                                points[0].lat + dy * 0.3, 
+                                points[0].lng - dx * 0.3
+                            );
+                            
+                            measurePolygonRef.current = L.polygon([
+                                points[0],
+                                points[1],
+                                thirdPoint
+                            ], {
+                                color: '#dc2626',
+                                weight: 3,
+                                opacity: 1.0,
+                                fillColor: '#dc2626',
+                                fillOpacity: 0.2
+                            });
+                            
+                            console.log('Polygon created:', !!measurePolygonRef.current);
+                            
+                            // Add polygon to map
+                            if (mapInstanceRef.current) {
+                                measurePolygonRef.current.addTo(mapInstanceRef.current);
+                                console.log('Polygon added directly to map');
+                            }
+                            
+                            // Also add to measure layer
+                            measurePolygonRef.current.addTo(measureLayer);
+                            console.log('Polygon added to measure layer successfully');
                         }
-                        
-                        // Also add to measure layer
-                        measurePolylineRef.current.addTo(measureLayer);
-                        console.log('Polyline added to measure layer successfully');
                         
                         // Force a redraw
                         if (mapInstanceRef.current) {
@@ -411,6 +472,6 @@ const LeafletMap: React.FC<LeafletMapProps> = ({
             style={{ height: '400px', width: '100%', ...style }}
         />
     );
-};
+});
 
-export default LeafletMap; 
+export default LeafletMap;
