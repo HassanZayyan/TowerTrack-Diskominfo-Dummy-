@@ -94,14 +94,15 @@ export default function Login({
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            className="rounded-md text-sm underline focus:outline-none"
+                            style={{ color: '#212121' }}
                         >
                             Forgot your password?
                         </Link>
                     )}
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
+                    <PrimaryButton className="ms-4" disabled={processing} style={{ backgroundColor: '#212121' }}>
+                        Masuk Admin / Operator
                     </PrimaryButton>
                 </div>
             </form>

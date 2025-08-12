@@ -20,7 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage = '' }) => {
   return (
     <div className="sidebar bg-white shadow-md p-4 h-full min-h-screen">
       <div className="sidebar-header mb-6">
-        <h2 className="text-2xl font-bold text-purple-700">TowerTrack</h2>
+        <h2 className="text-2xl font-bold" style={{ color: '#B71C1C' }}>TowerTrack</h2>
         <p className="text-sm text-gray-500">Sistem Monitoring Tower</p>
       </div>
 
@@ -33,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage = '' }) => {
                 className={`
                   flex items-center p-3 rounded-lg transition-colors
                   ${currentPage === link.href ? 
-                    'bg-purple-100 text-purple-700 font-medium' : 
+                    'bg-red-50 font-medium' : 
                     'hover:bg-gray-100 text-gray-700'
                   }
                 `}
