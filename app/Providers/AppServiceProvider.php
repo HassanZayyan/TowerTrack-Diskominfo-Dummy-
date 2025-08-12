@@ -21,8 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Ensure generated URLs (including assets/prefetch) use HTTPS when served via tunnels like ngrok
-        URL::forceScheme('https');
+        // Force HTTPS only when explicitly enabled (e.g., for ngrok/production)
+        // Set FORCE_HTTPS=true in the environment to enable
+        if (filter_var(env('FORCE_HTTPS', false), FILTER_VALIDATE_BOOLEAN)) {
+            URL::forceScheme('https');
+        }
         Vite::prefetch(concurrency: 3);
     }
 }
