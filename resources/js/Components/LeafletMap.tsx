@@ -52,6 +52,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     // Polygon measurement is not used anymore
     const distanceLabelRef = useRef<L.Marker | null>(null);
     const isInitializedRef = useRef<boolean>(false);
+    const scaleControlRef = useRef<L.Control.Scale | null>(null);
 
     // Initialize map only once on mount
     useEffect(() => {
@@ -75,6 +76,50 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         }).addTo(map);
 
         mapInstanceRef.current = map;
+
+        // Add and style metric scale control (bottom-left)
+        const scale = L.control.scale({ metric: true, imperial: false, position: 'bottomleft', maxWidth: 150 });
+        scale.addTo(map);
+        scaleControlRef.current = scale;
+        try {
+            const container = scale.getContainer();
+            if (container) {
+                container.style.backgroundColor = '#FFFFFF';
+                container.style.border = '1px solid #212121';
+                container.style.borderRadius = '8px';
+                container.style.padding = '4px 8px';
+                container.style.margin = '8px';
+                container.style.color = '#212121';
+                container.style.boxShadow = '0 1px 2px rgba(0,0,0,0.08)';
+                container.style.fontWeight = '600';
+                container.style.fontSize = '11px';
+                container.style.zIndex = '500';
+                const lines = container.querySelectorAll('.leaflet-control-scale-line');
+                lines.forEach((el) => {
+                    const line = el as HTMLElement;
+                    // Show text only: remove bar visuals
+                    line.style.background = 'transparent';
+                    line.style.border = '0';
+                    line.style.boxShadow = 'none';
+                    line.style.width = 'auto';
+                    line.style.height = 'auto';
+                    line.style.lineHeight = 'normal';
+                    line.style.margin = '0';
+                    line.style.padding = '0';
+                    line.style.display = 'inline';
+                    line.style.color = '#212121';
+                    line.style.whiteSpace = 'nowrap';
+                });
+            }
+        } catch {}
+
+        // Prevent page scroll or scroll-chaining when interacting with the map
+        if (mapRef.current) {
+            try {
+                L.DomEvent.disableScrollPropagation(mapRef.current);
+                L.DomEvent.disableClickPropagation(mapRef.current);
+            } catch {}
+        }
 
         // Create layers in correct order so measurement sits above tiles but below markers
         coverageLayerRef.current = L.layerGroup().addTo(map);
@@ -108,6 +153,10 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             if (mapInstanceRef.current) {
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
+            }
+            if (scaleControlRef.current && map) {
+                try { map.removeControl(scaleControlRef.current); } catch {}
+                scaleControlRef.current = null;
             }
             if (resizeObserverRef.current) {
                 try { resizeObserverRef.current.disconnect(); } catch {}
@@ -176,7 +225,9 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                     closeButton: false,
                     autoClose: false,
                     closeOnEscapeKey: false,
-                    closeOnClick: false
+                    closeOnClick: false,
+                    // Prevent the map from panning to keep the popup in view on hover
+                    autoPan: false,
                 }).setContent(`<strong>${m.title ?? ''}</strong><br/>${m.description ?? ''}`);
                 
                 marker.bindPopup(popup);

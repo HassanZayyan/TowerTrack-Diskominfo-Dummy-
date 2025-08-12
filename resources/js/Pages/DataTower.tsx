@@ -180,7 +180,13 @@ const DataTower: React.FC<DataTowerProps> = ({
             </div>
           </div>
           
-          <div className="p-0">
+          <div className="p-0" onWheel={(e) => {
+            // Prevent wheel events from bubbling to the page when cursor is over the map container
+            const target = e.target as HTMLElement;
+            if (target && target.closest('#map-section')) {
+              e.stopPropagation();
+            }
+          }}>
             <LeafletMap
               ref={mapRef}
               center={[-7.197, 110.426]}
