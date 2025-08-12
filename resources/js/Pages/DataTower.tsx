@@ -185,7 +185,7 @@ const DataTower: React.FC<DataTowerProps> = ({
               ref={mapRef}
               center={[-7.197, 110.426]}
               zoom={10}
-              style={{ height: '55vh', minHeight: '320px', maxHeight: '640px', width: '100%' }}
+              style={{ height: '65vh', minHeight: '420px', maxHeight: '760px', width: '100%' }}
               markers={markers}
               showLines={mode === 'none'}
               showCoverage={mode === 'coverage'}
