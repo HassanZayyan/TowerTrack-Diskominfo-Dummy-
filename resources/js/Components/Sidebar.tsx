@@ -18,7 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage = '' }) => {
   ];
 
   return (
-    <div className="sidebar bg-white shadow-md p-4 h-full min-h-screen">
+    <div className="sidebar bg-white shadow-md p-4 h-full min-h-screen sticky top-0">
       <div className="sidebar-header mb-6">
         <h2 className="text-2xl font-bold" style={{ color: '#B71C1C' }}>TowerTrack</h2>
         <p className="text-sm text-gray-500">Sistem Monitoring Tower</p>

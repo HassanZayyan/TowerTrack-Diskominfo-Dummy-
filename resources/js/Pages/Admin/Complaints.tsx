@@ -15,7 +15,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
     <AdminLayout title="Complaints">
       <Head title="Complaints" />
       <div className="rounded shadow overflow-x-auto" style={{ backgroundColor: '#FFFFFF' }}>
-        <table className="w-full text-left">
+        <table className="w-full text-left min-w-[900px]">
           <thead>
             <tr style={{ backgroundColor: '#FFF8E1' }}>
               <th className="px-4 py-3 border-b">Pelapor</th>

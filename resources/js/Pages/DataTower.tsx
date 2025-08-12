@@ -114,18 +114,18 @@ const DataTower: React.FC<DataTowerProps> = ({
       <Head title="Data Tower" />
 
       {/* Welcome Bar */}
-      <div className="px-6 py-6 mb-6 flex items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
-        <div>
-          <h2 className="text-2xl font-bold leading-snug" style={{ color: '#212121' }}>Selamat datang di TowerTrack!</h2>
-          <p className="mt-1 text-base" style={{ color: '#212121', opacity: 0.8 }}>
+      <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
+        <div className="mb-3 sm:mb-0">
+          <h2 className="text-xl sm:text-2xl font-bold leading-snug" style={{ color: '#212121' }}>Selamat datang di TowerTrack!</h2>
+          <p className="mt-1 text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
             Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
           </p>
         </div>
-        <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-12 w-12 hidden sm:block" />
+        <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
       </div>
 
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Statistics Header */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderLeftColor: '#B71C1C' }}>
@@ -141,17 +141,17 @@ const DataTower: React.FC<DataTowerProps> = ({
         </div>
 
         {/* Map Section */}
-        <div id="map-section" className="bg-white rounded-lg shadow mb-6">
+          <div id="map-section" className="bg-white rounded-lg shadow mb-6">
             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3">
-            <h2 className="text-xl font-medium mb-3 md:mb-0">Peta Lokasi Tower</h2>
+            <h2 className="text-lg sm:text-xl font-medium mb-3 md:mb-0">Peta Lokasi Tower</h2>
             
               <div className="flex gap-4 items-center w-full md:w-auto md:justify-end">
                 {/* Mode Selector */}
-                <div className="w-40">
+                <div className="w-full sm:w-40">
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as Mode)}
-                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
+                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
                 >
                   <option value="none">Ukur Jarak</option>
                   <option value="coverage">Radius Coverage</option>
@@ -160,16 +160,17 @@ const DataTower: React.FC<DataTowerProps> = ({
               
                 {/* Panel jarak dan reset di kanan */}
                 {mode === 'none' && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-700 whitespace-nowrap">
-                      Jarak: <span className="font-semibold" style={{ color: '#B71C1C' }}>
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <span className="text-sm text-gray-700">
+                      Jarak:
+                      <span className="font-semibold ml-1" style={{ color: '#B71C1C' }}>
                         {distance > 0 ? `${distance.toFixed(1)} m${distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}` : '-'}
                       </span>
                     </span>
                     <button
                       type="button"
                       onClick={() => setResetLinesCounter(c => c + 1)}
-                      className="px-4 py-1.5 rounded-full text-xs font-medium border hover:opacity-90"
+                      className="px-3 py-1.5 rounded-full text-xs font-medium border hover:opacity-90 shrink-0"
                       style={{ backgroundColor: '#FFFFFF', color: '#212121', borderColor: '#212121' }}
                     >
                       Reset
@@ -184,7 +185,7 @@ const DataTower: React.FC<DataTowerProps> = ({
               ref={mapRef}
               center={[-7.197, 110.426]}
               zoom={10}
-              style={{ height: '500px' }}
+              style={{ height: '55vh', minHeight: '320px', maxHeight: '640px', width: '100%' }}
               markers={markers}
               showLines={mode === 'none'}
               showCoverage={mode === 'coverage'}
@@ -198,25 +199,27 @@ const DataTower: React.FC<DataTowerProps> = ({
         {/* Table Section */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-            <h2 className="text-xl font-medium">Data Tower</h2>
+            <h2 className="text-lg sm:text-xl font-medium">Data Tower</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-end md:justify-self-end w-full md:w-auto">
               <form onSubmit={handleSearch} className="w-full">
-                <div className="relative">
+                <div className="flex items-stretch rounded-full overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-[#B71C1C]">
                   <input 
                     type="text"
                     placeholder="Cari tower"
-                    className="w-full rounded-full border-gray-300 pr-10 focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C]"
-                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                    className="w-full px-4 py-2 outline-none border-0 focus:ring-0"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                   <button 
                     type="submit" 
-                    className="absolute right-0 top-0 rounded-r-full px-4 h-full text-white hover:opacity-90"
-                    style={{ backgroundColor: '#B71C1C' }}
+                    className="bg-red-800 text-white px-3 sm:px-4 flex items-center justify-center shrink-0" style={{ backgroundColor: '#B71C1C' }}
+                    aria-label="Cari"
                   >
-                    <span className="material-icons text-sm">search</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                      <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 104.243 12.01l4.249 4.248a.75.75 0 101.06-1.06l-4.248-4.25A6.75 6.75 0 0010.5 3.75zm-5.25 6.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="hidden sm:inline ml-2">Cari</span>
                   </button>
                 </div>
               </form>
@@ -229,7 +232,7 @@ const DataTower: React.FC<DataTowerProps> = ({
                     setCoordFilter(v);
                     router.get('/data-tower', { search: searchTerm, coord: v, page: 1 }, { preserveState: true });
                   }}
-                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
+                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
                 >
                   <option value="all">Semua</option>
                   <option value="with">Ada koordinat</option>
@@ -240,7 +243,8 @@ const DataTower: React.FC<DataTowerProps> = ({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            {/* Table for md+ and cards for mobile */}
+            <table className="w-full text-left hidden md:table">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-4 py-3 border-b">Site Tower</th>
@@ -297,14 +301,66 @@ const DataTower: React.FC<DataTowerProps> = ({
                 ))}
               </tbody>
             </table>
+
+            {/* Mobile cards */}
+            <div className="md:hidden p-3 space-y-3">
+              {towers.map((tower) => (
+                <button
+                  key={tower.id}
+                  className="w-full text-left rounded-lg border border-gray-200 p-4 bg-white shadow-sm active:opacity-90"
+                  onClick={() => {
+                    setSelectedTower(tower);
+                    setDetailModalOpen(true);
+                  }}
+                  aria-label={`Detail ${tower.site_name}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 mb-0.5 truncate">{tower.site_name}</p>
+                      <p className="text-xs text-gray-600">
+                        {(() => {
+                          const lat = Number(tower.latitude);
+                          const lon = Number(tower.longitude);
+                          const latStr = Number.isFinite(lat)
+                            ? lat.toFixed(6)
+                            : (typeof tower.latitude === 'string' && tower.latitude.trim() !== '' ? tower.latitude : '-');
+                          const lonStr = Number.isFinite(lon)
+                            ? lon.toFixed(6)
+                            : (typeof tower.longitude === 'string' && tower.longitude.trim() !== '' ? tower.longitude : '-');
+                          return `Lat: ${latStr} · Lng: ${lonStr}`;
+                        })()}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">Tinggi: {tower.tinggi_menara}m · Owner: {tower.owner || 'TELKOM'}</p>
+                      <p
+                        className="text-xs text-gray-600 mt-1"
+                        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                      >
+                        {tower.alamat_menara || '-'}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2 shrink-0">
+                      <span 
+                        className="inline-block px-2.5 py-1 rounded-full text-[10px] font-medium text-white whitespace-nowrap"
+                        style={{ 
+                          backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                        }}
+                      >
+                        {tower.status || 'Aktif'}
+                      </span>
+                      <span className="material-icons-outlined text-gray-400 text-base">chevron_right</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Pagination */}
-          <div className="px-4 py-3 border-t flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+          <div className="px-4 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-xs sm:text-sm text-gray-600">
               Menampilkan {(currentPage - 1) * perPage + 1} - {Math.min(currentPage * perPage, total)} dari {total} data
             </p>
-            <div className="flex">
+            <div className="flex self-end sm:self-auto">
               <button 
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}

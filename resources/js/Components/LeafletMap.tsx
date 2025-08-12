@@ -42,6 +42,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
 }, ref) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
     const markersLayerRef = useRef<L.LayerGroup | null>(null);
     const coverageLayerRef = useRef<L.LayerGroup | null>(null);
     const measureLayerRef = useRef<L.LayerGroup | null>(null);
@@ -82,11 +83,38 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
 
         isInitializedRef.current = true;
 
+        // Invalidate size after initial render to ensure proper sizing in responsive containers
+        setTimeout(() => {
+            try { map.invalidateSize(); } catch {}
+        }, 0);
+
+        // Observe container resize to keep the map responsive
+        if (mapRef.current && 'ResizeObserver' in window) {
+            const ro = new ResizeObserver(() => {
+                try { map.invalidateSize(); } catch {}
+            });
+            ro.observe(mapRef.current);
+            resizeObserverRef.current = ro;
+        }
+
+        // Also react to window resize/orientation changes
+        const handleWindowResize = () => {
+            try { map.invalidateSize(); } catch {}
+        };
+        window.addEventListener('resize', handleWindowResize);
+        window.addEventListener('orientationchange', handleWindowResize);
+
         return () => {
             if (mapInstanceRef.current) {
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
             }
+            if (resizeObserverRef.current) {
+                try { resizeObserverRef.current.disconnect(); } catch {}
+                resizeObserverRef.current = null;
+            }
+            window.removeEventListener('resize', handleWindowResize);
+            window.removeEventListener('orientationchange', handleWindowResize);
             if (markersLayerRef.current) {
                 markersLayerRef.current.clearLayers();
                 markersLayerRef.current = null;
@@ -395,7 +423,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         <div 
             ref={mapRef} 
             className={`leaflet-map ${className}`}
-            style={{ height: '400px', width: '100%', ...style }}
+            style={{ width: '100%', ...style }}
         />
     );
 });

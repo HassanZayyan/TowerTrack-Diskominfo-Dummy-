@@ -212,22 +212,22 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     <MainLayout title="Form Keluhan" currentPage="/complaint">
       <Head title="Form Keluhan" />
       
-      <div className="p-6">
-        <div className="rounded-lg shadow mb-8 px-6 py-5 flex items-center justify-between" style={{ backgroundColor: '#FFF8E1' }}>
+      <div className="p-4 sm:p-6">
+        <div className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ backgroundColor: '#FFF8E1' }}>
           <div>
-            <h1 className="text-2xl font-bold mb-1" style={{ color: '#212121' }}>
+            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
               Guest Complain - Sampaikan Keluhan Anda
             </h1>
-            <p style={{ color: '#212121', opacity: 0.85 }}>
+            <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
               Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi
             </p>
           </div>
-          <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-10 w-10 hidden sm:block" />
+          <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" />
         </div>
         
         <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
+          <div className="p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
             
             {successMessage && (
               <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
@@ -242,7 +242,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
             )}
             
             <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
                     Nama Lengkap <span className="text-red-600">*</span>
@@ -302,7 +302,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     Kategori Keluhan <span className="text-red-600">*</span>
                   </label>
                   {!isOtherCategory ? (
-                    <select
+                        <select
                       name="kategori"
                       value={form.kategori}
                       onChange={(e) => {
@@ -314,7 +314,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                           handleChange(e);
                         }
                       }}
-                       className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C]`}
+                       className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] text-base sm:text-sm`}
                        style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     >
                       <option value="">Pilih kategori</option>
@@ -440,7 +440,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                 <label className="block text-gray-700 font-medium mb-2">
                   Upload Foto (opsional)
                 </label>
-                <div className="flex items-center">
+                <div className="flex items-center flex-wrap gap-3">
                   <label className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-300">
                     <span>Choose File</span>
                     <input 
@@ -452,7 +452,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                       multiple
                     />
                   </label>
-                  <span className="ml-4 text-gray-600">
+                  <span className="text-gray-600">
                     {files.length > 0 ? `${files.length} file dipilih` : 'No file chosen'}
                   </span>
                 </div>
@@ -506,7 +506,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                 </p>
               </div>
               
-              <div className="flex items-center justify-start gap-4">
+              <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
                 <button
                   type="button"
                   onClick={handleReset}

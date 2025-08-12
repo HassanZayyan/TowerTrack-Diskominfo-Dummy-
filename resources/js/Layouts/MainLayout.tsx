@@ -14,15 +14,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   currentPage = '' 
 }) => {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Head title={title} />
       
       {/* App Bar */}
       <AppBar currentPage={currentPage} />
       
       {/* Main Content */}
-      <div className="container mx-auto">
-        <main>{children}</main>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1 w-full">
+        <main className="py-6">{children}</main>
       </div>
     </div>
   );

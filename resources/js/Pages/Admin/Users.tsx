@@ -36,8 +36,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
         </form>
       </div>
 
-      <div className="rounded shadow" style={{ backgroundColor: '#FFFFFF' }}>
-        <table className="w-full text-left">
+      <div className="rounded shadow overflow-x-auto" style={{ backgroundColor: '#FFFFFF' }}>
+        <table className="w-full text-left min-w-[640px]">
           <thead>
             <tr style={{ backgroundColor: '#FFF8E1' }}>
               <th className="px-4 py-3 border-b">Nama</th>

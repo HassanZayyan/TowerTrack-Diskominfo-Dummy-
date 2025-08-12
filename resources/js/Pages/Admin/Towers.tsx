@@ -25,7 +25,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
     <AdminLayout title="Towers">
       <Head title="Towers" />
       <div className="rounded shadow overflow-x-auto" style={{ backgroundColor: '#FFFFFF' }}>
-        <table className="w-full text-left">
+        <table className="w-full text-left min-w-[1000px]">
           <thead>
             <tr style={{ backgroundColor: '#FFF8E1' }}>
               <th className="px-4 py-3 border-b">Site Name</th>

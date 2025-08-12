@@ -71,22 +71,22 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4" role="dialog" aria-modal="true">
+      <div className="bg-white rounded-xl shadow-lg w-full sm:max-w-xl lg:max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="text-white p-4 rounded-t-lg flex items-center" style={{ backgroundColor: '#B71C1C' }}>
+        <div className="text-white p-4 flex items-center" style={{ backgroundColor: '#B71C1C' }}>
           <span className="material-icons-outlined mr-2" style={{ color: '#FFD700' }}>info</span>
-          <h3 className="text-xl font-semibold" style={{ color: '#FFD700' }}>Detail Tower - {tower.site_name}</h3>
+          <h3 className="text-base sm:text-lg font-semibold leading-tight" style={{ color: '#FFD700' }}>Detail Tower - {tower.site_name}</h3>
         </div>
         
         {/* Body */}
-        <div className="p-6 overflow-auto flex-1">
-          <div className="mb-6">
-            <label className="block text-gray-700 mb-2">Pilih Informasi yang Ingin Dilihat:</label>
+        <div className="p-4 sm:p-6 overflow-auto flex-1">
+          <div className="mb-4 sm:mb-6">
+            <label className="block text-gray-700 mb-2 text-sm">Pilih Informasi yang Ingin Dilihat:</label>
             <select 
               value={selectedDetail}
               onChange={handleDetailChange}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent focus:outline-none"
+              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent focus:outline-none"
               style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
             >
               <option>-- Pilih Detail --</option>
@@ -97,14 +97,14 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
           </div>
           
           {selectedDetail !== '-- Pilih Detail --' && (
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">{availableFields.find(f => f.id === selectedDetail)?.label}:</h4>
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+              <h4 className="font-medium mb-2 text-sm sm:text-base">{availableFields.find(f => f.id === selectedDetail)?.label}:</h4>
               {selectedDetail === 'semua_detail' ? (
                 <div className="space-y-2">
                   {availableFields.filter(f => f.id !== 'semua_detail').map(field => (
                     <div key={field.id} className="border-b pb-2 last:border-b-0">
-                      <h5 className="text-sm font-medium text-gray-600">{field.label}:</h5>
-                      <p className="text-base">
+                      <h5 className="text-xs sm:text-sm font-medium text-gray-600">{field.label}:</h5>
+                      <p className="text-sm sm:text-base break-words">
                         {field.id === 'tinggi_menara' || field.id === 'tinggi_bangunan'
                           ? tower[field.id] ? `${tower[field.id]} meter` : 'N/A'
                           : tower[field.id] || 'N/A'}
@@ -113,7 +113,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
                   ))}
                 </div>
               ) : (
-                <p className="text-lg">
+                <p className="text-sm sm:text-lg break-words">
                   {selectedDetail === 'tinggi_menara' || selectedDetail === 'tinggi_bangunan'
                     ? tower[selectedDetail] ? `${tower[selectedDetail]} meter` : 'N/A'
                     : tower[selectedDetail] || 'N/A'}
@@ -122,54 +122,50 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
             </div>
           )}
           
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div>
-              <h4 className="font-medium">ID:</h4>
-              <p>{tower.id}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 sm:mt-6">
+            <div className="min-w-0">
+              <h4 className="font-medium text-sm text-gray-700">ID</h4>
+              <p className="text-sm break-words">{tower.id}</p>
             </div>
-            <div>
-              <h4 className="font-medium">Nama Tower:</h4>
-              <p>{tower.site_name}</p>
+            <div className="min-w-0">
+              <h4 className="font-medium text-sm text-gray-700">Nama Tower</h4>
+              <p className="text-sm break-words">{tower.site_name}</p>
             </div>
-            <div>
-              <h4 className="font-medium">Koordinat:</h4>
-              <p>
-                Lat: {typeof tower.latitude === 'number' ? tower.latitude.toFixed(4) : tower.latitude}<br/>
-                Lng: {typeof tower.longitude === 'number' ? tower.longitude.toFixed(4) : tower.longitude}
+            <div className="min-w-0">
+              <h4 className="font-medium text-sm text-gray-700">Koordinat</h4>
+              <p className="text-sm">
+                Lat: {typeof tower.latitude === 'number' ? tower.latitude.toFixed(6) : tower.latitude}<br/>
+                Lng: {typeof tower.longitude === 'number' ? tower.longitude.toFixed(6) : tower.longitude}
               </p>
             </div>
-            <div>
-              <h4 className="font-medium">Status:</h4>
-              <p>
-                <span 
-                  className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
-                  style={{ 
-                    backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
-                  }}
-                >
-                  {tower.status || 'Aktif'}
-                </span>
-              </p>
+            <div className="min-w-0">
+              <h4 className="font-medium text-sm text-gray-700">Status</h4>
+              <span 
+                className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                style={{ 
+                  backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                }}
+              >
+                {tower.status || 'Aktif'}
+              </span>
             </div>
           </div>
         </div>
         
         {/* Footer with actions */}
-        <div className="p-4 border-t flex justify-between">
-          <div>
-            <button 
-              onClick={() => onViewMap(tower)} 
-              className="text-white px-4 py-2 rounded-lg flex items-center hover:opacity-90"
-              style={{ backgroundColor: '#1B5E20' }}
-            >
-              <span className="material-icons-outlined mr-1">place</span>
-              Lihat di Peta
-            </button>
-          </div>
-          <div className="flex space-x-2">
+        <div className="p-3 sm:p-4 border-t flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-3">
+          <button 
+            onClick={() => onViewMap(tower)} 
+            className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
+            style={{ backgroundColor: '#1B5E20' }}
+          >
+            <span className="material-icons-outlined mr-1">place</span>
+            Lihat di Peta
+          </button>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             <button 
               onClick={onClose} 
-              className="text-white px-4 py-2 rounded-lg flex items-center hover:opacity-90"
+              className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
               style={{ backgroundColor: '#212121' }}
             >
               <span className="material-icons-outlined mr-1">close</span>
@@ -177,7 +173,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
             </button>
             <button 
               onClick={handleDownloadReport}
-              className="text-white px-4 py-2 rounded-lg flex items-center hover:opacity-90"
+              className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
               style={{ backgroundColor: '#B71C1C' }}
             >
               <span className="material-icons-outlined mr-1" style={{ color: '#FFD700' }}>download</span>

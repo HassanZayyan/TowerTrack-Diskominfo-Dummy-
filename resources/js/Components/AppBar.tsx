@@ -28,7 +28,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   return (
     <>
       {/* Desktop & Mobile App Bar */}
-      <header className="shadow-md app-bar" style={{ backgroundColor: '#B71C1C' }}>
+      <header className="shadow-md app-bar sticky top-0 z-30" style={{ backgroundColor: '#B71C1C' }}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             {/* Logo/Brand */}
@@ -105,7 +105,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden shadow-md border-t" style={{ backgroundColor: '#B71C1C', borderTopColor: '#FFD700' }}>
+        <div className="md:hidden shadow-md border-t sticky top-[56px] z-20" style={{ backgroundColor: '#B71C1C', borderTopColor: '#FFD700' }}>
           <nav className="container mx-auto px-4 py-2">
             <ul className="space-y-1">
               {links.map((link) => (
