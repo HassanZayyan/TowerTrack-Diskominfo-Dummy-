@@ -151,7 +151,7 @@ const DataTower: React.FC<DataTowerProps> = ({
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as Mode)}
-                  className="w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
                 >
                   <option value="none">Ukur Jarak</option>
                   <option value="coverage">Radius Coverage</option>
@@ -160,16 +160,17 @@ const DataTower: React.FC<DataTowerProps> = ({
               
                 {/* Panel jarak dan reset di kanan */}
                 {mode === 'none' && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span className="text-sm text-gray-700 whitespace-nowrap">
-                      Jarak: <span className="text-purple-600 font-semibold">
+                      Jarak: <span className="font-semibold" style={{ color: '#B71C1C' }}>
                         {distance > 0 ? `${distance.toFixed(1)} m${distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}` : '-'}
                       </span>
                     </span>
                     <button
                       type="button"
                       onClick={() => setResetLinesCounter(c => c + 1)}
-                      className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium border"
+                      className="px-4 py-1.5 rounded-full text-xs font-medium border hover:opacity-90"
+                      style={{ backgroundColor: '#FFFFFF', color: '#212121', borderColor: '#212121' }}
                     >
                       Reset
                     </button>
@@ -205,8 +206,8 @@ const DataTower: React.FC<DataTowerProps> = ({
                   <input 
                     type="text"
                     placeholder="Cari tower"
-                    className="w-full rounded-full border-gray-300 pr-10 focus:outline-none focus:ring-2"
-                    style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
+                    className="w-full rounded-full border-gray-300 pr-10 focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C]"
+                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -228,7 +229,7 @@ const DataTower: React.FC<DataTowerProps> = ({
                     setCoordFilter(v);
                     router.get('/data-tower', { search: searchTerm, coord: v, page: 1 }, { preserveState: true });
                   }}
-                  className="w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
                 >
                   <option value="all">Semua</option>
                   <option value="with">Ada koordinat</option>
