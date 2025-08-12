@@ -113,12 +113,15 @@ const DataTower: React.FC<DataTowerProps> = ({
     <MainLayout title="Data Tower" currentPage="/data-tower">
       <Head title="Data Tower" />
 
-      {/* Welcome Card */}
-      <div className="text-white px-8 py-10 mb-6 text-center" style={{ backgroundColor: '#C21807' }}>
-        <h2 className="text-3xl font-bold leading-snug" style={{ color: '#FFD700' }}>Selamat datang di TowerTrack!</h2>
-        <p className="mt-3 text-xl opacity-90 leading-relaxed">
-        Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
-        </p>
+      {/* Welcome Bar */}
+      <div className="px-6 py-6 mb-6 flex items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
+        <div>
+          <h2 className="text-2xl font-bold leading-snug" style={{ color: '#212121' }}>Selamat datang di TowerTrack!</h2>
+          <p className="mt-1 text-base" style={{ color: '#212121', opacity: 0.8 }}>
+            Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
+          </p>
+        </div>
+        <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-12 w-12 hidden sm:block" />
       </div>
 
 
@@ -193,15 +196,15 @@ const DataTower: React.FC<DataTowerProps> = ({
 
         {/* Table Section */}
         <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3">
-            <h2 className="text-xl font-medium mb-3 md:mb-0">Data Tower</h2>
+          <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+            <h2 className="text-xl font-medium">Data Tower</h2>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <form onSubmit={handleSearch} className="w-full md:w-64">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-end md:justify-self-end w-full md:w-auto">
+              <form onSubmit={handleSearch} className="w-full">
                 <div className="relative">
                   <input 
                     type="text"
-                    placeholder="Cari tower..."
+                    placeholder="Cari tower"
                     className="w-full rounded-full border-gray-300 pr-10 focus:outline-none focus:ring-2"
                     style={{ '--tw-ring-color': '#B71C1C' } as React.CSSProperties}
                     value={searchTerm}
@@ -217,7 +220,7 @@ const DataTower: React.FC<DataTowerProps> = ({
                 </div>
               </form>
 
-              <div className="w-full md:w-56">
+              <div className="w-full">
                 <select
                   value={coordFilter}
                   onChange={(e) => {
@@ -227,9 +230,9 @@ const DataTower: React.FC<DataTowerProps> = ({
                   }}
                   className="w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
                 >
-                  <option value="all">Semua data (dengan & tanpa koordinat)</option>
-                  <option value="with">Hanya yang punya koordinat</option>
-                  <option value="without">Hanya yang tanpa koordinat</option>
+                  <option value="all">Semua</option>
+                  <option value="with">Ada koordinat</option>
+                  <option value="without">Tanpa koordinat</option>
                 </select>
               </div>
             </div>

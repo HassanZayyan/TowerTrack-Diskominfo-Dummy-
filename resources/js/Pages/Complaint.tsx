@@ -213,15 +213,16 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
       <Head title="Form Keluhan" />
       
       <div className="p-6">
-        <div className="bg-yellow-100 rounded-lg shadow-md mb-8">
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-yellow-800 mb-2">
+        <div className="rounded-lg shadow mb-8 px-6 py-5 flex items-center justify-between" style={{ backgroundColor: '#FFF8E1' }}>
+          <div>
+            <h1 className="text-2xl font-bold mb-1" style={{ color: '#212121' }}>
               Guest Complain - Sampaikan Keluhan Anda
             </h1>
-            <p className="text-yellow-700">
+            <p style={{ color: '#212121', opacity: 0.85 }}>
               Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi
             </p>
           </div>
+          <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-10 w-10 hidden sm:block" />
         </div>
         
         <div className="bg-white rounded-lg shadow-md">

@@ -33,6 +33,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = $request->user();
+        // Redirect staff (admin/operator) to admin area by default
+        if ($user && in_array($user->role, ['admin', 'operator'], true)) {
+            return redirect()->intended(route('admin.dashboard', absolute: false));
+        }
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
