@@ -18,8 +18,15 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   
   const links: AppBarLink[] = [
     { href: '/data-tower', label: 'Data Tower', icon: 'cell_tower' },
-    { href: '/complaint', label: 'Form Keluhan', icon: 'report_problem' },
   ];
+
+  // Add complainant-specific link to view submitted messages
+  if (user && !['admin', 'operator'].includes(user.role)) {
+    links.push({ href: '/my-messages', label: 'Pesan Saya', icon: 'message' });
+  }
+
+  // Public complaint form (requires login server-side; keep visible for UX)
+  links.push({ href: '/complaint', label: 'Form Keluhan', icon: 'report_problem' });
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -68,10 +75,12 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                 {user ? (
                   <>
                     <span className="text-white/90 text-sm">{user.name}</span>
-                    <Link href={route('admin.dashboard')} className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-white hover:bg-opacity-10" style={{ color: 'white' }}>
-                      <span className="material-icons-outlined mr-2 text-lg">space_dashboard</span>
-                      <span>Dashboard</span>
-                    </Link>
+                    {['admin','operator'].includes(user.role) && (
+                      <Link href={route('admin.dashboard')} className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-white hover:bg-opacity-10" style={{ color: 'white' }}>
+                        <span className="material-icons-outlined mr-2 text-lg">space_dashboard</span>
+                        <span>Dashboard</span>
+                      </Link>
+                    )}
                     <Link href={route('logout')} method="post" as="button" className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-white hover:bg-opacity-10" style={{ color: 'white' }}>
                       <span className="material-icons-outlined mr-2 text-lg">logout</span>
                       <span>Keluar</span>
@@ -135,10 +144,12 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                   <div className="flex items-center justify-between p-3">
                     <span className="text-white/90 text-sm">{user.name}</span>
                     <div className="flex gap-2">
-                      <Link href={route('admin.dashboard')} className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-white hover:bg-opacity-10" style={{ color: 'white' }} onClick={() => setMobileMenuOpen(false)}>
-                        <span className="material-icons-outlined mr-2 text-lg">space_dashboard</span>
-                        <span>Dashboard</span>
-                      </Link>
+                      {['admin','operator'].includes(user.role) && (
+                        <Link href={route('admin.dashboard')} className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-white hover:bg-opacity-10" style={{ color: 'white' }} onClick={() => setMobileMenuOpen(false)}>
+                          <span className="material-icons-outlined mr-2 text-lg">space_dashboard</span>
+                          <span>Dashboard</span>
+                        </Link>
+                      )}
                       <Link href={route('logout')} method="post" as="button" className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-white hover:bg-opacity-10" style={{ color: 'white' }} onClick={() => setMobileMenuOpen(false)}>
                         <span className="material-icons-outlined mr-2 text-lg">logout</span>
                         <span>Keluar</span>

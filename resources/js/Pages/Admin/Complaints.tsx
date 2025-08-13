@@ -4,7 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 
 interface ReportImage { id: number; image_path: string }
 interface Tower { id: number; site_name: string }
-interface Report { id: number; reporter_name: string; reporter_email: string; reporter_phone: string; category: string; message: string; status: string; images?: ReportImage[]; tower?: Tower }
+interface Report { id: number; user_id: number; reporter_phone: string; category: string; message: string; status: string; images?: ReportImage[]; tower?: Tower; user?: { name: string; email: string } }
 
 interface Props { reports: Report[] }
 
@@ -30,9 +30,9 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
           <tbody>
             {reports.map(r => (
               <tr key={r.id} className="align-top">
-                <td className="px-4 py-3 border-b">{r.reporter_name}</td>
+                <td className="px-4 py-3 border-b">{r.user?.name ?? '-'}</td>
                 <td className="px-4 py-3 border-b text-sm">
-                  <div>{r.reporter_email}</div>
+                  <div>{r.user?.email ?? '-'}</div>
                   <div>{r.reporter_phone}</div>
                 </td>
                 <td className="px-4 py-3 border-b">{r.tower?.site_name ?? '-'}</td>

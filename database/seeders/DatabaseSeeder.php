@@ -30,11 +30,11 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'),
         ]);
 
-        // Create test user
+        // Create complainant test user
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'role' => 'operator',
+            'name' => 'Complainant User',
+            'email' => 'complainant@example.com',
+            'role' => 'complainant',
             'password' => Hash::make('password123'),
         ]);
 

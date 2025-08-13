@@ -13,7 +13,11 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return redirect()->route('admin.dashboard');
+    $user = auth()->user();
+    $destination = ($user && in_array($user->role, ['admin', 'operator'], true))
+        ? 'admin.dashboard'
+        : 'data.tower';
+    return redirect()->route($destination);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Public Routes
@@ -127,7 +131,7 @@ Route::get('/data-tower', function () {
     ]);
 })->name('data.tower');
 
-Route::get('/complaint', function () {
+Route::middleware('auth')->get('/complaint', function () {
     // Build full towers list from CSV so that even entries without coordinates are included
     $csvPath = base_path('Data_menara_rev.csv');
     $list = [];
@@ -170,10 +174,9 @@ Route::get('/complaint', function () {
     ]);
 })->name('complaint');
 
-Route::post('/complaint', function () {
+Route::middleware('auth')->post('/complaint', function () {
     request()->validate([
-        'nama' => 'required|string|max:255',
-        'email' => 'required|email|max:255',
+        'nama' => 'nullable|string|max:255',
         'telepon' => 'required|string|max:20',
         'kategori' => 'required|string|max:100',
         'lokasi_tower' => 'required|string|max:255',
@@ -184,13 +187,12 @@ Route::post('/complaint', function () {
     
     // Simpan data report ke database
     $report = \App\Models\Report::create([
-        'tower_id' => request('tower_id'), // Use tower_id for foreign key
-        'reporter_name' => request('nama'),
-        'reporter_email' => request('email'),
+        'tower_id' => request('tower_id'),
+        'user_id' => auth()->id(),
         'reporter_phone' => request('telepon'),
         'category' => request('kategori'),
         'message' => request('pesan'),
-        'status' => 'pending', // Status default
+        'status' => 'pending',
     ]);
     
     // Upload dan simpan foto jika ada
@@ -207,6 +209,18 @@ Route::post('/complaint', function () {
     
     return redirect()->back()->with('success', 'Keluhan berhasil dikirim');
 })->name('complaint.store');
+
+// User reports page (messages)
+Route::middleware('auth')->get('/my-messages', function () {
+    $reports = \App\Models\Report::with(['tower:id,site_name', 'responses:id,report_id,created_at'])
+        ->where('user_id', auth()->id())
+        ->orderByDesc('created_at')
+        ->get();
+
+    return Inertia::render('MyMessages', [
+        'reports' => $reports,
+    ]);
+})->name('my.messages');
 
 // Admin/Authenticated Routes
 Route::middleware('auth')->group(function () {
