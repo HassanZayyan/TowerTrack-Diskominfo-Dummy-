@@ -176,7 +176,7 @@ const DataTower: React.FC<DataTowerProps> = ({
             Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
           </p>
         </div>
-        <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
+        <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
       </div>
 
 

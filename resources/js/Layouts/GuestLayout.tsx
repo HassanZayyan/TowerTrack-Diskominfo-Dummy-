@@ -6,10 +6,10 @@ export default function Guest({ children }: PropsWithChildren) {
     return (
         <div className="flex min-h-screen flex-col items-center pt-6 sm:justify-center sm:pt-0" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%)' }}>
             <div className="flex items-center gap-3 mb-2">
-                <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-14 w-14" />
+                <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-14 w-14" />
                 <div className="leading-tight">
-                    <p className="text-sm" style={{ color: '#212121' }}>Sistem Monitoring Tower</p>
-                    <h1 className="text-xl font-bold" style={{ color: '#B71C1C' }}>DPRD Kabupaten Semarang</h1>
+                    <p className="text-md" style={{ color: '#212121' }}>Sistem Monitoring Tower</p>
+                    <h1 className="text-xl font-bold" style={{ color: '#B71C1C' }}>Kabupaten Semarang</h1>
                 </div>
             </div>
 

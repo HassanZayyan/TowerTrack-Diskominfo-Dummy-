@@ -40,7 +40,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
           <div className="flex justify-between items-center">
             {/* Logo/Brand */}
             <div className="flex items-center">
-              <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-8 w-8 mr-3 hidden sm:block" />
+              <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-8 w-8 mr-3 hidden sm:block" />
               <h1 className="text-2xl font-bold" style={{ color: '#FFD700' }}>TowerTrack</h1>
             </div>
 
