@@ -90,7 +90,16 @@ export default function Login({
                     </label>
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                    <button
+                        type="button"
+                        onClick={() => window.history.back()}
+                        className="rounded-md text-sm px-4 py-2 border"
+                        style={{ color: '#212121', borderColor: '#212121' }}
+                    >
+                        Kembali
+                    </button>
+
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
@@ -101,8 +110,8 @@ export default function Login({
                         </Link>
                     )}
 
-                    <PrimaryButton className="ms-4" disabled={processing} style={{ backgroundColor: '#212121' }}>
-                        Masuk Admin / Operator
+                    <PrimaryButton className="min-w-[104px] sm:min-w-[120px] px-5 py-2" disabled={processing} style={{ backgroundColor: '#212121' }}>
+                        Masuk
                     </PrimaryButton>
                 </div>
             </form>

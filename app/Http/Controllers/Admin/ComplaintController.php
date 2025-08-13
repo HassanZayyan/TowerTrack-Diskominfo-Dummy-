@@ -12,7 +12,7 @@ class ComplaintController extends Controller
 {
     public function index(Request $request)
     {
-        $reports = Report::with(['tower:id,site_name', 'images:id,report_id,image_path'])
+        $reports = Report::with(['tower:id,site_name', 'images:id,report_id,image_path', 'user:id,name,email'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -30,7 +30,7 @@ class ComplaintController extends Controller
         ReportResponse::create([
             'report_id' => $report->id,
             'user_id' => $request->user()->id,
-            'response' => $validated['message'],
+            'message' => $validated['message'],
         ]);
 
         // Optionally update status to responded

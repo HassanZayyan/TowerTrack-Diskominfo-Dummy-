@@ -40,13 +40,14 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => 'complainant',
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        $dest = in_array($user->role ?? 'operator', ['admin','operator'], true)
+        $dest = in_array($user->role ?? 'complainant', ['admin','operator'], true)
             ? route('admin.dashboard', absolute: false)
             : route('dashboard', absolute: false);
         return redirect($dest);

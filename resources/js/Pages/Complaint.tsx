@@ -160,7 +160,6 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
   
   const [form, setForm] = useState({
     nama: '',
-    email: '',
     telepon: '',
     kategori: '',
     lokasi_tower: '', // This will store site_name for display purposes
@@ -171,7 +170,6 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
   
   const [validation, setValidation] = useState({
     nama: false,
-    email: false,
     telepon: false,
     kategori: false,
     lokasi_tower: false,
@@ -535,12 +533,11 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     // Basic validation
     const newValidation = {
       nama: !form.nama,
-      email: !form.email || !/^\S+@\S+\.\S+$/.test(form.email),
       telepon: !form.telepon,
       kategori: !form.kategori,
       lokasi_tower: !form.lokasi_tower,
       pesan: !form.pesan
-    };
+    } as const;
     
     setValidation(newValidation);
     
@@ -568,7 +565,6 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
         setSuccessMessage('Keluhan Anda telah berhasil dikirimkan');
         setForm({
           nama: '',
-          email: '',
           telepon: '',
           kategori: '',
           lokasi_tower: '',
@@ -590,7 +586,6 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
   const handleReset = () => {
     setForm({
       nama: '',
-      email: '',
       telepon: '',
       kategori: '',
       lokasi_tower: '',
@@ -602,7 +597,6 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     setIsOtherCategory(false);
     setValidation({
       nama: false,
-      email: false,
       telepon: false,
       kategori: false,
       lokasi_tower: false,
@@ -668,23 +662,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                   )}
                 </div>
                 
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Email <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
-                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
-                    placeholder="Masukkan email"
-                  />
-                  {validation.email && (
-                    <p className="text-red-500 text-sm mt-1">Email valid harus diisi</p>
-                  )}
-                </div>
+                {/* Email dihapus karena pengguna wajib login */}
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">

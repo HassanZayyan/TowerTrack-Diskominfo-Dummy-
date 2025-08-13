@@ -15,8 +15,8 @@ export default function Guest({ children }: PropsWithChildren) {
 
             <div className="mt-3 w-full overflow-hidden px-6 py-6 shadow-md sm:max-w-md sm:rounded-xl" style={{ backgroundColor: '#FFFFFF', borderTop: '5px solid #FFD700' }}>
                 <div className="mb-4 text-center">
-                    <h2 className="text-lg font-semibold" style={{ color: '#212121' }}>Masuk Admin / Operator</h2>
-                    <p className="text-sm" style={{ color: '#212121', opacity: 0.7 }}>Gunakan akun internal untuk melanjutkan</p>
+                    <h2 className="text-lg font-semibold" style={{ color: '#212121' }}>Masuk</h2>
+                    <p className="text-sm" style={{ color: '#212121', opacity: 0.7 }}>Silakan masuk untuk melanjutkan</p>
                 </div>
                 {children}
             </div>

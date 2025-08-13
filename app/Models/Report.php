@@ -11,8 +11,7 @@ class Report extends Model
     
     protected $fillable = [
         'tower_id',
-        'reporter_name',
-        'reporter_email',
+        'user_id',
         'reporter_phone',
         'category',
         'message',
@@ -32,5 +31,10 @@ class Report extends Model
     public function responses()
     {
         return $this->hasMany(ReportResponse::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -4,7 +4,18 @@ import AdminLayout from '@/Layouts/AdminLayout';
 
 interface ReportImage { id: number; image_path: string }
 interface Tower { id: number; site_name: string }
-interface Report { id: number; reporter_name: string; reporter_email: string; reporter_phone: string; category: string; message: string; status: string; images?: ReportImage[]; tower?: Tower; created_at?: string }
+interface Report { 
+  id: number; 
+  user_id: number; 
+  reporter_phone: string; 
+  category: string; 
+  message: string; 
+  status: string; 
+  images?: ReportImage[]; 
+  tower?: Tower; 
+  user?: { name: string; email: string }; 
+  created_at?: string;
+}
 
 interface Props { reports: Report[] }
 
@@ -164,8 +175,11 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
   // Filter reports
   const filteredReports = reports.filter(report => {
     const matchesStatus = filterStatus === 'all' || report.status === filterStatus;
+    const reporterName = report.user?.name || '';
+    const reporterEmail = report.user?.email || '';
     const matchesSearch = searchTerm === '' || 
-      report.reporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reporterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reporterEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.category.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
@@ -335,18 +349,18 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
                     <div className="flex-shrink-0 h-10 w-10 sm:h-12 sm:w-12">
                       <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
                         <span className="text-white font-semibold text-sm sm:text-lg">
-                          {report.reporter_name.charAt(0).toUpperCase()}
+                          {(report.user?.name || '?').charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{report.reporter_name}</h3>
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{report.user?.name || 'Unknown'}</h3>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm text-gray-600">
                         <span className="flex items-center truncate">
                           <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
-                          <span className="truncate">{report.reporter_email}</span>
+                          <span className="truncate">{report.user?.email || '-'}</span>
                         </span>
                         <span className="flex items-center">
                           <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,7 +422,6 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
                       <p className="text-sm text-gray-900 leading-relaxed">{report.message}</p>
                     </div>
 
-                    {/* Images */}
                     {/* Images */}
                     {report.images && report.images.length > 0 && (
                       <div>
@@ -590,5 +603,3 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
 };
 
 export default ComplaintsPage;
-
-
