@@ -92,9 +92,10 @@ const DataTower: React.FC<DataTowerProps> = ({
 
       return ({
         position: [lat, lon] as [number, number],
-        title: t.site_name,
-        description: `${t.alamat_menara ?? ''}${t.tinggi_menara ? `<br/>Tinggi: ${t.tinggi_menara} m` : ''}`,
+        title: t.site_name || 'Belum Terdata',
+        description: `${t.alamat_menara || 'Belum Terdata'}${t.tinggi_menara ? `<br/>Tinggi: ${t.tinggi_menara} m` : '<br/>Tinggi: Belum Terdata'}`,
         radiusMeters,
+        towerData: t, // Pass the complete tower data
       });
     }), [mapTowers]);
 
@@ -152,10 +153,18 @@ const DataTower: React.FC<DataTowerProps> = ({
                   value={mode}
                   onChange={(e) => setMode(e.target.value as Mode)}
                   className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
+                  title={mode === 'none' ? 'Mode Pengukuran: Klik marker untuk mengukur jarak. Detail tower tidak dapat diakses.' : 'Mode Coverage: Klik marker untuk melihat detail tower. Pengukuran jarak tidak tersedia.'}
                 >
                   <option value="none">Ukur Jarak</option>
                   <option value="coverage">Radius Coverage</option>
                 </select>
+                {/* Mode instruction text */}
+                <p className="text-xs text-gray-600 mt-1 hidden sm:block">
+                  {mode === 'none' 
+                    ? 'Klik marker untuk mengukur jarak' 
+                    : 'Klik marker untuk detail tower'
+                  }
+                </p>
               </div>
               
                 {/* Panel jarak dan reset di kanan */}
@@ -195,9 +204,14 @@ const DataTower: React.FC<DataTowerProps> = ({
               markers={markers}
               showLines={mode === 'none'}
               showCoverage={mode === 'coverage'}
-                defaultRadiusMeters={500}
+              defaultRadiusMeters={500}
               onDistanceChange={setDistance}
               resetLinesTrigger={resetLinesCounter}
+              // Only provide onMarkerClick when NOT in measurement mode to prevent conflicts
+              onMarkerClick={mode !== 'none' ? (towerData) => {
+                setSelectedTower(towerData);
+                setDetailModalOpen(true);
+              } : undefined}
             />
           </div>
         </div>
@@ -271,17 +285,18 @@ const DataTower: React.FC<DataTowerProps> = ({
                       setDetailModalOpen(true);
                     }}
                   >
-                    <td className="px-4 py-3 border-b">{tower.site_name}</td>
+                    <td className="px-4 py-3 border-b">{tower.site_name || 'Belum Terdata'}</td>
                     <td className="px-4 py-3 border-b">
                       {(() => {
                         const lat = Number(tower.latitude);
                         const lon = Number(tower.longitude);
-                        const latStr = Number.isFinite(lat)
+                        // Check if coordinates are valid (not null, not 0, and finite numbers)
+                        const latStr = Number.isFinite(lat) && lat !== 0
                           ? lat.toFixed(6)
-                          : (typeof tower.latitude === 'string' && tower.latitude.trim() !== '' ? tower.latitude : '-');
-                        const lonStr = Number.isFinite(lon)
+                          : (typeof tower.latitude === 'string' && tower.latitude.trim() !== '' && tower.latitude !== '0' ? tower.latitude : 'Belum Terdata');
+                        const lonStr = Number.isFinite(lon) && lon !== 0
                           ? lon.toFixed(6)
-                          : (typeof tower.longitude === 'string' && tower.longitude.trim() !== '' ? tower.longitude : '-');
+                          : (typeof tower.longitude === 'string' && tower.longitude.trim() !== '' && tower.longitude !== '0' ? tower.longitude : 'Belum Terdata');
                         return (
                           <>
                             Lat: {latStr}<br/>
@@ -290,17 +305,21 @@ const DataTower: React.FC<DataTowerProps> = ({
                         );
                       })()}
                     </td>
-                    <td className="px-4 py-3 border-b">{tower.tinggi_menara}m</td>
-                    <td className="px-4 py-3 border-b">{tower.owner || 'TELKOM'}</td>
-                    <td className="px-4 py-3 border-b">{tower.alamat_menara || '-'}</td>
+                    <td className="px-4 py-3 border-b">{tower.tinggi_menara ? `${tower.tinggi_menara}m` : 'Belum Terdata'}</td>
+                    <td className="px-4 py-3 border-b">{tower.owner || 'Belum Terdata'}</td>
+                    <td className="px-4 py-3 border-b">{tower.alamat_menara || 'Belum Terdata'}</td>
                     <td className="px-4 py-3 border-b">
                       <span 
                         className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                         style={{ 
-                          backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                          backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' 
+                            ? '#1B5E20' 
+                            : !tower.status 
+                              ? '#6B7280' 
+                              : '#212121'
                         }}
                       >
-                        {tower.status || 'Aktif'}
+                        {tower.status || 'Belum Terdata'}
                       </span>
                     </td>
                   </tr>
@@ -318,40 +337,45 @@ const DataTower: React.FC<DataTowerProps> = ({
                     setSelectedTower(tower);
                     setDetailModalOpen(true);
                   }}
-                  aria-label={`Detail ${tower.site_name}`}
+                  aria-label={`Detail ${tower.site_name || 'Belum Terdata'}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 mb-0.5 truncate">{tower.site_name}</p>
+                      <p className="font-medium text-gray-900 mb-0.5 truncate">{tower.site_name || 'Belum Terdata'}</p>
                       <p className="text-xs text-gray-600">
                         {(() => {
                           const lat = Number(tower.latitude);
                           const lon = Number(tower.longitude);
-                          const latStr = Number.isFinite(lat)
+                          // Check if coordinates are valid (not null, not 0, and finite numbers)
+                          const latStr = Number.isFinite(lat) && lat !== 0
                             ? lat.toFixed(6)
-                            : (typeof tower.latitude === 'string' && tower.latitude.trim() !== '' ? tower.latitude : '-');
-                          const lonStr = Number.isFinite(lon)
+                            : (typeof tower.latitude === 'string' && tower.latitude.trim() !== '' && tower.latitude !== '0' ? tower.latitude : 'Belum Terdata');
+                          const lonStr = Number.isFinite(lon) && lon !== 0
                             ? lon.toFixed(6)
-                            : (typeof tower.longitude === 'string' && tower.longitude.trim() !== '' ? tower.longitude : '-');
+                            : (typeof tower.longitude === 'string' && tower.longitude.trim() !== '' && tower.longitude !== '0' ? tower.longitude : 'Belum Terdata');
                           return `Lat: ${latStr} · Lng: ${lonStr}`;
                         })()}
                       </p>
-                      <p className="text-xs text-gray-600 mt-1">Tinggi: {tower.tinggi_menara}m · Owner: {tower.owner || 'TELKOM'}</p>
+                      <p className="text-xs text-gray-600 mt-1">Tinggi: {tower.tinggi_menara ? `${tower.tinggi_menara}m` : 'Belum Terdata'} · Owner: {tower.owner || 'Belum Terdata'}</p>
                       <p
                         className="text-xs text-gray-600 mt-1"
                         style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
                       >
-                        {tower.alamat_menara || '-'}
+                        {tower.alamat_menara || 'Belum Terdata'}
                       </p>
                     </div>
                     <div className="flex items-start gap-2 shrink-0">
                       <span 
                         className="inline-block px-2.5 py-1 rounded-full text-[10px] font-medium text-white whitespace-nowrap"
                         style={{ 
-                          backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                          backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' 
+                            ? '#1B5E20' 
+                            : !tower.status 
+                              ? '#6B7280' 
+                              : '#212121'
                         }}
                       >
-                        {tower.status || 'Aktif'}
+                        {tower.status || 'Belum Terdata'}
                       </span>
                       <span className="material-icons-outlined text-gray-400 text-base">chevron_right</span>
                     </div>
@@ -462,7 +486,7 @@ const DataTower: React.FC<DataTowerProps> = ({
             setToast({
               show: true,
               type: 'warning',
-              title: 'Koordinat belum tersedia',
+              title: 'Koordinat Belum Terdata',
               message: 'Tower ini belum memiliki titik koordinat yang valid, sehingga tidak dapat ditampilkan di peta.',
             });
           }

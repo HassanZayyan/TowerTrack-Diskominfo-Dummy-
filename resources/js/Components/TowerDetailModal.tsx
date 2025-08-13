@@ -143,10 +143,14 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
               <span 
                 className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                 style={{ 
-                  backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                  backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' 
+                    ? '#1B5E20' 
+                    : !tower.status 
+                      ? '#6B7280' 
+                      : '#212121'
                 }}
               >
-                {tower.status || 'Aktif'}
+                {tower.status || 'Belum Terdata'}
               </span>
             </div>
           </div>

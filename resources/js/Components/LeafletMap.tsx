@@ -13,6 +13,7 @@ interface MapMarker {
     title?: string;
     description?: string;
     radiusMeters?: number;
+    towerData?: any; // Tower data to pass when marker is clicked
 }
 
 interface LeafletMapProps {
@@ -26,6 +27,7 @@ interface LeafletMapProps {
     defaultRadiusMeters?: number;
     onDistanceChange?: (distance: number) => void;
     resetLinesTrigger?: number;
+    onMarkerClick?: (towerData: any) => void;
 }
 
 const LeafletMap = forwardRef<any, LeafletMapProps>(({
@@ -39,6 +41,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     defaultRadiusMeters = 500,
     onDistanceChange,
     resetLinesTrigger,
+    onMarkerClick,
 }, ref) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
@@ -305,48 +308,55 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             marker.off('click');
         });
 
-        // Always attach click handlers when showLines is true
+        // Attach click handlers based on mode - STRICT SEPARATION between measurement and detail view
         if (showLines) {
-            console.log('Attaching click handlers for measurement');
+            console.log('MEASUREMENT MODE: Attaching click handlers for distance measurement ONLY');
+            console.log('Detail tower view is DISABLED in measurement mode');
             markerInstances.forEach((marker, index) => {
                 marker.on('click', (e: L.LeafletMouseEvent) => {
-                    console.log(`=== MARKER ${index + 1} CLICKED ===`);
+                    console.log(`=== MARKER ${index + 1} CLICKED (MEASUREMENT MODE ONLY) ===`);
+                    
+                    // Prevent event propagation to avoid any other handlers
+                    e.originalEvent.stopPropagation();
+                    e.originalEvent.preventDefault();
+                    
                     const latlng = marker.getLatLng();
-                    console.log('Clicked position:', latlng);
+                    console.log('Clicked position for measurement:', latlng);
 
                     const pts = selectedPointsRef.current;
-                    console.log('Current points length:', pts.length);
+                    console.log('Current measurement points length:', pts.length);
 
                     if (pts.length === 0) {
-                        console.log('First point selected');
+                        console.log('First measurement point selected');
                         // Clear any existing measurement before starting new one
                         clearMeasurement();
                         selectedPointsRef.current.push(latlng);
-                        console.log('First point added, array length now:', selectedPointsRef.current.length);
+                        console.log('First measurement point added, array length now:', selectedPointsRef.current.length);
                         return;
                     }
 
                     if (pts.length === 1) {
-                        console.log('Second point selected');
+                        console.log('Second measurement point selected');
                         
                         // Check if clicking the same marker
                         const firstPoint = selectedPointsRef.current[0];
                         const isSamePoint = firstPoint.lat === latlng.lat && firstPoint.lng === latlng.lng;
                         
                         if (isSamePoint) {
+                            console.log('Same point clicked - resetting measurement');
                             if (onDistanceChange) onDistanceChange(0);
                             return;
                         }
                         
                         selectedPointsRef.current.push(latlng);
-                        console.log('Second point added, array length now:', selectedPointsRef.current.length);
+                        console.log('Second measurement point added, array length now:', selectedPointsRef.current.length);
                         
                         const points = selectedPointsRef.current;
-                        console.log('Creating polyline between points:', points[0], 'and', points[1]);
+                        console.log('Creating measurement polyline between points:', points[0], 'and', points[1]);
                         
                         // Calculate distance
                         const distanceMeters = points[0].distanceTo(points[1]);
-                        console.log('Distance calculated:', distanceMeters, 'meters');
+                        console.log('Distance measured:', distanceMeters, 'meters');
                         
                         // Create polyline measurement
                         measurePolylineRef.current = L.polyline([points[0], points[1]], {
@@ -381,10 +391,38 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                     }
                 });
             });
+        } else if (!showLines && onMarkerClick) {
+            console.log('DETAIL VIEW MODE: Attaching click handlers for tower details ONLY');
+            console.log('Distance measurement is DISABLED in detail view mode');
+            markerInstances.forEach((marker, index) => {
+                marker.on('click', (e: L.LeafletMouseEvent) => {
+                    console.log(`=== MARKER ${index + 1} CLICKED (DETAIL VIEW MODE ONLY) ===`);
+                    
+                    // Prevent event propagation to avoid any other handlers
+                    e.originalEvent.stopPropagation();
+                    e.originalEvent.preventDefault();
+                    
+                    // Find the marker data based on the clicked marker position
+                    const clickedPosition = marker.getLatLng();
+                    console.log('Finding tower data for position:', clickedPosition);
+                    
+                    const markerData = markers.find(m => 
+                        m.position[0] === clickedPosition.lat && 
+                        m.position[1] === clickedPosition.lng
+                    );
+                    
+                    if (markerData && markerData.towerData) {
+                        console.log('Opening tower detail for:', markerData.towerData.site_name);
+                        onMarkerClick(markerData.towerData);
+                    } else {
+                        console.log('No tower data found for clicked marker at position:', clickedPosition);
+                    }
+                });
+            });
         } else {
-            console.log('showLines is false, not attaching click handlers');
+            console.log('NO CLICK HANDLERS: Either showLines is false without onMarkerClick, or invalid configuration');
         }
-    }, [showLines, markers, onDistanceChange]);
+    }, [showLines, markers, onDistanceChange, onMarkerClick]);
 
     // Coverage circles toggle
     useEffect(() => {
@@ -415,10 +453,15 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         clearMeasurement();
         // Also detach any stale click handlers then reattach
         markerInstancesRef.current.forEach((m) => m.off('click'));
-        // Re-attach when showLines true
+        // Re-attach click handlers based on mode - STRICT SEPARATION maintained after reset
         if (showLines) {
+            console.log('RESET: Re-attaching MEASUREMENT MODE handlers only');
             markerInstancesRef.current.forEach((marker, index) => {
                 marker.on('click', (e: L.LeafletMouseEvent) => {
+                    // Prevent event propagation to avoid any other handlers
+                    e.originalEvent.stopPropagation();
+                    e.originalEvent.preventDefault();
+                    
                     const latlng = marker.getLatLng();
                     const pts = selectedPointsRef.current;
                     if (pts.length === 0) {
@@ -456,9 +499,31 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                     }
                 });
             });
+        } else if (!showLines && onMarkerClick) {
+            console.log('RESET: Re-attaching DETAIL VIEW MODE handlers only');
+            markerInstancesRef.current.forEach((marker, index) => {
+                marker.on('click', (e: L.LeafletMouseEvent) => {
+                    // Prevent event propagation to avoid any other handlers
+                    e.originalEvent.stopPropagation();
+                    e.originalEvent.preventDefault();
+                    
+                    // Find the marker data based on the clicked marker position
+                    const clickedPosition = marker.getLatLng();
+                    const markerData = markers.find(m => 
+                        m.position[0] === clickedPosition.lat && 
+                        m.position[1] === clickedPosition.lng
+                    );
+                    
+                    if (markerData && markerData.towerData) {
+                        onMarkerClick(markerData.towerData);
+                    }
+                });
+            });
+        } else {
+            console.log('RESET: No click handlers attached - invalid mode configuration');
         }
         console.log('=== EXTERNAL RESET COMPLETED ===');
-    }, [resetLinesTrigger, onDistanceChange, showLines]);
+    }, [resetLinesTrigger, onDistanceChange, showLines, onMarkerClick, markers]);
 
     // Clear measurement when showLines is disabled (coverage mode)
     useEffect(() => {
