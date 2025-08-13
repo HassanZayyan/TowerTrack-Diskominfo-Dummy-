@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tower extends Model
 {
@@ -30,6 +32,40 @@ class Tower extends Model
         'jenis_ijin',
         'status_ijin',
         'prs',
+        'prs_id',
     ];
+
+    protected $casts = [
+        'tanggal_ijin' => 'date',
+        'berlaku_hingga' => 'date',
+        'longitude' => 'decimal:8',
+        'latitude' => 'decimal:8',
+        'tinggi_menara' => 'float',
+        'tinggi_bangunan' => 'float',
+    ];
+
+    /**
+     * Many-to-many relationship with owners
+     */
+    public function owners(): BelongsToMany
+    {
+        return $this->belongsToMany(Owner::class, 'tower_owners');
+    }
+
+    /**
+     * Get the primary owner (first owner)
+     */
+    public function primaryOwner()
+    {
+        return $this->owners()->first();
+    }
+
+    /**
+     * One-to-many relationship with reports
+     */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
 }
 

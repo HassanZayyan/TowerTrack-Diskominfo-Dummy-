@@ -21,6 +21,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
   const availableFields = [
     { id: 'id', label: 'ID Tower' },
     { id: 'site_name', label: 'Nama Tower' },
+    { id: 'owner', label: 'Pemilik/Owner' },
     { id: 'site_id', label: 'Site ID' },
     { id: 'site_sap', label: 'Site SAP' },
     { id: 'latitude', label: 'Koordinat Latitude' },
@@ -106,8 +107,8 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
                       <h5 className="text-xs sm:text-sm font-medium text-gray-600">{field.label}:</h5>
                       <p className="text-sm sm:text-base break-words">
                         {field.id === 'tinggi_menara' || field.id === 'tinggi_bangunan'
-                          ? tower[field.id] ? `${tower[field.id]} meter` : 'N/A'
-                          : tower[field.id] || 'N/A'}
+                          ? tower[field.id] ? `${tower[field.id]} meter` : 'Belum Terdata'
+                          : tower[field.id] || 'Belum Terdata'}
                       </p>
                     </div>
                   ))}
@@ -115,8 +116,8 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
               ) : (
                 <p className="text-sm sm:text-lg break-words">
                   {selectedDetail === 'tinggi_menara' || selectedDetail === 'tinggi_bangunan'
-                    ? tower[selectedDetail] ? `${tower[selectedDetail]} meter` : 'N/A'
-                    : tower[selectedDetail] || 'N/A'}
+                    ? tower[selectedDetail] ? `${tower[selectedDetail]} meter` : 'Belum Terdata'
+                    : tower[selectedDetail] || 'Belum Terdata'}
                 </p>
               )}
             </div>
@@ -129,13 +130,17 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
             </div>
             <div className="min-w-0">
               <h4 className="font-medium text-sm text-gray-700">Nama Tower</h4>
-              <p className="text-sm break-words">{tower.site_name}</p>
+              <p className="text-sm break-words">{tower.site_name || 'Belum Terdata'}</p>
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-medium text-sm text-gray-700">Owner</h4>
+              <p className="text-sm break-words">{tower.owner || 'Belum Terdata'}</p>
             </div>
             <div className="min-w-0">
               <h4 className="font-medium text-sm text-gray-700">Koordinat</h4>
               <p className="text-sm">
-                Lat: {typeof tower.latitude === 'number' ? tower.latitude.toFixed(6) : tower.latitude}<br/>
-                Lng: {typeof tower.longitude === 'number' ? tower.longitude.toFixed(6) : tower.longitude}
+                Lat: {typeof tower.latitude === 'number' ? tower.latitude.toFixed(6) : tower.latitude || 'Belum Terdata'}<br/>
+                Lng: {typeof tower.longitude === 'number' ? tower.longitude.toFixed(6) : tower.longitude || 'Belum Terdata'}
               </p>
             </div>
             <div className="min-w-0">
@@ -143,10 +148,14 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
               <span 
                 className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                 style={{ 
-                  backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' ? '#1B5E20' : '#212121'
+                  backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' 
+                    ? '#1B5E20' 
+                    : !tower.status 
+                      ? '#6B7280' 
+                      : '#212121'
                 }}
               >
-                {tower.status || 'Aktif'}
+                {tower.status || 'Belum Terdata'}
               </span>
             </div>
           </div>
