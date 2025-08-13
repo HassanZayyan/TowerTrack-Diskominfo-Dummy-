@@ -17,7 +17,18 @@ class UserComplaintController extends Controller
     public function index(): Response
     {
         $list = Tower::query()
-            ->select(['id', 'site_name', 'alamat_menara'])
+            ->select([
+                'id', 
+                'site_name', 
+                'alamat_menara',
+                'latitude',
+                'longitude',
+                'tinggi_menara',
+                'tinggi_bangunan',
+                'jumlah_pengguna',
+                'tower_type',
+                'site_type'
+            ])
             ->orderBy('site_name')
             ->get()
             ->toArray();
