@@ -21,6 +21,7 @@ interface Tower {
 interface DataTowerProps {
   towers: Tower[];
   mapTowers: Tower[]; // All towers for map display
+  availableOwners: string[]; // List of owners that have towers (from backend)
   currentPage: number;
   perPage: number;
   total: number;
@@ -30,6 +31,7 @@ interface DataTowerProps {
 const DataTower: React.FC<DataTowerProps> = ({ 
   towers = [], 
   mapTowers = [],
+  availableOwners = [],
   currentPage = 1, 
   perPage = 10, 
   total = 0,
@@ -42,6 +44,11 @@ const DataTower: React.FC<DataTowerProps> = ({
     const v = params.get('coord');
     if (v === 'with' || v === 'without') return v;
     return 'all';
+  });
+  const [ownerFilter, setOwnerFilter] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('owner');
+    return v || 'all';
   });
   const [resetLinesCounter, setResetLinesCounter] = useState<number>(0);
   
@@ -59,6 +66,47 @@ const DataTower: React.FC<DataTowerProps> = ({
   // Pretty toast alert for UX
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'warning' });
 
+  // Utility function to build filter params
+  const buildFilterParams = (overrides: Partial<{ search: string; coord: string; owner: string; page: number }> = {}) => {
+    const params = {
+      search: overrides.search !== undefined ? overrides.search : searchTerm,
+      coord: overrides.coord !== undefined ? overrides.coord : coordFilter,
+      owner: overrides.owner !== undefined ? overrides.owner : ownerFilter,
+      page: overrides.page !== undefined ? overrides.page : 1
+    };
+    
+    // Clean up params - remove 'all' values and empty strings, keep page
+    const cleanParams = {
+      page: params.page,
+      ...(params.search && params.search.trim() && { search: params.search }),
+      ...(params.coord && params.coord !== 'all' && { coord: params.coord }),
+      ...(params.owner && params.owner !== 'all' && { owner: params.owner })
+    };
+    
+    console.log('=== FILTER PARAMS DEBUG ===');
+    console.log('Raw params:', params);
+    console.log('Clean params sent to backend:', cleanParams);
+    
+    return cleanParams;
+  };
+
+  // Use owners from backend (those that actually have tower relationships)
+  const uniqueOwners = useMemo(() => {
+    console.log('=== OWNERS FROM BACKEND ===');
+    console.log('Available owners from database:', availableOwners.length);
+    console.log('Owner list:', availableOwners);
+    
+    // Debug: Count towers per owner in current data
+    const ownerCounts: Record<string, number> = {};
+    mapTowers.forEach(tower => {
+      const owner = tower.owner || 'No Owner';
+      ownerCounts[owner] = (ownerCounts[owner] || 0) + 1;
+    });
+    console.log('Tower count per owner in map data:', ownerCounts);
+    
+    return availableOwners.sort();
+  }, [availableOwners, mapTowers]);
+
   // Use mapTowers (all towers with coordinates) for the map display
   const markers = useMemo(() => mapTowers
     .map(t => {
@@ -66,10 +114,13 @@ const DataTower: React.FC<DataTowerProps> = ({
       const lon = Number(t.longitude);
       return { t, lat, lon };
     })
-    .filter(({ lat, lon }) => 
+    .filter(({ t, lat, lon }) => 
+      // Coordinate validation
       Number.isFinite(lat) && Number.isFinite(lon) &&
       lat !== 0 && lon !== 0 &&
-      Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+      Math.abs(lat) <= 90 && Math.abs(lon) <= 180 &&
+      // Owner filter
+      (ownerFilter === 'all' || t.owner === ownerFilter)
     )
     .map(({ t, lat, lon }) => {
       let radiusMeters: number | undefined = undefined;
@@ -97,17 +148,20 @@ const DataTower: React.FC<DataTowerProps> = ({
         radiusMeters,
         towerData: t, // Pass the complete tower data
       });
-    }), [mapTowers]);
+    }), [mapTowers, ownerFilter]);
 
   const onPageChange = (page: number) => {
-    router.get('/data-tower', { page, search: searchTerm, coord: coordFilter }, { preserveState: true });
+    const params = buildFilterParams({ page });
+    router.get('/data-tower', params, { preserveState: true });
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Trigger map measurement reset when searching
     setResetLinesCounter(c => c + 1);
-    router.get('/data-tower', { search: searchTerm, coord: coordFilter, page: 1 }, { preserveState: true });
+    
+    const params = buildFilterParams({ search: searchTerm, page: 1 });
+    router.get('/data-tower', params, { preserveState: true });
   };
 
   return (
@@ -128,7 +182,7 @@ const DataTower: React.FC<DataTowerProps> = ({
 
       <div className="p-4 sm:p-6">
         {/* Statistics Header */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderLeftColor: '#B71C1C' }}>
             <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Total Tower</h3>
             <p className="text-5xl font-bold mt-2" style={{ color: '#B71C1C' }}>{total}</p>
@@ -139,12 +193,38 @@ const DataTower: React.FC<DataTowerProps> = ({
               {towers.filter(t => t.status === 'Aktif' || t.status === 'AKTIF').length}
             </p>
           </div>
+          <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderLeftColor: '#2563eb' }}>
+            <h3 className="text-lg font-medium" style={{ color: '#212121' }}>
+              {ownerFilter === 'all' ? 'Tower di Peta' : `Tower ${ownerFilter}`}
+            </h3>
+            <p className="text-5xl font-bold mt-2" style={{ color: '#2563eb' }}>
+              {markers.length}
+            </p>
+          </div>
         </div>
 
         {/* Map Section */}
           <div id="map-section" className="bg-white rounded-lg shadow mb-6">
             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-3">
-            <h2 className="text-lg sm:text-xl font-medium mb-3 md:mb-0">Peta Lokasi Tower</h2>
+            <div className="mb-3 md:mb-0">
+              <h2 className="text-lg sm:text-xl font-medium">Peta Lokasi Tower</h2>
+              {ownerFilter !== 'all' && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Filter aktif: <span className="font-semibold text-blue-600">{ownerFilter}</span>
+                  <button 
+                    onClick={() => {
+                      setOwnerFilter('all');
+                      
+                      const params = buildFilterParams({ owner: 'all', page: 1 });
+                      router.get('/data-tower', params, { preserveState: true });
+                    }}
+                    className="ml-2 text-xs text-red-600 hover:underline"
+                  >
+                    Hapus filter
+                  </button>
+                </p>
+              )}
+            </div>
             
               <div className="flex gap-4 items-center w-full md:w-auto md:justify-end">
                 {/* Mode Selector */}
@@ -221,7 +301,7 @@ const DataTower: React.FC<DataTowerProps> = ({
           <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
             <h2 className="text-lg sm:text-xl font-medium">Data Tower</h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-end md:justify-self-end w-full md:w-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 justify-end md:justify-self-end w-full md:w-auto">
               <form onSubmit={handleSearch} className="w-full">
                 <div className="flex items-stretch rounded-full overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-[#B71C1C]">
                   <input 
@@ -250,13 +330,35 @@ const DataTower: React.FC<DataTowerProps> = ({
                   onChange={(e) => {
                     const v = e.target.value as 'all' | 'with' | 'without';
                     setCoordFilter(v);
-                    router.get('/data-tower', { search: searchTerm, coord: v, page: 1 }, { preserveState: true });
+                    
+                    const params = buildFilterParams({ coord: v, page: 1 });
+                    router.get('/data-tower', params, { preserveState: true });
                   }}
                   className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
                 >
                   <option value="all">Semua</option>
                   <option value="with">Ada koordinat</option>
                   <option value="without">Tanpa koordinat</option>
+                </select>
+              </div>
+
+              <div className="w-full">
+                <select
+                  value={ownerFilter}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setOwnerFilter(v);
+                    
+                    const params = buildFilterParams({ owner: v, page: 1 });
+                    router.get('/data-tower', params, { preserveState: true });
+                  }}
+                  className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
+                  title="Filter berdasarkan pemilik tower"
+                >
+                  <option value="all">Semua Pemilik</option>
+                  {uniqueOwners.map(owner => (
+                    <option key={owner} value={owner}>{owner}</option>
+                  ))}
                 </select>
               </div>
             </div>
