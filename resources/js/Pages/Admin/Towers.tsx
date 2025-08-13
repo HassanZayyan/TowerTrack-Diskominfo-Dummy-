@@ -37,18 +37,98 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
   const [filterType, setFilterType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<Record<number, string>>({});
+  const [editingRow, setEditingRow] = useState<number | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
 
   const updateField = (id: number, key: keyof Tower, value: any) => {
     setEditing(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
+    // Clear validation error when user starts typing
+    if (validationErrors[id]?.[key]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [id]: { ...prev[id], [key]: '' }
+      }));
+    }
+  };
+
+  const validateField = (field: keyof Tower, value: any): string => {
+    switch (field) {
+      case 'site_name':
+        return !value || value.trim() === '' ? 'Nama site wajib diisi' : '';
+      case 'latitude':
+        if (value && (isNaN(value) || value < -90 || value > 90)) {
+          return 'Latitude harus antara -90 dan 90';
+        }
+        return '';
+      case 'longitude':
+        if (value && (isNaN(value) || value < -180 || value > 180)) {
+          return 'Longitude harus antara -180 dan 180';
+        }
+        return '';
+      case 'tinggi_menara':
+        if (value && (isNaN(value) || value < 0)) {
+          return 'Tinggi menara harus berupa angka positif';
+        }
+        return '';
+      default:
+        return '';
+    }
+  };
+
+  const validateRow = (id: number): boolean => {
+    const editData = editing[id] || {};
+    const tower = towers.data.find(t => t.id === id);
+    if (!tower) return false;
+
+    const errors: Record<string, string> = {};
+    let hasErrors = false;
+
+    // Validate required and important fields
+    Object.keys(editData).forEach(key => {
+      const error = validateField(key as keyof Tower, editData[key as keyof Tower]);
+      if (error) {
+        errors[key] = error;
+        hasErrors = true;
+      }
+    });
+
+    setValidationErrors(prev => ({ ...prev, [id]: errors }));
+    return !hasErrors;
   };
 
   const save = (id: number) => {
-    router.put(route('admin.towers.update', { tower: id }), editing[id]);
-    setEditing(prev => ({ ...prev, [id]: {} }));
+    if (validateRow(id)) {
+      router.put(route('admin.towers.update', { tower: id }), editing[id], {
+        onSuccess: () => {
+          setEditing(prev => ({ ...prev, [id]: {} }));
+          setEditingRow(null);
+          setValidationErrors(prev => ({ ...prev, [id]: {} }));
+        },
+        onError: (errors) => {
+          // Handle server validation errors
+          setValidationErrors(prev => ({ ...prev, [id]: errors }));
+        }
+      });
+    }
   };
 
   const resetEditing = (id: number) => {
     setEditing(prev => ({ ...prev, [id]: {} }));
+    setValidationErrors(prev => ({ ...prev, [id]: {} }));
+    setEditingRow(null);
+  };
+
+  const startEditing = (id: number) => {
+    setEditingRow(id);
+    setActiveTab(prev => ({ ...prev, [id]: 'basic' }));
+  };
+
+  const getActiveTab = (id: number) => activeTab[id] || 'basic';
+  
+  const setTowerTab = (id: number, tab: string) => {
+    setActiveTab(prev => ({ ...prev, [id]: tab }));
   };
 
   const getEditValue = (tower: Tower, field: keyof Tower) => {
@@ -57,9 +137,15 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
       : tower[field];
   };
 
+  const getFieldError = (id: number, field: string) => {
+    return validationErrors[id]?.[field] || '';
+  };
+
   const hasChanges = (id: number) => {
     return Object.keys(editing[id] || {}).length > 0;
   };
+
+  const isEditing = (id: number) => editingRow === id;
 
   const page = towers.current_page;
   const last = towers.last_page;
@@ -83,6 +169,73 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
     : filteredTowers.slice(0, itemsPerPage);
 
   const showViewAllOption = filteredTowers.length > 5;
+
+  // Component for input with validation
+  const FormInput: React.FC<{
+    tower: Tower;
+    field: keyof Tower;
+    type?: string;
+    placeholder?: string;
+    disabled?: boolean;
+    options?: { value: string; label: string }[];
+    className?: string;
+    rows?: number;
+  }> = ({ tower, field, type = 'text', placeholder, disabled = false, options, className = '', rows }) => {
+    const error = getFieldError(tower.id, field as string);
+    const value = getEditValue(tower, field);
+    const baseClass = `w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-colors ${
+      error ? 'border-red-500 bg-red-50' : 'border-gray-300'
+    } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`;
+
+    if (options) {
+      return (
+        <div>
+          <select
+            className={baseClass}
+            value={value || ''}
+            onChange={(e) => updateField(tower.id, field, e.target.value)}
+            disabled={disabled || !isEditing(tower.id)}
+          >
+            <option value="">{placeholder || `Pilih ${field}`}</option>
+            {options.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        </div>
+      );
+    }
+
+    if (rows) {
+      return (
+        <div>
+          <textarea
+            className={`${baseClass} resize-none`}
+            rows={rows}
+            value={value || ''}
+            onChange={(e) => updateField(tower.id, field, e.target.value)}
+            placeholder={placeholder}
+            disabled={disabled || !isEditing(tower.id)}
+          />
+          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <input
+          type={type}
+          className={baseClass}
+          value={value || ''}
+          onChange={(e) => updateField(tower.id, field, e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled || !isEditing(tower.id)}
+        />
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      </div>
+    );
+  };
 
   return (
     <AdminLayout title="Towers">
@@ -170,7 +323,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
               <input
                 type="text"
                 placeholder="Cari berdasarkan nama site, site ID, atau owner..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -191,6 +344,15 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Tambah Tower
+            </button>
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
             >
@@ -206,7 +368,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <select
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
               >
@@ -215,328 +377,375 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
                 <option value="micro">Micro</option>
                 <option value="indoor">Indoor</option>
               </select>
+              <select className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                <option value="">Status Ijin</option>
+                <option value="aktif">Aktif</option>
+                <option value="tidak-aktif">Tidak Aktif</option>
+                <option value="pending">Pending</option>
+                <option value="expired">Expired</option>
+              </select>
+              <select className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                <option value="">Owner</option>
+                <option value="telkomsel">Telkomsel</option>
+                <option value="indosat">Indosat</option>
+                <option value="xl">XL Axiata</option>
+                <option value="smartfren">Smartfren</option>
+              </select>
             </div>
           </div>
         )}
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Aksi Cepat</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button className="p-4 border border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group">
+            <div className="text-center">
+              <div className="bg-blue-100 p-3 rounded-full inline-block mb-2 group-hover:bg-blue-200">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-gray-700">Import CSV</p>
+              <p className="text-xs text-gray-500">Import data dari file CSV</p>
+            </div>
+          </button>
+          <button className="p-4 border border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors group">
+            <div className="text-center">
+              <div className="bg-green-100 p-3 rounded-full inline-block mb-2 group-hover:bg-green-200">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-gray-700">Export Data</p>
+              <p className="text-xs text-gray-500">Unduh data ke Excel/CSV</p>
+            </div>
+          </button>
+          <button className="p-4 border border-gray-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group">
+            <div className="text-center">
+              <div className="bg-purple-100 p-3 rounded-full inline-block mb-2 group-hover:bg-purple-200">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-gray-700">Analisis Data</p>
+              <p className="text-xs text-gray-500">Lihat statistik detail</p>
+            </div>
+          </button>
+          <button className="p-4 border border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors group">
+            <div className="text-center">
+              <div className="bg-orange-100 p-3 rounded-full inline-block mb-2 group-hover:bg-orange-200">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-gray-700">Lihat di Peta</p>
+              <p className="text-xs text-gray-500">Tampilkan semua tower</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content - Card-based Layout */}
+      <div className="space-y-6">
+        {displayedTowers.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            Data Tower ({filteredTowers.length} entries)
-            {(searchTerm || filterType !== 'all') && (
-              <span className="ml-2 text-sm text-gray-500">
-                {filteredTowers.length !== towers.data.length && `dari ${towers.data.length} total`}
-              </span>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchTerm || filterType !== 'all' 
+                ? 'Tidak ada data tower yang sesuai dengan kriteria pencarian'
+                : 'Belum ada data tower'
+              }
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {searchTerm || filterType !== 'all' 
+                ? 'Coba ubah filter atau kata kunci pencarian'
+                : 'Data tower akan muncul di sini setelah ditambahkan'
+              }
+            </p>
+            {searchTerm || filterType !== 'all' ? (
+              <button 
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterType('all');
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Reset Pencarian
+              </button>
+            ) : (
+              <button 
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Tambah Tower Pertama
+              </button>
             )}
-          </h3>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[2400px]">
-            <thead>
-              <tr className="bg-yellow-50 border-b border-yellow-200">
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">No Urut</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Site Name</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Site ID/SAP</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Owner</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Koordinat</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Tinggi (m)</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Pengguna/Kaki</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Alamat Menara</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Type</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Perijinan</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">PRS</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {displayedTowers.length === 0 ? (
-                <tr>
-                  <td colSpan={12} className="px-6 py-12 text-center text-gray-500">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    <p className="text-sm">
-                      {searchTerm || filterType !== 'all' 
-                        ? 'Tidak ada data tower yang sesuai dengan kriteria pencarian'
-                        : 'Belum ada data tower'
-                      }
-                    </p>
-                    {searchTerm || filterType !== 'all' ? (
-                      <button 
-                        onClick={() => {
-                          setSearchTerm('');
-                          setFilterType('all');
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 mt-2"
-                      >
-                        Reset pencarian
-                      </button>
-                    ) : (
-                      <p className="text-xs text-gray-400 mt-1">Data tower akan muncul di sini</p>
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                displayedTowers.map((tower, index) => (
-                  <tr key={tower.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
-                    
-                    {/* No Urut */}
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
-                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                        value={getEditValue(tower, 'id_no_urut') || ''}
-                        onChange={(e) => updateField(tower.id, 'id_no_urut', e.target.value)}
-                        placeholder="No"
-                      />
-                    </td>
-
-                    {/* Site Name */}
-                    <td className="px-3 py-3">
-                      <input
-                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                        value={getEditValue(tower, 'site_name') || ''}
-                        onChange={(e) => updateField(tower.id, 'site_name', e.target.value)}
-                        placeholder="Nama Site"
-                      />
-                    </td>
-
-                    {/* Site ID/SAP */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'site_id') || ''}
-                          onChange={(e) => updateField(tower.id, 'site_id', e.target.value)}
-                          placeholder="Site ID"
-                        />
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'site_sap') || ''}
-                          onChange={(e) => updateField(tower.id, 'site_sap', e.target.value)}
-                          placeholder="Site SAP"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Owner */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'owner') || ''}
-                          onChange={(e) => updateField(tower.id, 'owner', e.target.value)}
-                          placeholder="Owner"
-                        />
-                        <textarea
-                          className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none"
-                          rows={2}
-                          value={getEditValue(tower, 'alamat_owner') || ''}
-                          onChange={(e) => updateField(tower.id, 'alamat_owner', e.target.value)}
-                          placeholder="Alamat Owner"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Koordinat */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'longitude') || ''}
-                          onChange={(e) => updateField(tower.id, 'longitude', e.target.value)}
-                          placeholder="Longitude"
-                        />
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'latitude') || ''}
-                          onChange={(e) => updateField(tower.id, 'latitude', e.target.value)}
-                          placeholder="Latitude"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Tinggi */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          type="number"
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'tinggi_menara') || ''}
-                          onChange={(e) => updateField(tower.id, 'tinggi_menara', e.target.value)}
-                          placeholder="Tinggi Menara"
-                        />
-                        <input
-                          type="number"
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'tinggi_bangunan') || ''}
-                          onChange={(e) => updateField(tower.id, 'tinggi_bangunan', e.target.value)}
-                          placeholder="Tinggi Bangunan"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Pengguna/Kaki */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          type="number"
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'jumlah_pengguna') || ''}
-                          onChange={(e) => updateField(tower.id, 'jumlah_pengguna', e.target.value)}
-                          placeholder="Jumlah Pengguna"
-                        />
-                        <input
-                          type="number"
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'jumlah_kaki') || ''}
-                          onChange={(e) => updateField(tower.id, 'jumlah_kaki', e.target.value)}
-                          placeholder="Jumlah Kaki/Legs"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Alamat Menara */}
-                    <td className="px-3 py-3">
-                      <textarea
-                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none"
-                        rows={3}
-                        value={getEditValue(tower, 'alamat_menara') || ''}
-                        onChange={(e) => updateField(tower.id, 'alamat_menara', e.target.value)}
-                        placeholder="Alamat Menara"
-                      />
-                    </td>
-
-                    {/* Type */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <select
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'site_type') || ''}
-                          onChange={(e) => updateField(tower.id, 'site_type', e.target.value)}
-                        >
-                          <option value="">Site Type</option>
-                          <option value="macro">Macro</option>
-                          <option value="micro">Micro</option>
-                          <option value="indoor">Indoor</option>
-                          <option value="outdoor">Outdoor</option>
-                        </select>
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'tower_type') || ''}
-                          onChange={(e) => updateField(tower.id, 'tower_type', e.target.value)}
-                          placeholder="Tower Type"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Perijinan */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'no_ijin') || ''}
-                          onChange={(e) => updateField(tower.id, 'no_ijin', e.target.value)}
-                          placeholder="No Ijin"
-                        />
-                        <input
-                          type="date"
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'tanggal_ijin') || ''}
-                          onChange={(e) => updateField(tower.id, 'tanggal_ijin', e.target.value)}
-                          placeholder="Tanggal Ijin"
-                        />
-                        <input
-                          type="date"
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'berlaku_hingga') || ''}
-                          onChange={(e) => updateField(tower.id, 'berlaku_hingga', e.target.value)}
-                          placeholder="Berlaku Hingga"
-                        />
-                        <select
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'jenis_ijin') || ''}
-                          onChange={(e) => updateField(tower.id, 'jenis_ijin', e.target.value)}
-                        >
-                          <option value="">Jenis Ijin</option>
-                          <option value="IMB">IMB</option>
-                          <option value="PBG">PBG</option>
-                          <option value="Lainnya">Lainnya</option>
-                        </select>
-                        <select
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'status_ijin') || ''}
-                          onChange={(e) => updateField(tower.id, 'status_ijin', e.target.value)}
-                        >
-                          <option value="">Status Ijin</option>
-                          <option value="Aktif">Aktif</option>
-                          <option value="Tidak Aktif">Tidak Aktif</option>
-                          <option value="Pending">Pending</option>
-                          <option value="Expired">Expired</option>
-                        </select>
-                      </div>
-                    </td>
-
-                    {/* PRS */}
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'prs') || ''}
-                          onChange={(e) => updateField(tower.id, 'prs', e.target.value)}
-                          placeholder="PRS"
-                        />
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                          value={getEditValue(tower, 'prs_id') || ''}
-                          onChange={(e) => updateField(tower.id, 'prs_id', e.target.value)}
-                          placeholder="PRS ID"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Aksi */}
-                    <td className="px-3 py-3">
-                      <div className="flex flex-col gap-2">
+          </div>
+        ) : (
+          displayedTowers.map((tower) => (
+            <div key={tower.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
+              {/* Card Header */}
+              <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <div className="flex items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                    <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{tower.site_name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">
+                        {tower.owner && `Owner: ${tower.owner}`}
+                        {tower.site_id && ` • ID: ${tower.site_id}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    {isEditing(tower.id) ? (
+                      <>
                         <button
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all shadow-lg hover:shadow-xl ${
-                            hasChanges(tower.id)
-                              ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}
                           onClick={() => save(tower.id)}
                           disabled={!hasChanges(tower.id)}
+                          className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                            hasChanges(tower.id)
+                              ? 'bg-green-600 text-white hover:bg-green-700'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
                         >
-                          <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          Simpan
+                          <span className="hidden sm:inline">Simpan</span>
+                          <span className="sm:hidden">Save</span>
                         </button>
-                        {hasChanges(tower.id) && (
-                          <button
-                            className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                            onClick={() => resetEditing(tower.id)}
-                          >
-                            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Reset
-                          </button>
-                        )}
+                        <button
+                          onClick={() => resetEditing(tower.id)}
+                          className="px-3 sm:px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-xs sm:text-sm"
+                        >
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span className="hidden sm:inline">Batal</span>
+                          <span className="sm:hidden">×</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => startEditing(tower.id)}
+                        className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
+                      >
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tab Navigation - only show when editing */}
+                {isEditing(tower.id) && (
+                  <div className="mt-4 border-t pt-4">
+                    <nav className="flex flex-wrap gap-2 sm:flex-nowrap sm:space-x-4 sm:gap-0">
+                      {[
+                        { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                        { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
+                        { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
+                        { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setTowerTab(tower.id, tab.id)}
+                          className={`flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
+                            getActiveTab(tower.id) === tab.id
+                              ? 'bg-blue-100 text-blue-700 border-blue-300'
+                              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                          </svg>
+                          <span className="hidden sm:inline">{tab.label}</span>
+                          <span className="sm:hidden">
+                            {tab.id === 'basic' && 'Info'}
+                            {tab.id === 'location' && 'Lok'}
+                            {tab.id === 'technical' && 'Tek'}
+                            {tab.id === 'permits' && 'Ijin'}
+                          </span>
+                        </button>
+                      ))}
+                    </nav>
+                  </div>
+                )}
+              </div>
+
+              {/* Card Content */}
+              <div className="p-4 sm:p-6">
+                {isEditing(tower.id) ? (
+                  // Edit Mode with Tabs
+                  <div>
+                    {getActiveTab(tower.id) === 'basic' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Nama Site <span className="text-red-500">*</span>
+                          </label>
+                          <FormInput tower={tower} field="site_name" placeholder="Masukkan nama site" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">No Urut</label>
+                          <FormInput tower={tower} field="id_no_urut" type="number" placeholder="No urut" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Site ID</label>
+                          <FormInput tower={tower} field="site_id" placeholder="Site ID" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Site SAP</label>
+                          <FormInput tower={tower} field="site_sap" placeholder="Site SAP" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
+                          <FormInput tower={tower} field="owner" placeholder="Nama owner" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
+                          <FormInput tower={tower} field="alamat_owner" rows={3} placeholder="Alamat lengkap owner" />
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    )}
+
+                    {getActiveTab(tower.id) === 'location' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                          <FormInput tower={tower} field="longitude" type="number" placeholder="Contoh: 110.4203" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                          <FormInput tower={tower} field="latitude" type="number" placeholder="Contoh: -7.7956" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara</label>
+                          <FormInput tower={tower} field="alamat_menara" rows={3} placeholder="Alamat lengkap lokasi menara" />
+                        </div>
+                      </div>
+                    )}
+
+                    {getActiveTab(tower.id) === 'technical' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
+                          <FormInput tower={tower} field="tinggi_menara" type="number" placeholder="Contoh: 42" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Bangunan (m)</label>
+                          <FormInput tower={tower} field="tinggi_bangunan" type="number" placeholder="Contoh: 15" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pengguna</label>
+                          <FormInput tower={tower} field="jumlah_pengguna" type="number" placeholder="Jumlah operator" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Kaki</label>
+                          <FormInput tower={tower} field="jumlah_kaki" type="number" placeholder="Contoh: 4" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Site Type</label>
+                          <FormInput tower={tower} field="site_type" options={[
+                            { value: 'macro', label: 'Macro' },
+                            { value: 'micro', label: 'Micro' },
+                            { value: 'indoor', label: 'Indoor' },
+                            { value: 'outdoor', label: 'Outdoor' }
+                          ]} placeholder="Pilih site type" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Tower Type</label>
+                          <FormInput tower={tower} field="tower_type" placeholder="Contoh: Lattice, Monopole" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">PRS</label>
+                          <FormInput tower={tower} field="prs" placeholder="PRS" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">PRS ID</label>
+                          <FormInput tower={tower} field="prs_id" placeholder="PRS ID" />
+                        </div>
+                      </div>
+                    )}
+
+                    {getActiveTab(tower.id) === 'permits' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
+                          <FormInput tower={tower} field="no_ijin" placeholder="Nomor ijin" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Ijin</label>
+                          <FormInput tower={tower} field="jenis_ijin" options={[
+                            { value: 'IMB', label: 'IMB' },
+                            { value: 'PBG', label: 'PBG' },
+                            { value: 'Lainnya', label: 'Lainnya' }
+                          ]} placeholder="Pilih jenis ijin" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Ijin</label>
+                          <FormInput tower={tower} field="tanggal_ijin" type="date" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Berlaku Hingga</label>
+                          <FormInput tower={tower} field="berlaku_hingga" type="date" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
+                          <FormInput tower={tower} field="status_ijin" options={[
+                            { value: 'Aktif', label: 'Aktif' },
+                            { value: 'Tidak Aktif', label: 'Tidak Aktif' },
+                            { value: 'Pending', label: 'Pending' },
+                            { value: 'Expired', label: 'Expired' }
+                          ]} placeholder="Pilih status ijin" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // View Mode
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Informasi Dasar</h4>
+                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600">ID:</span> {tower.site_id || '-'}</p>
+                        <p><span className="text-gray-600">SAP:</span> {tower.site_sap || '-'}</p>
+                        <p><span className="text-gray-600">Owner:</span> {tower.owner || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Lokasi</h4>
+                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600">Koordinat:</span> {tower.latitude && tower.longitude ? `${tower.latitude}, ${tower.longitude}` : '-'}</p>
+                        <p><span className="text-gray-600">Alamat:</span> <span className="break-words">{tower.alamat_menara || '-'}</span></p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg sm:col-span-2 lg:col-span-1">
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Teknis</h4>
+                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600">Tinggi:</span> {tower.tinggi_menara ? `${tower.tinggi_menara}m` : '-'}</p>
+                        <p><span className="text-gray-600">Type:</span> {tower.site_type || '-'}</p>
+                        <p><span className="text-gray-600">Status:</span> {tower.status_ijin || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Data Display Controls */}
@@ -545,7 +754,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-700 font-medium">Tampilkan:</span>
             <select
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent"
               value={itemsPerPage}
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
             >
@@ -595,65 +804,45 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
-              <span className="text-sm font-medium">Perhatian:</span>
+              <span className="text-sm font-medium">Tips:</span>
             </div>
             <p className="text-sm text-yellow-700 mt-1">
-              Menampilkan {filteredTowers.length} data sekaligus. Untuk performa yang lebih baik, 
-              pertimbangkan untuk menggunakan filter atau batasi jumlah data per halaman.
+              Menampilkan {filteredTowers.length} data sekaligus. Untuk performa yang lebih baik dan pengelolaan yang mudah, 
+              gunakan filter pencarian atau batasi jumlah data per halaman.
             </p>
           </div>
         )}
       </div>
 
-      {/* Enhanced Pagination */}
+      {/* Simplified Navigation */}
       <div className="mt-4 bg-white rounded-lg shadow-lg p-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-gray-700">
-            Menampilkan halaman <span className="font-medium">{page}</span> dari{' '}
-            <span className="font-medium">{last}</span>
+            <span className="font-medium">Halaman {page} dari {last}</span>
+            <span className="text-gray-500 ml-2">• {towers.data.length} total tower</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               disabled={page <= 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-2"
-              onClick={() => router.get(route('admin.towers.index', { page: 1 }))}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-              First
-            </button>
-            <button
-              disabled={page <= 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-2"
+              className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
               onClick={() => router.get(route('admin.towers.index', { page: page - 1 }))}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Previous
+              Sebelum
             </button>
-            <span className="px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm font-medium">
-              {page} / {last}
+            <span className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700">
+              {page}
             </span>
             <button
               disabled={page >= last}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-2"
+              className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
               onClick={() => router.get(route('admin.towers.index', { page: page + 1 }))}
             >
-              Next
+              Berikut
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <button
-              disabled={page >= last}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-2"
-              onClick={() => router.get(route('admin.towers.index', { page: last }))}
-            >
-              Last
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
               </svg>
             </button>
           </div>
