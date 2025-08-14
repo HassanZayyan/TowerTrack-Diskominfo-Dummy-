@@ -606,7 +606,15 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // Validasi khusus untuk nomor telepon
+    if (name === 'telepon') {
+      // Hanya izinkan angka, tanda +, dan tanda - di awal
+      const cleanedValue = value.replace(/[^0-9+\-]/g, '');
+      setForm(prev => ({ ...prev, [name]: cleanedValue }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
     
     // Clear validation error if typing
     if (validation[name as keyof typeof validation] !== undefined) {
@@ -681,7 +689,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     
     // Check each file for type and size
     const allowedImageTypes = ['image/jpeg', 'image/png'];
-    const allowedVideoTypes = ['video/mp4', 'video/mov', 'video/avi', 'video/mkv'];
+    const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/avi', 'video/x-msvideo', 'video/x-matroska'];
     const maxImageSize = 5 * 1024 * 1024; // 5MB
     const maxVideoSize = 50 * 1024 * 1024; // 50MB
     const newFiles: File[] = [];
@@ -759,6 +767,15 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
       lokasi_tower: !form.lokasi_tower,
       pesan: !form.pesan
     } as const;
+    
+    // Validasi format nomor telepon
+    if (form.telepon) {
+      const phoneRegex = /^[\+]?[0-9\-]{8,15}$/;
+      if (!phoneRegex.test(form.telepon)) {
+        setErrorMessage('Format nomor telepon tidak valid. Gunakan 8-15 digit angka');
+        return;
+      }
+    }
     
     setValidation(newValidation);
     
@@ -900,10 +917,15 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     No. Telepon <span className="text-red-600">*</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      // Hanya izinkan angka, tanda +, dan tanda -
+                      const target = e.target as HTMLInputElement;
+                      target.value = target.value.replace(/[^0-9+\-]/g, '');
+                    }}
                     className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
                     style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     placeholder="Masukkan nomor telepon"
@@ -930,7 +952,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                           handleChange(e);
                         }
                       }}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] text-base sm:text-sm p-3`}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
                       style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     >
                       <option value="">Pilih kategori</option>

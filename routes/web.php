@@ -31,7 +31,11 @@ Route::middleware('auth')->post('/complaint', [UserComplaintController::class, '
 
 // User reports page (messages)
 Route::middleware('auth')->get('/my-messages', function () {
-    $reports = \App\Models\Report::with(['tower:id,site_name', 'responses:id,report_id,created_at'])
+    $reports = \App\Models\Report::with([
+            'tower:id,site_name,alamat_menara', 
+            'responses:id,report_id,message,image_path,file_type,status,created_at', 
+            'images:id,report_id,image_path,file_type'
+        ])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')
         ->get();
@@ -69,6 +73,8 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
 
     // Tower management
     Route::get('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'index'])->name('towers.index');
+    Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerController::class, 'create'])->name('towers.create');
+    Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
     Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerController::class, 'update'])->name('towers.update');
 });
 

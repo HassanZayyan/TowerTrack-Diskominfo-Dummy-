@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
+interface Owner {
+  id: number;
+  name: string;
+  alamat: string;
+}
+
 interface Tower { 
   id: number; 
   site_name: string; 
@@ -29,15 +35,13 @@ interface Tower {
 }
 
 interface Pagination<T> { data: T[]; current_page: number; last_page: number }
-interface Props { towers: Pagination<Tower> }
+interface Props { towers: Pagination<Tower>; owners: Owner[] }
 
-const TowersPage: React.FC<Props> = ({ towers }) => {
+const TowersPage: React.FC<Props> = ({ towers, owners }) => {
   const [editing, setEditing] = useState<Record<number, Partial<Tower>>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Record<number, string>>({});
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
@@ -248,68 +252,84 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
       </div>
 
       {/* Statistics and Search */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="bg-blue-100 p-3 rounded-full mr-4">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-8">
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-blue-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Total Towers</h3>
+              <p className="text-3xl font-bold text-blue-600">{filteredTowers.length}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Towers</p>
-              <p className="text-2xl font-bold text-blue-600">{filteredTowers.length}</p>
-            </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="bg-green-100 p-3 rounded-full mr-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Dengan Ijin</p>
-              <p className="text-2xl font-bold text-green-600">
+              <h3 className="text-lg font-semibold text-gray-800">Dengan Ijin</h3>
+              <p className="text-3xl font-bold text-green-600">
                 {filteredTowers.filter(t => t.status_ijin).length}
               </p>
             </div>
+            <div className="bg-green-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-yellow-500">
-          <div className="flex items-center">
-            <div className="bg-yellow-100 p-3 rounded-full mr-4">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-yellow-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Dengan Koordinat</h3>
+              <p className="text-3xl font-bold text-yellow-600">
+                {filteredTowers.filter(t => t.latitude && t.longitude).length}
+              </p>
+            </div>
+            <div className="bg-yellow-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Dengan Koordinat</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {filteredTowers.filter(t => t.latitude && t.longitude).length}
+              <h3 className="text-lg font-semibold text-gray-800">Tanpa Koordinat</h3>
+              <p className="text-3xl font-bold text-red-600">
+                {filteredTowers.filter(t => !t.latitude || !t.longitude).length}
               </p>
+            </div>
+            <div className="bg-red-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-purple-500">
-          <div className="flex items-center">
-            <div className="bg-purple-100 p-3 rounded-full mr-4">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-purple-500">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Rata-rata Tinggi</p>
-              <p className="text-2xl font-bold text-purple-600">
+              <h3 className="text-lg font-semibold text-gray-800">Rata-rata Tinggi</h3>
+              <p className="text-3xl font-bold text-purple-600">
                 {filteredTowers.length > 0 
                   ? Math.round(filteredTowers.reduce((sum, t) => sum + (Number(t.tinggi_menara) || 0), 0) / filteredTowers.length)
                   : 0}m
               </p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
           </div>
         </div>
@@ -344,7 +364,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => router.get(route('admin.towers.create'))}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,99 +372,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
               </svg>
               Tambah Tower
             </button>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
-              </svg>
-              Filter
-            </button>
           </div>
-        </div>
-        
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-              >
-                <option value="all">Semua Site Type</option>
-                <option value="macro">Macro</option>
-                <option value="micro">Micro</option>
-                <option value="indoor">Indoor</option>
-              </select>
-              <select className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent">
-                <option value="">Status Ijin</option>
-                <option value="aktif">Aktif</option>
-                <option value="tidak-aktif">Tidak Aktif</option>
-                <option value="pending">Pending</option>
-                <option value="expired">Expired</option>
-              </select>
-              <select className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent">
-                <option value="">Owner</option>
-                <option value="telkomsel">Telkomsel</option>
-                <option value="indosat">Indosat</option>
-                <option value="xl">XL Axiata</option>
-                <option value="smartfren">Smartfren</option>
-              </select>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Aksi Cepat</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="p-4 border border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group">
-            <div className="text-center">
-              <div className="bg-blue-100 p-3 rounded-full inline-block mb-2 group-hover:bg-blue-200">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-700">Import CSV</p>
-              <p className="text-xs text-gray-500">Import data dari file CSV</p>
-            </div>
-          </button>
-          <button className="p-4 border border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors group">
-            <div className="text-center">
-              <div className="bg-green-100 p-3 rounded-full inline-block mb-2 group-hover:bg-green-200">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-700">Export Data</p>
-              <p className="text-xs text-gray-500">Unduh data ke Excel/CSV</p>
-            </div>
-          </button>
-          <button className="p-4 border border-gray-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group">
-            <div className="text-center">
-              <div className="bg-purple-100 p-3 rounded-full inline-block mb-2 group-hover:bg-purple-200">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-700">Analisis Data</p>
-              <p className="text-xs text-gray-500">Lihat statistik detail</p>
-            </div>
-          </button>
-          <button className="p-4 border border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors group">
-            <div className="text-center">
-              <div className="bg-orange-100 p-3 rounded-full inline-block mb-2 group-hover:bg-orange-200">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-700">Lihat di Peta</p>
-              <p className="text-xs text-gray-500">Tampilkan semua tower</p>
-            </div>
-          </button>
         </div>
       </div>
 
@@ -479,7 +407,7 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
               </button>
             ) : (
               <button 
-                onClick={() => setShowAddModal(true)}
+                onClick={() => router.get(route('admin.towers.create'))}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Tambah Tower Pertama
@@ -612,7 +540,9 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
-                          <FormInput tower={tower} field="owner" placeholder="Nama owner" />
+                          <FormInput tower={tower} field="owner" options={[
+                            ...owners.map(owner => ({ value: owner.name, label: owner.name }))
+                          ]} placeholder="Pilih owner" />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
@@ -655,15 +585,6 @@ const TowersPage: React.FC<Props> = ({ towers }) => {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Kaki</label>
                           <FormInput tower={tower} field="jumlah_kaki" type="number" placeholder="Contoh: 4" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Site Type</label>
-                          <FormInput tower={tower} field="site_type" options={[
-                            { value: 'macro', label: 'Macro' },
-                            { value: 'micro', label: 'Micro' },
-                            { value: 'indoor', label: 'Indoor' },
-                            { value: 'outdoor', label: 'Outdoor' }
-                          ]} placeholder="Pilih site type" />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Tower Type</label>

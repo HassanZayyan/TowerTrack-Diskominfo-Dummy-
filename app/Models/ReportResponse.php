@@ -15,6 +15,7 @@ class ReportResponse extends Model
         'message',
         'image_path',
         'file_type',
+        'status',
     ];
 
     public function report()

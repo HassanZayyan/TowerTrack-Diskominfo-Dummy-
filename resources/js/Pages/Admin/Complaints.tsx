@@ -3,6 +3,16 @@ import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 interface ReportImage { id: number; image_path: string; file_type?: string }
+interface ReportResponse { 
+  id: number; 
+  report_id: number; 
+  user_id: number; 
+  message: string; 
+  image_path?: string; 
+  file_type?: string; 
+  status: string;
+  created_at: string; 
+}
 interface Tower { id: number; site_name: string; alamat_menara?: string }
 interface Report { 
   id: number; 
@@ -16,6 +26,7 @@ interface Report {
   tower?: Tower; 
   user?: { name: string; email: string }; 
   created_at?: string;
+  responses?: ReportResponse[];
 }
 
 interface Props { reports: Report[] }
@@ -23,6 +34,7 @@ interface Props { reports: Report[] }
 const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
   const [replyText, setReplyText] = useState<Record<number, string>>({});
   const [selectedFiles, setSelectedFiles] = useState<Record<number, File[]>>({});
+  const [replyStatus, setReplyStatus] = useState<Record<number, string>>({});
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: string } | null>(null);
@@ -78,12 +90,15 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
 
   const openReplyModal = (report: Report) => {
     setReplyModal({ isOpen: true, report });
+    // Set default status to current report status
+    setReplyStatus({ [report.id]: report.status });
   };
 
   const closeReplyModal = () => {
     setReplyModal({ isOpen: false, report: null });
     setReplyText({});
     setSelectedFiles({});
+    setReplyStatus({});
   };
 
   const handleStatusChange = (reportId: number, newStatus: string) => {
@@ -92,10 +107,12 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
 
   const handleSendReply = (reportId: number) => {
     const msg = replyText[reportId];
-    if (!msg?.trim()) return;
+    const status = replyStatus[reportId];
+    if (!msg?.trim() || !status) return;
     
     const formData = new FormData();
     formData.append('message', msg);
+    formData.append('status', status);
     
     // Add selected files (images and videos) if any
     const files = selectedFiles[reportId] || [];
@@ -132,7 +149,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
         return isValidType && isValidSize && currentImages < 3;
       } else if (isVideo) {
         const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB max for videos
-        const isValidType = ['video/mp4', 'video/mov', 'video/avi', 'video/mkv'].includes(file.type);
+        const isValidType = ['video/mp4', 'video/quicktime', 'video/avi', 'video/x-msvideo', 'video/x-matroska'].includes(file.type);
         return isValidType && isValidSize && currentVideos < 2;
       }
       
@@ -177,57 +194,57 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
       <Head title="Complaints" />
       
       {/* Header Section */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Kelola Keluhan</h1>
-        <p className="text-sm sm:text-base text-gray-600">Pantau dan tanggapi keluhan dari masyarakat terkait tower telekomunikasi</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola Keluhan</h1>
+        <p className="text-gray-600">Pantau dan tanggapi keluhan dari masyarakat terkait tower telekomunikasi</p>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-red-500">
-          <div className="flex items-center">
-            <div className="bg-red-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Baru</p>
-              <p className="text-lg sm:text-2xl font-bold text-red-600">
+              <h3 className="text-lg font-semibold text-gray-800">Baru</h3>
+              <p className="text-3xl font-bold text-red-600">
                 {reports.filter(r => r.status === 'pending').length}
               </p>
             </div>
+            <div className="bg-red-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-orange-500">
-          <div className="flex items-center">
-            <div className="bg-orange-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-orange-500">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Progress</p>
-              <p className="text-lg sm:text-2xl font-bold text-orange-600">
+              <h3 className="text-lg font-semibold text-gray-800">Progress</h3>
+              <p className="text-3xl font-bold text-orange-600">
                 {reports.filter(r => r.status === 'in_progress').length}
               </p>
             </div>
+            <div className="bg-orange-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="bg-green-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Selesai</p>
-              <p className="text-lg sm:text-2xl font-bold text-green-600">
+              <h3 className="text-lg font-semibold text-gray-800">Selesai</h3>
+              <p className="text-3xl font-bold text-green-600">
                 {reports.filter(r => r.status === 'closed').length}
               </p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
           </div>
         </div>
@@ -399,26 +416,26 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
                         </div>
                       </div>
                     </div>
-                    <select
-                      value={report.status}
-                      onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                      className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status)}`}
-                    >
-                      <option value="pending">BARU</option>
-                      <option value="in_progress">PROGRESS</option>
-                      <option value="closed">SELESAI</option>
-                    </select>
-                  </div>
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => openReplyModal(report)}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                      </svg>
-                      Balas
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <select
+                        value={report.status}
+                        onChange={(e) => handleStatusChange(report.id, e.target.value)}
+                        className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status)}`}
+                      >
+                        <option value="pending">BARU</option>
+                        <option value="in_progress">PROGRESS</option>
+                        <option value="closed">SELESAI</option>
+                      </select>
+                      <button
+                        onClick={() => openReplyModal(report)}
+                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Balas
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -555,11 +572,23 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
                                     src={mediaPath}
                                     className="w-full h-20 object-cover rounded-lg border-2 border-gray-200 hover:border-red-400 transition-all cursor-pointer"
                                     onClick={() => openLightbox(mediaPath, 'video')}
+                                    onMouseEnter={(e) => {
+                                      const video = e.target as HTMLVideoElement;
+                                      video.currentTime = 1; // Set to 1 second for better thumbnail
+                                    }}
                                   />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg">
-                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M8 5v14l11-7z"/>
-                                    </svg>
+                                  <div 
+                                    className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg cursor-pointer hover:bg-opacity-30 transition-all"
+                                    onClick={() => openLightbox(mediaPath, 'video')}
+                                  >
+                                    <div className="bg-red-600 hover:bg-red-700 rounded-full p-2 transition-all transform hover:scale-110">
+                                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z"/>
+                                      </svg>
+                                    </div>
+                                  </div>
+                                  <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded">
+                                    VIDEO
                                   </div>
                                 </div>
                               ) : (
@@ -583,26 +612,6 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
 
                 {/* Right Column - Response Form */}
                 <div className="space-y-4">
-                  {/* Status Change */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Status Keluhan
-                    </label>
-                    <select 
-                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
-                      value={replyModal.report.status} 
-                      onChange={(e) => replyModal.report && handleStatusChange(replyModal.report.id, e.target.value)}
-                    >
-                      <option value="pending">Baru</option>
-                      <option value="in_progress">Progress</option>
-                      <option value="responded">Dibalas</option>
-                      <option value="closed">Selesai</option>
-                    </select>
-                  </div>
-
                   {/* Response Section */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -618,6 +627,25 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
                       value={replyModal.report ? (replyText[replyModal.report.id] ?? '') : ''} 
                       onChange={(e) => replyModal.report && setReplyText({ ...replyText, [replyModal.report.id]: e.target.value })}
                     />
+                  </div>
+
+                  {/* Status Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Status Keluhan
+                    </label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
+                      value={replyModal.report ? (replyStatus[replyModal.report.id] ?? replyModal.report.status) : ''}
+                      onChange={(e) => replyModal.report && setReplyStatus({ ...replyStatus, [replyModal.report.id]: e.target.value })}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">Progress</option>
+                      <option value="closed">Selesai</option>
+                    </select>
                   </div>
                   
                   {/* Image Upload */}
@@ -672,6 +700,106 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Response History */}
+                  {replyModal.report && replyModal.report.responses && replyModal.report.responses.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Riwayat Balasan ({replyModal.report.responses.length})
+                      </h4>
+                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {replyModal.report.responses.map((response, index) => (
+                          <div key={response.id} className="bg-white border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-8 w-8">
+                                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="ml-3">
+                                  <p className="text-sm font-medium text-gray-900">Admin</p>
+                                  <p className="text-xs text-gray-500">{formatDate(response.created_at)}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                  Balasan #{index + 1}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                  response.status === 'in_progress' 
+                                    ? 'bg-orange-100 text-orange-800' 
+                                    : response.status === 'closed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {response.status === 'in_progress' ? 'PROGRESS' : 
+                                   response.status === 'closed' ? 'SELESAI' : 'PENDING'}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed">{response.message}</p>
+                            
+                            {/* Response Media */}
+                            {response.image_path && (
+                              <div className="mt-3">
+                                <p className="text-xs text-gray-500 mb-2">📎 Lampiran</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {(() => {
+                                    const mediaPath = `/storage/${response.image_path}`;
+                                    const isVideo = response.file_type?.startsWith('video/') || response.image_path.match(/\.(mp4|mov|avi|mkv)$/i);
+                                    
+                                    return (
+                                      <div className="relative group">
+                                        {isVideo ? (
+                                          <div className="relative">
+                                            <video 
+                                              src={mediaPath}
+                                              className="w-full h-16 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer"
+                                              onClick={() => openLightbox(mediaPath, 'video')}
+                                              onMouseEnter={(e) => {
+                                                const video = e.target as HTMLVideoElement;
+                                                video.currentTime = 1;
+                                              }}
+                                            />
+                                            <div 
+                                              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg cursor-pointer hover:bg-opacity-30 transition-all"
+                                              onClick={() => openLightbox(mediaPath, 'video')}
+                                            >
+                                              <div className="bg-blue-600 hover:bg-blue-700 rounded-full p-1.5 transition-all transform hover:scale-110">
+                                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <path d="M8 5v14l11-7z"/>
+                                                </svg>
+                                              </div>
+                                            </div>
+                                            <div className="absolute top-1 left-1 bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded">
+                                              VIDEO
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <img 
+                                            src={mediaPath}
+                                            className="w-full h-16 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer transform hover:scale-105"
+                                            alt={`Lampiran balasan ${index + 1}`}
+                                            onClick={() => openLightbox(mediaPath, 'image')}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -687,7 +815,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
               <button 
                 className="px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 onClick={() => replyModal.report && handleSendReply(replyModal.report.id)}
-                disabled={!replyModal.report || !replyText[replyModal.report.id]?.trim()}
+                disabled={!replyModal.report || !replyText[replyModal.report.id]?.trim() || !replyStatus[replyModal.report.id]}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -702,36 +830,54 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
       {/* Lightbox Modal */}
       {lightboxMedia && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4" 
           onClick={closeLightbox}
         >
-          <div className="relative max-w-4xl max-h-full">
+          <div className="relative max-w-5xl max-h-full">
             {lightboxMedia.type === 'video' ? (
-              <video 
-                src={lightboxMedia.url}
-                className="max-w-full max-h-full object-contain rounded-lg"
-                controls
-                autoPlay
-                onClick={(e) => e.stopPropagation()}
-              />
+              <div className="relative">
+                <video 
+                  src={lightboxMedia.url}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                  controls
+                  autoPlay
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxHeight: '80vh' }}
+                />
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <span>Video Lampiran Keluhan</span>
+                </div>
+              </div>
             ) : (
-              <img 
-                src={lightboxMedia.url}
-                className="max-w-full max-h-full object-contain rounded-lg"
-                alt="Media keluhan full size"
-                onClick={(e) => e.stopPropagation()}
-              />
+              <div className="relative">
+                <img 
+                  src={lightboxMedia.url}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                  alt="Media keluhan full size"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxHeight: '80vh' }}
+                />
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>Foto Lampiran Keluhan</span>
+                </div>
+              </div>
             )}
             <button
               onClick={closeLightbox}
-              className="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all"
+              className="absolute top-4 right-4 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 transition-all z-10"
             >
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg text-sm">
-              Klik di luar {lightboxMedia.type === 'video' ? 'video' : 'gambar'} untuk menutup
+            <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg text-sm">
+              Klik di luar media untuk menutup
             </div>
           </div>
         </div>
