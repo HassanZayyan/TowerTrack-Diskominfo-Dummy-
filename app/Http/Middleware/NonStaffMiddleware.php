@@ -20,6 +20,11 @@ class NonStaffMiddleware
     {
         $user = $request->user();
 
+        // If not authenticated and accessing feedback routes, redirect to login
+        if (!$user && $request->is('feedback*', 'my-feedbacks*')) {
+            return redirect()->route('login')->with('message', 'Silakan login terlebih dahulu untuk mengirim masukan.');
+        }
+
         // Route should already be protected by 'auth'. As an extra guard:
         if ($user && in_array($user->role, ['admin', 'operator'], true)) {
             return redirect()->route('admin.dashboard');

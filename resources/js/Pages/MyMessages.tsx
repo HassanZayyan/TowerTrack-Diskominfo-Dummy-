@@ -13,7 +13,23 @@ type ReportItem = {
   responses?: Array<{ id: number; report_id: number; created_at: string }>;
 };
 
-export default function MyMessages({ reports = [] as ReportItem[] }) {
+type FeedbackItem = {
+  id: number;
+  tower_id: number;
+  category: string;
+  message: string;
+  status: string;
+  created_at: string;
+  tower?: { id: number; site_name: string };
+  responses?: Array<{ id: number; feedback_id: number; created_at: string }>;
+};
+
+type MyMessagesProps = {
+  reports?: ReportItem[];
+  feedbacks?: FeedbackItem[];
+};
+
+export default function MyMessages({ reports = [] as ReportItem[], feedbacks = [] as FeedbackItem[] }: MyMessagesProps) {
   const { auth } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin','operator'].includes(auth.user.role));
 
@@ -52,6 +68,31 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
     });
   };
 
+  // Merge complaints and feedbacks into a single unified list
+  const items = React.useMemo(() => {
+    const complaintItems = (reports || []).map((r) => ({
+      id: `report-${r.id}`,
+      type: 'Keluhan' as const,
+      created_at: r.created_at,
+      towerName: r.tower?.site_name ?? '-',
+      category: r.category,
+      status: r.status,
+      responsesCount: r.responses?.length ?? 0,
+    }));
+
+    const feedbackItems = (feedbacks || []).map((f) => ({
+      id: `feedback-${f.id}`,
+      type: 'Masukan' as const,
+      created_at: f.created_at,
+      towerName: f.tower?.site_name ?? '-',
+      category: f.category,
+      status: f.status,
+      responsesCount: f.responses?.length ?? 0,
+    }));
+
+    return [...complaintItems, ...feedbackItems].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [reports, feedbacks]);
+
   return (
     <MainLayout title="Pesan Saya" currentPage="/my-messages">
       <Head title="Pesan Saya" />
@@ -59,7 +100,7 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
         {/* Header Card */}
         <div className="rounded-xl shadow-sm mb-4 sm:mb-6 px-4 sm:px-6 py-4 sm:py-5" style={{ backgroundColor: '#FFF8E1' }}>
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: '#212121' }}>
-            Pesan/Keluhan dari {auth?.user?.name}
+            Keluhan/Masukan
           </h1>
           <p className="text-xs sm:text-sm mt-2 text-gray-700">
             Lihat status penanganan, balasan, atau penutupan laporan Anda
@@ -73,6 +114,7 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Waktu</th>
+                  <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Jenis</th>
                   <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tower</th>
                   <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kategori</th>
                   <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
@@ -80,9 +122,9 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {reports.length === 0 && (
+                {items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                           <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,22 +137,25 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
                     </td>
                   </tr>
                 )}
-                {reports.map((report) => {
-                  const statusConfig = getStatusColor(report.status);
+                {items.map((item) => {
+                  const statusConfig = getStatusColor(item.status);
                   return (
-                    <tr key={report.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                         <div>
-                          <div className="font-medium">{formatDate(report.created_at)}</div>
-                          <div className="text-xs text-gray-500">{new Date(report.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                          <div className="font-medium">{formatDate(item.created_at)}</div>
+                          <div className="text-xs text-gray-500">{new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
                         </div>
                       </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>{item.type}</span>
+                      </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                        {report.tower?.site_name ?? '-'}
+                        {item.towerName}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                         <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                          {report.category}
+                          {item.category}
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -123,7 +168,7 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                         <div className="flex items-center">
-                          <span className="font-medium">{report.responses?.length ?? 0}</span>
+                          <span className="font-medium">{item.responsesCount}</span>
                           <span className="text-gray-400 ml-1">balasan</span>
                         </div>
                       </td>
@@ -137,7 +182,7 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
 
         {/* Mobile/Tablet Card View */}
         <div className="lg:hidden space-y-3">
-          {reports.length === 0 && (
+          {items.length === 0 && (
             <div className="bg-white rounded-xl shadow-sm p-6 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,19 +194,22 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
             </div>
           )}
           
-          {reports.map((report) => {
-            const statusConfig = getStatusColor(report.status);
+          {items.map((item) => {
+            const statusConfig = getStatusColor(item.status);
             return (
-              <div key={report.id} className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150">
+              <div key={item.id} className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 text-sm mb-1">
-                      {report.tower?.site_name ?? 'Tower tidak diketahui'}
+                      {item.towerName ?? 'Tower tidak diketahui'}
                     </h3>
                     <p className="text-xs text-gray-500 mb-2">
-                      {formatDate(report.created_at)} • {new Date(report.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      {formatDate(item.created_at)} • {new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                    {item.type}
+                  </span>
                   <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
                     backgroundColor: statusConfig.bg,
                     color: statusConfig.text
@@ -172,13 +220,13 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
                 
                 <div className="flex items-center justify-between">
                   <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                    {report.category}
+                    {item.category}
                   </span>
                   <div className="flex items-center text-xs text-gray-600">
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    {report.responses?.length ?? 0} balasan
+                    {item.responsesCount} balasan
                   </div>
                 </div>
               </div>
@@ -187,27 +235,27 @@ export default function MyMessages({ reports = [] as ReportItem[] }) {
         </div>
 
         {/* Summary Stats */}
-        {reports.length > 0 && (
+        {items.length > 0 && (
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-              <div className="text-2xl font-bold text-blue-600">{reports.length}</div>
+              <div className="text-2xl font-bold text-blue-600">{items.length}</div>
               <div className="text-xs text-gray-600">Total Laporan</div>
             </div>
             <div className="bg-white rounded-lg p-3 text-center shadow-sm">
               <div className="text-2xl font-bold text-yellow-600">
-                {reports.filter(r => r.status === 'pending').length}
+                {items.filter(r => r.status === 'pending').length}
               </div>
               <div className="text-xs text-gray-600">Menunggu</div>
             </div>
             <div className="bg-white rounded-lg p-3 text-center shadow-sm">
               <div className="text-2xl font-bold text-blue-600">
-                {reports.filter(r => r.status === 'in_progress').length}
+                {items.filter(r => r.status === 'in_progress').length}
               </div>
               <div className="text-xs text-gray-600">Diproses</div>
             </div>
             <div className="bg-white rounded-lg p-3 text-center shadow-sm">
               <div className="text-2xl font-bold text-green-600">
-                {reports.filter(r => r.status === 'resolved').length}
+                {items.filter(r => r.status === 'resolved').length}
               </div>
               <div className="text-xs text-gray-600">Selesai</div>
             </div>

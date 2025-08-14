@@ -30,6 +30,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   // Keep it visible for logged-out users so they are encouraged to log in to submit.
   if (!isStaff) {
     links.push({ href: '/complaint', label: 'Form Keluhan', icon: 'report_problem' });
+    links.push({ href: '/feedback', label: 'Kirim Masukan', icon: 'lightbulb' });
   }
 
   const toggleMobileMenu = () => {

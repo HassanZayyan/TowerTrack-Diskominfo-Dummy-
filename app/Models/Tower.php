@@ -67,5 +67,13 @@ class Tower extends Model
     {
         return $this->hasMany(Report::class);
     }
+
+    /**
+     * One-to-many relationship with feedbacks
+     */
+    public function feedbacks(): HasMany
+    {
+        return $this->hasMany(Feedback::class);
+    }
 }
 

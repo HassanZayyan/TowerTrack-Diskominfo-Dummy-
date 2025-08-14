@@ -141,4 +141,20 @@ class TowerController extends Controller
                       ->pluck('name');
         return response()->json($owners);
     }
+
+    /**
+     * Show tower detail page
+     */
+    public function show(Tower $tower)
+    {
+        $tower->load('owners');
+        
+        $user = auth()->user();
+        $canSendFeedback = $user && !$user->isStaff();
+
+        return Inertia::render('TowerDetail', [
+            'tower' => $tower,
+            'canSendFeedback' => $canSendFeedback,
+        ]);
+    }
 }
