@@ -9,6 +9,7 @@ use App\Models\Tower;
 use App\Http\Controllers\UserComplaintController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\StaffMiddleware;
+use App\Http\Middleware\NonStaffMiddleware;
 
 Route::get('/', function () {
     return redirect()->route('data.tower');
@@ -25,12 +26,14 @@ Route::get('/dashboard', function () {
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
 
-Route::middleware('auth')->get('/complaint', [UserComplaintController::class, 'index'])->name('complaint');
+// Complaint form is only for non-staff users
+Route::middleware(['auth', NonStaffMiddleware::class])->get('/complaint', [UserComplaintController::class, 'index'])->name('complaint');
 
-Route::middleware('auth')->post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
+Route::middleware(['auth', NonStaffMiddleware::class])->post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
 
 // User reports page (messages)
-Route::middleware('auth')->get('/my-messages', function () {
+// Only non-staff can see their own submitted reports list
+Route::middleware(['auth', NonStaffMiddleware::class])->get('/my-messages', function () {
     $reports = \App\Models\Report::with(['tower:id,site_name', 'responses:id,report_id,created_at'])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')

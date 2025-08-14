@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
 
@@ -152,6 +152,14 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 }
 
 const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
+  const { auth } = usePage().props as any;
+  const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
+
+  useEffect(() => {
+    if (isStaff) {
+      router.visit('/admin');
+    }
+  }, [isStaff]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -608,6 +616,8 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     setShowDropdown(false);
     setActiveIndex(-1);
   };
+
+  if (isStaff) return null;
 
   return (
     <MainLayout title="Form Keluhan" currentPage="/complaint">
