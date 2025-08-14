@@ -675,27 +675,60 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
 
-    // Check if adding these files would exceed the limit of 3
-    if (files.length + selectedFiles.length > 3) {
-      setErrorMessage('Maksimal 3 foto yang dapat diunggah');
-      return;
-    }
-
+    // Count current files by type
+    const currentImages = files.filter(file => file.type.startsWith('image/')).length;
+    const currentVideos = files.filter(file => file.type.startsWith('video/')).length;
+    
     // Check each file for type and size
-    const allowedTypes = ['image/jpeg', 'image/png'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedImageTypes = ['image/jpeg', 'image/png'];
+    const allowedVideoTypes = ['video/mp4', 'video/mov', 'video/avi', 'video/mkv'];
+    const maxImageSize = 5 * 1024 * 1024; // 5MB
+    const maxVideoSize = 50 * 1024 * 1024; // 50MB
     const newFiles: File[] = [];
+    let newImageCount = 0;
+    let newVideoCount = 0;
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
       
-      if (!allowedTypes.includes(file.type)) {
-        setErrorMessage('Hanya file JPG dan PNG yang diizinkan');
-        continue;
-      }
-      
-      if (file.size > maxSize) {
-        setErrorMessage('Ukuran file tidak boleh melebihi 5MB');
+      if (isImage) {
+        if (currentImages + newImageCount >= 3) {
+          setErrorMessage('Maksimal 3 foto yang dapat diunggah');
+          continue;
+        }
+        
+        if (!allowedImageTypes.includes(file.type)) {
+          setErrorMessage('Hanya file JPG dan PNG yang diizinkan untuk foto');
+          continue;
+        }
+        
+        if (file.size > maxImageSize) {
+          setErrorMessage('Ukuran foto tidak boleh melebihi 5MB');
+          continue;
+        }
+        
+        newImageCount++;
+      } else if (isVideo) {
+        if (currentVideos + newVideoCount >= 2) {
+          setErrorMessage('Maksimal 2 video yang dapat diunggah');
+          continue;
+        }
+        
+        if (!allowedVideoTypes.includes(file.type)) {
+          setErrorMessage('Hanya file MP4, MOV, AVI, dan MKV yang diizinkan untuk video');
+          continue;
+        }
+        
+        if (file.size > maxVideoSize) {
+          setErrorMessage('Ukuran video tidak boleh melebihi 50MB');
+          continue;
+        }
+        
+        newVideoCount++;
+      } else {
+        setErrorMessage('Hanya file foto (JPG, PNG) dan video (MP4, MOV, AVI, MKV) yang diizinkan');
         continue;
       }
       
@@ -743,8 +776,18 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
       formData.append(key, value);
     });
     
-    files.forEach((file, index) => {
+    // Separate images and videos
+    const images = files.filter(file => file.type.startsWith('image/'));
+    const videos = files.filter(file => file.type.startsWith('video/'));
+    
+    // Append images with 'foto' field
+    images.forEach((file, index) => {
       formData.append(`foto[${index}]`, file);
+    });
+    
+    // Append videos with 'video' field
+    videos.forEach((file, index) => {
+      formData.append(`video[${index}]`, file);
     });
     
     // Submit using Inertia router
@@ -1055,14 +1098,14 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
               
               <div className="mb-6">
                 <label className="block text-gray-700 font-medium mb-2">
-                  Upload Foto (opsional)
+                  Upload Foto & Video (opsional)
                 </label>
                 <div className="flex items-center flex-wrap gap-3">
                   <label className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-300">
                     <span>Choose File</span>
                     <input 
                       type="file" 
-                      accept=".jpg,.jpeg,.png" 
+                      accept=".jpg,.jpeg,.png,.mp4,.mov,.avi,.mkv" 
                       className="hidden" 
                       onChange={handleFileChange}
                       ref={fileInputRef}
@@ -1070,11 +1113,19 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     />
                   </label>
                   <span className="text-gray-600">
-                    {files.length > 0 ? `${files.length} file dipilih` : 'No file chosen'}
+                    {files.length > 0 ? (
+                      <>
+                        {files.filter(f => f.type.startsWith('image/')).length} foto, {files.filter(f => f.type.startsWith('video/')).length} video dipilih
+                      </>
+                    ) : (
+                      'No file chosen'
+                    )}
                   </span>
                 </div>
                 <p className="text-gray-500 text-sm mt-2">
-                  Format yang didukung: JPG, PNG. Maksimal 5MB per file. Maksimal 3 foto.
+                  Format yang didukung:<br />
+                  - Foto (JPG, PNG) maksimal 5MB per file - maksimal 3 foto.<br />
+                  - Video (MP4, MOV, AVI, MKV) maksimal 50MB per file - maksimal 2 video.
                 </p>
                 
                 {files.length > 0 && (
@@ -1082,11 +1133,26 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                     {files.map((file, index) => (
                       <div key={index} className="relative">
                         <div className="w-20 h-20 rounded overflow-hidden border border-gray-300">
-                          <img 
-                            src={URL.createObjectURL(file)} 
-                            alt={`Preview ${index}`}
-                            className="w-full h-full object-cover" 
-                          />
+                          {file.type.startsWith('image/') ? (
+                            <img 
+                              src={URL.createObjectURL(file)} 
+                              alt={`Preview ${index}`}
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : file.type.startsWith('video/') ? (
+                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                              <div className="text-center">
+                                <svg className="w-6 h-6 text-gray-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h6m-3 3v3m-2-6h4m-2 0V7a2 2 0 114 0v1" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className="text-xs text-gray-500">VIDEO</span>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="absolute -bottom-1 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded-b truncate">
+                          {file.name}
                         </div>
                         <button
                           type="button"

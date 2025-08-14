@@ -12,7 +12,7 @@ class ComplaintController extends Controller
 {
     public function index(Request $request)
     {
-        $reports = Report::with(['tower:id,site_name', 'images:id,report_id,image_path', 'user:id,name,email'])
+        $reports = Report::with(['tower:id,site_name,alamat_menara', 'images:id,report_id,image_path,file_type', 'user:id,name,email'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -25,6 +25,8 @@ class ComplaintController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string|max:1000',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'videos.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
         ReportResponse::create([
@@ -32,6 +34,30 @@ class ComplaintController extends Controller
             'user_id' => $request->user()->id,
             'message' => $validated['message'],
         ]);
+
+        // Handle image uploads for admin response
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('admin-response-photos', 'public');
+                ReportImage::create([
+                    'report_id' => $report->id,
+                    'image_path' => $path,
+                    'file_type' => 'image/' . $image->getClientOriginalExtension(),
+                ]);
+            }
+        }
+
+        // Handle video uploads for admin response
+        if ($request->hasFile('videos')) {
+            foreach ($request->file('videos') as $video) {
+                $path = $video->store('admin-response-videos', 'public');
+                ReportImage::create([
+                    'report_id' => $report->id,
+                    'image_path' => $path,
+                    'file_type' => 'video/' . $video->getClientOriginalExtension(),
+                ]);
+            }
+        }
 
         // Optionally update status to responded
         $report->update(['status' => 'responded']);

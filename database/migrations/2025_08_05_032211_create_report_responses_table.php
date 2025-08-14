@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->text('message');
             $table->string('image_path')->nullable();
+            $table->string('file_type')->default('image')->nullable();
             $table->timestamps();
         });
     }

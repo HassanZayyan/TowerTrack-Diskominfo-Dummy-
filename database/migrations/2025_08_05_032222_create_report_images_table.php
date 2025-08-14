@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('report_id')->constrained('reports')->onDelete('cascade');
             $table->string('image_path');
+            $table->string('file_type')->default('image');
             $table->timestamps();
         });
     }

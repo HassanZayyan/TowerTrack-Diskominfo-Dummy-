@@ -14,6 +14,7 @@ class ReportResponse extends Model
         'user_id',
         'message',
         'image_path',
+        'file_type',
     ];
 
     public function report()

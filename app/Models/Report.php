@@ -12,6 +12,7 @@ class Report extends Model
     protected $fillable = [
         'tower_id',
         'user_id',
+        'reporter_name',
         'reporter_phone',
         'category',
         'message',

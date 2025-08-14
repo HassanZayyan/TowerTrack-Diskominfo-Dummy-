@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-interface ReportImage { id: number; image_path: string }
-interface Tower { id: number; site_name: string }
+interface ReportImage { id: number; image_path: string; file_type?: string }
+interface Tower { id: number; site_name: string; alamat_menara?: string }
 interface Report { 
   id: number; 
   user_id: number; 
+  reporter_name?: string;
   reporter_phone: string; 
   category: string; 
   message: string; 
@@ -21,20 +22,21 @@ interface Props { reports: Report[] }
 
 const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
   const [replyText, setReplyText] = useState<Record<number, string>>({});
-  const [selectedImages, setSelectedImages] = useState<Record<number, File[]>>({});
-  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+  const [selectedFiles, setSelectedFiles] = useState<Record<number, File[]>>({});
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: string } | null>(null);
+  const [replyModal, setReplyModal] = useState<{ isOpen: boolean; report: Report | null }>({
+    isOpen: false,
+    report: null
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-red-100 text-red-800 border-red-200';
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'responded':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'closed':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
@@ -42,35 +44,46 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      case 'in_progress':
-        return (
-          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        );
-      case 'responded':
-        return (
-          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        );
-      case 'closed':
-        return (
-          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      default:
-        return null;
-    }
+  const getStatusBadge = (status: string) => {
+    const colors = {
+      pending: 'bg-red-100 text-red-800 border-red-300',
+      in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
+      closed: 'bg-green-100 text-green-800 border-green-300'
+    };
+    
+    const labels = {
+      pending: 'BARU',
+      in_progress: 'PROGRESS',
+      closed: 'SELESAI'
+    };
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors] || colors.pending}`}>
+        {labels[status as keyof typeof labels] || labels.pending}
+      </span>
+    );
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const openReplyModal = (report: Report) => {
+    setReplyModal({ isOpen: true, report });
+  };
+
+  const closeReplyModal = () => {
+    setReplyModal({ isOpen: false, report: null });
+    setReplyText({});
+    setSelectedFiles({});
   };
 
   const handleStatusChange = (reportId: number, newStatus: string) => {
@@ -84,98 +97,72 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
     const formData = new FormData();
     formData.append('message', msg);
     
-    // Add selected images if any
-    const images = selectedImages[reportId] || [];
-    images.forEach((image, index) => {
-      formData.append(`images[${index}]`, image);
+    // Add selected files (images and videos) if any
+    const files = selectedFiles[reportId] || [];
+    files.forEach((file, index) => {
+      if (file.type.startsWith('image/')) {
+        formData.append(`images[${index}]`, file);
+      } else if (file.type.startsWith('video/')) {
+        formData.append(`videos[${index}]`, file);
+      }
     });
     
     router.post(route('admin.complaints.respond', { report: reportId }), formData, {
       forceFormData: true,
       onSuccess: () => {
-        setReplyText({ ...replyText, [reportId]: '' });
-        setSelectedImages({ ...selectedImages, [reportId]: [] });
+        closeReplyModal();
       }
     });
   };
 
-  const handleImageSelect = (reportId: number, files: FileList | null) => {
+  const handleFileSelect = (reportId: number, files: FileList | null) => {
     if (!files) return;
     
-    const validImages = Array.from(files).filter(file => {
-      const isValidType = file.type.startsWith('image/');
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB max
-      return isValidType && isValidSize;
+    const currentFiles = selectedFiles[reportId] || [];
+    const currentImages = currentFiles.filter(file => file.type.startsWith('image/')).length;
+    const currentVideos = currentFiles.filter(file => file.type.startsWith('video/')).length;
+    
+    const validFiles = Array.from(files).filter(file => {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      
+      if (isImage) {
+        const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB max for images
+        const isValidType = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type);
+        return isValidType && isValidSize && currentImages < 3;
+      } else if (isVideo) {
+        const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB max for videos
+        const isValidType = ['video/mp4', 'video/mov', 'video/avi', 'video/mkv'].includes(file.type);
+        return isValidType && isValidSize && currentVideos < 2;
+      }
+      
+      return false;
     });
     
-    setSelectedImages({
-      ...selectedImages,
-      [reportId]: [...(selectedImages[reportId] || []), ...validImages].slice(0, 5) // Max 5 images
+    setSelectedFiles({
+      ...selectedFiles,
+      [reportId]: [...currentFiles, ...validFiles]
     });
   };
 
-  const removeImage = (reportId: number, imageIndex: number) => {
-    const currentImages = selectedImages[reportId] || [];
-    const updatedImages = currentImages.filter((_, index) => index !== imageIndex);
-    setSelectedImages({ ...selectedImages, [reportId]: updatedImages });
+  const removeFile = (reportId: number, fileIndex: number) => {
+    const currentFiles = selectedFiles[reportId] || [];
+    const updatedFiles = currentFiles.filter((_, index) => index !== fileIndex);
+    setSelectedFiles({ ...selectedFiles, [reportId]: updatedFiles });
   };
 
-  const toggleCardExpansion = (reportId: number) => {
-    setExpandedCards(prev => ({ ...prev, [reportId]: !prev[reportId] }));
-  };
-
-  const openLightbox = (imagePath: string) => {
-    setLightboxImage(imagePath);
+  const openLightbox = (mediaPath: string, mediaType: string) => {
+    setLightboxMedia({ url: mediaPath, type: mediaType });
   };
 
   const closeLightbox = () => {
-    setLightboxImage(null);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      in_progress: 'bg-blue-100 text-blue-800 border-blue-300',
-      responded: 'bg-purple-100 text-purple-800 border-purple-300',
-      closed: 'bg-green-100 text-green-800 border-green-300'
-    };
-    
-    const icons = {
-      pending: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-      in_progress: 'M13 10V3L4 14h7v7l9-11h-7z',
-      responded: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-      closed: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-    };
-
-    const labels = {
-      pending: 'PENDING',
-      in_progress: 'IN PROGRESS',
-      responded: 'RESPONDED',
-      closed: 'CLOSED'
-    };
-
-    const mobileLabels = {
-      pending: 'PENDING',
-      in_progress: 'PROGRESS',
-      responded: 'REPLIED',
-      closed: 'CLOSED'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors] || colors.pending}`}>
-        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icons[status as keyof typeof icons] || icons.pending} />
-        </svg>
-        <span className="hidden sm:inline">{labels[status as keyof typeof labels] || labels.pending}</span>
-        <span className="sm:hidden">{mobileLabels[status as keyof typeof mobileLabels] || mobileLabels.pending}</span>
-      </span>
-    );
+    setLightboxMedia(null);
   };
 
   // Filter reports
   const filteredReports = reports.filter(report => {
     const matchesStatus = filterStatus === 'all' || report.status === filterStatus;
-    const reporterName = report.user?.name || '';
+    const reporterName = report.reporter_name || report.user?.name || '';
     const reporterEmail = report.user?.email || '';
     const matchesSearch = searchTerm === '' || 
       reporterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -196,53 +183,34 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-yellow-500">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-red-500">
           <div className="flex items-center">
-            <div className="bg-yellow-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-red-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
+              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-lg sm:text-2xl font-bold text-yellow-600">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Baru</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-600">
                 {reports.filter(r => r.status === 'pending').length}
               </p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-blue-500">
+        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-orange-500">
           <div className="flex items-center">
-            <div className="bg-blue-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-orange-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
+              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">
-                <span className="hidden sm:inline">In Progress</span>
-                <span className="sm:hidden">Progress</span>
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-blue-600">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Progress</p>
+              <p className="text-lg sm:text-2xl font-bold text-orange-600">
                 {reports.filter(r => r.status === 'in_progress').length}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-3 sm:p-4 shadow-lg border-l-4 border-purple-500">
-          <div className="flex items-center">
-            <div className="bg-purple-100 p-2 sm:p-3 rounded-full mr-3 sm:mr-4">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Responded</p>
-              <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                {reports.filter(r => r.status === 'responded').length}
               </p>
             </div>
           </div>
@@ -256,7 +224,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
               </svg>
             </div>
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Closed</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Selesai</p>
               <p className="text-lg sm:text-2xl font-bold text-green-600">
                 {reports.filter(r => r.status === 'closed').length}
               </p>
@@ -299,19 +267,18 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="all">Semua Status</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="responded">Responded</option>
-              <option value="closed">Closed</option>
+              <option value="pending">Baru</option>
+              <option value="in_progress">Progress</option>
+              <option value="closed">Selesai</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Main Content - Card Layout */}
-      <div className="space-y-4 sm:space-y-6">
+      {/* Main Content - Table Layout */}
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         {filteredReports.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 text-center">
+          <div className="p-8 sm:p-12 text-center">
             <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
@@ -340,232 +307,421 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
             )}
           </div>
         ) : (
-          filteredReports.map((report) => (
-            <div key={report.id} className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
-              {/* Card Header */}
-              <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                <div className="flex items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
-                    <div className="flex-shrink-0 h-10 w-10 sm:h-12 sm:w-12">
-                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm sm:text-lg">
-                          {(report.user?.name || '?').charAt(0).toUpperCase()}
-                        </span>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nama
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tanggal
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredReports.map((report) => (
+                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
+                              <span className="text-white font-semibold text-sm">
+                                {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {report.reporter_name || report.user?.name || 'Unknown'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select
+                          value={report.status}
+                          onChange={(e) => handleStatusChange(report.id, e.target.value)}
+                          className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status)}`}
+                        >
+                          <option value="pending">BARU</option>
+                          <option value="in_progress">PROGRESS</option>
+                          <option value="closed">SELESAI</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(report.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => openReplyModal(report)}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                          </svg>
+                          Balas
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden divide-y divide-gray-200">
+              {filteredReports.map((report) => (
+                <div key={report.id} className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">
+                            {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {report.reporter_name || report.user?.name || 'Unknown'}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {formatDate(report.created_at)}
+                        </div>
                       </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{report.user?.name || 'Unknown'}</h3>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm text-gray-600">
-                        <span className="flex items-center truncate">
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          <span className="truncate">{report.user?.email || '-'}</span>
-                        </span>
-                        <span className="flex items-center">
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          {report.reporter_phone}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                    {getStatusBadge(report.status)}
-                    <button
-                      onClick={() => toggleCardExpansion(report.id)}
-                      className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                    <select
+                      value={report.status}
+                      onChange={(e) => handleStatusChange(report.id, e.target.value)}
+                      className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status)}`}
                     >
-                      <svg 
-                        className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 transform transition-transform ${expandedCards[report.id] ? 'rotate-180' : ''}`} 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <option value="pending">BARU</option>
+                      <option value="in_progress">PROGRESS</option>
+                      <option value="closed">SELESAI</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => openReplyModal(report)}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                       </svg>
+                      Balas
                     </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Reply Modal */}
+      {replyModal.isOpen && replyModal.report && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-red-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                  Balas Keluhan
+                </h3>
+                <button
+                  onClick={closeReplyModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
+            </div>
 
-              {/* Card Content */}
-              <div className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-                  {/* Left Column - Report Details */}
-                  <div className="xl:col-span-2 space-y-4">
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                      <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                        </svg>
-                        {report.category}
-                      </span>
-                      {report.tower?.site_name && (
-                        <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                          <span className="truncate">{report.tower.site_name}</span>
-                        </span>
-                      )}
+            {/* Modal Content */}
+            <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column - Report Details */}
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Informasi Pelapor
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center">
+                        <span className="font-medium text-gray-600 w-16">Nama:</span>
+                        <span className="text-gray-900">{replyModal.report.reporter_name || replyModal.report.user?.name || '-'}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium text-gray-600 w-16">Email:</span>
+                        <span className="text-gray-900">{replyModal.report.user?.email || '-'}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium text-gray-600 w-16">Telepon:</span>
+                        <span className="text-gray-900">{replyModal.report.reporter_phone}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium text-gray-600 w-16">Status:</span>
+                        <div className="ml-1">
+                          {getStatusBadge(replyModal.report.status)}
+                        </div>
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        Pesan Keluhan
-                      </h4>
-                      <p className="text-sm text-gray-900 leading-relaxed">{report.message}</p>
-                    </div>
-
-                    {/* Images */}
-                    {report.images && report.images.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      Detail Keluhan
+                    </h4>
+                    <div className="space-y-3 text-sm">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <span className="font-medium text-gray-600 block mb-1">Kategori:</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                           </svg>
-                          Lampiran Gambar ({report.images.length})
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                          {report.images.map((img, index) => (
-                            <div key={img.id} className="relative group">
-                              <img 
-                                src={`/storage/${img.image_path}`} 
-                                className="w-full h-16 sm:h-20 lg:h-24 object-cover rounded-lg border-2 border-gray-200 hover:border-red-400 transition-all cursor-pointer transform hover:scale-105"
-                                alt={`Lampiran keluhan ${index + 1}`}
-                                onClick={() => openLightbox(`/storage/${img.image_path}`)}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 rounded-lg transition-all flex items-end justify-center pb-1 sm:pb-2">
-                                <div className="text-white text-xs bg-black/70 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
-                                  Klik untuk memperbesar
+                          {replyModal.report.category}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600 block mb-1">Pesan Keluhan:</span>
+                        <p className="text-gray-900 leading-relaxed bg-white p-3 rounded border">{replyModal.report.message}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {replyModal.report.tower && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Informasi Tower
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600 block mb-1">Nama Site:</span>
+                          <span className="text-gray-900">{replyModal.report.tower.site_name}</span>
+                        </div>
+                        {replyModal.report.tower.alamat_menara && (
+                          <div>
+                            <span className="font-medium text-gray-600 block mb-1">Alamat Detail:</span>
+                            <p className="text-gray-900 leading-relaxed">{replyModal.report.tower.alamat_menara}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Media Files */}
+                  {replyModal.report.images && replyModal.report.images.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z" />
+                        </svg>
+                        Lampiran Media ({replyModal.report.images.length})
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {replyModal.report.images.map((media, index) => {
+                          const mediaPath = `/storage/${media.image_path}`;
+                          const isVideo = media.file_type?.startsWith('video/') || media.image_path.match(/\.(mp4|mov|avi|mkv)$/i);
+                          
+                          return (
+                            <div key={media.id} className="relative group">
+                              {isVideo ? (
+                                <div className="relative">
+                                  <video 
+                                    src={mediaPath}
+                                    className="w-full h-20 object-cover rounded-lg border-2 border-gray-200 hover:border-red-400 transition-all cursor-pointer"
+                                    onClick={() => openLightbox(mediaPath, 'video')}
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg">
+                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded">
+                              ) : (
+                                <img 
+                                  src={mediaPath}
+                                  className="w-full h-20 object-cover rounded-lg border-2 border-gray-200 hover:border-red-400 transition-all cursor-pointer transform hover:scale-105"
+                                  alt={`Lampiran keluhan ${index + 1}`}
+                                  onClick={() => openLightbox(mediaPath, 'image')}
+                                />
+                              )}
+                              <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded">
                                 {index + 1}
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column - Response Form */}
+                <div className="space-y-4">
+                  {/* Status Change */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Status Keluhan
+                    </label>
+                    <select 
+                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
+                      value={replyModal.report.status} 
+                      onChange={(e) => replyModal.report && handleStatusChange(replyModal.report.id, e.target.value)}
+                    >
+                      <option value="pending">Baru</option>
+                      <option value="in_progress">Progress</option>
+                      <option value="responded">Dibalas</option>
+                      <option value="closed">Selesai</option>
+                    </select>
                   </div>
 
-                  {/* Right Column - Actions */}
-                  <div className="space-y-4">
-                    {/* Status Change */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Status Keluhan
-                      </label>
-                      <select 
-                        className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
-                        value={report.status} 
-                        onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="responded">Responded</option>
-                        <option value="closed">Closed</option>
-                      </select>
-                    </div>
-
-                    {/* Response Section */}
-                    <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                        Kirim Respon
-                      </h4>
-                      <div className="space-y-3">
-                        <textarea
-                          className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all resize-none" 
-                          rows={3}
-                          placeholder="Tulis respon untuk keluhan ini..." 
-                          value={replyText[report.id] ?? ''} 
-                          onChange={(e) => setReplyText({ ...replyText, [report.id]: e.target.value })}
-                        />
-                        
-                        {/* Image Upload */}
-                        <div className="space-y-2">
-                          <label className="flex items-center gap-2 px-2 sm:px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg cursor-pointer transition-colors text-sm border border-gray-300">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="truncate">Lampirkan Gambar</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="hidden"
-                              onChange={(e) => handleImageSelect(report.id, e.target.files)}
-                            />
-                          </label>
-                          <p className="text-xs text-gray-500">Max 5 gambar, 5MB per file</p>
-                          
-                          {/* Selected Images Preview */}
-                          {selectedImages[report.id] && selectedImages[report.id].length > 0 && (
-                            <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded-lg border border-gray-200">
-                              {selectedImages[report.id].map((image, index) => (
-                                <div key={index} className="relative group">
-                                  <img
-                                    src={URL.createObjectURL(image)}
-                                    className="w-full h-12 sm:h-16 object-cover rounded-lg border border-gray-300"
-                                    alt={`Preview ${index + 1}`}
-                                  />
-                                  <button
-                                    onClick={() => removeImage(report.id, index)}
-                                    className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs hover:bg-red-600"
-                                  >
-                                    ×
-                                  </button>
+                  {/* Response Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                      Kirim Respon
+                    </label>
+                    <textarea
+                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all resize-none" 
+                      rows={4}
+                      placeholder="Tulis respon untuk keluhan ini..." 
+                      value={replyModal.report ? (replyText[replyModal.report.id] ?? '') : ''} 
+                      onChange={(e) => replyModal.report && setReplyText({ ...replyText, [replyModal.report.id]: e.target.value })}
+                    />
+                  </div>
+                  
+                  {/* Image Upload */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg cursor-pointer transition-colors text-sm border border-gray-300">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Lampirkan File (Gambar/Video)</span>
+                      <input
+                        type="file"
+                        accept="image/*,video/*,.mp4,.mov,.avi,.mkv"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => replyModal.report && handleFileSelect(replyModal.report.id, e.target.files)}
+                      />
+                    </label>
+                    <p className="text-xs text-gray-500">Max 3 gambar (5MB), 2 video (50MB)</p>
+                    
+                    {/* Selected Files Preview */}
+                    {replyModal.report && selectedFiles[replyModal.report.id] && selectedFiles[replyModal.report.id].length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                        {selectedFiles[replyModal.report.id].map((file: File, index: number) => (
+                          <div key={index} className="relative group">
+                            {file.type.startsWith('image/') ? (
+                              <img
+                                src={URL.createObjectURL(file)}
+                                className="w-full h-16 object-cover rounded-lg border border-gray-300"
+                                alt={`Preview ${index + 1}`}
+                              />
+                            ) : (
+                              <div className="w-full h-16 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                                <div className="text-center">
+                                  <svg className="w-4 h-4 text-gray-500 mx-auto mb-1" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                  </svg>
+                                  <span className="text-xs text-gray-500">VIDEO</span>
                                 </div>
-                              ))}
+                              </div>
+                            )}
+                            <div className="absolute -bottom-1 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded-b truncate">
+                              {file.name}
                             </div>
-                          )}
-                        </div>
-
-                        <button 
-                          className="w-full px-4 py-2 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                          onClick={() => handleSendReply(report.id)}
-                          disabled={!replyText[report.id]?.trim()}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                          Kirim Respon
-                        </button>
+                            <button
+                              onClick={() => replyModal.report && removeFile(replyModal.report.id, index)}
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3">
+              <button
+                onClick={closeReplyModal}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                className="px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                onClick={() => replyModal.report && handleSendReply(replyModal.report.id)}
+                disabled={!replyModal.report || !replyText[replyModal.report.id]?.trim()}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Kirim Respon
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox Modal */}
-      {lightboxImage && (
+      {lightboxMedia && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" 
           onClick={closeLightbox}
         >
           <div className="relative max-w-4xl max-h-full">
-            <img 
-              src={lightboxImage}
-              className="max-w-full max-h-full object-contain rounded-lg"
-              alt="Gambar keluhan full size"
-              onClick={(e) => e.stopPropagation()}
-            />
+            {lightboxMedia.type === 'video' ? (
+              <video 
+                src={lightboxMedia.url}
+                className="max-w-full max-h-full object-contain rounded-lg"
+                controls
+                autoPlay
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img 
+                src={lightboxMedia.url}
+                className="max-w-full max-h-full object-contain rounded-lg"
+                alt="Media keluhan full size"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             <button
               onClick={closeLightbox}
               className="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all"
@@ -575,7 +731,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
               </svg>
             </button>
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg text-sm">
-              Klik di luar gambar untuk menutup
+              Klik di luar {lightboxMedia.type === 'video' ? 'video' : 'gambar'} untuk menutup
             </div>
           </div>
         </div>
