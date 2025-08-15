@@ -46,4 +46,44 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Check if user is staff (admin or operator)
+     */
+    public function isStaff(): bool
+    {
+        return in_array($this->role, ['admin', 'operator'], true);
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is regular user
+     */
+    public function isUser(): bool
+    {
+        return $this->role === 'user';
+    }
+
+    /**
+     * One-to-many relationship with feedbacks
+     */
+    public function feedbacks()
+    {
+        return $this->hasMany(Feedback::class);
+    }
+
+    /**
+     * One-to-many relationship with feedback responses
+     */
+    public function feedbackResponses()
+    {
+        return $this->hasMany(FeedbackResponse::class);
+    }
 }

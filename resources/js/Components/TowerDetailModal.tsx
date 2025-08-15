@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
 
 interface TowerDetailProps {
   isOpen: boolean;
@@ -13,9 +14,13 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
   tower,
   onViewMap
 }) => {
+  const { auth } = usePage().props as any;
   const [selectedDetail, setSelectedDetail] = useState<string>('-- Pilih Detail --');
   
   if (!isOpen || !tower) return null;
+  
+  // Show feedback button for guests and non-staff users
+  const canSendFeedback = !auth?.user || (auth?.user && !['admin', 'operator'].includes(auth.user.role));
   
   // Available tower information fields based on database columns
   const availableFields = [
@@ -162,32 +167,49 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
         </div>
         
         {/* Footer with actions */}
-        <div className="p-3 sm:p-4 border-t flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-3">
-          <button 
-            onClick={() => onViewMap(tower)} 
-            className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
-            style={{ backgroundColor: '#1B5E20' }}
-          >
-            <span className="material-icons-outlined mr-1">place</span>
-            Lihat di Peta
-          </button>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-            <button 
-              onClick={onClose} 
-              className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
-              style={{ backgroundColor: '#212121' }}
-            >
-              <span className="material-icons-outlined mr-1">close</span>
-              Tutup
-            </button>
-            <button 
-              onClick={handleDownloadReport}
-              className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
-              style={{ backgroundColor: '#B71C1C' }}
-            >
-              <span className="material-icons-outlined mr-1" style={{ color: '#FFD700' }}>download</span>
-              Download Report
-            </button>
+        <div className="p-3 sm:p-4 border-t flex flex-col gap-2">
+          {/* Action buttons row */}
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              <button 
+                onClick={() => onViewMap(tower)} 
+                className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
+                style={{ backgroundColor: '#1B5E20' }}
+              >
+                <span className="material-icons-outlined mr-1">place</span>
+                Lihat di Peta
+              </button>
+              {canSendFeedback && (
+                <Link
+                  href={`/feedback?tower_id=${tower.id}&tower_name=${encodeURIComponent(tower.site_name)}`}
+                  className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
+                  style={{ backgroundColor: '#B71C1C' }}
+                  onClick={onClose}
+                >
+                  <span className="material-icons-outlined mr-1">feedback</span>
+                  Kirim Masukan
+                </Link>
+              )}
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              <button 
+                onClick={onClose} 
+                className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
+                style={{ backgroundColor: '#212121' }}
+              >
+                <span className="material-icons-outlined mr-1">close</span>
+                Tutup
+              </button>
+              <button 
+                onClick={handleDownloadReport}
+                className="text-white px-4 py-2 rounded-lg flex items-center justify-center hover:opacity-90 w-full sm:w-auto"
+                style={{ backgroundColor: '#B71C1C' }}
+              >
+                <span className="material-icons-outlined mr-1" style={{ color: '#FFD700' }}>download</span>
+                Download Report
+              </button>
+            </div>
           </div>
         </div>
       </div>

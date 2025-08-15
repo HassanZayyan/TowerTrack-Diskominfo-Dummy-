@@ -11,11 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('report_responses', function (Blueprint $table) {
+        Schema::create('feedbacks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('report_id')->constrained('reports')->onDelete('cascade');
+            $table->foreignId('tower_id')->constrained('towers')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('sender_phone')->nullable();
+            $table->string('category');
             $table->text('message');
+            $table->enum('status', ['pending', 'in_progress', 'responded', 'resolved', 'closed'])->default('pending');
             $table->timestamps();
         });
     }
@@ -25,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('report_responses');
+        Schema::dropIfExists('feedbacks');
     }
 };

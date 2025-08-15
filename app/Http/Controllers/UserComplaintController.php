@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
-use App\Models\ReportImage;
+use App\Models\ReportAsset;
 use App\Models\Tower;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,7 +22,7 @@ class UserComplaintController extends Controller
             ->get()
             ->toArray();
 
-        return Inertia::render('Complaint', [
+        return Inertia::render('Complaint/Create', [
             'towers' => $list,
         ]);
     }
@@ -54,9 +54,13 @@ class UserComplaintController extends Controller
         if ($request->hasFile('foto')) {
             foreach ($request->file('foto') as $photo) {
                 $path = $photo->store('report-photos', 'public');
-                ReportImage::create([
+                ReportAsset::create([
                     'report_id' => $report->id,
-                    'image_path' => $path,
+                    'file_path' => $path,
+                    'file_name' => $photo->getClientOriginalName(),
+                    'file_type' => 'image',
+                    'mime_type' => $photo->getMimeType(),
+                    'file_size' => $photo->getSize(),
                 ]);
             }
         }
