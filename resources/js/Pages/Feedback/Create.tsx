@@ -48,29 +48,63 @@ function getSimilarityScore(text: string, query: string): number {
   return 1.0 - distance / maxLen;
 }
 
-function highlightText(text: string, query: string) {
-  if (!query || !text) return text;
+// Fungsi untuk highlight text yang cocok - dengan fuzzy matching
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text;
   
   const normalizedText = normalizeText(text);
   const normalizedQuery = normalizeText(query);
   const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length > 0);
   
-  if (queryWords.length === 0) return text;
+  let highlightedText = text;
+  const matches: Array<{ start: number, end: number, word: string }> = [];
   
-  const matches: Array<{start: number, end: number, word: string}> = [];
-  
+  // Find all matches
   queryWords.forEach(queryWord => {
-    if (queryWord.length > 0) {
-      const index = normalizedText.indexOf(queryWord);
-      if (index !== -1) {
+    const textWords = normalizedText.split(/\s+/);
+    let currentIndex = 0;
+    
+    for (const textWord of textWords) {
+      const wordStartInOriginal = text.toLowerCase().indexOf(textWord, currentIndex);
+      if (wordStartInOriginal === -1) continue;
+      
+      const wordEndInOriginal = wordStartInOriginal + textWord.length;
+      
+      // Check for exact, starts with, contains, or fuzzy match
+      if (textWord === queryWord || 
+          textWord.startsWith(queryWord) || 
+          (queryWord.length >= 2 && textWord.includes(queryWord)) ||
+          (queryWord.length >= 3 && getSimilarityScore(textWord, queryWord) > 0.7)) {
+        
         matches.push({
-          start: index,
-          end: index + queryWord.length,
+          start: wordStartInOriginal,
+          end: wordEndInOriginal,
           word: queryWord
         });
       }
+      
+      currentIndex = wordEndInOriginal;
     }
   });
+  
+  if (matches.length === 0) {
+    // Fallback: highlight any substring matches
+    queryWords.forEach(queryWord => {
+      const escapedWord = queryWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escapedWord})`, 'gi');
+      const match = text.match(regex);
+      if (match) {
+        const index = text.toLowerCase().indexOf(queryWord);
+        if (index !== -1) {
+          matches.push({
+            start: index,
+            end: index + queryWord.length,
+            word: queryWord
+          });
+        }
+      }
+    });
+  }
   
   if (matches.length === 0) return text;
   
@@ -120,29 +154,43 @@ function highlightText(text: string, query: string) {
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const { errors, flash } = usePage().props as any;
   
-  const [formData, setFormData] = useState({
-    sender_phone: '',
-    category: '',
-    tower_id: '',
-    message: '',
-    assets: [] as File[]
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  const [form, setForm] = useState({
+    nama: '',
+    telepon: '',
+    kategori: '',
+    lokasi_tower: '', // This will store site_name for display purposes
+    lokasi_tower_display: '', // Display value for the selected tower
+    tower_id: '', // Added to store the tower ID for the foreign key
+    pesan: '',
   });
   
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTowerName, setSelectedTowerName] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
-  const [previewVideos, setPreviewVideos] = useState<string[]>([]);
-  
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [validation, setValidation] = useState({
+    nama: false,
+    telepon: false,
+    kategori: false,
+    lokasi_tower: false,
+    pesan: false
+  });
 
-  // Smart search function
-  const searchTowers = useCallback((query: string) => {
-    if (!query || query.length < 1) return [];
-    
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isOtherCategory, setIsOtherCategory] = useState(false);
+
+  // Ultra-accurate filtering function dengan fuzzy search
+  const filteredTowers = useMemo(() => {
+    const query = searchTerm.trim();
+    if (!query || query.length === 0) return [];
+
     const normalizedQuery = normalizeText(query);
     const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length > 0);
 
@@ -158,13 +206,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       const address = tower.alamat_menara || '';
       const normalizedSiteName = normalizeText(siteName);
       const normalizedAddress = normalizeText(address);
+      const combinedText = `${normalizedSiteName} ${normalizedAddress}`;
       
       let score = 0;
       let matchType = '';
       let matchedText = '';
       let matchFound = false;
 
-      // EXACT MATCH
+      // 1. EXACT MATCH (Perfect Score)
       if (normalizedSiteName === normalizedQuery) {
         score = 10000;
         matchType = 'exact_name';
@@ -178,7 +227,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         matchFound = true;
       }
       
-      // STARTS WITH
+      // 2. STARTS WITH (Very High Score)
       else if (normalizedSiteName.startsWith(normalizedQuery)) {
         score = 8000 + (normalizedQuery.length / normalizedSiteName.length) * 1000;
         matchType = 'starts_with_name';
@@ -192,380 +241,721 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         matchFound = true;
       }
       
-      // WORD-LEVEL MATCHING
-      else {
-        let nameWordMatches = 0;
-        let addressWordMatches = 0;
+      // 3. WORD-LEVEL MATCHING
+      else if (queryWords.length > 0) {
+        const siteWords = normalizedSiteName.split(/\s+/);
+        const addressWords = normalizedAddress.split(/\s+/);
+        const allWords = [...siteWords, ...addressWords];
         
-        queryWords.forEach(queryWord => {
-          if (normalizedSiteName.includes(queryWord)) nameWordMatches++;
-          if (normalizedAddress.includes(queryWord)) addressWordMatches++;
-        });
+        let wordMatchScore = 0;
+        let matchedWords = 0;
         
-        if (nameWordMatches > 0) {
-          score = 6000 + (nameWordMatches / queryWords.length) * 1000;
-          matchType = 'word_match_name';
+        // Check each query word against all text words
+        for (const queryWord of queryWords) {
+          let bestWordMatch = 0;
+          let bestMatchedWord = '';
+          
+          for (const textWord of allWords) {
+            if (textWord === queryWord) {
+              bestWordMatch = 1000; // Exact word match
+              bestMatchedWord = textWord;
+            } else if (textWord.startsWith(queryWord)) {
+              const currentScore = 800 + (queryWord.length / textWord.length) * 200;
+              if (currentScore > bestWordMatch) {
+                bestWordMatch = currentScore;
+                bestMatchedWord = textWord;
+              }
+            } else if (textWord.includes(queryWord) && queryWord.length >= 2) {
+              const currentScore = 600 + (queryWord.length / textWord.length) * 100;
+              if (currentScore > bestWordMatch) {
+                bestWordMatch = currentScore;
+                bestMatchedWord = textWord;
+              }
+            } else if (queryWord.length >= 3) {
+              // Fuzzy matching untuk typo tolerance
+              const similarity = getSimilarityScore(textWord, queryWord);
+              if (similarity > 0.7) {
+                const currentScore = 400 * similarity;
+                if (currentScore > bestWordMatch) {
+                  bestWordMatch = currentScore;
+                  bestMatchedWord = textWord;
+                }
+              }
+            }
+          }
+          
+          if (bestWordMatch > 0) {
+            wordMatchScore += bestWordMatch;
+            matchedWords++;
+          }
+        }
+        
+        // All words must be found for multi-word queries
+        if (queryWords.length === 1 || matchedWords === queryWords.length) {
+          score = wordMatchScore;
+          matchType = `word_match_${matchedWords}`;
           matchedText = siteName;
           matchFound = true;
         }
-        else if (addressWordMatches > 0) {
-          score = 5000 + (addressWordMatches / queryWords.length) * 1000;
-          matchType = 'word_match_address';
+      }
+      
+      // 4. SUBSTRING MATCHING (fallback)
+      if (!matchFound && normalizedQuery.length >= 2) {
+        if (normalizedSiteName.includes(normalizedQuery)) {
+          score = 300 + (normalizedQuery.length / normalizedSiteName.length) * 200;
+          matchType = 'substring_name';
+          matchedText = siteName;
+          matchFound = true;
+        }
+        else if (normalizedAddress.includes(normalizedQuery)) {
+          score = 200 + (normalizedQuery.length / normalizedAddress.length) * 100;
+          matchType = 'substring_address';
           matchedText = address;
           matchFound = true;
         }
+      }
+      
+      // 5. FUZZY MATCHING (untuk typo)
+      if (!matchFound && normalizedQuery.length >= 3) {
+        const nameSimilarity = getSimilarityScore(normalizedSiteName, normalizedQuery);
+        const addressSimilarity = getSimilarityScore(normalizedAddress, normalizedQuery);
         
-        // SIMILARITY MATCHING (Fuzzy)
-        else {
-          const nameSimilarity = getSimilarityScore(normalizedSiteName, normalizedQuery);
-          const addressSimilarity = getSimilarityScore(normalizedAddress, normalizedQuery);
-          
-          if (nameSimilarity > 0.6) {
-            score = 2000 + nameSimilarity * 1000;
-            matchType = 'similarity_name';
-            matchedText = siteName;
-            matchFound = true;
-          }
-          else if (addressSimilarity > 0.6) {
-            score = 1000 + addressSimilarity * 1000;
-            matchType = 'similarity_address';
-            matchedText = address;
-            matchFound = true;
-          }
+        if (nameSimilarity > 0.6) {
+          score = 150 * nameSimilarity;
+          matchType = 'fuzzy_name';
+          matchedText = siteName;
+          matchFound = true;
+        } else if (addressSimilarity > 0.6) {
+          score = 100 * addressSimilarity;
+          matchType = 'fuzzy_address';
+          matchedText = address;
+          matchFound = true;
         }
       }
 
+      // Boost score untuk hasil yang lebih pendek (lebih relevan)
       if (matchFound) {
+        const lengthPenalty = Math.max(0, 1 - (siteName.length / 50));
+        score = score + (score * lengthPenalty * 0.1);
+        
         results.push({ tower, score, matchType, matchedText });
       }
     }
 
-    return results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 50);
-  }, [towers]);
+    // Sort berdasarkan score tertinggi, lalu alphabetically
+    results.sort((a, b) => {
+      if (Math.abs(a.score - b.score) < 10) {
+        return a.tower.site_name.localeCompare(b.tower.site_name);
+      }
+      return b.score - a.score;
+    });
+    
+    // Return maksimal 15 hasil teratas
+    return results.slice(0, 15).map(result => result.tower);
+  }, [searchTerm, towers]);
 
-  const filteredTowers = useMemo(() => {
-    return searchTowers(searchQuery);
-  }, [searchQuery, searchTowers]);
+  // Handle input change dengan intelligent search
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    // Show dropdown segera saat ada input, bahkan 1 karakter
+    if (value.length > 0) {
+      setShowDropdown(true);
+      // Auto-select first result if available
+      setTimeout(() => {
+        setActiveIndex(0);
+      }, 100);
+    } else {
+      setShowDropdown(false);
+      setActiveIndex(-1);
+    }
+    
+    // Clear validation error
+    if (validation.lokasi_tower) {
+      setValidation(prev => ({ ...prev, lokasi_tower: false }));
+    }
+  }, [validation.lokasi_tower]);
 
-  const handleTowerSelect = (tower: any) => {
-    setFormData(prev => ({ ...prev, tower_id: tower.id.toString() }));
-    setSelectedTowerName(tower.site_name);
-    setSearchQuery(tower.site_name);
+  // Select tower function
+  const selectTower = useCallback((tower: { id: number; site_name: string; alamat_menara?: string }) => {
+    const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
+    setForm((prev) => ({
+      ...prev,
+      tower_id: String(tower.id),
+      lokasi_tower: tower.site_name,
+      lokasi_tower_display: fullAddress,
+    }));
+    setSearchTerm('');
     setShowDropdown(false);
-  };
+    setActiveIndex(-1);
+    
+    // Focus kembali ke input setelah selection
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+    
+    if (validation.lokasi_tower) {
+      setValidation((prev) => ({ ...prev, lokasi_tower: false }));
+    }
+  }, [validation.lokasi_tower]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => {
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      const isValidSize = file.size <= 20 * 1024 * 1024; // 20MB
-      return (isImage || isVideo) && isValidSize;
-    });
+  // Clear selection function
+  const clearSelection = useCallback(() => {
+    setForm(prev => ({ 
+      ...prev, 
+      lokasi_tower: '', 
+      lokasi_tower_display: '', 
+      tower_id: '' 
+    }));
+    setSearchTerm('');
+    setShowDropdown(false);
+    setActiveIndex(-1);
+    
+    // Focus ke input setelah clear
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  }, []);
 
-    setFormData(prev => ({ ...prev, assets: [...prev.assets, ...validFiles] }));
-
-    // Create previews
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (file.type.startsWith('image/')) {
-          setPreviewImages(prev => [...prev, result]);
-        } else if (file.type.startsWith('video/')) {
-          setPreviewVideos(prev => [...prev, result]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeFile = (index: number) => {
-    const removedFile = formData.assets[index];
-    const newAssets = formData.assets.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, assets: newAssets }));
-
-    // Remove preview
-    if (removedFile.type.startsWith('image/')) {
-      setPreviewImages(prev => prev.filter((_, i) => i !== index));
-    } else if (removedFile.type.startsWith('video/')) {
-      setPreviewVideos(prev => prev.filter((_, i) => i !== index));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // Clear validation error if typing
+    if (validation[name as keyof typeof validation] !== undefined) {
+      setValidation(prev => ({ ...prev, [name]: false }));
     }
   };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const formDataToSend = new FormData();
-    formDataToSend.append('sender_phone', formData.sender_phone);
-    formDataToSend.append('category', formData.category);
-    formDataToSend.append('tower_id', formData.tower_id);
-    formDataToSend.append('message', formData.message);
+  
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown) return;
     
-    formData.assets.forEach((file, index) => {
-      formDataToSend.append(`assets[${index}]`, file);
-    });
-
-    router.post('/feedback', formDataToSend, {
-      onFinish: () => setIsSubmitting(false),
-      onSuccess: () => {
-        setFormData({
-          sender_phone: '',
-          category: '',
-          tower_id: '',
-          message: '',
-          assets: []
-        });
-        setSelectedTowerName('');
-        setSearchQuery('');
-        setPreviewImages([]);
-        setPreviewVideos([]);
-      }
-    });
-  };
-
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setActiveIndex(prev => 
+          prev < filteredTowers.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setActiveIndex(prev => 
+          prev > 0 ? prev - 1 : filteredTowers.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (activeIndex >= 0 && filteredTowers[activeIndex]) {
+          selectTower(filteredTowers[activeIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowDropdown(false);
+        setActiveIndex(-1);
+        inputRef.current?.blur();
+        break;
+      case 'Tab':
+        setShowDropdown(false);
+        setActiveIndex(-1);
+        break;
+    }
+  }, [showDropdown, activeIndex, filteredTowers, selectTower]);
+  
+  // Event handler untuk klik di luar dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
+        setActiveIndex(-1);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  return (
-    <MainLayout>
-      <Head title="Kirim Masukan" />
+  // Auto-select first item when typing
+  useEffect(() => {
+    if (showDropdown && filteredTowers.length > 0 && activeIndex === -1) {
+      setActiveIndex(0);
+    }
+  }, [filteredTowers, showDropdown]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+
+    // Check if adding these files would exceed the limit of 3
+    if (files.length + selectedFiles.length > 3) {
+      setErrorMessage('Maksimal 3 file yang dapat diunggah');
+      return;
+    }
+
+    // Check each file for type and size
+    const allowedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime', 'video/x-msvideo'];
+    const maxSize = 20 * 1024 * 1024; // 20MB
+    const newFiles: File[] = [];
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
       
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-green-600 px-8 py-6">
-                <h1 className="text-2xl font-bold text-white flex items-center">
-                  <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  Kirim Masukan
-                </h1>
-                <p className="text-blue-100 mt-2">
-                  Sampaikan masukan Anda mengenai menara telekomunikasi
-                </p>
+      if (!allowedTypes.includes(file.type)) {
+        setErrorMessage('Hanya file JPG, PNG, MP4, MOV, dan AVI yang diizinkan');
+        continue;
+      }
+      
+      if (file.size > maxSize) {
+        setErrorMessage('Ukuran file tidak boleh melebihi 20MB');
+        continue;
+      }
+      
+      newFiles.push(file);
+    }
+
+    // Add the valid files to the array
+    setFiles(prev => [...prev, ...newFiles]);
+    
+    // Clear the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    const newValidation = {
+      nama: !form.nama,
+      telepon: !form.telepon,
+      kategori: !form.kategori,
+      lokasi_tower: !form.lokasi_tower,
+      pesan: !form.pesan
+    } as const;
+    
+    setValidation(newValidation);
+    
+    if (Object.values(newValidation).some(Boolean)) {
+      setErrorMessage('Silakan lengkapi semua field yang wajib diisi');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setErrorMessage('');
+    
+    // Create form data to handle file uploads
+    const formData = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    
+    files.forEach((file, index) => {
+      formData.append(`foto[${index}]`, file);
+    });
+    
+    // Submit using Inertia router
+    router.post('/feedback', formData, {
+      onSuccess: () => {
+        setSuccessMessage('Masukan Anda telah berhasil dikirimkan');
+        setForm({
+          nama: '',
+          telepon: '',
+          kategori: '',
+          lokasi_tower: '',
+          lokasi_tower_display: '',
+          tower_id: '',
+          pesan: '',
+        });
+        setFiles([]);
+        setIsOtherCategory(false);
+        setIsSubmitting(false);
+      },
+      onError: (errors: Record<string, string>) => {
+        setErrorMessage(Object.values(errors).join(', '));
+        setIsSubmitting(false);
+      }
+    });
+  };
+
+  const handleReset = () => {
+    setForm({
+      nama: '',
+      telepon: '',
+      kategori: '',
+      lokasi_tower: '',
+      lokasi_tower_display: '',
+      tower_id: '',
+      pesan: '',
+    });
+    setFiles([]);
+    setIsOtherCategory(false);
+    setValidation({
+      nama: false,
+      telepon: false,
+      kategori: false,
+      lokasi_tower: false,
+      pesan: false
+    });
+    setErrorMessage('');
+    setSuccessMessage('');
+    setSearchTerm('');
+    setShowDropdown(false);
+    setActiveIndex(-1);
+  };
+
+  return (
+    <MainLayout title="Form Masukan" currentPage="/feedback">
+      <Head title="Form Masukan" />
+      
+      <div className="p-4 sm:p-6">
+        <div className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ backgroundColor: '#FFF8E1' }}>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
+              Guest Feedback - Sampaikan Masukan Anda
+            </h1>
+            <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
+              Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi
+            </p>
+          </div>
+          <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" />
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Masukan</h2>
+            
+            {successMessage && (
+              <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
+                {successMessage}
               </div>
-
-              {flash?.success && (
-                <div className="mx-8 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <p className="text-green-800">{flash.success}</p>
-                  </div>
+            )}
+            
+            {errorMessage && (
+              <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
+                {errorMessage}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Nama Lengkap <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="nama"
+                    value={form.nama}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
+                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                    placeholder="Masukkan nama lengkap"
+                  />
+                  {validation.nama && (
+                    <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
+                  )}
                 </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="p-8">
-                <div className="space-y-6">
-                  {/* Phone Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nomor Telepon *
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.sender_phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, sender_phone: e.target.value }))}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.sender_phone ? 'border-red-300' : 'border-gray-300'}`}
-                      placeholder="Contoh: 08123456789"
-                      required
-                    />
-                    {errors.sender_phone && (
-                      <p className="text-red-600 text-sm mt-1">{errors.sender_phone}</p>
-                    )}
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kategori Masukan *
-                    </label>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    No. Telepon <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="telepon"
+                    value={form.telepon}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
+                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                    placeholder="Masukkan nomor telepon"
+                  />
+                  {validation.telepon && (
+                    <p className="text-red-500 text-sm mt-1">Nomor telepon harus diisi</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Kategori Masukan <span className="text-red-600">*</span>
+                  </label>
+                  {!isOtherCategory ? (
                     <select
-                      value={formData.category}
-                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.category ? 'border-red-300' : 'border-gray-300'}`}
-                      required
+                      name="kategori"
+                      value={form.kategori}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "Lainnya") {
+                          setIsOtherCategory(true);
+                          setForm(prev => ({ ...prev, kategori: "" }));
+                        } else {
+                          handleChange(e);
+                        }
+                      }}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] text-base sm:text-sm p-3`}
+                      style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     >
-                      <option value="">Pilih Kategori</option>
+                      <option value="">Pilih kategori</option>
                       <option value="Saran Perbaikan">Saran Perbaikan</option>
                       <option value="Usulan Fitur">Usulan Fitur</option>
                       <option value="Kritik Konstruktif">Kritik Konstruktif</option>
                       <option value="Apresiasi">Apresiasi</option>
                       <option value="Lainnya">Lainnya</option>
                     </select>
-                    {errors.category && (
-                      <p className="text-red-600 text-sm mt-1">{errors.category}</p>
-                    )}
-                  </div>
-
-                  {/* Tower Search */}
-                  <div className="relative" ref={dropdownRef}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lokasi Menara *
-                    </label>
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setShowDropdown(true);
-                        if (!e.target.value) {
-                          setFormData(prev => ({ ...prev, tower_id: '' }));
-                          setSelectedTowerName('');
-                        }
-                      }}
-                      onFocus={() => setShowDropdown(true)}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.tower_id ? 'border-red-300' : 'border-gray-300'}`}
-                      placeholder="Ketik nama atau lokasi menara..."
-                      required
-                    />
-                    
-                    {showDropdown && filteredTowers.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {filteredTowers.slice(0, 10).map((result) => (
-                          <div
-                            key={result.tower.id}
-                            onClick={() => handleTowerSelect(result.tower)}
-                            className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                          >
-                            <div className="font-medium text-gray-900">
-                              {highlightText(result.tower.site_name, searchQuery)}
-                            </div>
-                            {result.tower.alamat_menara && (
-                              <div className="text-sm text-gray-600 mt-1">
-                                {highlightText(result.tower.alamat_menara, searchQuery)}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {errors.tower_id && (
-                      <p className="text-red-600 text-sm mt-1">{errors.tower_id}</p>
-                    )}
-                  </div>
-
-                  {/* Message */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pesan Masukan *
-                    </label>
-                    <textarea
-                      value={formData.message}
-                      onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                      rows={6}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${errors.message ? 'border-red-300' : 'border-gray-300'}`}
-                      placeholder="Tuliskan masukan Anda dengan jelas dan detail..."
-                      required
-                    />
-                    <div className="text-sm text-gray-500 mt-1">
-                      {formData.message.length}/1000 karakter
-                    </div>
-                    {errors.message && (
-                      <p className="text-red-600 text-sm mt-1">{errors.message}</p>
-                    )}
-                  </div>
-
-                  {/* File Upload */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lampiran (Opsional)
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  ) : (
+                    <div className="flex">
                       <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*,video/*"
-                        onChange={handleFileChange}
-                        className="hidden"
+                        type="text"
+                        name="kategori"
+                        value={form.kategori}
+                        onChange={handleChange}
+                        className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
+                        style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                        placeholder="Masukkan kategori masukan lainnya"
                       />
-                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          Klik untuk upload
-                        </button>
-                        <p className="text-gray-500 text-sm mt-1">
-                          Foto atau video, maksimal 20MB per file
-                        </p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOtherCategory(false);
+                          setForm(prev => ({ ...prev, kategori: "" }));
+                        }}
+                        className="ml-2 px-3 py-2 rounded-lg hover:opacity-90 text-white"
+                        style={{ backgroundColor: '#212121' }}
+                      >
+                        Batal
+                      </button>
                     </div>
-
-                    {/* File Previews */}
-                    {(previewImages.length > 0 || previewVideos.length > 0) && (
-                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {previewImages.map((preview, index) => (
-                          <div key={`img-${index}`} className="relative">
-                            <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
-                            <button
-                              type="button"
-                              onClick={() => removeFile(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                        {previewVideos.map((preview, index) => (
-                          <div key={`vid-${index}`} className="relative">
-                            <video src={preview} className="w-full h-24 object-cover rounded-lg" />
-                            <button
-                              type="button"
-                              onClick={() => removeFile(previewImages.length + index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Submit Button */}
-                  <div className="pt-4">
+                  )}
+                  {validation.kategori && (
+                    <p className="text-red-500 text-sm mt-1">Kategori harus dipilih</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Lokasi Tower <span className="text-red-600">*</span>
+                </label>
+                <div className="relative" ref={dropdownRef}>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder={form.lokasi_tower ? "" : "Ketik minimal 1 karakter untuk mencari..."}
+                    value={form.lokasi_tower ? form.lokasi_tower_display : searchTerm}
+                    onChange={form.lokasi_tower ? undefined : handleSearchChange}
+                    onFocus={() => {
+                      if (!form.lokasi_tower && searchTerm.trim().length > 0) {
+                        setShowDropdown(true);
+                      }
+                    }}
+                    onClick={() => {
+                      if (!form.lokasi_tower && searchTerm.trim().length > 0) {
+                        setShowDropdown(true);
+                      }
+                    }}
+                    onKeyDown={handleKeyDown}
+                    role="combobox"
+                    aria-expanded={showDropdown}
+                    aria-controls="tower-listbox"
+                    aria-autocomplete="list"
+                    readOnly={!!form.lokasi_tower}
+                    className={`w-full rounded-lg border ${validation.lokasi_tower ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3 pr-10 ${form.lokasi_tower ? 'bg-gray-50 cursor-default' : ''}`}
+                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                  />
+                  
+                  {/* Clear/Edit button */}
+                  {(form.lokasi_tower || searchTerm) && (
                     <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-700 hover:to-green-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      type="button"
+                      onClick={clearSelection}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title={form.lokasi_tower ? "Ubah pilihan" : "Hapus"}
                     >
-                      {isSubmitting ? (
-                        <div className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Mengirim...
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  {/* Dropdown */}
+                  {showDropdown && !form.lokasi_tower && (
+                    <div 
+                      id="tower-listbox" 
+                      role="listbox" 
+                      className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-lg max-h-60 overflow-auto border border-gray-300"
+                    >
+                      {filteredTowers.length === 0 ? (
+                        <div className="p-4 text-gray-500 text-center">
+                          {searchTerm.trim().length === 0 
+                            ? 'Mulai mengetik nama atau alamat tower...' 
+                            : (
+                              <div>
+                                <div className="mb-2">Tidak ditemukan tower dengan kata kunci:</div>
+                                <div className="font-medium text-gray-700">"{searchTerm}"</div>
+                                <div className="text-xs mt-2 text-gray-400">
+                                  💡 Coba gunakan kata kunci yang lebih umum atau periksa ejaan
+                                </div>
+                              </div>
+                            )
+                          }
                         </div>
                       ) : (
-                        'Kirim Masukan'
+                        <>
+                          <div className="px-4 py-2 bg-blue-50 border-b text-xs text-blue-700 font-medium">
+                            ✓ {filteredTowers.length} tower ditemukan untuk "{searchTerm}"
+                          </div>
+                          {filteredTowers.map((tower, index) => (
+                            <div
+                              key={tower.id}
+                              role="option"
+                              aria-selected={index === activeIndex}
+                              onMouseEnter={() => setActiveIndex(index)}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => selectTower(tower)}
+                              className={`p-4 cursor-pointer border-b last:border-b-0 transition-all duration-150 ${
+                                index === activeIndex 
+                                  ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="font-medium text-gray-900 mb-1">
+                                🏢 {highlightMatch(tower.site_name, searchTerm)}
+                              </div>
+                              {tower.alamat_menara && (
+                                <div className="text-sm text-gray-600">
+                                  📍 {highlightMatch(tower.alamat_menara, searchTerm)}
+                                </div>
+                              )}
+                              {index === activeIndex && (
+                                <div className="text-xs text-blue-600 mt-2 font-medium">
+                                  ⏎ Tekan Enter untuk memilih
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </>
                       )}
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </form>
-            </div>
+                {validation.lokasi_tower && (
+                  <p className="text-red-500 text-sm mt-1">Lokasi tower harus dipilih</p>
+                )}
+                {searchTerm && !showDropdown && !form.lokasi_tower && (
+                  <p className="text-blue-600 text-sm mt-1">Klik pada field untuk melihat hasil pencarian</p>
+                )}
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Upload Foto/Video (opsional)
+                </label>
+                <div className="flex items-center flex-wrap gap-3">
+                  <label className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-300">
+                    <span>Pilih File</span>
+                    <input 
+                      type="file" 
+                      accept=".jpg,.jpeg,.png,.mp4,.mov,.avi" 
+                      className="hidden" 
+                      onChange={handleFileChange}
+                      ref={fileInputRef}
+                      multiple
+                    />
+                  </label>
+                  <span className="text-gray-600">
+                    {files.length > 0 ? `${files.length} file dipilih` : 'Belum ada file dipilih'}
+                  </span>
+                </div>
+                <p className="text-gray-500 text-sm mt-2">
+                  Format yang didukung: JPG, PNG, MP4, MOV, AVI. Maksimal 20MB per file. Maksimal 3 file.
+                </p>
+                
+                {files.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {files.map((file, index) => (
+                      <div key={index} className="relative">
+                        <div className="w-20 h-20 rounded overflow-hidden border border-gray-300">
+                          {file.type.startsWith('image/') ? (
+                            <img 
+                              src={URL.createObjectURL(file)} 
+                              alt={`Preview ${index}`}
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                              <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute -top-2 -right-2 flex gap-1">
+                          <span className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
+                            {file.type.startsWith('image/') ? 'IMG' : 'VID'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Pesan/Masukan <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  name="pesan"
+                  value={form.pesan}
+                  onChange={handleChange}
+                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
+                  style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                  rows={6}
+                  placeholder="Jelaskan masukan Anda secara detail..."
+                  maxLength={500}
+                ></textarea>
+                {validation.pesan && (
+                  <p className="text-red-500 text-sm mt-1">Pesan harus diisi</p>
+                )}
+                <p className="text-gray-500 text-sm mt-1">
+                  {form.pesan.length}/500 karakter
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="px-6 py-3 border rounded-lg hover:opacity-90 text-white"
+                  style={{ backgroundColor: '#212121', borderColor: '#212121' }}
+                  disabled={isSubmitting}
+                >
+                  Reset
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white"
+                  style={{ backgroundColor: '#B71C1C' }}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Mengirim...' : 'Kirim Masukan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

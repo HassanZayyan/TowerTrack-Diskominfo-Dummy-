@@ -12,7 +12,7 @@ class ComplaintController extends Controller
 {
     public function index(Request $request)
     {
-        $reports = Report::with(['tower:id,site_name', 'images:id,report_id,image_path', 'user:id,name,email'])
+        $reports = Report::with(['tower:id,site_name', 'assets:id,report_id,file_path', 'user:id,name,email'])
             ->orderByDesc('created_at')
             ->get();
 

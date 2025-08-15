@@ -50,14 +50,22 @@ Route::middleware(['auth', NonStaffMiddleware::class])->get('/my-messages', func
         ->get();
 
     $feedbacks = collect();
-    if (class_exists('App\\Models\\Feedback')) {
-        $feedbacks = \App\Models\Feedback::with(['tower:id,site_name', 'responses:id,feedback_id,created_at'])
-            ->where('user_id', auth()->id())
-            ->orderByDesc('created_at')
-            ->get();
+    
+    // Safe check for feedbacks table and model
+    try {
+        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
+            $feedbacks = \App\Models\Feedback::with(['tower:id,site_name', 'responses:id,feedback_id,created_at'])
+                ->where('user_id', auth()->id())
+                ->orderByDesc('created_at')
+                ->get();
+        }
+    } catch (\Exception $e) {
+        // Log error but don't break the page
+        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
+        $feedbacks = collect();
     }
 
-    return Inertia::render('MyMessages', [
+    return Inertia::render('MyMessages/Index', [
         'reports' => $reports,
         'feedbacks' => $feedbacks,
     ]);

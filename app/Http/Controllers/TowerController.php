@@ -119,7 +119,7 @@ class TowerController extends Controller
                                 ->pluck('name')
                                 ->toArray();
 
-        return Inertia::render('DataTower', [
+        return Inertia::render('DataTower/Index', [
             'towers' => $towersData,
             'mapTowers' => $mapTowers,
             'availableOwners' => $availableOwners, // Add list of owners for filter

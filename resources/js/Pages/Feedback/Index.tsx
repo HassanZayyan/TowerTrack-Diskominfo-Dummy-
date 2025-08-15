@@ -70,37 +70,38 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
     <MainLayout>
       <Head title="Masukan Saya" />
       
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-              <div className="bg-gradient-to-r from-blue-600 to-green-600 px-8 py-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center">
-                      <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm2 2a1 1 0 000 2h8a1 1 0 100-2H5z" clipRule="evenodd" />
-                      </svg>
-                      Masukan Saya
-                    </h1>
-                    <p className="text-blue-100 mt-2">
-                      Riwayat masukan yang telah Anda kirimkan
-                    </p>
-                  </div>
-                  <Link
-                    href="/feedback"
-                    className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors duration-200"
-                  >
-                    Kirim Masukan Baru
-                  </Link>
-                </div>
-              </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="p-4 sm:p-6">
+          {/* Welcome Bar */}
+          <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
+            <div className="mb-3 sm:mb-0">
+              <h1 className="text-xl sm:text-2xl font-bold leading-snug" style={{ color: '#212121' }}>
+                <svg className="w-8 h-8 mr-3 inline-block" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm2 2a1 1 0 000 2h8a1 1 0 100-2H5z" clipRule="evenodd" />
+                </svg>
+                Masukan Saya
+              </h1>
+              <p className="mt-1 text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
+                Riwayat masukan yang telah Anda kirimkan
+              </p>
             </div>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/feedback"
+                className="px-4 py-2 rounded-lg font-medium text-white hover:opacity-90 transition-all duration-200"
+                style={{ backgroundColor: '#B71C1C' }}
+              >
+                Kirim Masukan Baru
+              </Link>
+              <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
 
             {/* Feedback List */}
             {feedbacks.data.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+              <div className="bg-white rounded-lg shadow p-12 text-center">
                 <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.95 8.95 0 01-2.4-.322l-3.6 1.8A1 1 0 016 20.5V17a8 8 0 110-10z" />
                 </svg>
@@ -108,7 +109,8 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
                 <p className="text-gray-500 mb-6">Anda belum pernah mengirim masukan. Mulai kirim masukan pertama Anda!</p>
                 <Link
                   href="/feedback"
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-green-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-green-700 transition-all duration-200"
+                  className="inline-flex items-center px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-all duration-200"
+                  style={{ backgroundColor: '#B71C1C' }}
                 >
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
@@ -119,7 +121,7 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
             ) : (
               <div className="space-y-6">
                 {feedbacks.data.map((feedback) => (
-                  <div key={feedback.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300">
+                  <div key={feedback.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow duration-300">
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
@@ -162,7 +164,8 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
                         </div>
                         <Link
                           href={`/feedback/${feedback.id}`}
-                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                          className="inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all duration-200"
+                          style={{ backgroundColor: '#B71C1C' }}
                         >
                           Lihat Detail
                           <svg className="w-4 h-4 ml-2" fill="currentColor" viewBox="0 0 20 20">
@@ -176,7 +179,7 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
 
                 {/* Pagination */}
                 {feedbacks.last_page > 1 && (
-                  <div className="bg-white rounded-2xl shadow-xl p-6">
+                  <div className="bg-white rounded-lg shadow p-6">
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-700">
                         Menampilkan {((feedbacks.current_page - 1) * feedbacks.per_page) + 1} - {Math.min(feedbacks.current_page * feedbacks.per_page, feedbacks.total)} dari {feedbacks.total} masukan
@@ -193,7 +196,8 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
                         {feedbacks.current_page < feedbacks.last_page && (
                           <Link
                             href={`/my-feedbacks?page=${feedbacks.current_page + 1}`}
-                            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                            className="px-3 py-2 text-white rounded-lg hover:opacity-90 transition-all duration-200"
+                            style={{ backgroundColor: '#B71C1C' }}
                           >
                             Selanjutnya
                           </Link>

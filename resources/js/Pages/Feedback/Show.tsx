@@ -120,13 +120,37 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
     <MainLayout>
       <Head title={`Detail Masukan #${feedback.id}`} />
       
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gray-50">
+        <div className="p-4 sm:p-6">
+          {/* Welcome Bar */}
+          <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
+            <div className="mb-3 sm:mb-0">
+              <h1 className="text-xl sm:text-2xl font-bold leading-snug" style={{ color: '#212121' }}>
+                <svg className="w-8 h-8 mr-3 inline-block" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Detail Masukan #{feedback.id}
+              </h1>
+              <p className="mt-1 text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
+                {feedback.tower.site_name}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                {getStatusBadge(feedback.status)}
+                <p className="text-sm mt-2" style={{ color: '#212121', opacity: 0.7 }}>
+                  {formatDate(feedback.created_at)}
+                </p>
+              </div>
+              <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
+            </div>
+          </div>
+
           <div className="max-w-4xl mx-auto">
             {/* Breadcrumb */}
             <nav className="mb-6">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Link href="/my-feedbacks" className="hover:text-blue-600 transition-colors duration-200">
+                <Link href="/my-feedbacks" className="hover:opacity-75 transition-opacity duration-200" style={{ color: '#B71C1C' }}>
                   Masukan Saya
                 </Link>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -137,35 +161,26 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
             </nav>
 
             {/* Main Content */}
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-green-600 px-8 py-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center">
-                      <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                      Detail Masukan #{feedback.id}
-                    </h1>
-                    <p className="text-blue-100 mt-2">
-                      {feedback.tower.site_name}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {getStatusBadge(feedback.status)}
-                    <p className="text-blue-100 text-sm mt-2">
-                      {formatDate(feedback.created_at)}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-white rounded-lg shadow overflow-hidden">
 
-              <div className="p-8">
+              <div className="p-6">
+                {/* Status Badge - Mobile */}
+                <div className="sm:hidden mb-6 text-center">
+                  {getStatusBadge(feedback.status)}
+                  <p className="text-sm text-gray-600 mt-2">
+                    {formatDate(feedback.created_at)}
+                  </p>
+                </div>
+
                 {/* Feedback Details */}
                 <div className="grid md:grid-cols-2 gap-8 mb-8">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Informasi Masukan</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#B71C1C' }}>
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      Informasi Masukan
+                    </h3>
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-600">Kategori</label>
@@ -184,7 +199,12 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Lokasi Menara</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#B71C1C' }}>
+                        <path fillRule="evenodd" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 111.414-1.414l4.243 4.242a.998.998 0 001.414 0l4.243-4.243a8 8 0 00-1.414-1.414z" clipRule="evenodd" />
+                      </svg>
+                      Lokasi Menara
+                    </h3>
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-600">Nama Site</label>
@@ -200,8 +220,13 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
 
                 {/* Message */}
                 <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Pesan Masukan</h3>
-                  <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#B71C1C' }}>
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    Pesan Masukan
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-6 border-l-4" style={{ borderLeftColor: '#B71C1C' }}>
                     <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">
                       {feedback.message}
                     </p>
@@ -211,7 +236,10 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
                 {/* Assets */}
                 {feedback.assets.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#B71C1C' }}>
+                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                      </svg>
                       Lampiran ({feedback.assets.length} file)
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -224,7 +252,10 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
 
                 {/* Responses */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#B71C1C' }}>
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
                     Balasan ({feedback.responses.length})
                   </h3>
                   
@@ -278,7 +309,7 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
               </div>
 
               {/* Footer Actions */}
-              <div className="bg-gray-50 px-8 py-4">
+              <div className="bg-gray-50 px-6 py-4">
                 <div className="flex justify-between items-center">
                   <Link
                     href="/my-feedbacks"

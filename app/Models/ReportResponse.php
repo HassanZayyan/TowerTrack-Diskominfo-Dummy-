@@ -13,7 +13,6 @@ class ReportResponse extends Model
         'report_id',
         'user_id',
         'message',
-        'image_path',
     ];
 
     public function report()
@@ -25,6 +24,11 @@ class ReportResponse extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+	public function assets()
+	{
+		return $this->hasMany(ReportResponseAsset::class, 'report_response_id');
+	}
 }
 
 

@@ -23,9 +23,9 @@ class Report extends Model
         return $this->belongsTo(Tower::class);
     }
     
-    public function images()
+    public function assets()
     {
-        return $this->hasMany(ReportImage::class);
+        return $this->hasMany(ReportAsset::class);
     }
     
     public function responses()
