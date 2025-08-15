@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-interface ComplaintProps {
+interface FeedbackCreateProps {
   towers: Array<{
     id: number;
     site_name: string;
@@ -169,7 +169,9 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return result;
 }
 
-const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
+export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
+  const { errors, flash } = usePage().props as any;
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -715,6 +717,19 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
         if (file.size > maxImageSize) {
           setErrorMessage('Ukuran foto tidak boleh melebihi 5MB');
           continue;
+        if (currentImages + newImageCount >= 3) {
+          setErrorMessage('Maksimal 3 foto yang dapat diunggah');
+          continue;
+        }
+        
+        if (!allowedImageTypes.includes(file.type)) {
+          setErrorMessage('Hanya file JPG dan PNG yang diizinkan untuk foto');
+          continue;
+        }
+        
+        if (file.size > maxImageSize) {
+          setErrorMessage('Ukuran foto tidak boleh melebihi 5MB');
+          continue;
         }
         
         newImageCount++;
@@ -808,9 +823,9 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
     });
     
     // Submit using Inertia router
-    router.post('/complaint', formData, {
+    router.post('/feedback', formData, {
       onSuccess: () => {
-        setSuccessMessage('Keluhan Anda telah berhasil dikirimkan');
+        setSuccessMessage('Masukan Anda telah berhasil dikirimkan');
         setForm({
           nama: '',
           telepon: '',
@@ -858,17 +873,17 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
   };
 
   return (
-    <MainLayout title="Form Keluhan" currentPage="/complaint">
-      <Head title="Form Keluhan" />
+    <MainLayout title="Form Masukan" currentPage="/feedback">
+      <Head title="Form Masukan" />
       
       <div className="p-4 sm:p-6">
         <div className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ backgroundColor: '#FFF8E1' }}>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              Guest Complain - Sampaikan Keluhan Anda
+              Guest Feedback - Sampaikan Masukan Anda
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi
+              Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi
             </p>
           </div>
           <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" />
@@ -876,7 +891,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
         
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Masukan</h2>
             
             {successMessage && (
               <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
@@ -910,8 +925,6 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                   )}
                 </div>
                 
-                {/* Email dihapus karena pengguna wajib login */}
-                
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
                     No. Telepon <span className="text-red-600">*</span>
@@ -937,7 +950,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
-                    Kategori Keluhan <span className="text-red-600">*</span>
+                    Kategori Masukan <span className="text-red-600">*</span>
                   </label>
                   {!isOtherCategory ? (
                     <select
@@ -956,9 +969,10 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                       style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     >
                       <option value="">Pilih kategori</option>
-                      <option value="Kerusakan">Kerusakan</option>
-                      <option value="Gangguan Sinyal">Gangguan Sinyal</option>
-                      <option value="Kebisingan">Kebisingan</option>
+                      <option value="Saran Perbaikan">Saran Perbaikan</option>
+                      <option value="Usulan Fitur">Usulan Fitur</option>
+                      <option value="Kritik Konstruktif">Kritik Konstruktif</option>
+                      <option value="Apresiasi">Apresiasi</option>
                       <option value="Lainnya">Lainnya</option>
                     </select>
                   ) : (
@@ -970,7 +984,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                         onChange={handleChange}
                         className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
                         style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
-                        placeholder="Masukkan kategori keluhan lainnya"
+                        placeholder="Masukkan kategori masukan lainnya"
                       />
                       <button
                         type="button"
@@ -1124,7 +1138,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                 </label>
                 <div className="flex items-center flex-wrap gap-3">
                   <label className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-300">
-                    <span>Choose File</span>
+                    <span>Pilih File</span>
                     <input 
                       type="file" 
                       accept=".jpg,.jpeg,.png,.mp4,.mov,.avi,.mkv" 
@@ -1140,7 +1154,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                         {files.filter(f => f.type.startsWith('image/')).length} foto, {files.filter(f => f.type.startsWith('video/')).length} video dipilih
                       </>
                     ) : (
-                      'No file chosen'
+                      'Belum ada file dipilih'
                     )}
                   </span>
                 </div>
@@ -1173,16 +1187,21 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                             </div>
                           ) : null}
                         </div>
+                        <div className="absolute -top-2 -right-2 flex gap-1">
+                          <span className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
+                            {file.type.startsWith('image/') ? 'IMG' : 'VID'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
                         <div className="absolute -bottom-1 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded-b truncate">
                           {file.name}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                        >
-                          ×
-                        </button>
                       </div>
                     ))}
                   </div>
@@ -1191,7 +1210,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
               
               <div className="mb-6">
                 <label className="block text-gray-700 font-medium mb-2">
-                  Pesan/Keluhan <span className="text-red-600">*</span>
+                  Pesan/Masukan <span className="text-red-600">*</span>
                 </label>
                 <textarea
                   name="pesan"
@@ -1200,7 +1219,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                   className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
                   style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                   rows={6}
-                  placeholder="Jelaskan keluhan Anda secara detail..."
+                  placeholder="Jelaskan masukan Anda secara detail..."
                   maxLength={500}
                 ></textarea>
                 {validation.pesan && (
@@ -1227,7 +1246,7 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
                   style={{ backgroundColor: '#B71C1C' }}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Mengirim...' : 'Kirim Keluhan'}
+                  {isSubmitting ? 'Mengirim...' : 'Kirim Masukan'}
                 </button>
               </div>
             </form>
@@ -1241,6 +1260,4 @@ const Complaint: React.FC<ComplaintProps> = ({ towers = [] }) => {
       <Footer />
     </MainLayout>
   );
-};
-
-export default Complaint;
+}

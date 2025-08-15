@@ -119,7 +119,7 @@ class TowerController extends Controller
                                 ->pluck('name')
                                 ->toArray();
 
-        return Inertia::render('DataTower', [
+        return Inertia::render('DataTower/Index', [
             'towers' => $towersData,
             'mapTowers' => $mapTowers,
             'availableOwners' => $availableOwners, // Add list of owners for filter
@@ -140,5 +140,21 @@ class TowerController extends Controller
                       ->orderBy('name')
                       ->pluck('name');
         return response()->json($owners);
+    }
+
+    /**
+     * Show tower detail page
+     */
+    public function show(Tower $tower)
+    {
+        $tower->load('owners');
+        
+        $user = auth()->user();
+        $canSendFeedback = $user && !$user->isStaff();
+
+        return Inertia::render('TowerDetail', [
+            'tower' => $tower,
+            'canSendFeedback' => $canSendFeedback,
+        ]);
     }
 }

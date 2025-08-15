@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Report extends Model
+class Feedback extends Model
 {
     use HasFactory;
+    
+    protected $table = 'feedbacks';
     
     protected $fillable = [
         'tower_id',
         'user_id',
-        'reporter_name',
-        'reporter_phone',
+        'sender_phone',
         'category',
         'message',
         'status',
@@ -24,18 +25,18 @@ class Report extends Model
         return $this->belongsTo(Tower::class);
     }
     
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+    
     public function assets()
     {
-        return $this->hasMany(ReportAsset::class);
+        return $this->hasMany(FeedbackAsset::class);
     }
     
     public function responses()
     {
-        return $this->hasMany(ReportResponse::class);
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(FeedbackResponse::class);
     }
 }
