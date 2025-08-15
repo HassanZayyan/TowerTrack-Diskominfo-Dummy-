@@ -44,6 +44,9 @@ class Tower extends Model
         'tinggi_bangunan' => 'float',
     ];
 
+    // We're not using appends to avoid issues with special characters in attribute names
+    // protected $appends = ['owner', 'alamat_owner', 'id_no_urut'];
+
     /**
      * Many-to-many relationship with owners
      */

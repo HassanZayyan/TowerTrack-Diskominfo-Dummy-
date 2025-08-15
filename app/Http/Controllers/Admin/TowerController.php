@@ -12,15 +12,80 @@ class TowerController extends Controller
 {
     public function index(Request $request)
     {
-        $towers = Tower::with('owners')
-            ->orderBy('site_name')
-            ->paginate(20);
+        $perPage = $request->get('per_page', 5); // Default 5 per page
+        if ($perPage === 'all') {
+            $perPage = (int)Tower::count(); // Get all towers and ensure it's an integer
+        } else {
+            $perPage = (int)$perPage; // Ensure per_page is always an integer
+        }
+
+        $query = Tower::with('owners')->orderBy('site_name');
+
+        // Handle search
+        if ($search = $request->get('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('site_name', 'like', "%{$search}%")
+                  ->orWhere('site_id', 'like', "%{$search}%")
+                  ->orWhere('site_sap', 'like', "%{$search}%")
+                  ->orWhereHas('owners', function($ownerQuery) use ($search) {
+                      $ownerQuery->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Handle filter
+        if ($filter = $request->get('filter')) {
+            if ($filter !== 'all') {
+                $query->where('site_type', 'like', "%{$filter}%");
+            }
+        }
+
+        $towers = $query->paginate($perPage);
+
+        // Manually transform towers to include owner information
+        $transformedItems = [];
+        foreach ($towers->items() as $tower) {
+            $primaryOwner = $tower->owners->first();
+            $towerData = $tower->toArray();
+            
+            // Add owner information manually rather than using accessors
+            $towerData['owner'] = $primaryOwner ? $primaryOwner->name : null;
+            $towerData['alamat_owner'] = $primaryOwner ? $primaryOwner->alamat : null;
+            $towerData['id_no_urut'] = $tower->id;
+            
+            $transformedItems[] = $towerData;
+        }
+        
+        // Replace the collection in the paginator with our manually transformed data
+        $towersCollection = new \Illuminate\Pagination\LengthAwarePaginator(
+            $transformedItems,
+            $towers->total(),
+            $towers->perPage(),
+            $towers->currentPage(),
+            [
+                'path' => \Illuminate\Support\Facades\Request::url(),
+                'query' => \Illuminate\Support\Facades\Request::query(),
+            ]
+        );
+
+        // Get statistics for all towers using direct database queries for better performance
+        $statistics = [
+            'total' => Tower::count(),
+            'with_permits' => Tower::whereNotNull('status_ijin')->where('status_ijin', '!=', '')->count(),
+            'with_coordinates' => Tower::whereNotNull('latitude')->whereNotNull('longitude')->count(),
+            'without_coordinates' => Tower::where(function($query) {
+                $query->whereNull('latitude')->orWhereNull('longitude')
+                      ->orWhere('latitude', '')->orWhere('longitude', '');
+            })->count(),
+            'average_height' => round(Tower::where('tinggi_menara', '>', 0)->avg('tinggi_menara') ?: 0, 2),
+        ];
 
         $owners = Owner::orderBy('name')->get();
 
         return Inertia::render('Admin/Towers', [
-            'towers' => $towers,
+            'towers' => $towersCollection,
             'owners' => $owners,
+            'statistics' => $statistics,
         ]);
     }
 

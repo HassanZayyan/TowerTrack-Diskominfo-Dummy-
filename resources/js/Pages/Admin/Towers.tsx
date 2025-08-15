@@ -34,14 +34,32 @@ interface Tower {
   id_no_urut?: number | null;
 }
 
-interface Pagination<T> { data: T[]; current_page: number; last_page: number }
-interface Props { towers: Pagination<Tower>; owners: Owner[] }
+interface Pagination<T> { 
+  data: T[]; 
+  current_page: number; 
+  last_page: number; 
+  total?: number;
+  per_page?: number;
+  from?: number;
+  to?: number;
+}
+interface Props { 
+  towers: Pagination<Tower>; 
+  owners: Owner[];
+  statistics: {
+    total: number;
+    with_permits: number;
+    with_coordinates: number;
+    without_coordinates: number;
+    average_height: number;
+  };
+}
 
-const TowersPage: React.FC<Props> = ({ towers, owners }) => {
+const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
   const [editing, setEditing] = useState<Record<number, Partial<Tower>>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [currentPerPage] = useState(towers.per_page || 5); // Use server's per_page value or default to 5
   const [activeTab, setActiveTab] = useState<Record<number, string>>({});
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
@@ -153,26 +171,29 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
 
   const page = towers.current_page;
   const last = towers.last_page;
+  const total = towers.total || statistics.total;
 
-  // Filter data berdasarkan search term dan filter type
-  const filteredTowers = towers.data.filter(tower => {
-    const matchesSearch = searchTerm === '' || 
-      tower.site_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (tower.site_id && tower.site_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (tower.owner && tower.owner.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesFilter = filterType === 'all' || 
-      (tower.site_type && tower.site_type.toLowerCase() === filterType.toLowerCase());
-    
-    return matchesSearch && matchesFilter;
-  });
+  // Handle pagination
+  const changePage = (newPage: number) => {
+    router.get(route('admin.towers.index'), { 
+      page: newPage, 
+      per_page: 5, // Always use 5 per page, hardcoded for consistency
+      search: searchTerm || undefined,
+      filter: filterType !== 'all' ? filterType : undefined
+    }, { preserveState: true });
+  };
 
-  // Pagination untuk filtered data
-  const displayedTowers = itemsPerPage === -1 
-    ? filteredTowers 
-    : filteredTowers.slice(0, itemsPerPage);
+  const handleSearch = () => {
+    router.get(route('admin.towers.index'), { 
+      page: 1, 
+      per_page: currentPerPage,
+      search: searchTerm || undefined,
+      filter: filterType !== 'all' ? filterType : undefined
+    }, { preserveState: true });
+  };
 
-  const showViewAllOption = filteredTowers.length > 5;
+  // Use towers.data directly for display since filtering is handled server-side
+  const displayedTowers = towers.data;
 
   // Component for input with validation
   const FormInput: React.FC<{
@@ -252,12 +273,12 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
       </div>
 
       {/* Statistics and Search */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Total Towers</h3>
-              <p className="text-3xl font-bold text-blue-600">{filteredTowers.length}</p>
+              <p className="text-3xl font-bold text-blue-600">{statistics.total}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,9 +292,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Dengan Ijin</h3>
-              <p className="text-3xl font-bold text-green-600">
-                {filteredTowers.filter(t => t.status_ijin).length}
-              </p>
+              <p className="text-3xl font-bold text-green-600">{statistics.with_permits}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,9 +306,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Dengan Koordinat</h3>
-              <p className="text-3xl font-bold text-yellow-600">
-                {filteredTowers.filter(t => t.latitude && t.longitude).length}
-              </p>
+              <p className="text-3xl font-bold text-yellow-600">{statistics.with_coordinates}</p>
             </div>
             <div className="bg-yellow-100 p-3 rounded-full">
               <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,31 +321,11 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Tanpa Koordinat</h3>
-              <p className="text-3xl font-bold text-red-600">
-                {filteredTowers.filter(t => !t.latitude || !t.longitude).length}
-              </p>
+              <p className="text-3xl font-bold text-red-600">{statistics.without_coordinates}</p>
             </div>
             <div className="bg-red-100 p-3 rounded-full">
               <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-purple-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Rata-rata Tinggi</h3>
-              <p className="text-3xl font-bold text-purple-600">
-                {filteredTowers.length > 0 
-                  ? Math.round(filteredTowers.reduce((sum, t) => sum + (Number(t.tinggi_menara) || 0), 0) / filteredTowers.length)
-                  : 0}m
-              </p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
           </div>
@@ -346,13 +343,20 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
               <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               {searchTerm && (
                 <button
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => {
+                    setSearchTerm('');
+                    router.get(route('admin.towers.index'), { 
+                      page: 1, 
+                      per_page: currentPerPage 
+                    }, { preserveState: true });
+                  }}
                   className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 hover:text-gray-600"
                 >
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,6 +367,15 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
             </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleSearch}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Cari
+            </button>
             <button
               onClick={() => router.get(route('admin.towers.create'))}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
@@ -400,6 +413,10 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
                 onClick={() => {
                   setSearchTerm('');
                   setFilterType('all');
+                  router.get(route('admin.towers.index'), { 
+                    page: 1, 
+                    per_page: currentPerPage 
+                  }, { preserveState: true });
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
@@ -671,68 +688,19 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
 
       {/* Data Display Controls */}
       <div className="mt-6 bg-white rounded-lg shadow-lg p-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-700 font-medium">Tampilkan:</span>
-            <select
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-            >
-              <option value={5}>5 per halaman</option>
-              <option value={10}>10 per halaman</option>
-              <option value={25}>25 per halaman</option>
-              <option value={50}>50 per halaman</option>
-              <option value={100}>100 per halaman</option>
-              {showViewAllOption && (
-                <option value={-1}>Tampilkan Semua ({filteredTowers.length} data)</option>
-              )}
-            </select>
-          </div>
-          
+        <div className="flex justify-end">
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               <span>
-                Menampilkan <span className="font-semibold text-gray-800">{displayedTowers.length}</span> dari{' '}
-                <span className="font-semibold text-gray-800">{filteredTowers.length}</span> data
-                {filteredTowers.length !== towers.data.length && (
-                  <span className="text-gray-500"> (disaring dari {towers.data.length} total)</span>
-                )}
+                Menampilkan <span className="font-semibold text-gray-800">{towers.from || 1}</span> - <span className="font-semibold text-gray-800">{towers.to || towers.data.length}</span> dari{' '}
+                <span className="font-semibold text-gray-800">{total}</span> data
               </span>
             </div>
-            
-            {itemsPerPage !== -1 && filteredTowers.length > itemsPerPage && (
-              <button
-                onClick={() => setItemsPerPage(-1)}
-                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Lihat Semua Data
-              </button>
-            )}
           </div>
         </div>
-        
-        {itemsPerPage === -1 && filteredTowers.length > 50 && (
-          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center gap-2 text-yellow-800">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <span className="text-sm font-medium">Tips:</span>
-            </div>
-            <p className="text-sm text-yellow-700 mt-1">
-              Menampilkan {filteredTowers.length} data sekaligus. Untuk performa yang lebih baik dan pengelolaan yang mudah, 
-              gunakan filter pencarian atau batasi jumlah data per halaman.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Simplified Navigation */}
@@ -740,26 +708,84 @@ const TowersPage: React.FC<Props> = ({ towers, owners }) => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-gray-700">
             <span className="font-medium">Halaman {page} dari {last}</span>
-            <span className="text-gray-500 ml-2">• {towers.data.length} total tower</span>
+            <span className="text-gray-500 ml-2">• {total} total tower</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               disabled={page <= 1}
               className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
-              onClick={() => router.get(route('admin.towers.index', { page: page - 1 }))}
+              onClick={() => changePage(page - 1)}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Sebelum
             </button>
-            <span className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700">
-              {page}
-            </span>
+            
+            {/* Page numbers - Simplified to show sequential numbers */}
+            <div className="flex items-center gap-1">
+              {/* First page button if not on first few pages */}
+              {page > 2 && (
+                <>
+                  <button
+                    onClick={() => changePage(1)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    1
+                  </button>
+                  {page > 3 && <span className="text-gray-500">...</span>}
+                </>
+              )}
+              
+              {/* Show at most 5 sequential page numbers centered on current page */}
+              {Array.from({ length: Math.min(5, last) }, (_, i) => {
+                // Calculate start page to ensure we have at most 5 pages centered on current page
+                let startPage = Math.max(1, page - 2);
+                if (page > last - 2) {
+                  startPage = Math.max(1, last - 4);
+                }
+                if (startPage + 4 > last) {
+                  startPage = Math.max(1, last - 4);
+                }
+                const pageNum = startPage + i;
+                
+                // Only render if pageNum is valid
+                if (pageNum > 0 && pageNum <= last) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => changePage(pageNum)}
+                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                        pageNum === page
+                          ? 'bg-blue-50 border border-blue-200 text-blue-700 font-medium'
+                          : 'border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                }
+                return null;
+              })}
+              
+              {/* Last page button if not on last few pages */}
+              {page < last - 1 && (
+                <>
+                  {page < last - 2 && <span className="text-gray-500">...</span>}
+                  <button
+                    onClick={() => changePage(last)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    {last}
+                  </button>
+                </>
+              )}
+            </div>
+            
             <button
               disabled={page >= last}
               className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
-              onClick={() => router.get(route('admin.towers.index', { page: page + 1 }))}
+              onClick={() => changePage(page + 1)}
             >
               Berikut
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
