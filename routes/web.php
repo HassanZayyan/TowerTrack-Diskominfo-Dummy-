@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TowerController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\FoController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,6 +27,7 @@ Route::get('/dashboard', function () {
 
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
+Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
 Route::get('/tower/{tower}', [TowerController::class, 'show'])->name('tower.show');
 
 // Complaint form is only for non-staff users
@@ -103,6 +105,16 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::get('/feedbacks/{feedback}', [\App\Http\Controllers\Admin\FeedbackController::class, 'show'])->name('feedbacks.show');
     Route::post('/feedbacks/{feedback}/respond', [\App\Http\Controllers\Admin\FeedbackController::class, 'respond'])->name('feedbacks.respond');
     Route::put('/feedbacks/{feedback}/status', [\App\Http\Controllers\Admin\FeedbackController::class, 'updateStatus'])->name('feedbacks.updateStatus');
+
+    // FO management routes (for admin only)
+    Route::middleware(AdminMiddleware::class)->group(function () {
+        Route::post('/fo/points', [FoController::class, 'storePoint'])->name('fo.points.store');
+        Route::put('/fo/points/{foPoint}', [FoController::class, 'updatePoint'])->name('fo.points.update');
+        Route::delete('/fo/points/{foPoint}', [FoController::class, 'deletePoint'])->name('fo.points.delete');
+        Route::post('/fo/routes', [FoController::class, 'storeRoute'])->name('fo.routes.store');
+        Route::put('/fo/routes/{foRoute}', [FoController::class, 'updateRoute'])->name('fo.routes.update');
+        Route::delete('/fo/routes/{foRoute}', [FoController::class, 'deleteRoute'])->name('fo.routes.delete');
+    });
 });
 
 require __DIR__.'/auth.php';

@@ -18,6 +18,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   
   const links: AppBarLink[] = [
     { href: '/data-tower', label: 'Data Tower', icon: 'cell_tower' },
+    { href: '/data-fo', label: 'Jalur FO', icon: 'timeline' },
   ];
 
   // Add links only for non-staff users (regular complainants)
