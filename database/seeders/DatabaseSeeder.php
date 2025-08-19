@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             OwnerSeeder::class,
             TowerSeeder::class,
             TowerOwnerSeeder::class,
+            StatusSeeder::class,
         ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\ReportResponse;
+use App\Models\Status;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,13 +17,19 @@ class ComplaintController extends Controller
                 'tower:id,site_name,alamat_menara', 
                 'images:id,report_id,image_path,file_type', 
                 'user:id,name,email',
-                'responses:id,report_id,user_id,message,image_path,file_type,status,created_at'
+                'status:id,name,slug,color,icon',
+                'responses' => function($query) {
+                    $query->with(['statuses:id,name,slug,color,icon']);
+                }
             ])
             ->orderByDesc('created_at')
             ->get();
 
+        $statuses = Status::all(['id', 'name', 'slug', 'color', 'icon']);
+
         return Inertia::render('Admin/Complaints', [
             'reports' => $reports,
+            'statuses' => $statuses,
         ]);
     }
 
@@ -30,7 +37,7 @@ class ComplaintController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string|max:1000',
-            'status' => 'required|string|in:pending,in_progress,closed',
+            'status_id' => 'required|exists:statuses,id',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'videos.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
@@ -53,17 +60,19 @@ class ComplaintController extends Controller
         }
 
         // Create the response with optional file attachment
-        ReportResponse::create([
+        $response = ReportResponse::create([
             'report_id' => $report->id,
             'user_id' => $request->user()->id,
             'message' => $validated['message'],
             'image_path' => $imagePath,
             'file_type' => $fileType,
-            'status' => $validated['status'],
         ]);
 
+        // Set the status for this response
+        $response->setStatus($validated['status_id']);
+        
         // Update report status
-        $report->update(['status' => $validated['status']]);
+        $report->update(['status_id' => $validated['status_id']]);
 
         return back();
     }
@@ -71,9 +80,23 @@ class ComplaintController extends Controller
     public function updateStatus(Request $request, Report $report)
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:pending,in_progress,responded,closed',
+            'status_id' => 'required|exists:statuses,id',
         ]);
-        $report->update(['status' => $validated['status']]);
+        
+        $report->update(['status_id' => $validated['status_id']]);
+        
+        // Create a response if there's a message
+        if ($request->has('message') && !empty($request->message)) {
+            $response = ReportResponse::create([
+                'report_id' => $report->id,
+                'user_id' => $request->user()->id,
+                'message' => $request->message,
+            ]);
+            
+            // Set the status for this response
+            $response->setStatus($validated['status_id']);
+        }
+        
         return back();
     }
 }

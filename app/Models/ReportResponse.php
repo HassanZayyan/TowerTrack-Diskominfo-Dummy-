@@ -15,7 +15,6 @@ class ReportResponse extends Model
         'message',
         'image_path',
         'file_type',
-        'status',
     ];
 
     public function report()
@@ -32,6 +31,41 @@ class ReportResponse extends Model
 	{
 		return $this->hasMany(ReportResponseAsset::class, 'report_response_id');
 	}
+    
+    public function statuses()
+    {
+        return $this->belongsToMany(Status::class, 'report_response_status')
+                   ->withTimestamps();
+    }
+    
+    /**
+     * Set the status of this response
+     * 
+     * @param string|int $status Status ID or slug
+     * @return void
+     */
+    public function setStatus($status)
+    {
+        if (is_numeric($status)) {
+            $statusModel = Status::find($status);
+        } else {
+            $statusModel = Status::where('slug', $status)->first();
+        }
+        
+        if ($statusModel) {
+            $this->statuses()->sync([$statusModel->id]);
+        }
+    }
+    
+    /**
+     * Get the current status of this response
+     * 
+     * @return Status|null
+     */
+    public function getCurrentStatus()
+    {
+        return $this->statuses()->latest('report_response_status.created_at')->first();
+    }
 }
 
 
