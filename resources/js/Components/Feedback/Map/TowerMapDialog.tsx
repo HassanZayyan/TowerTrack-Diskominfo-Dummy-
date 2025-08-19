@@ -1,14 +1,5 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-
-// Fix untuk leaflet icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+import React, { useMemo } from 'react';
+import LeafletMap from '@/Components/LeafletMap';
 
 interface TowerMapDialogProps {
   showMapDialog: boolean;
@@ -36,28 +27,49 @@ export default function TowerMapDialog({
 }: TowerMapDialogProps) {
   if (!showMapDialog) return null;
 
-  // Center map di Indonesia (koordinat tengah Indonesia)
-  const defaultCenter: [number, number] = [-2.5, 118];
-  const defaultZoom = 5;
+  // Prepare markers for LeafletMap (similar to DataTower Index)
+  const markers = useMemo(() => towersWithCoordinates
+    .map(t => {
+      const lat = Number(t.latitude);
+      const lon = Number(t.longitude);
+      return { t, lat, lon };
+    })
+    .filter(({ t, lat, lon }) => 
+      // Coordinate validation
+      Number.isFinite(lat) && Number.isFinite(lon) &&
+      lat !== 0 && lon !== 0 &&
+      Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+    )
+    .map(({ t, lat, lon }) => {
+      let radiusMeters: number | undefined = undefined;
+      
+      if (typeof t.tinggi_menara === 'number' && t.tinggi_menara > 0) {
+        radiusMeters = Math.min(Math.max(t.tinggi_menara * 8, 100), 3000);
+      }
 
-  // Jika ada towers dengan koordinat, center ke area tersebut
-  let mapCenter = defaultCenter;
-  let mapZoom = defaultZoom;
-  
-  if (towersWithCoordinates.length > 0) {
-    // Hitung center berdasarkan rata-rata koordinat towers
-    const lats = towersWithCoordinates.map(t => Number(t.latitude));
-    const lngs = towersWithCoordinates.map(t => Number(t.longitude));
-    
-    mapCenter = [
-      lats.reduce((a, b) => a + b, 0) / lats.length,
-      lngs.reduce((a, b) => a + b, 0) / lngs.length
-    ];
-    mapZoom = 8;
-  }
+      if ((radiusMeters === undefined || !Number.isFinite(radiusMeters)) && t.site_type) {
+        const st = t.site_type.toLowerCase();
+        if (st.includes('rooftop')) radiusMeters = 250;
+        else if (st.includes('sst') || st.includes('monopole')) radiusMeters = 400;
+        else if (st.includes('guyed') || st.includes('lattice') || st.includes('sstl')) radiusMeters = 600;
+        else radiusMeters = 500; // generic default
+      }
 
-  const handleMarkerClick = (tower: any) => {
-    onSelectTower(tower);
+      if (radiusMeters === undefined) {
+        radiusMeters = 500;
+      }
+
+      return ({
+        position: [lat, lon] as [number, number],
+        title: t.site_name || 'Belum Terdata',
+        description: `${t.alamat_menara || 'Belum Terdata'}${t.tinggi_menara ? `<br/>Tinggi: ${t.tinggi_menara} m` : '<br/>Tinggi: Belum Terdata'}${t.tower_type ? `<br/>Jenis: ${t.tower_type}` : ''}`,
+        radiusMeters,
+        towerData: t, // Pass the complete tower data
+      });
+    }), [towersWithCoordinates]);
+
+  const handleMarkerClick = (towerData: any) => {
+    onSelectTower(towerData);
     setShowMapDialog(false);
   };
 
@@ -68,7 +80,7 @@ export default function TowerMapDialog({
         <div className="flex justify-between items-center p-4 border-b">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Pilih Lokasi Tower dari Peta</h3>
-            <p className="text-sm text-gray-600">{towersWithCoordinates.length} tower tersedia dengan koordinat</p>
+            <p className="text-sm text-gray-600">{markers.length} tower tersedia dengan koordinat valid</p>
           </div>
           <button
             onClick={() => setShowMapDialog(false)}
@@ -83,73 +95,17 @@ export default function TowerMapDialog({
         {/* Map Content */}
         <div className="flex-1 p-4">
           <div className="h-full rounded-lg overflow-hidden border">
-            {towersWithCoordinates.length > 0 ? (
-              <MapContainer
-                center={mapCenter}
-                zoom={mapZoom}
+            {markers.length > 0 ? (
+              <LeafletMap
+                center={[-7.197, 110.426]}
+                zoom={10}
                 style={{ height: '100%', width: '100%' }}
-                className="z-10"
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                
-                {towersWithCoordinates.map((tower) => (
-                  <Marker
-                    key={tower.id}
-                    position={[Number(tower.latitude), Number(tower.longitude)]}
-                    eventHandlers={{
-                      click: () => handleMarkerClick(tower)
-                    }}
-                  >
-                    <Popup>
-                      <div className="p-2 min-w-64">
-                        <div className="font-bold text-blue-600 mb-2">
-                          🏢 {tower.site_name}
-                        </div>
-                        
-                        {tower.alamat_menara && (
-                          <div className="text-sm text-gray-600 mb-2">
-                            <strong>📍 Alamat:</strong><br />
-                            {tower.alamat_menara}
-                          </div>
-                        )}
-                        
-                        <div className="text-sm text-gray-600 mb-2">
-                          <strong>🗺️ Koordinat:</strong><br />
-                          {Number(tower.latitude).toFixed(6)}, {Number(tower.longitude).toFixed(6)}
-                        </div>
-                        
-                        {tower.tower_type && (
-                          <div className="text-sm text-gray-600 mb-2">
-                            <strong>🗼 Jenis Tower:</strong> {tower.tower_type}
-                          </div>
-                        )}
-                        
-                        {tower.tinggi_menara && (
-                          <div className="text-sm text-gray-600 mb-2">
-                            <strong>📏 Tinggi Menara:</strong> {tower.tinggi_menara}m
-                          </div>
-                        )}
-                        
-                        {tower.jumlah_pengguna && (
-                          <div className="text-sm text-gray-600 mb-3">
-                            <strong>👥 Jumlah Pengguna:</strong> {tower.jumlah_pengguna}
-                          </div>
-                        )}
-                        
-                        <button
-                          onClick={() => handleMarkerClick(tower)}
-                          className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
-                        >
-                          ✓ Pilih Tower Ini
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
+                markers={markers}
+                showLines={false}
+                showCoverage={true}
+                defaultRadiusMeters={500}
+                onMarkerClick={handleMarkerClick}
+              />
             ) : (
               <div className="h-full bg-gray-100 flex items-center justify-center">
                 <div className="text-center text-gray-500">
@@ -167,7 +123,7 @@ export default function TowerMapDialog({
         <div className="p-4 border-t bg-gray-50">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              💡 Klik pada marker di peta atau tombol "Pilih Tower Ini" untuk memilih lokasi
+              💡 Klik pada marker di peta untuk memilih tower. Hover marker untuk melihat detail.
             </div>
             <button
               onClick={() => setShowMapDialog(false)}

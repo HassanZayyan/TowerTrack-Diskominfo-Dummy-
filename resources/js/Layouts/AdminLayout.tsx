@@ -41,6 +41,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
     if (routeName === '/admin/towers') {
       return currentRoute?.startsWith('Admin/Tower') || currentUrl.startsWith('/admin/towers');
     }
+    if (routeName === '/admin/feedbacks') {
+      return currentRoute?.startsWith('Admin/Feedback') || currentUrl.startsWith('/admin/feedbacks');
+    }
     
     return currentUrl.startsWith(routeName);
   };
@@ -96,6 +99,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
                 }}
               >
                 Complaints
+              </Link>
+              <Link 
+                href={route('admin.feedbacks.index')} 
+                className={getMenuClasses('/admin/feedbacks')}
+                style={{ 
+                  backgroundColor: isActive('/admin/feedbacks') ? '#FFD700' : 'transparent',
+                  color: isActive('/admin/feedbacks') ? '#B71C1C' : '#FFFFFF'
+                }}
+              >
+                Feedbacks
               </Link>
               <Link 
                 href={route('admin.towers.index')} 
@@ -171,6 +184,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
               }}
             >
               Complaints
+            </Link>
+            <Link 
+              href={route('admin.feedbacks.index')} 
+              className={getMenuClasses('/admin/feedbacks', true)}
+              style={{ 
+                backgroundColor: isActive('/admin/feedbacks') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
+                color: isActive('/admin/feedbacks') ? '#B71C1C' : '#FFFFFF'
+              }}
+            >
+              Feedbacks
             </Link>
             <Link 
               href={route('admin.towers.index')} 

@@ -13,8 +13,6 @@ class ReportResponse extends Model
         'report_id',
         'user_id',
         'message',
-        'image_path',
-        'file_type',
     ];
 
     public function report()
@@ -34,7 +32,15 @@ class ReportResponse extends Model
     
     public function statuses()
     {
-        return $this->belongsToMany(Status::class, 'report_response_status')
+        return $this->hasMany(ReportStatus::class, 'report_response_id');
+    }
+    
+    /**
+     * Get the actual status models through the pivot
+     */
+    public function statusModels()
+    {
+        return $this->belongsToMany(Status::class, 'report_statuses', 'report_response_id')
                    ->withTimestamps();
     }
     
@@ -46,14 +52,24 @@ class ReportResponse extends Model
      */
     public function setStatus($status)
     {
-        if (is_numeric($status)) {
-            $statusModel = Status::find($status);
-        } else {
-            $statusModel = Status::where('slug', $status)->first();
-        }
-        
-        if ($statusModel) {
-            $this->statuses()->sync([$statusModel->id]);
+        try {
+            // Try to find status by ID or slug
+            if (is_numeric($status)) {
+                $statusModel = Status::find($status);
+            } else {
+                $statusModel = Status::where('slug', $status)->first();
+            }
+            
+            // If status model found, create relationship
+            if ($statusModel) {
+                ReportStatus::create([
+                    'report_response_id' => $this->id,
+                    'status_id' => $statusModel->id,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error setting status: ' . $e->getMessage());
+            // Fail gracefully if statuses table doesn't exist
         }
     }
     
@@ -64,7 +80,16 @@ class ReportResponse extends Model
      */
     public function getCurrentStatus()
     {
-        return $this->statuses()->latest('report_response_status.created_at')->first();
+        try {
+            $reportStatus = $this->statuses()->latest()->first();
+            if ($reportStatus) {
+                return $reportStatus->status;
+            }
+            return null;
+        } catch (\Exception $e) {
+            \Log::error('Error getting current status: ' . $e->getMessage());
+            return null;
+        }
     }
 }
 

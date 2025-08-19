@@ -18,7 +18,18 @@ class FeedbackController extends Controller
     public function index(): Response
     {
         $towers = Tower::query()
-            ->select(['id', 'site_name', 'alamat_menara'])
+            ->select([
+                'id', 
+                'site_name', 
+                'alamat_menara',
+                'latitude',
+                'longitude',
+                'tinggi_menara',
+                'tinggi_bangunan',
+                'jumlah_pengguna',
+                'tower_type',
+                'site_type'
+            ])
             ->orderBy('site_name')
             ->get()
             ->toArray();
@@ -38,14 +49,18 @@ class FeedbackController extends Controller
             'category' => 'required|string|max:100',
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
+            'sender_name' => 'required|string|max:100', // Tambahkan validasi untuk nama pengirim
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi|max:20480', // 20MB max
         ]);
+
+        // Gabungkan nama pengirim dengan kategori untuk disimpan tanpa migrasi baru
+        $categoryWithName = $validated['category'] . ' [Dari: ' . $validated['sender_name'] . ']';
 
         $feedback = Feedback::create([
             'tower_id' => $validated['tower_id'],
             'user_id' => $request->user()->id,
             'sender_phone' => $validated['sender_phone'],
-            'category' => $validated['category'],
+            'category' => $categoryWithName, // Simpan kategori beserta nama pengirim
             'message' => $validated['message'],
             'status' => 'pending',
         ]);
