@@ -9,16 +9,61 @@ interface Props { users: User[] }
 const UsersPage: React.FC<Props> = ({ users = [] }) => {
   const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator'; password?: string }>({ name: '', email: '', role: 'operator' });
   const [showPassword, setShowPassword] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.id) {
-      router.put(route('admin.users.update', { user: form.id }), form);
-    } else {
-      router.post(route('admin.users.store'), form);
+    console.log('Submitting form:', form);
+    
+    // Validasi client-side
+    if (!form.name || !form.email) {
+      alert('Nama dan email harus diisi');
+      return;
     }
+    
+    if (!form.id && !form.password) {
+      alert('Password harus diisi untuk user baru');
+      return;
+    }
+    
+    const options = {
+      preserveScroll: true,
+      onSuccess: () => {
+        console.log('Operation successful');
+        setForm({ name: '', email: '', role: 'operator' });
+        setShowPassword(false);
+        setShowDialog(false);
+      },
+      onError: (errors: any) => {
+        console.error('Operation failed:', errors);
+        const errorMessages = Object.values(errors).flat().join('\n');
+        alert(`Gagal: ${errorMessages}`);
+      }
+    };
+    
+    if (form.id) {
+      console.log('Updating user:', form.id);
+      router.put(route('admin.users.update', { user: form.id }), form, options);
+    } else {
+      console.log('Creating new user');
+      router.post(route('admin.users.store'), form, options);
+    }
+  };
+
+  const handleEdit = (user: User) => {
+    setForm({ id: user.id, name: user.name, email: user.email, role: user.role });
+    setShowDialog(true);
+  };
+
+  const handleAdd = () => {
+    setForm({ name: '', email: '', role: 'operator' });
+    setShowDialog(true);
+  };
+
+  const closeDialog = () => {
     setForm({ name: '', email: '', role: 'operator' });
     setShowPassword(false);
+    setShowDialog(false);
   };
 
   const handleDelete = (user: User) => {
@@ -29,118 +74,146 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   };
 
   return (
-    <AdminLayout title="User Management">
-      <Head title="User Management" />
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border-t-4 border-yellow-400">
-        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-          <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          {form.id ? 'Edit User' : 'Tambah User Baru'}
-        </h2>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
-              <input 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                placeholder="Masukkan nama lengkap" 
-                value={form.name} 
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <input 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                type="email"
-                placeholder="Masukkan email" 
-                value={form.email} 
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Role</label>
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                value={form.role} 
-                onChange={(e) => setForm({ ...form, role: e.target.value as any })}
+    <AdminLayout title="Kelola Pengguna">
+      <Head title="Kelola Pengguna" />
+      
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola Pengguna</h1>
+        <p className="text-gray-600">Kelola akun pengguna sistem tagging tower dan atur hak akses</p>
+      </div>
+      
+      {/* Dialog untuk Add/Edit User */}
+      {showDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                {form.id ? 'Edit User' : 'Tambah User Baru'}
+              </h2>
+              <button
+                onClick={closeDialog}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <option value="operator">Operator</option>
-                <option value="admin">Admin</option>
-              </select>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Password {form.id && '(kosongkan jika tidak diubah)'}
-              </label>
-              <div className="relative">
-                <input 
-                  className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
-                  value={form.password ?? ''} 
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required={!form.id}
-                />
-                <button
+            
+            <form onSubmit={submit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
+                  <input 
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
+                    placeholder="Masukkan nama lengkap" 
+                    value={form.name} 
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Email</label>
+                  <input 
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
+                    type="email"
+                    placeholder="Masukkan email" 
+                    value={form.email} 
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Role</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
+                    value={form.role} 
+                    onChange={(e) => setForm({ ...form, role: e.target.value as any })}
+                  >
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Password {form.id && '(kosongkan jika tidak diubah)'}
+                  </label>
+                  <div className="relative">
+                    <input 
+                      className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all" 
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
+                      value={form.password ?? ''} 
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      required={!form.id}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L7.05 7.05M9.878 9.878a3 3 0 105.656 5.656m0 0L12 12m0 0l3.5-3.5M12 12l-3.5 3.5" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end pt-6 space-x-3">
+                <button 
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  onClick={closeDialog}
                 >
-                  {showPassword ? (
-                    <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L7.05 7.05M9.878 9.878a3 3 0 105.656 5.656m0 0L12 12m0 0l3.5-3.5M12 12l-3.5 3.5" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
+                  Batal
+                </button>
+                <button 
+                  className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
+                  type="submit"
+                >
+                  {form.id ? 'Update User' : 'Tambah User'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-          <div className="flex justify-end pt-4">
-            {form.id && (
-              <button 
-                type="button"
-                className="mr-3 px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                onClick={() => {
-                  setForm({ name: '', email: '', role: 'operator' });
-                  setShowPassword(false);
-                }}
-              >
-                Batal
-              </button>
-            )}
-            <button 
-              className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
-              type="submit"
-            >
-              {form.id ? 'Update User' : 'Tambah User'}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-            </svg>
-            Daftar Pengguna ({users.length})
-          </h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
+              Daftar Pengguna ({users.length})
+            </h3>
+            <button
+              onClick={handleAdd}
+              className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium flex items-center"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Tambah User
+            </button>
+          </div>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-yellow-50 border-b border-yellow-200">
+              <tr className="bg-red-50 border-b border-red-200">
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,8 +300,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button 
-                          className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
-                          onClick={() => setForm({ id: u.id, name: u.name, email: u.email, role: u.role })}
+                          className="inline-flex items-center px-3 py-2 border border-red-300 rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors text-xs font-medium"
+                          onClick={() => handleEdit(u)}
                         >
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -236,7 +309,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                           Edit
                         </button>
                         <button 
-                          className="inline-flex items-center px-3 py-2 border border-red-300 rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors text-xs font-medium"
+                          className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors text-xs font-medium"
                           onClick={() => handleDelete(u)}
                         >
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

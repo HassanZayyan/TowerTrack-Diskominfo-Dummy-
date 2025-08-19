@@ -20,38 +20,59 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,operator',
-        ]);
-        $validated['password'] = Hash::make($validated['password']);
-        User::create($validated);
-        return back();
+        try {
+            \Log::info('Creating user', ['data' => $request->except('password')]);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|string|min:8',
+                'role' => 'required|in:admin,operator',
+            ]);
+            $validated['password'] = Hash::make($validated['password']);
+            $user = User::create($validated);
+            \Log::info('User created successfully', ['id' => $user->id]);
+            return back()->with('success', 'Pengguna berhasil ditambahkan');
+        } catch (\Exception $e) {
+            \Log::error('Failed to create user', ['error' => $e->getMessage()]);
+            return back()->withErrors(['error' => 'Gagal menambahkan pengguna: ' . $e->getMessage()])->withInput($request->except('password'));
+        }
     }
 
     public function update(Request $request, User $user)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,'.$user->id,
-            'role' => 'required|in:admin,operator',
-            'password' => 'nullable|string|min:8',
-        ]);
-        if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+        try {
+            \Log::info('Updating user', ['id' => $user->id, 'data' => $request->except('password')]);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email,'.$user->id,
+                'role' => 'required|in:admin,operator',
+                'password' => 'nullable|string|min:8',
+            ]);
+            if (!empty($validated['password'])) {
+                $validated['password'] = Hash::make($validated['password']);
+            } else {
+                unset($validated['password']);
+            }
+            $user->update($validated);
+            \Log::info('User updated successfully', ['id' => $user->id]);
+            return back()->with('success', 'Pengguna berhasil diperbarui');
+        } catch (\Exception $e) {
+            \Log::error('Failed to update user', ['id' => $user->id, 'error' => $e->getMessage()]);
+            return back()->withErrors(['error' => 'Gagal memperbarui pengguna: ' . $e->getMessage()])->withInput($request->except('password'));
         }
-        $user->update($validated);
-        return back();
     }
 
     public function destroy(User $user)
     {
-        $user->delete();
-        return back();
+        try {
+            \Log::info('Deleting user', ['id' => $user->id, 'name' => $user->name, 'email' => $user->email]);
+            $user->delete();
+            \Log::info('User deleted successfully');
+            return back()->with('success', 'Pengguna berhasil dihapus');
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete user', ['id' => $user->id, 'error' => $e->getMessage()]);
+            return back()->withErrors(['error' => 'Gagal menghapus pengguna: ' . $e->getMessage()]);
+        }
     }
 }
 

@@ -385,9 +385,9 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [], statuses = [] }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <select
-                          value={report.status}
+                          value={report.status || 'pending'}
                           onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                          className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status)}`}
+                          className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status || 'pending')}`}
                         >
                           <option value="pending">BARU</option>
                           <option value="in_progress">PROGRESS</option>
@@ -438,9 +438,9 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [], statuses = [] }) => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <select
-                        value={report.status}
+                        value={report.status || 'pending'}
                         onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                        className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status)}`}
+                        className={`text-xs font-medium border rounded-full px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 ${getStatusColor(report.status || 'pending')}`}
                       >
                         <option value="pending">BARU</option>
                         <option value="in_progress">PROGRESS</option>
@@ -659,7 +659,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [], statuses = [] }) => {
                     </label>
                     <select
                       className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
-                      value={replyModal.report ? (replyStatus[replyModal.report.id] ?? replyModal.report.status) : ''}
+                      value={replyModal.report ? (replyStatus[replyModal.report.id] ?? replyModal.report.status ?? 'pending') : 'pending'}
                       onChange={(e) => replyModal.report && setReplyStatus({ ...replyStatus, [replyModal.report.id]: e.target.value })}
                     >
                       <option value="pending">Pending</option>
