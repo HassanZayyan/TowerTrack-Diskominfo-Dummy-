@@ -33,18 +33,13 @@ Route::middleware(['auth', NonStaffMiddleware::class])->get('/complaint', [UserC
 
 Route::middleware(['auth', NonStaffMiddleware::class])->post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
 
-// Feedback routes - only for non-staff users
-Route::middleware(['auth', NonStaffMiddleware::class])->group(function () {
-    Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback.create');
-    Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
-    Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
-    Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');
-});
-
-// User messages page (combined complaints and feedbacks)
-// Only non-staff can see their own submissions
-Route::middleware(['auth', NonStaffMiddleware::class])->get('/my-messages', function () {
-    $reports = \App\Models\Report::with(['tower:id,site_name', 'responses:id,report_id,created_at'])
+// User reports page (messages)
+Route::middleware('auth')->get('/my-messages', function () {
+    $reports = \App\Models\Report::with([
+            'tower:id,site_name,alamat_menara', 
+            'responses:id,report_id,message,created_at', 
+            'images:id,report_id,file_path,file_type'
+        ])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')
         ->get();
@@ -99,6 +94,8 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
 
     // Tower management
     Route::get('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'index'])->name('towers.index');
+    Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerController::class, 'create'])->name('towers.create');
+    Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
     Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerController::class, 'update'])->name('towers.update');
 
     // Feedback management

@@ -17,7 +17,18 @@ class UserComplaintController extends Controller
     public function index(): Response
     {
         $list = Tower::query()
-            ->select(['id', 'site_name', 'alamat_menara'])
+            ->select([
+                'id', 
+                'site_name', 
+                'alamat_menara',
+                'latitude',
+                'longitude',
+                'tinggi_menara',
+                'tinggi_bangunan',
+                'jumlah_pengguna',
+                'tower_type',
+                'site_type'
+            ])
             ->orderBy('site_name')
             ->get()
             ->toArray();
@@ -40,27 +51,39 @@ class UserComplaintController extends Controller
             'tower_id' => 'required|exists:towers,id',
             'pesan' => 'required|string|max:500',
             'foto.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
         $report = Report::create([
             'tower_id' => $validated['tower_id'],
             'user_id' => $request->user()->id,
+            'reporter_name' => $validated['nama'] ?? $request->user()->name,
             'reporter_phone' => $validated['telepon'],
             'category' => $validated['kategori'],
             'message' => $validated['pesan'],
             'status' => 'pending',
         ]);
 
+        // Handle image uploads
         if ($request->hasFile('foto')) {
             foreach ($request->file('foto') as $photo) {
                 $path = $photo->store('report-photos', 'public');
                 ReportAsset::create([
                     'report_id' => $report->id,
-                    'file_path' => $path,
-                    'file_name' => $photo->getClientOriginalName(),
-                    'file_type' => 'image',
-                    'mime_type' => $photo->getMimeType(),
-                    'file_size' => $photo->getSize(),
+                    'image_path' => $path,
+                    'file_type' => 'image/' . $photo->getClientOriginalExtension(),
+                ]);
+            }
+        }
+
+        // Handle video uploads
+        if ($request->hasFile('video')) {
+            foreach ($request->file('video') as $video) {
+                $path = $video->store('report-videos', 'public');
+                ReportImage::create([
+                    'report_id' => $report->id,
+                    'image_path' => $path,
+                    'file_type' => 'video/' . $video->getClientOriginalExtension(),
                 ]);
             }
         }

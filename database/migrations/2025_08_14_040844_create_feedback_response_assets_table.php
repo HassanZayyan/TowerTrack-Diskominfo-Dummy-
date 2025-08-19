@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('feedback_response_assets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('feedback_response_id')->constrained('feedback_responses')->onDelete('cascade');
-            $table->string('file_path');
-            $table->string('file_name');
-            $table->string('file_type'); // image or video
-            $table->string('mime_type');
-            $table->bigInteger('file_size');
+            $table->string('file_path')->nullable();
+            $table->string('file_name')->nullable();
+            $table->string('file_type')->nullable(); // image or video
+            $table->string('mime_type')->nullable();
+            $table->bigInteger('file_size')->nullable();
             $table->timestamps();
         });
     }

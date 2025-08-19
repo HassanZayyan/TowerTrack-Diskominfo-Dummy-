@@ -1,155 +1,30 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
+import FileUpload from '@/Components/Feedback/FileUpload';
+import TowerSearch from '@/Components/Feedback/TowerSearch';
+import TowerMapDialog from '@/Components/Feedback/Map/TowerMapDialog';
+import { useTowerFilter, useTowersWithCoordinates } from '@/Hooks/useTowerFilter';
+import { validatePhoneNumber } from '@/utils/validationUtils';
+import 'leaflet/dist/leaflet.css';
 
 interface FeedbackCreateProps {
   towers: Array<{
     id: number;
     site_name: string;
     alamat_menara?: string;
+    latitude?: number;
+    longitude?: number;
+    tinggi_menara?: number;
+    tinggi_bangunan?: number;
+    jumlah_pengguna?: number;
+    tower_type?: string;
+    site_type?: string;
   }>;
 }
 
-// Utility functions untuk filtering yang lebih akurat
-function normalizeText(text: string): string {
-  return text.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-    .replace(/[^\w\s]/g, ' ') // Replace special chars with space
-    .replace(/\s+/g, ' ') // Multiple spaces to single
-    .trim();
-}
-
-function calculateLevenshteinDistance(str1: string, str2: string): number {
-  const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-  
-  for (let i = 0; i <= str1.length; i += 1) matrix[0][i] = i;
-  for (let j = 0; j <= str2.length; j += 1) matrix[j][0] = j;
-  
-  for (let j = 1; j <= str2.length; j += 1) {
-    for (let i = 1; i <= str1.length; i += 1) {
-      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[j][i] = Math.min(
-        matrix[j][i - 1] + 1, // deletion
-        matrix[j - 1][i] + 1, // insertion
-        matrix[j - 1][i - 1] + indicator // substitution
-      );
-    }
-  }
-  
-  return matrix[str2.length][str1.length];
-}
-
-function getSimilarityScore(text: string, query: string): number {
-  const maxLen = Math.max(text.length, query.length);
-  if (maxLen === 0) return 1.0;
-  const distance = calculateLevenshteinDistance(text, query);
-  return 1.0 - distance / maxLen;
-}
-
-// Fungsi untuk highlight text yang cocok - dengan fuzzy matching
-function highlightMatch(text: string, query: string): React.ReactNode {
-  if (!query.trim()) return text;
-  
-  const normalizedText = normalizeText(text);
-  const normalizedQuery = normalizeText(query);
-  const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length > 0);
-  
-  let highlightedText = text;
-  const matches: Array<{ start: number, end: number, word: string }> = [];
-  
-  // Find all matches
-  queryWords.forEach(queryWord => {
-    const textWords = normalizedText.split(/\s+/);
-    let currentIndex = 0;
-    
-    for (const textWord of textWords) {
-      const wordStartInOriginal = text.toLowerCase().indexOf(textWord, currentIndex);
-      if (wordStartInOriginal === -1) continue;
-      
-      const wordEndInOriginal = wordStartInOriginal + textWord.length;
-      
-      // Check for exact, starts with, contains, or fuzzy match
-      if (textWord === queryWord || 
-          textWord.startsWith(queryWord) || 
-          (queryWord.length >= 2 && textWord.includes(queryWord)) ||
-          (queryWord.length >= 3 && getSimilarityScore(textWord, queryWord) > 0.7)) {
-        
-        matches.push({
-          start: wordStartInOriginal,
-          end: wordEndInOriginal,
-          word: queryWord
-        });
-      }
-      
-      currentIndex = wordEndInOriginal;
-    }
-  });
-  
-  if (matches.length === 0) {
-    // Fallback: highlight any substring matches
-    queryWords.forEach(queryWord => {
-      const escapedWord = queryWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${escapedWord})`, 'gi');
-      const match = text.match(regex);
-      if (match) {
-        const index = text.toLowerCase().indexOf(queryWord);
-        if (index !== -1) {
-          matches.push({
-            start: index,
-            end: index + queryWord.length,
-            word: queryWord
-          });
-        }
-      }
-    });
-  }
-  
-  if (matches.length === 0) return text;
-  
-  // Sort matches by position and merge overlapping
-  matches.sort((a, b) => a.start - b.start);
-  const mergedMatches = [];
-  let current = matches[0];
-  
-  for (let i = 1; i < matches.length; i++) {
-    if (matches[i].start <= current.end) {
-      current.end = Math.max(current.end, matches[i].end);
-    } else {
-      mergedMatches.push(current);
-      current = matches[i];
-    }
-  }
-  mergedMatches.push(current);
-  
-  // Build highlighted text
-  const result = [];
-  let lastIndex = 0;
-  
-  mergedMatches.forEach((match, index) => {
-    // Add text before match
-    if (match.start > lastIndex) {
-      result.push(text.slice(lastIndex, match.start));
-    }
-    
-    // Add highlighted match
-    result.push(
-      <mark key={`highlight-${index}`} className="bg-yellow-200 font-medium">
-        {text.slice(match.start, match.end)}
-      </mark>
-    );
-    
-    lastIndex = match.end;
-  });
-  
-  // Add remaining text
-  if (lastIndex < text.length) {
-    result.push(text.slice(lastIndex));
-  }
-  
-  return result;
-}
+// Moved utility functions to @/utils/stringUtils.ts
 
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const { errors, flash } = usePage().props as any;
@@ -157,6 +32,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [showMapDialog, setShowMapDialog] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -186,173 +62,24 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const [successMessage, setSuccessMessage] = useState('');
   const [isOtherCategory, setIsOtherCategory] = useState(false);
 
-  // Ultra-accurate filtering function dengan fuzzy search
-  const filteredTowers = useMemo(() => {
-    const query = searchTerm.trim();
-    if (!query || query.length === 0) return [];
+  // Use our custom hooks for filtering towers
+  const filteredTowers = useTowerFilter(towers, searchTerm);
+  const towersWithCoordinates = useTowersWithCoordinates(towers) as typeof towers;
 
-    const normalizedQuery = normalizeText(query);
-    const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length > 0);
-
-    const results: Array<{ 
-      tower: typeof towers[0], 
-      score: number, 
-      matchType: string,
-      matchedText: string 
-    }> = [];
-
-    for (const tower of towers) {
-      const siteName = tower.site_name || '';
-      const address = tower.alamat_menara || '';
-      const normalizedSiteName = normalizeText(siteName);
-      const normalizedAddress = normalizeText(address);
-      const combinedText = `${normalizedSiteName} ${normalizedAddress}`;
-      
-      let score = 0;
-      let matchType = '';
-      let matchedText = '';
-      let matchFound = false;
-
-      // 1. EXACT MATCH (Perfect Score)
-      if (normalizedSiteName === normalizedQuery) {
-        score = 10000;
-        matchType = 'exact_name';
-        matchedText = siteName;
-        matchFound = true;
-      }
-      else if (normalizedAddress === normalizedQuery) {
-        score = 9000;
-        matchType = 'exact_address';
-        matchedText = address;
-        matchFound = true;
-      }
-      
-      // 2. STARTS WITH (Very High Score)
-      else if (normalizedSiteName.startsWith(normalizedQuery)) {
-        score = 8000 + (normalizedQuery.length / normalizedSiteName.length) * 1000;
-        matchType = 'starts_with_name';
-        matchedText = siteName;
-        matchFound = true;
-      }
-      else if (normalizedAddress.startsWith(normalizedQuery)) {
-        score = 7000 + (normalizedQuery.length / normalizedAddress.length) * 1000;
-        matchType = 'starts_with_address';
-        matchedText = address;
-        matchFound = true;
-      }
-      
-      // 3. WORD-LEVEL MATCHING
-      else if (queryWords.length > 0) {
-        const siteWords = normalizedSiteName.split(/\s+/);
-        const addressWords = normalizedAddress.split(/\s+/);
-        const allWords = [...siteWords, ...addressWords];
-        
-        let wordMatchScore = 0;
-        let matchedWords = 0;
-        
-        // Check each query word against all text words
-        for (const queryWord of queryWords) {
-          let bestWordMatch = 0;
-          let bestMatchedWord = '';
-          
-          for (const textWord of allWords) {
-            if (textWord === queryWord) {
-              bestWordMatch = 1000; // Exact word match
-              bestMatchedWord = textWord;
-            } else if (textWord.startsWith(queryWord)) {
-              const currentScore = 800 + (queryWord.length / textWord.length) * 200;
-              if (currentScore > bestWordMatch) {
-                bestWordMatch = currentScore;
-                bestMatchedWord = textWord;
-              }
-            } else if (textWord.includes(queryWord) && queryWord.length >= 2) {
-              const currentScore = 600 + (queryWord.length / textWord.length) * 100;
-              if (currentScore > bestWordMatch) {
-                bestWordMatch = currentScore;
-                bestMatchedWord = textWord;
-              }
-            } else if (queryWord.length >= 3) {
-              // Fuzzy matching untuk typo tolerance
-              const similarity = getSimilarityScore(textWord, queryWord);
-              if (similarity > 0.7) {
-                const currentScore = 400 * similarity;
-                if (currentScore > bestWordMatch) {
-                  bestWordMatch = currentScore;
-                  bestMatchedWord = textWord;
-                }
-              }
-            }
-          }
-          
-          if (bestWordMatch > 0) {
-            wordMatchScore += bestWordMatch;
-            matchedWords++;
-          }
-        }
-        
-        // All words must be found for multi-word queries
-        if (queryWords.length === 1 || matchedWords === queryWords.length) {
-          score = wordMatchScore;
-          matchType = `word_match_${matchedWords}`;
-          matchedText = siteName;
-          matchFound = true;
-        }
-      }
-      
-      // 4. SUBSTRING MATCHING (fallback)
-      if (!matchFound && normalizedQuery.length >= 2) {
-        if (normalizedSiteName.includes(normalizedQuery)) {
-          score = 300 + (normalizedQuery.length / normalizedSiteName.length) * 200;
-          matchType = 'substring_name';
-          matchedText = siteName;
-          matchFound = true;
-        }
-        else if (normalizedAddress.includes(normalizedQuery)) {
-          score = 200 + (normalizedQuery.length / normalizedAddress.length) * 100;
-          matchType = 'substring_address';
-          matchedText = address;
-          matchFound = true;
-        }
-      }
-      
-      // 5. FUZZY MATCHING (untuk typo)
-      if (!matchFound && normalizedQuery.length >= 3) {
-        const nameSimilarity = getSimilarityScore(normalizedSiteName, normalizedQuery);
-        const addressSimilarity = getSimilarityScore(normalizedAddress, normalizedQuery);
-        
-        if (nameSimilarity > 0.6) {
-          score = 150 * nameSimilarity;
-          matchType = 'fuzzy_name';
-          matchedText = siteName;
-          matchFound = true;
-        } else if (addressSimilarity > 0.6) {
-          score = 100 * addressSimilarity;
-          matchType = 'fuzzy_address';
-          matchedText = address;
-          matchFound = true;
-        }
-      }
-
-      // Boost score untuk hasil yang lebih pendek (lebih relevan)
-      if (matchFound) {
-        const lengthPenalty = Math.max(0, 1 - (siteName.length / 50));
-        score = score + (score * lengthPenalty * 0.1);
-        
-        results.push({ tower, score, matchType, matchedText });
-      }
-    }
-
-    // Sort berdasarkan score tertinggi, lalu alphabetically
-    results.sort((a, b) => {
-      if (Math.abs(a.score - b.score) < 10) {
-        return a.tower.site_name.localeCompare(b.tower.site_name);
-      }
-      return b.score - a.score;
-    });
+  // Handle tower selection from map
+  const handleTowerMapSelection = (tower: any) => {
+    const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
+    setForm(prev => ({
+      ...prev,
+      tower_id: String(tower.id),
+      lokasi_tower: tower.site_name,
+      lokasi_tower_display: fullAddress,
+    }));
     
-    // Return maksimal 15 hasil teratas
-    return results.slice(0, 15).map(result => result.tower);
-  }, [searchTerm, towers]);
+    if (validation.lokasi_tower) {
+      setValidation(prev => ({ ...prev, lokasi_tower: false }));
+    }
+  };
 
   // Handle input change dengan intelligent search
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -420,7 +147,15 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // Validasi khusus untuk nomor telepon
+    if (name === 'telepon') {
+      // Hanya izinkan angka, tanda +, dan tanda - di awal
+      const cleanedValue = value.replace(/[^0-9+\-]/g, '');
+      setForm(prev => ({ ...prev, [name]: cleanedValue }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
     
     // Clear validation error if typing
     if (validation[name as keyof typeof validation] !== undefined) {
@@ -489,27 +224,60 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
 
-    // Check if adding these files would exceed the limit of 3
-    if (files.length + selectedFiles.length > 3) {
-      setErrorMessage('Maksimal 3 file yang dapat diunggah');
-      return;
-    }
-
+    // Count current files by type
+    const currentImages = files.filter(file => file.type.startsWith('image/')).length;
+    const currentVideos = files.filter(file => file.type.startsWith('video/')).length;
+    
     // Check each file for type and size
-    const allowedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime', 'video/x-msvideo'];
-    const maxSize = 20 * 1024 * 1024; // 20MB
+    const allowedImageTypes = ['image/jpeg', 'image/png'];
+    const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/avi', 'video/x-msvideo', 'video/x-matroska'];
+    const maxImageSize = 5 * 1024 * 1024; // 5MB
+    const maxVideoSize = 50 * 1024 * 1024; // 50MB
     const newFiles: File[] = [];
+    let newImageCount = 0;
+    let newVideoCount = 0;
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
       
-      if (!allowedTypes.includes(file.type)) {
-        setErrorMessage('Hanya file JPG, PNG, MP4, MOV, dan AVI yang diizinkan');
-        continue;
-      }
-      
-      if (file.size > maxSize) {
-        setErrorMessage('Ukuran file tidak boleh melebihi 20MB');
+      if (isImage) {
+        if (currentImages + newImageCount >= 3) {
+          setErrorMessage('Maksimal 3 foto yang dapat diunggah');
+          continue;
+        }
+        
+        if (!allowedImageTypes.includes(file.type)) {
+          setErrorMessage('Hanya file JPG dan PNG yang diizinkan untuk foto');
+          continue;
+        }
+        
+        if (file.size > maxImageSize) {
+          setErrorMessage('Ukuran foto tidak boleh melebihi 5MB');
+          continue;
+        }
+        
+        newImageCount++;
+      } else if (isVideo) {
+        if (currentVideos + newVideoCount >= 2) {
+          setErrorMessage('Maksimal 2 video yang dapat diunggah');
+          continue;
+        }
+        
+        if (!allowedVideoTypes.includes(file.type)) {
+          setErrorMessage('Hanya file MP4, MOV, AVI, dan MKV yang diizinkan untuk video');
+          continue;
+        }
+        
+        if (file.size > maxVideoSize) {
+          setErrorMessage('Ukuran video tidak boleh melebihi 50MB');
+          continue;
+        }
+        
+        newVideoCount++;
+      } else {
+        setErrorMessage('Hanya file foto (JPG, PNG) dan video (MP4, MOV, AVI, MKV) yang diizinkan');
         continue;
       }
       
@@ -548,6 +316,13 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       return;
     }
     
+    // Validasi format nomor telepon
+    const phoneValidation = validatePhoneNumber(form.telepon);
+    if (!phoneValidation.valid) {
+      setErrorMessage(phoneValidation.message);
+      return;
+    }
+    
     setIsSubmitting(true);
     setErrorMessage('');
     
@@ -557,8 +332,18 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       formData.append(key, value);
     });
     
-    files.forEach((file, index) => {
+    // Separate images and videos
+    const images = files.filter(file => file.type.startsWith('image/'));
+    const videos = files.filter(file => file.type.startsWith('video/'));
+    
+    // Append images with 'foto' field
+    images.forEach((file, index) => {
       formData.append(`foto[${index}]`, file);
+    });
+    
+    // Append videos with 'video' field
+    videos.forEach((file, index) => {
+      formData.append(`video[${index}]`, file);
     });
     
     // Submit using Inertia router
@@ -669,10 +454,15 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                     No. Telepon <span className="text-red-600">*</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      // Hanya izinkan angka, tanda +, dan tanda -
+                      const target = e.target as HTMLInputElement;
+                      target.value = target.value.replace(/[^0-9+\-]/g, '');
+                    }}
                     className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
                     style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     placeholder="Masukkan nomor telepon"
@@ -699,7 +489,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                           handleChange(e);
                         }
                       }}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] text-base sm:text-sm p-3`}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
                       style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     >
                       <option value="">Pilih kategori</option>
@@ -739,180 +529,29 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 </div>
               </div>
               
-              <div className="mb-6">
-                <label className="block text-gray-700 font-medium mb-2">
-                  Lokasi Tower <span className="text-red-600">*</span>
-                </label>
-                <div className="relative" ref={dropdownRef}>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder={form.lokasi_tower ? "" : "Ketik minimal 1 karakter untuk mencari..."}
-                    value={form.lokasi_tower ? form.lokasi_tower_display : searchTerm}
-                    onChange={form.lokasi_tower ? undefined : handleSearchChange}
-                    onFocus={() => {
-                      if (!form.lokasi_tower && searchTerm.trim().length > 0) {
-                        setShowDropdown(true);
-                      }
-                    }}
-                    onClick={() => {
-                      if (!form.lokasi_tower && searchTerm.trim().length > 0) {
-                        setShowDropdown(true);
-                      }
-                    }}
-                    onKeyDown={handleKeyDown}
-                    role="combobox"
-                    aria-expanded={showDropdown}
-                    aria-controls="tower-listbox"
-                    aria-autocomplete="list"
-                    readOnly={!!form.lokasi_tower}
-                    className={`w-full rounded-lg border ${validation.lokasi_tower ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3 pr-10 ${form.lokasi_tower ? 'bg-gray-50 cursor-default' : ''}`}
-                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
-                  />
-                  
-                  {/* Clear/Edit button */}
-                  {(form.lokasi_tower || searchTerm) && (
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      title={form.lokasi_tower ? "Ubah pilihan" : "Hapus"}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                  
-                  {/* Dropdown */}
-                  {showDropdown && !form.lokasi_tower && (
-                    <div 
-                      id="tower-listbox" 
-                      role="listbox" 
-                      className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-lg max-h-60 overflow-auto border border-gray-300"
-                    >
-                      {filteredTowers.length === 0 ? (
-                        <div className="p-4 text-gray-500 text-center">
-                          {searchTerm.trim().length === 0 
-                            ? 'Mulai mengetik nama atau alamat tower...' 
-                            : (
-                              <div>
-                                <div className="mb-2">Tidak ditemukan tower dengan kata kunci:</div>
-                                <div className="font-medium text-gray-700">"{searchTerm}"</div>
-                                <div className="text-xs mt-2 text-gray-400">
-                                  💡 Coba gunakan kata kunci yang lebih umum atau periksa ejaan
-                                </div>
-                              </div>
-                            )
-                          }
-                        </div>
-                      ) : (
-                        <>
-                          <div className="px-4 py-2 bg-blue-50 border-b text-xs text-blue-700 font-medium">
-                            ✓ {filteredTowers.length} tower ditemukan untuk "{searchTerm}"
-                          </div>
-                          {filteredTowers.map((tower, index) => (
-                            <div
-                              key={tower.id}
-                              role="option"
-                              aria-selected={index === activeIndex}
-                              onMouseEnter={() => setActiveIndex(index)}
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => selectTower(tower)}
-                              className={`p-4 cursor-pointer border-b last:border-b-0 transition-all duration-150 ${
-                                index === activeIndex 
-                                  ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                                  : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              <div className="font-medium text-gray-900 mb-1">
-                                🏢 {highlightMatch(tower.site_name, searchTerm)}
-                              </div>
-                              {tower.alamat_menara && (
-                                <div className="text-sm text-gray-600">
-                                  📍 {highlightMatch(tower.alamat_menara, searchTerm)}
-                                </div>
-                              )}
-                              {index === activeIndex && (
-                                <div className="text-xs text-blue-600 mt-2 font-medium">
-                                  ⏎ Tekan Enter untuk memilih
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {validation.lokasi_tower && (
-                  <p className="text-red-500 text-sm mt-1">Lokasi tower harus dipilih</p>
-                )}
-                {searchTerm && !showDropdown && !form.lokasi_tower && (
-                  <p className="text-blue-600 text-sm mt-1">Klik pada field untuk melihat hasil pencarian</p>
-                )}
-              </div>
+              <TowerSearch
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                onKeyDown={handleKeyDown}
+                showDropdown={showDropdown}
+                filteredTowers={filteredTowers}
+                activeIndex={activeIndex}
+                onSelectTower={selectTower}
+                inputRef={inputRef}
+                dropdownRef={dropdownRef}
+                selectedTowerDisplay={form.lokasi_tower_display}
+                onClearSelection={clearSelection}
+                validation={validation.lokasi_tower}
+                onShowMap={() => setShowMapDialog(true)}
+              />
               
-              <div className="mb-6">
-                <label className="block text-gray-700 font-medium mb-2">
-                  Upload Foto/Video (opsional)
-                </label>
-                <div className="flex items-center flex-wrap gap-3">
-                  <label className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-300">
-                    <span>Pilih File</span>
-                    <input 
-                      type="file" 
-                      accept=".jpg,.jpeg,.png,.mp4,.mov,.avi" 
-                      className="hidden" 
-                      onChange={handleFileChange}
-                      ref={fileInputRef}
-                      multiple
-                    />
-                  </label>
-                  <span className="text-gray-600">
-                    {files.length > 0 ? `${files.length} file dipilih` : 'Belum ada file dipilih'}
-                  </span>
-                </div>
-                <p className="text-gray-500 text-sm mt-2">
-                  Format yang didukung: JPG, PNG, MP4, MOV, AVI. Maksimal 20MB per file. Maksimal 3 file.
-                </p>
-                
-                {files.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    {files.map((file, index) => (
-                      <div key={index} className="relative">
-                        <div className="w-20 h-20 rounded overflow-hidden border border-gray-300">
-                          {file.type.startsWith('image/') ? (
-                            <img 
-                              src={URL.createObjectURL(file)} 
-                              alt={`Preview ${index}`}
-                              className="w-full h-full object-cover" 
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                              <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <div className="absolute -top-2 -right-2 flex gap-1">
-                          <span className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
-                            {file.type.startsWith('image/') ? 'IMG' : 'VID'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <FileUpload
+                files={files}
+                onFileChange={handleFileChange}
+                onRemoveFile={removeFile}
+                fileInputRef={fileInputRef}
+                errorMessage={errorMessage}
+              />
               
               <div className="mb-6">
                 <label className="block text-gray-700 font-medium mb-2">
@@ -959,6 +598,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           </div>
         </div>
       </div>
+
+      {/* Map Dialog */}
+      <TowerMapDialog 
+        showMapDialog={showMapDialog}
+        setShowMapDialog={setShowMapDialog}
+        towersWithCoordinates={towersWithCoordinates}
+        onSelectTower={handleTowerMapSelection}
+      />
       
       <Footer />
     </MainLayout>

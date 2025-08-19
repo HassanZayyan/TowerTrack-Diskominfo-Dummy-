@@ -12,10 +12,11 @@ class Report extends Model
     protected $fillable = [
         'tower_id',
         'user_id',
+        'reporter_name',
         'reporter_phone',
         'category',
         'message',
-        'status',
+        'status_id',
     ];
     
     public function tower()
@@ -36,5 +37,15 @@ class Report extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+    
+    public function status()
+    {
+        return $this->belongsTo(Status::class);
+    }
+    
+    public function images()
+    {
+        return $this->hasMany(ReportAsset::class);
     }
 }

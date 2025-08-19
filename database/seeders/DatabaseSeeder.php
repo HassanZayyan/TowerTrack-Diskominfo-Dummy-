@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,28 +12,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create admin user
-        User::factory()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@kominfo.go.id',
-            'role' => 'admin',
-            'password' => Hash::make('password123'),
-        ]);
-
-        // Create operator user
-        User::factory()->create([
-            'name' => 'Operator User',
-            'email' => 'operator@kominfo.go.id',
-            'role' => 'operator',
-            'password' => Hash::make('password123'),
-        ]);
-
-        // Create complainant test user
-        User::factory()->create([
-            'name' => 'Complainant User',
-            'email' => 'complainant@example.com',
-            'role' => 'complainant',
-            'password' => Hash::make('password123'),
+        // Seed users first
+        $this->call([
+            UserSeeder::class,
         ]);
 
         // Seed tower data from CSV
@@ -43,6 +22,7 @@ class DatabaseSeeder extends Seeder
             OwnerSeeder::class,
             TowerSeeder::class,
             TowerOwnerSeeder::class,
+            StatusSeeder::class,
         ]);
     }
 }
