@@ -2,9 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
-import TowerSearchInput from '@/Components/TowerSearchInput';
+import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
 import FileUpload from '@/Components/FileUpload';
-import { Tower } from '@/utils/searchUtils';
+import { Tower as BaseTower } from '@/utils/searchUtils';
+
+interface Tower extends BaseTower {
+  latitude: number | string;
+  longitude: number | string;
+  tinggi_menara?: number;
+  tinggi_bangunan?: number;
+  jumlah_pengguna?: number;
+  tower_type?: string;
+  site_type?: string | null;
+}
 
 interface ComplaintCreateProps {
   towers: Tower[];
@@ -177,7 +187,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
               Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi
             </p>
           </div>
-          <img src="/images/dprd-logo.png" alt="DPRD Kabupaten Semarang" className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" />
+          <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" />
         </div>
         
         <div className="bg-white rounded-lg shadow-md">
@@ -290,7 +300,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                 </div>
               </div>
               
-              <TowerSearchInput
+              <TowerSelectionInput
                 towers={towers}
                 selectedTowerId={form.tower_id}
                 selectedTowerDisplay={form.lokasi_tower_display}

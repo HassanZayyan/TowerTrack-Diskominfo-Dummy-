@@ -29,9 +29,29 @@ interface Report {
   responses?: ReportResponse[];
 }
 
-interface Props { reports: Report[] }
+interface Status {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+  icon: string;
+}
 
-const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
+interface Props { 
+  reports: Report[];
+  statuses?: Status[];
+}
+
+const ComplaintsPage: React.FC<Props> = ({ reports = [], statuses = [] }) => {
+  // Default statuses if not provided by the backend
+  const defaultStatuses = [
+    { id: 1, name: 'Pending', slug: 'pending', color: 'red', icon: 'clock' },
+    { id: 2, name: 'In Progress', slug: 'in_progress', color: 'orange', icon: 'refresh' },
+    { id: 3, name: 'Closed', slug: 'closed', color: 'green', icon: 'check' }
+  ];
+  
+  // Use provided statuses or fallback to default
+  const availableStatuses = statuses.length > 0 ? statuses : defaultStatuses;
   const [replyText, setReplyText] = useState<Record<number, string>>({});
   const [selectedFiles, setSelectedFiles] = useState<Record<number, File[]>>({});
   const [replyStatus, setReplyStatus] = useState<Record<number, string>>({});
@@ -102,7 +122,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
   };
 
   const handleStatusChange = (reportId: number, newStatus: string) => {
-    router.put(route('admin.complaints.updateStatus', { report: reportId }), { status: newStatus });
+    router.put(route('admin.complaints.updateStatus', { report: reportId }), { status_id: newStatus });
   };
 
   const handleSendReply = (reportId: number) => {
@@ -112,7 +132,7 @@ const ComplaintsPage: React.FC<Props> = ({ reports = [] }) => {
     
     const formData = new FormData();
     formData.append('message', msg);
-    formData.append('status', status);
+    formData.append('status_id', status);
     
     // Add selected files (images and videos) if any
     const files = selectedFiles[reportId] || [];

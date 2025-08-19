@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
-import FileUpload from '@/Components/Feedback/FileUpload';
-import TowerSearch from '@/Components/Feedback/TowerSearch';
-import TowerMapDialog from '@/Components/Feedback/Map/TowerMapDialog';
-import { useTowerFilter, useTowersWithCoordinates } from '@/Hooks/useTowerFilter';
+import FileUpload from '@/Components/FileUpload';
+import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
+
 import { validatePhoneNumber } from '@/utils/validationUtils';
 import 'leaflet/dist/leaflet.css';
 
@@ -29,12 +28,7 @@ interface FeedbackCreateProps {
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const { errors, flash } = usePage().props as any;
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number>(-1);
-  const [showMapDialog, setShowMapDialog] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+
   
   const [form, setForm] = useState({
     nama: '',
@@ -55,19 +49,16 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   });
 
   const [files, setFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isOtherCategory, setIsOtherCategory] = useState(false);
 
-  // Use our custom hooks for filtering towers
-  const filteredTowers = useTowerFilter(towers, searchTerm);
-  const towersWithCoordinates = useTowersWithCoordinates(towers) as typeof towers;
 
-  // Handle tower selection from map
-  const handleTowerMapSelection = (tower: any) => {
+
+  // Handle tower selection (both from search and map)
+  const handleTowerSelection = (tower: any) => {
     const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
     setForm(prev => ({
       ...prev,
@@ -81,69 +72,17 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     }
   };
 
-  // Handle input change dengan intelligent search
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    // Show dropdown segera saat ada input, bahkan 1 karakter
-    if (value.length > 0) {
-      setShowDropdown(true);
-      // Auto-select first result if available
-      setTimeout(() => {
-        setActiveIndex(0);
-      }, 100);
-    } else {
-      setShowDropdown(false);
-      setActiveIndex(-1);
-    }
-    
-    // Clear validation error
-    if (validation.lokasi_tower) {
-      setValidation(prev => ({ ...prev, lokasi_tower: false }));
-    }
-  }, [validation.lokasi_tower]);
-
-  // Select tower function
-  const selectTower = useCallback((tower: { id: number; site_name: string; alamat_menara?: string }) => {
-    const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
-    setForm((prev) => ({
-      ...prev,
-      tower_id: String(tower.id),
-      lokasi_tower: tower.site_name,
-      lokasi_tower_display: fullAddress,
-    }));
-    setSearchTerm('');
-    setShowDropdown(false);
-    setActiveIndex(-1);
-    
-    // Focus kembali ke input setelah selection
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
-    
-    if (validation.lokasi_tower) {
-      setValidation((prev) => ({ ...prev, lokasi_tower: false }));
-    }
-  }, [validation.lokasi_tower]);
-
-  // Clear selection function
-  const clearSelection = useCallback(() => {
+  // Handle clear tower selection
+  const handleTowerClear = () => {
     setForm(prev => ({ 
       ...prev, 
       lokasi_tower: '', 
       lokasi_tower_display: '', 
       tower_id: '' 
     }));
-    setSearchTerm('');
-    setShowDropdown(false);
-    setActiveIndex(-1);
-    
-    // Focus ke input setelah clear
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
-  }, []);
+  };
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -163,139 +102,11 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     }
   };
   
-  // Handle keyboard navigation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showDropdown) return;
-    
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setActiveIndex(prev => 
-          prev < filteredTowers.length - 1 ? prev + 1 : 0
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setActiveIndex(prev => 
-          prev > 0 ? prev - 1 : filteredTowers.length - 1
-        );
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (activeIndex >= 0 && filteredTowers[activeIndex]) {
-          selectTower(filteredTowers[activeIndex]);
-        }
-        break;
-      case 'Escape':
-        setShowDropdown(false);
-        setActiveIndex(-1);
-        inputRef.current?.blur();
-        break;
-      case 'Tab':
-        setShowDropdown(false);
-        setActiveIndex(-1);
-        break;
-    }
-  }, [showDropdown, activeIndex, filteredTowers, selectTower]);
-  
-  // Event handler untuk klik di luar dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-        setActiveIndex(-1);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
-  // Auto-select first item when typing
-  useEffect(() => {
-    if (showDropdown && filteredTowers.length > 0 && activeIndex === -1) {
-      setActiveIndex(0);
-    }
-  }, [filteredTowers, showDropdown]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles) return;
 
-    // Count current files by type
-    const currentImages = files.filter(file => file.type.startsWith('image/')).length;
-    const currentVideos = files.filter(file => file.type.startsWith('video/')).length;
-    
-    // Check each file for type and size
-    const allowedImageTypes = ['image/jpeg', 'image/png'];
-    const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/avi', 'video/x-msvideo', 'video/x-matroska'];
-    const maxImageSize = 5 * 1024 * 1024; // 5MB
-    const maxVideoSize = 50 * 1024 * 1024; // 50MB
-    const newFiles: File[] = [];
-    let newImageCount = 0;
-    let newVideoCount = 0;
 
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      
-      if (isImage) {
-        if (currentImages + newImageCount >= 3) {
-          setErrorMessage('Maksimal 3 foto yang dapat diunggah');
-          continue;
-        }
-        
-        if (!allowedImageTypes.includes(file.type)) {
-          setErrorMessage('Hanya file JPG dan PNG yang diizinkan untuk foto');
-          continue;
-        }
-        
-        if (file.size > maxImageSize) {
-          setErrorMessage('Ukuran foto tidak boleh melebihi 5MB');
-          continue;
-        }
-        
-        newImageCount++;
-      } else if (isVideo) {
-        if (currentVideos + newVideoCount >= 2) {
-          setErrorMessage('Maksimal 2 video yang dapat diunggah');
-          continue;
-        }
-        
-        if (!allowedVideoTypes.includes(file.type)) {
-          setErrorMessage('Hanya file MP4, MOV, AVI, dan MKV yang diizinkan untuk video');
-          continue;
-        }
-        
-        if (file.size > maxVideoSize) {
-          setErrorMessage('Ukuran video tidak boleh melebihi 50MB');
-          continue;
-        }
-        
-        newVideoCount++;
-      } else {
-        setErrorMessage('Hanya file foto (JPG, PNG) dan video (MP4, MOV, AVI, MKV) yang diizinkan');
-        continue;
-      }
-      
-      newFiles.push(file);
-    }
-
-    // Add the valid files to the array
-    setFiles(prev => [...prev, ...newFiles]);
-    
-    // Clear the input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,9 +139,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     
     // Create form data to handle file uploads
     const formData = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
+    
+    // Map form field names to controller expected names
+    formData.append('sender_phone', form.telepon);
+    formData.append('category', form.kategori);
+    formData.append('tower_id', form.tower_id);
+    formData.append('message', form.pesan);
+    formData.append('sender_name', form.nama); // Tambahkan nama pengirim dari form
+
     
     // Separate images and videos
     const images = files.filter(file => file.type.startsWith('image/'));
@@ -391,9 +207,6 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     });
     setErrorMessage('');
     setSuccessMessage('');
-    setSearchTerm('');
-    setShowDropdown(false);
-    setActiveIndex(-1);
   };
 
   return (
@@ -529,28 +342,24 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 </div>
               </div>
               
-              <TowerSearch
-                searchTerm={searchTerm}
-                onSearchChange={handleSearchChange}
-                onKeyDown={handleKeyDown}
-                showDropdown={showDropdown}
-                filteredTowers={filteredTowers}
-                activeIndex={activeIndex}
-                onSelectTower={selectTower}
-                inputRef={inputRef}
-                dropdownRef={dropdownRef}
+              <TowerSelectionInput
+                towers={towers as any}
+                selectedTowerId={form.tower_id}
                 selectedTowerDisplay={form.lokasi_tower_display}
-                onClearSelection={clearSelection}
-                validation={validation.lokasi_tower}
-                onShowMap={() => setShowMapDialog(true)}
+                onTowerSelect={handleTowerSelection}
+                onClear={handleTowerClear}
+                label="Lokasi Tower"
+                required={true}
+                error={validation.lokasi_tower}
+                errorMessage="Lokasi tower harus dipilih"
+                className="mb-6"
               />
               
               <FileUpload
                 files={files}
-                onFileChange={handleFileChange}
-                onRemoveFile={removeFile}
-                fileInputRef={fileInputRef}
-                errorMessage={errorMessage}
+                onFilesChange={setFiles}
+                onError={setErrorMessage}
+                className="mb-6"
               />
               
               <div className="mb-6">
@@ -599,13 +408,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         </div>
       </div>
 
-      {/* Map Dialog */}
-      <TowerMapDialog 
-        showMapDialog={showMapDialog}
-        setShowMapDialog={setShowMapDialog}
-        towersWithCoordinates={towersWithCoordinates}
-        onSelectTower={handleTowerMapSelection}
-      />
+
       
       <Footer />
     </MainLayout>

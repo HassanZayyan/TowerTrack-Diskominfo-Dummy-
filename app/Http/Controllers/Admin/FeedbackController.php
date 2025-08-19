@@ -6,24 +6,30 @@ use App\Http\Controllers\Controller;
 use App\Models\Feedback;
 use App\Models\FeedbackResponse;
 use App\Models\FeedbackResponseAsset;
+use App\Models\Status;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class FeedbackController extends Controller
 {
     /**
      * Display a listing of feedbacks for admin
      */
-    public function index(Request $request): Response
+    public function index(Request $request)
     {
         $search = $request->get('search');
         $status = $request->get('status', 'all');
-        $perPage = 15;
-
-        $query = Feedback::with(['tower:id,site_name', 'user:id,name,email', 'assets'])
-            ->orderBy('created_at', 'desc');
-
+        
+        $query = Feedback::with([
+                'tower:id,site_name,alamat_menara', 
+                'assets:id,feedback_id,file_path,file_type', 
+                'user:id,name,email',
+                'responses' => function($query) {
+                    $query->with(['user:id,name']);
+                }
+            ])
+            ->orderByDesc('created_at');
+            
         // Apply search filter
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -43,22 +49,31 @@ class FeedbackController extends Controller
         if ($status !== 'all') {
             $query->where('status', $status);
         }
+        
+        $feedbacks = $query->get();
 
-        $feedbacks = $query->paginate($perPage);
+        // Get statuses if the table exists, otherwise use default statuses
+        try {
+            $statuses = Status::all(['id', 'name', 'slug', 'color', 'icon']);
+        } catch (\Exception $e) {
+            // If table doesn't exist, use default statuses
+            $statuses = collect([
+                ['id' => 1, 'name' => 'Pending', 'slug' => 'pending', 'color' => 'red', 'icon' => 'clock'],
+                ['id' => 2, 'name' => 'In Progress', 'slug' => 'in_progress', 'color' => 'orange', 'icon' => 'refresh'],
+                ['id' => 3, 'name' => 'Closed', 'slug' => 'closed', 'color' => 'green', 'icon' => 'check']
+            ]);
+        }
 
         return Inertia::render('Admin/Feedback/Index', [
             'feedbacks' => $feedbacks,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
+            'statuses' => $statuses,
         ]);
     }
 
     /**
      * Show single feedback detail for admin
      */
-    public function show(Feedback $feedback): Response
+    public function show(Feedback $feedback)
     {
         $feedback->load([
             'tower:id,site_name,alamat_menara',
@@ -68,8 +83,21 @@ class FeedbackController extends Controller
             'responses.assets'
         ]);
 
+        // Get statuses if the table exists, otherwise use default statuses
+        try {
+            $statuses = Status::all(['id', 'name', 'slug', 'color', 'icon']);
+        } catch (\Exception $e) {
+            // If table doesn't exist, use default statuses
+            $statuses = collect([
+                ['id' => 1, 'name' => 'Pending', 'slug' => 'pending', 'color' => 'red', 'icon' => 'clock'],
+                ['id' => 2, 'name' => 'In Progress', 'slug' => 'in_progress', 'color' => 'orange', 'icon' => 'refresh'],
+                ['id' => 3, 'name' => 'Closed', 'slug' => 'closed', 'color' => 'green', 'icon' => 'check']
+            ]);
+        }
+
         return Inertia::render('Admin/Feedback/Show', [
             'feedback' => $feedback,
+            'statuses' => $statuses
         ]);
     }
 
@@ -80,37 +108,86 @@ class FeedbackController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string|max:1000',
-            'status' => 'required|in:pending,in_progress,responded,resolved,closed',
-            'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi|max:20480',
+            'status_id' => 'required',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'videos.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
-        $response = FeedbackResponse::create([
-            'feedback_id' => $feedback->id,
-            'user_id' => auth()->id(),
-            'message' => $validated['message'],
-        ]);
+        try {
+            // Create response first
+            $response = FeedbackResponse::create([
+                'feedback_id' => $feedback->id,
+                'user_id' => auth()->id(),
+                'message' => $validated['message'],
+            ]);
+            
+            // Now handle file uploads and store them in feedback_response_assets
+            // Process images
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+                    $filePath = $image->store('feedback-response-photos', 'public');
+                    $fileType = 'image';
+                    $mimeType = $image->getClientMimeType();
+                    
+                    FeedbackResponseAsset::create([
+                        'feedback_response_id' => $response->id,
+                        'file_path' => $filePath,
+                        'file_name' => $image->getClientOriginalName(),
+                        'file_type' => $fileType,
+                        'mime_type' => $mimeType,
+                        'file_size' => $image->getSize(),
+                    ]);
+                }
+            }
+            
+            // Process videos
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $video) {
+                    $filePath = $video->store('feedback-response-videos', 'public');
+                    $fileType = 'video';
+                    $mimeType = $video->getClientMimeType();
+                    
+                    FeedbackResponseAsset::create([
+                        'feedback_response_id' => $response->id,
+                        'file_path' => $filePath,
+                        'file_name' => $video->getClientOriginalName(),
+                        'file_type' => $fileType,
+                        'mime_type' => $mimeType,
+                        'file_size' => $video->getSize(),
+                    ]);
+                }
+            }
+            
+            // Convert status_id to status string if needed
+            $statusMap = [
+                '1' => 'pending',
+                '2' => 'in_progress',
+                '3' => 'closed'
+            ];
+            
+            $statusValue = $validated['status_id'];
+            if (is_numeric($statusValue) && isset($statusMap[$statusValue])) {
+                $statusValue = $statusMap[$statusValue];
+            }
 
-        // Handle file uploads for response
-        if ($request->hasFile('assets')) {
-            foreach ($request->file('assets') as $file) {
-                $path = $file->store('feedback-response-assets', 'public');
-                $fileType = str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'video';
-                
-                FeedbackResponseAsset::create([
-                    'feedback_response_id' => $response->id,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $fileType,
-                    'mime_type' => $file->getMimeType(),
-                    'file_size' => $file->getSize(),
+            // Update feedback status
+            $feedback->update(['status' => $statusValue]);
+
+        } catch (\Exception $e) {
+            // Log the error
+            \Log::error('Error responding to feedback: ' . $e->getMessage());
+            
+            // If response creation failed, try again without additional processing
+            if (!isset($response)) {
+                $response = FeedbackResponse::create([
+                    'feedback_id' => $feedback->id,
+                    'user_id' => auth()->id(),
+                    'message' => $validated['message'],
                 ]);
             }
         }
 
-        // Update feedback status
-        $feedback->update(['status' => $validated['status']]);
-
-        return redirect()->back()->with('success', 'Balasan berhasil dikirim!');
+        return back();
     }
 
     /**
@@ -119,11 +196,47 @@ class FeedbackController extends Controller
     public function updateStatus(Request $request, Feedback $feedback)
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending,in_progress,responded,resolved,closed',
+            'status_id' => 'required',
         ]);
-
-        $feedback->update(['status' => $validated['status']]);
-
-        return redirect()->back()->with('success', 'Status feedback berhasil diperbarui!');
+        
+        try {
+            // Convert status_id to status string if needed
+            $statusMap = [
+                '1' => 'pending',
+                '2' => 'in_progress',
+                '3' => 'closed'
+            ];
+            
+            $statusValue = $validated['status_id'];
+            if (is_numeric($statusValue) && isset($statusMap[$statusValue])) {
+                $statusValue = $statusMap[$statusValue];
+            }
+            
+            // Update feedback status
+            $feedback->update(['status' => $statusValue]);
+            
+            // Create a response if there's a message
+            if ($request->has('message') && !empty($request->message)) {
+                $response = FeedbackResponse::create([
+                    'feedback_id' => $feedback->id,
+                    'user_id' => auth()->id(),
+                    'message' => $request->message,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log the error
+            \Log::error('Error updating status: ' . $e->getMessage());
+            
+            // Still create the response if there's a message
+            if ($request->has('message') && !empty($request->message)) {
+                FeedbackResponse::create([
+                    'feedback_id' => $feedback->id,
+                    'user_id' => auth()->id(),
+                    'message' => $request->message,
+                ]);
+            }
+        }
+        
+        return back();
     }
 }

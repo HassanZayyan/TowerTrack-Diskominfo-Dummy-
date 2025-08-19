@@ -6,7 +6,7 @@ interface MessageItem {
   created_at: string;
   towerName: string;
   category: string;
-  status: string;
+  status: string | undefined | null;
   responsesCount: number;
 }
 

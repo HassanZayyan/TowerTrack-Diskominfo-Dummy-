@@ -54,6 +54,15 @@ class UserComplaintController extends Controller
             'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
+        // Get default pending status ID
+        $pendingStatusId = null;
+        try {
+            $pendingStatus = \App\Models\Status::where('slug', 'pending')->first();
+            $pendingStatusId = $pendingStatus ? $pendingStatus->id : null;
+        } catch (\Exception $e) {
+            // If status table doesn't exist, continue without setting status_id
+        }
+        
         $report = Report::create([
             'tower_id' => $validated['tower_id'],
             'user_id' => $request->user()->id,
@@ -61,7 +70,7 @@ class UserComplaintController extends Controller
             'reporter_phone' => $validated['telepon'],
             'category' => $validated['kategori'],
             'message' => $validated['pesan'],
-            'status' => 'pending',
+            'status_id' => $pendingStatusId,
         ]);
 
         // Handle image uploads
@@ -70,8 +79,11 @@ class UserComplaintController extends Controller
                 $path = $photo->store('report-photos', 'public');
                 ReportAsset::create([
                     'report_id' => $report->id,
-                    'image_path' => $path,
-                    'file_type' => 'image/' . $photo->getClientOriginalExtension(),
+                    'file_path' => $path,
+                    'file_name' => $photo->getClientOriginalName(),
+                    'file_type' => 'image',
+                    'mime_type' => $photo->getClientMimeType(),
+                    'file_size' => $photo->getSize(),
                 ]);
             }
         }
@@ -80,10 +92,13 @@ class UserComplaintController extends Controller
         if ($request->hasFile('video')) {
             foreach ($request->file('video') as $video) {
                 $path = $video->store('report-videos', 'public');
-                ReportImage::create([
+                ReportAsset::create([
                     'report_id' => $report->id,
-                    'image_path' => $path,
-                    'file_type' => 'video/' . $video->getClientOriginalExtension(),
+                    'file_path' => $path,
+                    'file_name' => $video->getClientOriginalName(),
+                    'file_type' => 'video',
+                    'mime_type' => $video->getClientMimeType(),
+                    'file_size' => $video->getSize(),
                 ]);
             }
         }

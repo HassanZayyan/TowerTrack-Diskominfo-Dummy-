@@ -38,7 +38,7 @@ type MessageItem = {
   created_at: string;
   towerName: string;
   category: string;
-  status: string;
+  status: string | undefined | null;
   responsesCount: number;
 };
 
@@ -54,14 +54,22 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
 
   if (isStaff) return null;
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined | null) => {
     const statusConfig = {
       pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
       in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
       responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
       resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
     };
-    return statusConfig[status as keyof typeof statusConfig] || { bg: '#F3F4F6', text: '#374151', label: status.replace('_', ' ') };
+    
+    // If status is undefined or null, return a default styling
+    if (!status) {
+      return { bg: '#F3F4F6', text: '#374151', label: 'Tidak diketahui' };
+    }
+    
+    // Check if the status exists in our config
+    return statusConfig[status as keyof typeof statusConfig] || 
+      { bg: '#F3F4F6', text: '#374151', label: status.replace ? status.replace('_', ' ') : status };
   };
 
   const formatDate = (dateString: string) => {
@@ -88,8 +96,8 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
       type: 'Keluhan' as const,
       created_at: r.created_at,
       towerName: r.tower?.site_name ?? '-',
-      category: r.category,
-      status: r.status,
+      category: r.category || 'Umum',
+      status: r.status || 'pending', // Use a default status if none provided
       responsesCount: r.responses?.length ?? 0,
     }));
 
@@ -98,8 +106,8 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
       type: 'Masukan' as const,
       created_at: f.created_at,
       towerName: f.tower?.site_name ?? '-',
-      category: f.category,
-      status: f.status,
+      category: f.category || 'Umum',
+      status: f.status || 'pending', // Use a default status if none provided
       responsesCount: f.responses?.length ?? 0,
     }));
 

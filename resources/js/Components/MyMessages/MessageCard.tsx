@@ -6,13 +6,13 @@ interface MessageItem {
   created_at: string;
   towerName: string;
   category: string;
-  status: string;
+  status: string | undefined | null;
   responsesCount: number;
 }
 
 interface MessageCardProps {
   item: MessageItem;
-  getStatusColor: (status: string) => { bg: string; text: string; label: string };
+  getStatusColor: (status: string | undefined | null) => { bg: string; text: string; label: string };
   formatDate: (dateString: string) => string;
 }
 
