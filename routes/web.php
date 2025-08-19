@@ -35,6 +35,16 @@ Route::middleware(['auth', NonStaffMiddleware::class])->get('/complaint', [UserC
 
 Route::middleware(['auth', NonStaffMiddleware::class])->post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
 
+// Feedback routes for non-staff users
+Route::middleware(['auth', NonStaffMiddleware::class])->get('/feedback', [FeedbackController::class, 'index'])->name('feedback');
+
+Route::middleware(['auth', NonStaffMiddleware::class])->post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
+
+// User feedback list and details
+Route::middleware('auth')->get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
+
+Route::middleware('auth')->get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');
+
 // User reports page (messages)
 Route::middleware('auth')->get('/my-messages', function () {
     $reports = \App\Models\Report::with([
