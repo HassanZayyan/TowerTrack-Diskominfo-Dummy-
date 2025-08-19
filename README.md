@@ -1,6 +1,6 @@
 # 📡 Tagging Tower Kominfo
 
-Aplikasi web untuk mengelola dan memantau data menara telekomunikasi di Indonesia. Platform ini memungkinkan pengelolaan menara, pengajuan pengaduan, dan pengumpulan masukan.
+Aplikasi web untuk mengelola dan memantau data menara telekomunikasi di Kabupaten Semarang. Platform ini memungkinkan pengelolaan menara, pengajuan pengaduan, dan pengumpulan masukan.
 
 ## ✨ Fitur Utama
 
