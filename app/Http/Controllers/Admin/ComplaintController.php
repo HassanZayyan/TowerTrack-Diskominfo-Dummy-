@@ -124,10 +124,15 @@ class ComplaintController extends Controller
         $validated = $request->validate([
             'status_id' => 'required',
         ]);
-        
+
+        // Ubah slug ke id status
+        $statusSlug = $validated['status_id'];
+        $statusModel = \App\Models\Status::where('slug', $statusSlug)->first();
+        $statusId = $statusModel ? $statusModel->id : $validated['status_id'];
+
         try {
-            $report->update(['status_id' => $validated['status_id']]);
-            
+            $report->update(['status_id' => $statusId]);
+
             // Create a response if there's a message
             if ($request->has('message') && !empty($request->message)) {
                 $response = ReportResponse::create([
@@ -135,16 +140,16 @@ class ComplaintController extends Controller
                     'user_id' => $request->user()->id,
                     'message' => $request->message,
                 ]);
-                
+
                 // Set the status for this response if the method exists
                 if (method_exists($response, 'setStatus')) {
-                    $response->setStatus($validated['status_id']);
+                    $response->setStatus($statusId);
                 }
             }
         } catch (\Exception $e) {
             // Log the error
             \Log::error('Error updating status: ' . $e->getMessage());
-            
+
             // Still create the response if there's a message
             if ($request->has('message') && !empty($request->message)) {
                 ReportResponse::create([
@@ -154,7 +159,7 @@ class ComplaintController extends Controller
                 ]);
             }
         }
-        
+
         return back();
     }
 }

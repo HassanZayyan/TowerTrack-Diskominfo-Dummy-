@@ -30,9 +30,17 @@ class ReportResponse extends Model
 		return $this->hasMany(ReportResponseAsset::class, 'report_response_id');
 	}
     
+
     public function statuses()
     {
-        return $this->hasMany(ReportStatus::class, 'report_response_id');
+        return $this->belongsToMany(Status::class, 'report_statuses', 'report_response_id', 'status_id');
+    }
+
+    // Accessor agar status balasan dikirim sebagai slug
+    public function getStatusAttribute()
+    {
+        $status = $this->statuses()->latest()->first();
+        return $status ? $status->slug : null;
     }
     
     /**

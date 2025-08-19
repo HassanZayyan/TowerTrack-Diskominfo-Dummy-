@@ -23,12 +23,12 @@ class Report extends Model
     {
         return $this->belongsTo(Tower::class);
     }
-    
+
     public function assets()
     {
         return $this->hasMany(ReportAsset::class);
     }
-    
+
     public function responses()
     {
         return $this->hasMany(ReportResponse::class);
@@ -38,14 +38,26 @@ class Report extends Model
     {
         return $this->belongsTo(User::class);
     }
-    
+
     public function status()
     {
         return $this->belongsTo(Status::class);
     }
-    
+
     public function images()
     {
         return $this->hasMany(ReportAsset::class);
+    }
+
+    // Accessor agar status dikirim sebagai slug
+    public function getStatusAttribute()
+    {
+        // Jika relasi status sudah dimuat
+        if ($this->relationLoaded('status') && $this->status) {
+            return $this->status->slug;
+        }
+        // Jika belum, ambil dari DB
+        $status = Status::find($this->status_id);
+        return $status ? $status->slug : null;
     }
 }
