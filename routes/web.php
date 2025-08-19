@@ -37,8 +37,8 @@ Route::middleware(['auth', NonStaffMiddleware::class])->post('/complaint', [User
 Route::middleware('auth')->get('/my-messages', function () {
     $reports = \App\Models\Report::with([
             'tower:id,site_name,alamat_menara', 
-            'responses:id,report_id,message,image_path,file_type,status,created_at', 
-            'images:id,report_id,image_path,file_type'
+            'responses:id,report_id,message,created_at', 
+            'images:id,report_id,file_path,file_type'
         ])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')

@@ -43,4 +43,9 @@ class Report extends Model
     {
         return $this->belongsTo(Status::class);
     }
+    
+    public function images()
+    {
+        return $this->hasMany(ReportAsset::class);
+    }
 }

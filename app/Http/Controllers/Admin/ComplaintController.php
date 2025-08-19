@@ -15,7 +15,7 @@ class ComplaintController extends Controller
     {
         $reports = Report::with([
                 'tower:id,site_name,alamat_menara', 
-                'images:id,report_id,image_path,file_type', 
+                'images:id,report_id,file_path,file_type', 
                 'user:id,name,email',
                 'status:id,name,slug,color,icon',
                 'responses' => function($query) {
