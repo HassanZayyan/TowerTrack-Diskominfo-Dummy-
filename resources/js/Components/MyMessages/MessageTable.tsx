@@ -14,9 +14,10 @@ interface MessageTableProps {
   items: MessageItem[];
   getStatusColor: (status: string | undefined | null) => { bg: string; text: string; label: string };
   formatDate: (dateString: string) => string;
+  onOpen?: (item: MessageItem) => void;
 }
 
-export default function MessageTable({ items, getStatusColor, formatDate }: MessageTableProps) {
+export default function MessageTable({ items, getStatusColor, formatDate, onOpen }: MessageTableProps) {
   return (
     <div className="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -29,6 +30,7 @@ export default function MessageTable({ items, getStatusColor, formatDate }: Mess
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kategori</th>
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Balasan</th>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
@@ -61,7 +63,8 @@ export default function MessageTable({ items, getStatusColor, formatDate }: Mess
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>{item.type}</span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {item.towerName}
+                    <div>{item.towerName}</div>
+                    {/* alamat akan ditampilkan di modal detail; tabel ringkas tetap nama */}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                     <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
@@ -81,6 +84,14 @@ export default function MessageTable({ items, getStatusColor, formatDate }: Mess
                       <span className="font-medium">{item.responsesCount}</span>
                       <span className="text-gray-400 ml-1">balasan</span>
                     </div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    <button
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      onClick={() => onOpen && onOpen(item)}
+                    >
+                      Lihat
+                    </button>
                   </td>
                 </tr>
               );

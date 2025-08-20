@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class FeedbackResponseAsset extends Model
 {
     use HasFactory;
-
+    
     protected $table = 'feedback_response_assets';
-
+    
     protected $fillable = [
         'feedback_response_id',
         'file_path',
@@ -19,18 +19,22 @@ class FeedbackResponseAsset extends Model
         'mime_type',
         'file_size',
     ];
-
+    
     protected $appends = [
         'image_path',
     ];
-
-    public function response()
+    
+    public function feedbackResponse()
     {
-        return $this->belongsTo(FeedbackResponse::class, 'feedback_response_id');
+        return $this->belongsTo(FeedbackResponse::class);
     }
-
+    
     public function getImagePathAttribute()
     {
-        return $this->file_path;
+        if (!$this->file_path) {
+            return null;
+        }
+        
+        return asset('storage/' . $this->file_path);
     }
 }

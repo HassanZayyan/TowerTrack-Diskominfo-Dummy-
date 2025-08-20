@@ -17,13 +17,23 @@ class ComplaintController extends Controller
                 'tower:id,site_name,alamat_menara', 
                 'images:id,report_id,file_path,file_type', 
                 'user:id,name,email',
-                'status:id,name,slug,color,icon',
-                'responses' => function($query) {
-                    $query->with(['statuses:id,name,slug,color,icon']);
-                }
+                // Do not eager load 'status' relation here to avoid name collision with 'status' slug below
+                'responses.user:id,name',
+                'responses.assets:id,report_response_id,file_path,file_type'
             ])
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->map(function ($report) {
+                // Map status_id to status slug for frontend compatibility
+                $statusMap = [
+                    1 => 'pending',
+                    2 => 'in_progress',
+                    3 => 'closed'
+                ];
+                // Ensure the 'status' field is a slug string, not a relation object
+                $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
+                return $report;
+            });
 
         // Get statuses if the table exists, otherwise use default statuses
         try {
