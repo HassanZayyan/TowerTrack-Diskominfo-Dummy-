@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TowerController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\FoController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -58,7 +59,13 @@ Route::middleware('auth')->get('/my-messages', function () {
         ])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')
-        ->get();
+        ->get()
+        ->map(function ($report) {
+            // Normalize numeric status_id to slug for frontend
+            $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
+            $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
+            return $report;
+        });
 
     $feedbacks = collect();
     
@@ -66,7 +73,8 @@ Route::middleware('auth')->get('/my-messages', function () {
     try {
         if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
             $feedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name', 
+                    'tower:id,site_name,alamat_menara',
+                    'assets:id,feedback_id,file_path,file_type',
                     'responses' => function ($q) {
                         $q->select('id','feedback_id','created_at','user_id','message')
                           ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
@@ -107,8 +115,18 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
     });
 
-    // Complaints management
-    Route::get('/complaints', [\App\Http\Controllers\Admin\ComplaintController::class, 'index'])->name('complaints.index');
+    // Unified Messages index
+    Route::get('/messages', [MessagesController::class, 'index'])->name('messages.index');
+
+    // Legacy index routes redirect to unified messages while keeping action routes intact
+    Route::get('/complaints', function () {
+        return redirect()->route('admin.messages.index', ['tab' => 'complaints']);
+    })->name('complaints.index');
+    Route::get('/feedbacks', function () {
+        return redirect()->route('admin.messages.index', ['tab' => 'feedbacks']);
+    })->name('feedbacks.index');
+
+    // Complaints actions
     Route::post('/complaints/{report}/respond', [\App\Http\Controllers\Admin\ComplaintController::class, 'respond'])->name('complaints.respond');
     Route::put('/complaints/{report}', [\App\Http\Controllers\Admin\ComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
 
@@ -118,8 +136,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
     Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerController::class, 'update'])->name('towers.update');
 
-    // Feedback management
-    Route::get('/feedbacks', [\App\Http\Controllers\Admin\FeedbackController::class, 'index'])->name('feedbacks.index');
+    // Feedback management actions
     Route::get('/feedbacks/{feedback}', [\App\Http\Controllers\Admin\FeedbackController::class, 'show'])->name('feedbacks.show');
     Route::post('/feedbacks/{feedback}/respond', [\App\Http\Controllers\Admin\FeedbackController::class, 'respond'])->name('feedbacks.respond');
     Route::put('/feedbacks/{feedback}/status', [\App\Http\Controllers\Admin\FeedbackController::class, 'updateStatus'])->name('feedbacks.updateStatus');

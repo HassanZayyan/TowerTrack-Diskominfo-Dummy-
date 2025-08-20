@@ -201,13 +201,13 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       {/* Back button */}
       <div className="mb-6">
         <a
-          href={route('admin.feedbacks.index')}
+          href={route('admin.messages.index')}
           className="inline-flex items-center text-red-600 hover:text-red-800"
         >
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
           </svg>
-          <span>Kembali ke daftar masukan</span>
+          <span>Kembali ke pesan</span>
         </a>
       </div>
 

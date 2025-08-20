@@ -63,7 +63,8 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>{item.type}</span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {item.towerName}
+                    <div>{item.towerName}</div>
+                    {/* alamat akan ditampilkan di modal detail; tabel ringkas tetap nama */}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                     <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">

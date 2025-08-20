@@ -96,7 +96,7 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
       type: 'Keluhan' as const,
       created_at: r.created_at,
       towerName: r.tower?.site_name ?? '-',
-      category: r.category || 'Umum',
+      category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
       status: r.status || 'pending', // Use a default status if none provided
       responsesCount: r.responses?.length ?? 0,
     }));
@@ -106,7 +106,7 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
       type: 'Masukan' as const,
       created_at: f.created_at,
       towerName: f.tower?.site_name ?? '-',
-      category: f.category || 'Umum',
+      category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
       status: f.status || 'pending', // Use a default status if none provided
       responsesCount: f.responses?.length ?? 0,
     }));
@@ -133,11 +133,17 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
         {assets.map((a, i) => (
-          <div key={i} className="rounded overflow-hidden border">
+          <div key={i} className="rounded overflow-hidden border bg-black">
             {a.file_type === 'video' ? (
-              <video src={`/storage/${a.file_path}`} controls className="w-full h-32 object-cover" />
+              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                <video
+                  src={`/storage/${a.file_path}`}
+                  controls
+                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                />
+              </div>
             ) : (
-              <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
+              <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
             )}
           </div>
         ))}
@@ -211,6 +217,9 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                 <div>
                   <div className="text-sm text-gray-700">Tower</div>
                   <div className="font-medium text-gray-900">{(detail.data as any).tower?.site_name ?? '-'}</div>
+                  {(detail.data as any).tower?.alamat_menara && (
+                    <div className="text-sm text-gray-600">{(detail.data as any).tower?.alamat_menara}</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-sm text-gray-700">Kategori</div>
@@ -233,7 +242,26 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                         <div key={i} className="bg-gray-50 rounded p-3">
                           <div className="text-sm text-gray-600 mb-1">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
                           {r.message && <div className="text-gray-900">{r.message}</div>}
-                          {renderAssets(r.assets)}
+                          {/* Media balasan */}
+                          {r.assets && r.assets.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                              {r.assets.map((a: any, idx: number) => (
+                                <div key={idx} className="rounded overflow-hidden border bg-black">
+                                  {a.file_type === 'video' ? (
+                                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                                      <video
+                                        src={`/storage/${a.file_path}`}
+                                        controls
+                                        className="absolute inset-0 w-full h-full object-contain bg-black"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -244,7 +272,25 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                         <div key={i} className="bg-gray-50 rounded p-3">
                           <div className="text-sm text-gray-600 mb-1">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
                           {r.message && <div className="text-gray-900">{r.message}</div>}
-                          {renderAssets(r.assets)}
+                          {r.assets && r.assets.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                              {r.assets.map((a: any, idx: number) => (
+                                <div key={idx} className="rounded overflow-hidden border bg-black">
+                                  {a.file_type === 'video' ? (
+                                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                                      <video
+                                        src={`/storage/${a.file_path}`}
+                                        controls
+                                        className="absolute inset-0 w-full h-full object-contain bg-black"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
