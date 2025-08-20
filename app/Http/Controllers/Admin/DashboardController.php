@@ -19,8 +19,24 @@ class DashboardController extends Controller
         $totalReports = Report::count();
         $totalUsers = User::count();
         
+        // Get counts by complaint status (reports)
+        $pendingCount = Report::where('status_id', 1)->count();
+        $inProgressCount = Report::where('status_id', 2)->count();
+        $closedCount = Report::where('status_id', 3)->count();
+        
+        // Get counts by feedback status (string slugs)
+        try {
+            $feedbackPendingCount = \App\Models\Feedback::where('status', 'pending')->count();
+            $feedbackInProgressCount = \App\Models\Feedback::where('status', 'in_progress')->count();
+            $feedbackClosedCount = \App\Models\Feedback::where('status', 'closed')->count();
+        } catch (\Throwable $e) {
+            $feedbackPendingCount = 0;
+            $feedbackInProgressCount = 0;
+            $feedbackClosedCount = 0;
+        }
+        
         // Get recent reports with tower information
-        $recentReports = Report::with(['tower', 'images'])
+        $recentReports = Report::with(['tower', 'images', 'status'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()
@@ -28,7 +44,8 @@ class DashboardController extends Controller
                 return [
                     'id' => $report->id,
                     'title' => 'Laporan #' . $report->id, // Generate title from ID since we don't have title field
-                    'status' => $report->status,
+                    // Use status slug for frontend compatibility
+                    'status' => optional($report->status)->slug ?? 'pending',
                     'created_at' => $report->created_at->format('Y-m-d H:i'),
                     'tower_name' => $report->tower ? $report->tower->site_name : 'N/A',
                     'description' => substr($report->message, 0, 100) . '...', // Use message instead of description
@@ -76,7 +93,14 @@ class DashboardController extends Controller
                 'totalReports' => $totalReports,
                 'totalUsers' => $totalUsers,
                 'weeklyReports' => $weeklyReports,
-                'reportsGrowth' => round($reportsGrowth, 1)
+                'reportsGrowth' => round($reportsGrowth, 1),
+                'pendingCount' => $pendingCount,
+                'inProgressCount' => $inProgressCount,
+                'closedCount' => $closedCount,
+                // Feedback status counts
+                'feedbackPendingCount' => $feedbackPendingCount,
+                'feedbackInProgressCount' => $feedbackInProgressCount,
+                'feedbackClosedCount' => $feedbackClosedCount,
             ],
             'recentReports' => $recentReports,
             'reportsByCategory' => $reportsByCategory,

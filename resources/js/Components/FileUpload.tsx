@@ -18,8 +18,8 @@ export default function FileUpload({
   onFilesChange,
   maxFiles = 3,
   maxSizeBytes = 20 * 1024 * 1024, // 20MB
-  acceptedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime', 'video/x-msvideo'],
-  acceptedExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov', '.avi'],
+  acceptedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'],
+  acceptedExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov', '.avi', '.mkv'],
   label = "Upload Foto/Video (opsional)",
   required = false,
   className = "",

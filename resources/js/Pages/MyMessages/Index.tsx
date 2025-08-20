@@ -113,6 +113,37 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
 
     return [...complaintItems, ...feedbackItems].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [reports, feedbacks]);
+  
+  // Detail modal state and helpers
+  const [detail, setDetail] = React.useState<{ type: 'report' | 'feedback'; data: ReportItem | FeedbackItem } | null>(null);
+  const openDetail = (it: MessageItem) => {
+    const [typ, raw] = it.id.split('-');
+    const id = Number(raw);
+    if (typ === 'report') {
+      const data = (reports || []).find(r => r.id === id);
+      if (data) setDetail({ type: 'report', data });
+    } else if (typ === 'feedback') {
+      const data = (feedbacks || []).find(f => f.id === id);
+      if (data) setDetail({ type: 'feedback', data });
+    }
+  };
+  const closeDetail = () => setDetail(null);
+  const renderAssets = (assets?: Array<{ file_path: string; file_type?: string }>) => {
+    if (!assets || assets.length === 0) return null;
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+        {assets.map((a, i) => (
+          <div key={i} className="rounded overflow-hidden border">
+            {a.file_type === 'video' ? (
+              <video src={`/storage/${a.file_path}`} controls className="w-full h-32 object-cover" />
+            ) : (
+              <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const EmptyState = () => (
     <div className="bg-white rounded-xl shadow-sm p-6 text-center">
@@ -145,6 +176,7 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
           items={items}
           getStatusColor={getStatusColor}
           formatDate={formatDate}
+          onOpen={openDetail}
         />
 
         {/* Mobile/Tablet Card View */}
@@ -158,6 +190,7 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                 item={item}
                 getStatusColor={getStatusColor}
                 formatDate={formatDate}
+                onOpen={openDetail}
               />
             ))
           )}
@@ -165,6 +198,69 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
 
         {/* Summary Stats */}
         <MessageStats items={items} />
+        {detail && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeDetail}>
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Detail {detail.type === 'report' ? 'Keluhan' : 'Masukan'}</h3>
+                <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div>
+                  <div className="text-sm text-gray-700">Tower</div>
+                  <div className="font-medium text-gray-900">{(detail.data as any).tower?.site_name ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-700">Kategori</div>
+                  <div className="font-medium text-gray-900">{(detail.data as any).category ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-700">Pesan</div>
+                  <div className="text-gray-900 whitespace-pre-wrap">{(detail.data as any).message}</div>
+                </div>
+                {detail.type === 'report' ? (
+                  renderAssets((detail.data as any).images)
+                ) : (
+                  renderAssets((detail.data as any).assets)
+                )}
+                <div>
+                  <div className="text-sm font-medium text-gray-900 mb-2">Balasan Admin</div>
+                  {detail.type === 'report' && (detail.data as any).responses?.length > 0 ? (
+                    <div className="space-y-3">
+                      {(detail.data as any).responses.map((r: any, i: number) => (
+                        <div key={i} className="bg-gray-50 rounded p-3">
+                          <div className="text-sm text-gray-600 mb-1">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
+                          {r.message && <div className="text-gray-900">{r.message}</div>}
+                          {renderAssets(r.assets)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {detail.type === 'feedback' && (detail.data as any).responses?.length > 0 ? (
+                    <div className="space-y-3">
+                      {(detail.data as any).responses.map((r: any, i: number) => (
+                        <div key={i} className="bg-gray-50 rounded p-3">
+                          <div className="text-sm text-gray-600 mb-1">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
+                          {r.message && <div className="text-gray-900">{r.message}</div>}
+                          {renderAssets(r.assets)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {((detail.type === 'report' && (!(detail.data as any).responses || (detail.data as any).responses.length === 0)) ||
+                   (detail.type === 'feedback' && (!(detail.data as any).responses || (detail.data as any).responses.length === 0))) && (
+                    <div className="text-gray-500">Belum ada balasan.</div>
+                  )}
+                </div>
+              </div>
+              <div className="px-6 py-3 border-t bg-gray-50 text-right">
+                <button onClick={closeDetail} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Tutup</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );

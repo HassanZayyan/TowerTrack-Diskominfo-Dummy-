@@ -25,7 +25,7 @@ class FeedbackController extends Controller
                 'assets:id,feedback_id,file_path,file_type', 
                 'user:id,name,email',
                 'responses' => function($query) {
-                    $query->with(['user:id,name']);
+                    $query->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 }
             ])
             ->orderByDesc('created_at');

@@ -29,9 +29,17 @@ class ReportAsset extends Model
 
 	public function getImagePathAttribute()
 	{
-		return $this->file_path;
+		if (!$this->file_path) {
+			return null;
+		}
+		
+		return asset('storage/' . $this->file_path);
 	}
 }
+
+
+
+
 
 
 

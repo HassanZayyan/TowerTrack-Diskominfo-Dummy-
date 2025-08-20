@@ -50,7 +50,10 @@ class FeedbackController extends Controller
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100', // Tambahkan validasi untuk nama pengirim
-            'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi|max:20480', // 20MB max
+            // Terima berbagai nama field untuk kompatibilitas frontend
+            'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
+            'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
+            'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
         ]);
 
         // Gabungkan nama pengirim dengan kategori untuk disimpan tanpa migrasi baru
@@ -65,20 +68,40 @@ class FeedbackController extends Controller
             'status' => 'pending',
         ]);
 
-        // Handle file uploads
+        // Handle file uploads from any accepted key: assets, foto, or video
+        $files = collect();
         if ($request->hasFile('assets')) {
-            foreach ($request->file('assets') as $file) {
-                $path = $file->store('feedback-assets', 'public');
-                $fileType = str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'video';
-                
+            $files = $files->merge($request->file('assets'));
+        }
+        if ($request->hasFile('foto')) {
+            $files = $files->merge($request->file('foto'));
+        }
+        if ($request->hasFile('video')) {
+            $files = $files->merge($request->file('video'));
+        }
+
+        foreach ($files as $file) {
+            try {
+                $mime = $file->getMimeType();
+                $isImage = str_starts_with($mime, 'image/');
+                $dir = $isImage ? 'feedback-photos' : 'feedback-videos';
+                $path = $file->store($dir, 'public');
+                if (!$path) {
+                    \Log::error('Failed to store feedback asset: ' . $file->getClientOriginalName());
+                    continue;
+                }
+
                 FeedbackAsset::create([
                     'feedback_id' => $feedback->id,
                     'file_path' => $path,
                     'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $fileType,
-                    'mime_type' => $file->getMimeType(),
+                    'file_type' => $isImage ? 'image' : 'video',
+                    'mime_type' => $mime,
                     'file_size' => $file->getSize(),
                 ]);
+            } catch (\Exception $e) {
+                \Log::error('Error uploading feedback asset: ' . $e->getMessage());
+                continue;
             }
         }
 

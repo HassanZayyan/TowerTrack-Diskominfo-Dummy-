@@ -2,34 +2,46 @@ import React from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, usePage } from '@inertiajs/react';
 
+type Stats = {
+  totalTowers: number;
+  totalReports: number;
+  totalUsers: number;
+  weeklyReports: number;
+  reportsGrowth: number;
+  pendingCount: number;
+  inProgressCount: number;
+  closedCount: number;
+  feedbackPendingCount: number;
+  feedbackInProgressCount: number;
+  feedbackClosedCount: number;
+};
+
+type RecentReport = {
+  id: number;
+  title: string;
+  status: string; // slug
+  created_at: string;
+  tower_name: string;
+  description: string;
+};
+
 const AdminDashboard: React.FC = () => {
   const page = usePage();
-  const { auth } = page.props as any;
+  const { auth, stats: serverStats, recentReports: serverRecentReports } = page.props as any;
   const user = auth?.user;
-  // Sample data - in real app, this would come from props or API
-  const stats = {
-    totalTowers: 1250,
-    totalComplaints: 89,
-    pendingComplaints: 23,
-    resolvedComplaints: 66,
-    totalUsers: 45,
-    activeUsers: 38
+
+  const stats: Stats = serverStats || {
+    totalTowers: 0,
+    totalReports: 0,
+    totalUsers: 0,
+    weeklyReports: 0,
+    reportsGrowth: 0,
+    pendingCount: 0,
+    inProgressCount: 0,
+    closedCount: 0,
   };
 
-  const recentComplaints = [
-    { id: 1, title: 'Tower tidak berfungsi', location: 'Jl. Sudirman No. 45', status: 'pending', date: '2025-08-12' },
-    { id: 2, title: 'Sinyal lemah di area perumahan', location: 'Perumahan Griya Asri', status: 'in-progress', date: '2025-08-11' },
-    { id: 3, title: 'Tower mengganggu pemandangan', location: 'Jl. Merdeka Raya', status: 'resolved', date: '2025-08-10' },
-    { id: 4, title: 'Kerusakan peralatan tower', location: 'Jl. Diponegoro 123', status: 'pending', date: '2025-08-09' },
-    { id: 5, title: 'Gangguan jaringan', location: 'Kampung Melayu', status: 'resolved', date: '2025-08-08' },
-  ];
-
-  const recentTowerUpdates = [
-    { id: 1, name: 'Tower Sudirman-01', action: 'Status updated', date: '2025-08-12 14:30' },
-    { id: 2, name: 'Tower Gatot Subroto-03', action: 'Location verified', date: '2025-08-12 10:15' },
-    { id: 3, name: 'Tower Thamrin-02', action: 'New tower added', date: '2025-08-11 16:45' },
-    { id: 4, name: 'Tower Kuningan-05', action: 'Information updated', date: '2025-08-11 09:20' },
-  ];
+  const recentComplaints: RecentReport[] = serverRecentReports || [];
 
   return (
     <AdminLayout title="Admin Dashboard">
@@ -62,7 +74,7 @@ const AdminDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Total Keluhan</h3>
-              <p className="text-3xl font-bold text-red-600">{stats.totalComplaints}</p>
+              <p className="text-3xl font-bold text-red-600">{stats.totalReports}</p>
               <p className="text-sm text-gray-500">Keluhan yang masuk</p>
             </div>
             <div className="bg-red-100 p-3 rounded-full">
@@ -77,8 +89,8 @@ const AdminDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Pengguna Aktif</h3>
-              <p className="text-3xl font-bold text-green-600">{stats.activeUsers}</p>
-              <p className="text-sm text-gray-500">dari {stats.totalUsers} total pengguna</p>
+              <p className="text-3xl font-bold text-green-600">{stats.totalUsers}</p>
+              <p className="text-sm text-gray-500">Total pengguna terdaftar</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,19 +109,43 @@ const AdminDashboard: React.FC = () => {
             <div className="flex justify-between items-center">
               <span className="text-yellow-600 font-medium">Pending</span>
               <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold">
-                {stats.pendingComplaints}
+                {stats.pendingCount}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-blue-600 font-medium">In Progress</span>
               <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
-                {stats.totalComplaints - stats.pendingComplaints - stats.resolvedComplaints}
+                {stats.inProgressCount}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-green-600 font-medium">Resolved</span>
               <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                {stats.resolvedComplaints}
+                {stats.closedCount}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Status Masukan</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-yellow-600 font-medium">Pending</span>
+              <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold">
+                {stats.feedbackPendingCount}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-blue-600 font-medium">In Progress</span>
+              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+                {stats.feedbackInProgressCount}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-green-600 font-medium">Resolved</span>
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                {stats.feedbackClosedCount}
               </span>
             </div>
           </div>
@@ -119,13 +155,13 @@ const AdminDashboard: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Tingkat Penyelesaian</h3>
           <div className="text-center">
             <div className="text-4xl font-bold text-green-600 mb-2">
-              {Math.round((stats.resolvedComplaints / stats.totalComplaints) * 100)}%
+              {stats.totalReports > 0 ? Math.round((stats.closedCount / stats.totalReports) * 100) : 0}%
             </div>
             <p className="text-gray-600">Keluhan terselesaikan</p>
             <div className="mt-4 bg-gray-200 rounded-full h-3">
               <div 
                 className="bg-green-500 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${(stats.resolvedComplaints / stats.totalComplaints) * 100}%` }}
+                style={{ width: `${stats.totalReports > 0 ? (stats.closedCount / stats.totalReports) * 100 : 0}%` }}
               ></div>
             </div>
           </div>
@@ -164,20 +200,20 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex-shrink-0">
                     <div className={`w-3 h-3 rounded-full ${
                       complaint.status === 'pending' ? 'bg-yellow-400' :
-                      complaint.status === 'in-progress' ? 'bg-blue-400' : 'bg-green-400'
+                      complaint.status === 'in_progress' ? 'bg-blue-400' : 'bg-green-400'
                     }`}></div>
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-800">{complaint.title}</h4>
-                    <p className="text-sm text-gray-600">{complaint.location}</p>
-                    <p className="text-xs text-gray-500">{complaint.date}</p>
+                    <p className="text-sm text-gray-600">{complaint.tower_name}</p>
+                    <p className="text-xs text-gray-500">{complaint.created_at}</p>
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     complaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    complaint.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                    complaint.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                   }`}>
                     {complaint.status === 'pending' ? 'Pending' :
-                     complaint.status === 'in-progress' ? 'Progress' : 'Selesai'}
+                     complaint.status === 'in_progress' ? 'Progress' : 'Selesai'}
                   </span>
                 </div>
               ))}
@@ -190,35 +226,10 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Tower Updates */}
+        {/* Placeholder for future tower updates or additional widgets */}
         <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Aktivitas Tower Terbaru</h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {recentTowerUpdates.slice(0, 3).map((update) => (
-                <div key={update.id} className="flex items-start space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-800">{update.name}</h4>
-                    <p className="text-sm text-gray-600">{update.action}</p>
-                    <p className="text-xs text-gray-500">{update.date}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                Lihat Semua Aktivitas →
-              </button>
-            </div>
+          <div className="px-6 py-8 text-center text-gray-500">
+            Tidak ada widget tambahan.
           </div>
         </div>
       </div>

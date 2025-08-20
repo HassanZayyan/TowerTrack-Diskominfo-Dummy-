@@ -49,7 +49,11 @@ Route::middleware('auth')->get('/feedback/{feedback}', [FeedbackController::clas
 Route::middleware('auth')->get('/my-messages', function () {
     $reports = \App\Models\Report::with([
             'tower:id,site_name,alamat_menara', 
-            'responses:id,report_id,message,created_at', 
+            // include response user and assets for richer details if needed
+            'responses' => function ($q) {
+                $q->select('id','report_id','message','created_at','user_id')
+                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
+            },
             'images:id,report_id,file_path,file_type'
         ])
         ->where('user_id', auth()->id())
@@ -61,7 +65,13 @@ Route::middleware('auth')->get('/my-messages', function () {
     // Safe check for feedbacks table and model
     try {
         if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-            $feedbacks = \App\Models\Feedback::with(['tower:id,site_name', 'responses:id,feedback_id,created_at'])
+            $feedbacks = \App\Models\Feedback::with([
+                    'tower:id,site_name', 
+                    'responses' => function ($q) {
+                        $q->select('id','feedback_id','created_at','user_id','message')
+                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
+                    }
+                ])
                 ->where('user_id', auth()->id())
                 ->orderByDesc('created_at')
                 ->get();
@@ -87,9 +97,7 @@ Route::middleware('auth')->group(function () {
 
 // Admin/Operator routes (staff)
 Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', function () {
-        return Inertia::render('Admin/Dashboard');
-    })->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
     // Users management
     Route::middleware(AdminMiddleware::class)->group(function () {
