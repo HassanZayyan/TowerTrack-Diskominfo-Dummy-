@@ -4,6 +4,8 @@ import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
+import { useLogoutConfirmation } from '@/Hooks/useLogoutConfirmation';
+import LogoutConfirmDialog from '@/Components/LogoutConfirmDialog';
 
 export default function Authenticated({
     header,
@@ -13,6 +15,15 @@ export default function Authenticated({
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+
+    // Use logout confirmation hook
+    const { openDialog, dialogProps } = useLogoutConfirmation({
+        variant: 'default',
+        title: 'Konfirmasi Logout',
+        message: 'Apakah Anda yakin ingin keluar dari sistem?',
+        confirmText: 'Ya, Logout',
+        cancelText: 'Batal'
+    });
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -70,8 +81,11 @@ export default function Authenticated({
                                             Profile
                                         </Dropdown.Link>
                                         <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                openDialog();
+                                            }}
                                             as="button"
                                         >
                                             Log Out
@@ -154,8 +168,11 @@ export default function Authenticated({
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    openDialog();
+                                }}
                                 as="button"
                             >
                                 Log Out
@@ -174,6 +191,9 @@ export default function Authenticated({
             )}
 
             <main>{children}</main>
+            
+            {/* Logout Confirmation Dialog */}
+            <LogoutConfirmDialog {...dialogProps} />
         </div>
     );
 }
