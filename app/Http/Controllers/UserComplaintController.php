@@ -50,7 +50,7 @@ class UserComplaintController extends Controller
                 'kategori' => 'required|string|max:100',
                 'lokasi_tower' => 'required|string|max:255',
                 'tower_id' => 'required|exists:towers,id',
-                'pesan' => 'required|string|max:500',
+                'pesan' => 'required|string|max:1000',
                 // Allow images and videos to be submitted under the same key ("foto") for compatibility with the frontend
                 'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
                 // Still accept dedicated video inputs if provided

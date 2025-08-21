@@ -367,10 +367,14 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                   value={replyMessage}
                   onChange={(e) => setReplyMessage(e.target.value)}
                   rows={5}
+                  maxLength={1000}
                   className="w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-400"
                   placeholder="Tulis balasan untuk masukan ini..."
                   required
                 ></textarea>
+                <div className="text-xs text-gray-500 mt-1">
+                  {replyMessage.length}/1000 karakter
+                </div>
               </div>
 
               <div className="mb-4">
