@@ -27,17 +27,86 @@ class TowerController extends Controller
                 $q->where('site_name', 'like', "%{$search}%")
                   ->orWhere('site_id', 'like', "%{$search}%")
                   ->orWhere('site_sap', 'like', "%{$search}%")
+                  ->orWhere('alamat_menara', 'like', "%{$search}%")
                   ->orWhereHas('owners', function($ownerQuery) use ($search) {
                       $ownerQuery->where('name', 'like', "%{$search}%");
                   });
             });
         }
 
-        // Handle filter
-        if ($filter = $request->get('filter')) {
-            if ($filter !== 'all') {
-                $query->where('site_type', 'like', "%{$filter}%");
+        // Handle comprehensive filters
+        
+        // Owner filter
+        if ($owner = $request->get('owner')) {
+            if ($owner !== 'all') {
+                $query->whereHas('owners', function($ownerQuery) use ($owner) {
+                    $ownerQuery->where('name', $owner);
+                });
             }
+        }
+        
+        // Tower type filter
+        if ($towerType = $request->get('tower_type')) {
+            if ($towerType !== 'all') {
+                $query->where('tower_type', $towerType);
+            }
+        }
+        
+        // Site type filter
+        if ($siteType = $request->get('site_type')) {
+            if ($siteType !== 'all') {
+                $query->where('site_type', $siteType);
+            }
+        }
+        
+        // Permit status filter
+        if ($statusIjin = $request->get('status_ijin')) {
+            if ($statusIjin !== 'all') {
+                $query->where('status_ijin', $statusIjin);
+            }
+        }
+        
+        // Coordinates filter
+        if ($hasCoordinates = $request->get('has_coordinates')) {
+            if ($hasCoordinates === 'yes') {
+                $query->whereNotNull('latitude')
+                      ->whereNotNull('longitude')
+                      ->where('latitude', '!=', '')
+                      ->where('longitude', '!=', '');
+            } elseif ($hasCoordinates === 'no') {
+                $query->where(function($q) {
+                    $q->whereNull('latitude')
+                      ->orWhereNull('longitude')
+                      ->orWhere('latitude', '')
+                      ->orWhere('longitude', '');
+                });
+            }
+        }
+        
+        // Permits filter
+        if ($hasPermits = $request->get('has_permits')) {
+            if ($hasPermits === 'yes') {
+                $query->whereNotNull('status_ijin')
+                      ->where('status_ijin', '!=', '');
+            } elseif ($hasPermits === 'no') {
+                $query->where(function($q) {
+                    $q->whereNull('status_ijin')
+                      ->orWhere('status_ijin', '');
+                });
+            }
+        }
+        
+        // Height range filter
+        if ($heightMin = $request->get('height_min')) {
+            $query->where('tinggi_menara', '>=', (float)$heightMin);
+        }
+        if ($heightMax = $request->get('height_max')) {
+            $query->where('tinggi_menara', '<=', (float)$heightMax);
+        }
+        
+        // Specific tower ID filter
+        if ($towerId = $request->get('tower_id')) {
+            $query->where('id', $towerId);
         }
 
         $towers = $query->paginate($perPage);
@@ -50,6 +119,7 @@ class TowerController extends Controller
             
             // Add owner information manually rather than using accessors
             $towerData['owner'] = $primaryOwner ? $primaryOwner->name : null;
+            $towerData['owner_id'] = $primaryOwner ? (string) $primaryOwner->id : null;
             $towerData['alamat_owner'] = $primaryOwner ? $primaryOwner->alamat : null;
             $towerData['id_no_urut'] = $tower->id;
             
@@ -82,10 +152,33 @@ class TowerController extends Controller
 
         $owners = Owner::orderBy('name')->get();
 
+        // Get all towers for FilterPanel TowerSelectionInput (with structure compatible with feedback/complaint pages)
+        // Only include towers with valid coordinates since TowerSelectionInput requires them
+        $allTowersForFilter = Tower::select([
+            'id', 
+            'site_name', 
+            'alamat_menara',
+            'latitude',
+            'longitude',
+            'tinggi_menara',
+            'tinggi_bangunan',
+            'jumlah_pengguna',
+            'tower_type',
+            'site_type'
+        ])
+        ->whereNotNull('latitude')
+        ->whereNotNull('longitude')
+        ->where('latitude', '!=', 0)
+        ->where('longitude', '!=', 0)
+        ->orderBy('site_name')
+        ->get()
+        ->toArray();
+
         return Inertia::render('Admin/Towers', [
             'towers' => $towersCollection,
             'owners' => $owners,
             'statistics' => $statistics,
+            'allTowers' => $allTowersForFilter, // Add this for FilterPanel
         ]);
     }
 
@@ -102,7 +195,7 @@ class TowerController extends Controller
     {
         $validated = $request->validate([
             // Basic Information
-            'site_name' => 'required|string|max:255',
+            'site_name' => 'nullable|string|max:255',
             'site_id' => 'nullable|string|max:100',
             'site_sap' => 'nullable|string|max:100',
             'site_type' => 'nullable|string|max:100',
@@ -165,14 +258,65 @@ class TowerController extends Controller
     public function update(Request $request, Tower $tower)
     {
         $validated = $request->validate([
-            'site_name' => 'required|string|max:255',
+            // Basic Information
+            'site_name' => 'nullable|string|max:255',
+            'site_id' => 'nullable|string|max:100',
+            'site_sap' => 'nullable|string|max:100',
+            'site_type' => 'nullable|string|max:100',
+            
+            // Owner Information
+            'owner_id' => 'nullable|string',
+            'owner_name' => 'nullable|string|max:255',
+            'owner_alamat' => 'nullable|string|max:1000',
+            
+            // Location Information
+            'alamat_menara' => 'nullable|string|max:1000',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
+            
+            // Technical Information
             'tinggi_menara' => 'nullable|numeric|min:0',
-            'alamat_menara' => 'nullable|string|max:1000',
-            'site_type' => 'nullable|string|max:255',
-            'status_ijin' => 'nullable|string|max:255',
+            'tinggi_bangunan' => 'nullable|numeric|min:0',
+            'jumlah_pengguna' => 'nullable|integer|min:0',
+            'jumlah_kaki' => 'nullable|integer|min:0',
+            'tower_type' => 'nullable|string|max:100',
+            'prs' => 'nullable|string|max:255',
+            'prs_id' => 'nullable|string|max:100',
+            
+            // Permit Information
+            'status_ijin' => 'nullable|string|max:100',
+            'no_ijin' => 'nullable|string|max:100',
+            'tanggal_ijin' => 'nullable|date',
+            'berlaku_hingga' => 'nullable|date',
+            'jenis_ijin' => 'nullable|string|max:100',
         ]);
+
+        // Handle owner update
+        if (isset($validated['owner_id'])) {
+            // First, detach all existing owners
+            $tower->owners()->detach();
+            
+            $ownerId = null;
+            if ($validated['owner_id'] === 'new' && $validated['owner_name']) {
+                // Create new owner
+                $owner = Owner::create([
+                    'name' => $validated['owner_name'],
+                    'alamat' => $validated['owner_alamat'] ?? '',
+                ]);
+                $ownerId = $owner->id;
+            } elseif ($validated['owner_id'] && $validated['owner_id'] !== 'new') {
+                // Use existing owner
+                $ownerId = (int) $validated['owner_id'];
+            }
+            
+            // Attach new owner if selected
+            if ($ownerId) {
+                $tower->owners()->attach($ownerId);
+            }
+        }
+
+        // Remove owner fields from tower data
+        unset($validated['owner_id'], $validated['owner_name'], $validated['owner_alamat']);
 
         $tower->update($validated);
         return back();

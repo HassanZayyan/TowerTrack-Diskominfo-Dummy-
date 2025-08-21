@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import FilterPanel from '@/Components/Admin/FilterPanel';
 
 interface Owner {
   id: number;
@@ -18,6 +19,9 @@ interface Tower {
   site_type?: string | null; 
   status_ijin?: string | null;
   owner?: string | null;
+  owner_id?: string | null;
+  owner_name?: string | null;
+  owner_alamat?: string | null;
   alamat_owner?: string | null;
   site_id?: string | null;
   site_sap?: string | null;
@@ -43,8 +47,8 @@ interface Pagination<T> {
   from?: number;
   to?: number;
 }
-interface Props { 
-  towers: Pagination<Tower>; 
+interface Props {
+  towers: Pagination<Tower>;
   owners: Owner[];
   statistics: {
     total: number;
@@ -53,19 +57,171 @@ interface Props {
     without_coordinates: number;
     average_height: number;
   };
+  allTowers: Array<{
+    id: number;
+    site_name: string;
+    alamat_menara?: string;
+    latitude: number | string;
+    longitude: number | string;
+    tinggi_menara?: number;
+    tinggi_bangunan?: number;
+    jumlah_pengguna?: number;
+    tower_type?: string;
+    site_type?: string | null;
+    owner?: string;
+    status?: string;
+  }>;
 }
 
-const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
+// FormInput component moved outside to prevent re-creation
+const FormInput: React.FC<{
+  value: string | number | null | undefined;
+  onChange: (value: string) => void;
+  error?: string;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  options?: { value: string; label: string }[];
+  className?: string;
+  rows?: number;
+}> = ({ value, onChange, error, type = 'text', placeholder, disabled = false, options, className = '', rows }) => {
+  const baseClass = `w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-colors ${
+    error ? 'border-red-500 bg-red-50' : 'border-gray-300'
+  } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`;
+
+  if (options) {
+    return (
+      <div>
+        <select
+          className={baseClass}
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+        >
+          <option value="">{placeholder || 'Pilih'}</option>
+          {options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  if (rows) {
+    return (
+      <div>
+        <textarea
+          className={`${baseClass} resize-none`}
+          rows={rows}
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+        />
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <input
+        type={type}
+        className={baseClass}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+};
+
+const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) => {
   const [editing, setEditing] = useState<Record<number, Partial<Tower>>>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
   const [currentPerPage] = useState(towers.per_page || 5); // Use server's per_page value or default to 5
   const [activeTab, setActiveTab] = useState<Record<number, string>>({});
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
+  const [selectedOwners, setSelectedOwners] = useState<Record<number, { id: string; name: string; alamat: string }>>({});
+  
+  // Advanced Filter State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    owner: 'all',
+    tower_type: 'all',
+    site_type: 'all',
+    status_ijin: 'all',
+    has_coordinates: 'all', // all, yes, no
+    has_permits: 'all', // all, yes, no
+    height_range: {
+      min: '',
+      max: ''
+    },
+    location_search: '', // For map-based location filtering
+    selected_tower_id: null as number | null
+  });
 
-  const updateField = (id: number, key: keyof Tower, value: any) => {
+  const updateField = useCallback((id: number, key: keyof Tower, value: any) => {
     setEditing(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
+    
+    // Handle owner selection
+    if (key === 'owner_id') {
+      if (value === 'new') {
+        // Set up for new owner creation
+        setSelectedOwners(prev => ({
+          ...prev,
+          [id]: { id: 'new', name: '', alamat: '' }
+        }));
+        setEditing(prev => ({ 
+          ...prev, 
+          [id]: { 
+            ...prev[id], 
+            owner_id: 'new',
+            owner_name: '',
+            owner_alamat: ''
+          } 
+        }));
+      } else if (value === '') {
+        // Clear owner selection
+        setSelectedOwners(prev => {
+          const newState = { ...prev };
+          delete newState[id];
+          return newState;
+        });
+        setEditing(prev => ({ 
+          ...prev, 
+          [id]: { 
+            ...prev[id], 
+            owner_id: '',
+            owner_name: '',
+            owner_alamat: ''
+          } 
+        }));
+      } else {
+        // Select existing owner
+        const selectedOwner = owners.find(owner => owner.id.toString() === value);
+        if (selectedOwner) {
+          setSelectedOwners(prev => ({
+            ...prev,
+            [id]: { id: selectedOwner.id.toString(), name: selectedOwner.name, alamat: selectedOwner.alamat }
+          }));
+          setEditing(prev => ({ 
+            ...prev, 
+            [id]: { 
+              ...prev[id], 
+              owner_id: selectedOwner.id.toString(),
+              owner_name: selectedOwner.name,
+              owner_alamat: selectedOwner.alamat
+            } 
+          }));
+        }
+      }
+    }
+    
     // Clear validation error when user starts typing
     if (validationErrors[id]?.[key]) {
       setValidationErrors(prev => ({
@@ -73,12 +229,15 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
         [id]: { ...prev[id], [key]: '' }
       }));
     }
-  };
+  }, [validationErrors, owners]);
 
   const validateField = (field: keyof Tower, value: any): string => {
     switch (field) {
       case 'site_name':
-        return !value || value.trim() === '' ? 'Nama site wajib diisi' : '';
+        if (!value || value.trim() === '') {
+          return 'Nama site wajib diisi';
+        }
+        return '';
       case 'latitude':
         if (value && (isNaN(value) || value < -90 || value > 90)) {
           return 'Latitude harus antara -90 dan 90';
@@ -107,12 +266,21 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
     const errors: Record<string, string> = {};
     let hasErrors = false;
 
-    // Validate required and important fields
+    // Validate site_name (always required)
+    const siteNameError = validateField('site_name', editData.site_name || tower.site_name);
+    if (siteNameError) {
+      errors.site_name = siteNameError;
+      hasErrors = true;
+    }
+
+    // Validate other fields
     Object.keys(editData).forEach(key => {
-      const error = validateField(key as keyof Tower, editData[key as keyof Tower]);
-      if (error) {
-        errors[key] = error;
-        hasErrors = true;
+      if (key !== 'site_name' && key !== 'owner_name' && key !== 'owner_alamat' && key !== 'owner_id') {
+        const error = validateField(key as keyof Tower, editData[key as keyof Tower]);
+        if (error) {
+          errors[key] = error;
+          hasErrors = true;
+        }
       }
     });
 
@@ -122,9 +290,30 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
 
   const save = (id: number) => {
     if (validateRow(id)) {
-      router.put(route('admin.towers.update', { tower: id }), editing[id], {
+      const editData = { ...editing[id] };
+      
+      // Ensure owner data is properly included
+      const selectedOwner = selectedOwners[id];
+      if (selectedOwner) {
+        if (selectedOwner.id === 'new') {
+          editData.owner_id = 'new';
+          editData.owner_name = editData.owner_name || '';
+          editData.owner_alamat = editData.owner_alamat || '';
+        } else {
+          editData.owner_id = selectedOwner.id.toString();
+          editData.owner_name = selectedOwner.name;
+          editData.owner_alamat = selectedOwner.alamat;
+        }
+      }
+      
+      router.put(route('admin.towers.update', { tower: id }), editData, {
         onSuccess: () => {
           setEditing(prev => ({ ...prev, [id]: {} }));
+          setSelectedOwners(prev => {
+            const newState = { ...prev };
+            delete newState[id];
+            return newState;
+          });
           setEditingRow(null);
           setValidationErrors(prev => ({ ...prev, [id]: {} }));
         },
@@ -139,12 +328,29 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
   const resetEditing = (id: number) => {
     setEditing(prev => ({ ...prev, [id]: {} }));
     setValidationErrors(prev => ({ ...prev, [id]: {} }));
+    setSelectedOwners(prev => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
     setEditingRow(null);
   };
 
   const startEditing = (id: number) => {
     setEditingRow(id);
     setActiveTab(prev => ({ ...prev, [id]: 'basic' }));
+    
+    // Initialize owner data if tower has an owner
+    const tower = towers.data.find(t => t.id === id);
+    if (tower && tower.owner_id) {
+      const existingOwner = owners.find(owner => owner.id.toString() === tower.owner_id);
+      if (existingOwner) {
+        setSelectedOwners(prev => ({
+          ...prev,
+          [id]: { id: existingOwner.id.toString(), name: existingOwner.name, alamat: existingOwner.alamat }
+        }));
+      }
+    }
   };
 
   const getActiveTab = (id: number) => activeTab[id] || 'basic';
@@ -175,92 +381,131 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
 
   // Handle pagination
   const changePage = (newPage: number) => {
-    router.get(route('admin.towers.index'), { 
-      page: newPage, 
-      per_page: 5, // Always use 5 per page, hardcoded for consistency
-      search: searchTerm || undefined,
-      filter: filterType !== 'all' ? filterType : undefined
-    }, { preserveState: true });
+    const params = buildFilterParams({ page: newPage, per_page: 5 });
+    router.get(route('admin.towers.index'), params, { preserveState: true });
   };
 
   const handleSearch = () => {
-    router.get(route('admin.towers.index'), { 
-      page: 1, 
+    const params = buildFilterParams({ page: 1 });
+    router.get(route('admin.towers.index'), params, { preserveState: true });
+  };
+
+  // Filter helper functions
+  const buildFilterParams = (overrides: any = {}) => {
+    const params: any = {
+      page: overrides.page || 1,
       per_page: currentPerPage,
       search: searchTerm || undefined,
-      filter: filterType !== 'all' ? filterType : undefined
+      ...overrides
+    };
+
+    // Add advanced filters
+    if (filters.owner !== 'all') params.owner = filters.owner;
+    if (filters.tower_type !== 'all') params.tower_type = filters.tower_type;
+    if (filters.site_type !== 'all') params.site_type = filters.site_type;
+    if (filters.status_ijin !== 'all') params.status_ijin = filters.status_ijin;
+    if (filters.has_coordinates !== 'all') params.has_coordinates = filters.has_coordinates;
+    if (filters.has_permits !== 'all') params.has_permits = filters.has_permits;
+    if (filters.height_range.min) params.height_min = filters.height_range.min;
+    if (filters.height_range.max) params.height_max = filters.height_range.max;
+    if (filters.selected_tower_id) params.tower_id = filters.selected_tower_id;
+
+    // Remove undefined values
+    Object.keys(params).forEach(key => {
+      if (params[key] === undefined) delete params[key];
+    });
+
+    return params;
+  };
+
+  const updateFilter = (key: string, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const updateHeightRange = (type: 'min' | 'max', value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      height_range: {
+        ...prev.height_range,
+        [type]: value
+      }
+    }));
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      owner: 'all',
+      tower_type: 'all',
+      site_type: 'all',
+      status_ijin: 'all',
+      has_coordinates: 'all',
+      has_permits: 'all',
+      height_range: { min: '', max: '' },
+      location_search: '',
+      selected_tower_id: null
+    });
+    setSearchTerm('');
+    
+    router.get(route('admin.towers.index'), { 
+      page: 1, 
+      per_page: currentPerPage 
     }, { preserveState: true });
+  };
+
+  const applyFilters = () => {
+    const params = buildFilterParams({ page: 1 });
+    router.get(route('admin.towers.index'), params, { preserveState: true });
+  };
+
+  const hasActiveFilters = () => {
+    return filters.owner !== 'all' ||
+           filters.tower_type !== 'all' ||
+           filters.site_type !== 'all' ||
+           filters.status_ijin !== 'all' ||
+           filters.has_coordinates !== 'all' ||
+           filters.has_permits !== 'all' ||
+           filters.height_range.min !== '' ||
+           filters.height_range.max !== '' ||
+           filters.selected_tower_id !== null ||
+           searchTerm !== '';
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.owner !== 'all') count++;
+    if (filters.tower_type !== 'all') count++;
+    if (filters.site_type !== 'all') count++;
+    if (filters.status_ijin !== 'all') count++;
+    if (filters.has_coordinates !== 'all') count++;
+    if (filters.has_permits !== 'all') count++;
+    if (filters.height_range.min !== '' || filters.height_range.max !== '') count++;
+    if (filters.selected_tower_id !== null) count++;
+    if (searchTerm !== '') count++;
+    return count;
+  };
+
+  // Handle tower selection from map
+  const handleTowerSelect = (tower: Tower) => {
+    setFilters(prev => ({
+      ...prev,
+      selected_tower_id: tower.id,
+      location_search: tower.site_name
+    }));
+  };
+
+  const clearTowerSelection = () => {
+    setFilters(prev => ({
+      ...prev,
+      selected_tower_id: null,
+      location_search: ''
+    }));
   };
 
   // Use towers.data directly for display since filtering is handled server-side
   const displayedTowers = towers.data;
-
-  // Component for input with validation
-  const FormInput: React.FC<{
-    tower: Tower;
-    field: keyof Tower;
-    type?: string;
-    placeholder?: string;
-    disabled?: boolean;
-    options?: { value: string; label: string }[];
-    className?: string;
-    rows?: number;
-  }> = ({ tower, field, type = 'text', placeholder, disabled = false, options, className = '', rows }) => {
-    const error = getFieldError(tower.id, field as string);
-    const value = getEditValue(tower, field);
-    const baseClass = `w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-colors ${
-      error ? 'border-red-500 bg-red-50' : 'border-gray-300'
-    } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`;
-
-    if (options) {
-      return (
-        <div>
-          <select
-            className={baseClass}
-            value={value || ''}
-            onChange={(e) => updateField(tower.id, field, e.target.value)}
-            disabled={disabled || !isEditing(tower.id)}
-          >
-            <option value="">{placeholder || `Pilih ${field}`}</option>
-            {options.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-      );
-    }
-
-    if (rows) {
-      return (
-        <div>
-          <textarea
-            className={`${baseClass} resize-none`}
-            rows={rows}
-            value={value || ''}
-            onChange={(e) => updateField(tower.id, field, e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled || !isEditing(tower.id)}
-          />
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <input
-          type={type}
-          className={baseClass}
-          value={value || ''}
-          onChange={(e) => updateField(tower.id, field, e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled || !isEditing(tower.id)}
-        />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-      </div>
-    );
-  };
 
   return (
     <AdminLayout title="Towers">
@@ -368,6 +613,24 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                showFilters || hasActiveFilters()
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filter
+              {hasActiveFilters() && (
+                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-1">
+                  {getActiveFilterCount()}
+                </span>
+              )}
+            </button>
+            <button
               onClick={handleSearch}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
@@ -387,7 +650,217 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
             </button>
           </div>
         </div>
+        
+        {/* Filter Panel */}
+        {showFilters && (
+          <FilterPanel
+            filters={filters}
+            owners={owners}
+            towers={allTowers}
+            onFilterChange={updateFilter}
+            onHeightRangeChange={updateHeightRange}
+            onTowerSelect={handleTowerSelect}
+            onClearTowerSelection={clearTowerSelection}
+            onApplyFilters={applyFilters}
+            onClearAllFilters={clearAllFilters}
+            hasActiveFilters={hasActiveFilters()}
+          />
+        )}
       </div>
+
+      {/* Results Summary and Active Filters */}
+      {(searchTerm || hasActiveFilters() || displayedTowers.length > 0) && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Results Count */}
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>
+                Menampilkan <strong>{towers.from || 0}-{towers.to || 0}</strong> dari <strong>{towers.total || 0}</strong> tower
+                {(searchTerm || hasActiveFilters()) && (
+                  <span className="text-blue-600 ml-1">(hasil pencarian/filter)</span>
+                )}
+              </span>
+            </div>
+            
+            {/* Active Filters Tags */}
+            {hasActiveFilters() && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium">Filter aktif:</span>
+                
+                {searchTerm && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Pencarian: "{searchTerm}"
+                    <button
+                      onClick={() => {
+                        setSearchTerm('');
+                        handleSearch();
+                      }}
+                      className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.owner !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    Owner: {filters.owner}
+                    <button
+                      onClick={() => {
+                        updateFilter('owner', 'all');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-green-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.tower_type !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                    Jenis: {filters.tower_type}
+                    <button
+                      onClick={() => {
+                        updateFilter('tower_type', 'all');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-purple-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.site_type !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                    Site: {filters.site_type}
+                    <button
+                      onClick={() => {
+                        updateFilter('site_type', 'all');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-yellow-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.status_ijin !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                    Ijin: {filters.status_ijin}
+                    <button
+                      onClick={() => {
+                        updateFilter('status_ijin', 'all');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-red-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.has_coordinates !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+                    Koordinat: {filters.has_coordinates === 'yes' ? 'Ada' : 'Tidak Ada'}
+                    <button
+                      onClick={() => {
+                        updateFilter('has_coordinates', 'all');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.has_permits !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-pink-100 text-pink-800 text-xs rounded-full">
+                    Ijin: {filters.has_permits === 'yes' ? 'Ada' : 'Tidak Ada'}
+                    <button
+                      onClick={() => {
+                        updateFilter('has_permits', 'all');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-pink-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {(filters.height_range.min || filters.height_range.max) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                    Tinggi: {filters.height_range.min || '0'}m - {filters.height_range.max || '∞'}m
+                    <button
+                      onClick={() => {
+                        updateHeightRange('min', '');
+                        updateHeightRange('max', '');
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-orange-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                {filters.selected_tower_id && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full">
+                    Tower: {filters.location_search}
+                    <button
+                      onClick={() => {
+                        clearTowerSelection();
+                        applyFilters();
+                      }}
+                      className="ml-1 hover:bg-teal-200 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                
+                <button
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset Semua
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Content - Card-based Layout */}
       <div className="space-y-6">
@@ -397,26 +870,22 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchTerm || filterType !== 'all' 
+              {searchTerm || hasActiveFilters() 
                 ? 'Tidak ada data tower yang sesuai dengan kriteria pencarian'
                 : 'Belum ada data tower'
               }
             </h3>
             <p className="text-gray-600 mb-4">
-              {searchTerm || filterType !== 'all' 
+              {searchTerm || hasActiveFilters() 
                 ? 'Coba ubah filter atau kata kunci pencarian'
                 : 'Data tower akan muncul di sini setelah ditambahkan'
               }
             </p>
-            {searchTerm || filterType !== 'all' ? (
+            {searchTerm || hasActiveFilters() ? (
               <button 
                 onClick={() => {
                   setSearchTerm('');
-                  setFilterType('all');
-                  router.get(route('admin.towers.index'), { 
-                    page: 1, 
-                    per_page: currentPerPage 
-                  }, { preserveState: true });
+                  clearAllFilters();
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
@@ -539,32 +1008,95 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Nama Site <span className="text-red-500">*</span>
+                            Nama Site
                           </label>
-                          <FormInput tower={tower} field="site_name" placeholder="Masukkan nama site" />
+                          <FormInput 
+                            value={getEditValue(tower, 'site_name')}
+                            onChange={(value) => updateField(tower.id, 'site_name', value)}
+                            error={getFieldError(tower.id, 'site_name')}
+                            placeholder="Masukkan nama site"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">No Urut</label>
-                          <FormInput tower={tower} field="id_no_urut" type="number" placeholder="No urut" />
+                          <FormInput 
+                            value={getEditValue(tower, 'id_no_urut')}
+                            onChange={(value) => updateField(tower.id, 'id_no_urut', value)}
+                            error={getFieldError(tower.id, 'id_no_urut')}
+                            type="number"
+                            placeholder="No urut"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Site ID</label>
-                          <FormInput tower={tower} field="site_id" placeholder="Site ID" />
+                          <FormInput 
+                            value={getEditValue(tower, 'site_id')}
+                            onChange={(value) => updateField(tower.id, 'site_id', value)}
+                            error={getFieldError(tower.id, 'site_id')}
+                            placeholder="Site ID"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Site SAP</label>
-                          <FormInput tower={tower} field="site_sap" placeholder="Site SAP" />
+                          <FormInput 
+                            value={getEditValue(tower, 'site_sap')}
+                            onChange={(value) => updateField(tower.id, 'site_sap', value)}
+                            error={getFieldError(tower.id, 'site_sap')}
+                            placeholder="Site SAP"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
-                          <FormInput tower={tower} field="owner" options={[
-                            ...owners.map(owner => ({ value: owner.name, label: owner.name }))
-                          ]} placeholder="Pilih owner" />
+                          <FormInput 
+                            value={selectedOwners[tower.id]?.id?.toString() || getEditValue(tower, 'owner_id')?.toString() || ''}
+                            onChange={(value) => updateField(tower.id, 'owner_id', value)}
+                            error={getFieldError(tower.id, 'owner_id')}
+                            options={[
+                              { value: '', label: 'Pilih Owner' },
+                              ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name })),
+                              { value: 'new', label: '+ Tambah Owner Baru' }
+                            ]}
+                            placeholder="Pilih owner"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
-                          <FormInput tower={tower} field="alamat_owner" rows={3} placeholder="Alamat lengkap owner" />
-                        </div>
+                        {selectedOwners[tower.id]?.id === 'new' && (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Owner Baru</label>
+                              <FormInput 
+                                value={getEditValue(tower, 'owner_name') || ''}
+                                onChange={(value) => updateField(tower.id, 'owner_name', value)}
+                                error={getFieldError(tower.id, 'owner_name')}
+                                placeholder="Masukkan nama owner baru"
+                                disabled={!isEditing(tower.id)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner Baru</label>
+                              <FormInput 
+                                value={getEditValue(tower, 'owner_alamat') || ''}
+                                onChange={(value) => updateField(tower.id, 'owner_alamat', value)}
+                                error={getFieldError(tower.id, 'owner_alamat')}
+                                rows={3}
+                                placeholder="Alamat lengkap owner baru"
+                                disabled={!isEditing(tower.id)}
+                              />
+                            </div>
+                          </>
+                        )}
+                        {selectedOwners[tower.id] && selectedOwners[tower.id].id !== 'new' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
+                            <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
+                              {selectedOwners[tower.id].alamat || 'Alamat tidak tersedia'}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -572,15 +1104,36 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
-                          <FormInput tower={tower} field="longitude" type="number" placeholder="Contoh: 110.4203" />
+                          <FormInput 
+                            value={getEditValue(tower, 'longitude')}
+                            onChange={(value) => updateField(tower.id, 'longitude', value)}
+                            error={getFieldError(tower.id, 'longitude')}
+                            type="number"
+                            placeholder="Contoh: 110.4203"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
-                          <FormInput tower={tower} field="latitude" type="number" placeholder="Contoh: -7.7956" />
+                          <FormInput 
+                            value={getEditValue(tower, 'latitude')}
+                            onChange={(value) => updateField(tower.id, 'latitude', value)}
+                            error={getFieldError(tower.id, 'latitude')}
+                            type="number"
+                            placeholder="Contoh: -7.7956"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara</label>
-                          <FormInput tower={tower} field="alamat_menara" rows={3} placeholder="Alamat lengkap lokasi menara" />
+                          <FormInput 
+                            value={getEditValue(tower, 'alamat_menara')}
+                            onChange={(value) => updateField(tower.id, 'alamat_menara', value)}
+                            error={getFieldError(tower.id, 'alamat_menara')}
+                            rows={3}
+                            placeholder="Alamat lengkap lokasi menara"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                       </div>
                     )}
@@ -589,31 +1142,77 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
-                          <FormInput tower={tower} field="tinggi_menara" type="number" placeholder="Contoh: 42" />
+                          <FormInput 
+                            value={getEditValue(tower, 'tinggi_menara')}
+                            onChange={(value) => updateField(tower.id, 'tinggi_menara', value)}
+                            error={getFieldError(tower.id, 'tinggi_menara')}
+                            type="number"
+                            placeholder="Contoh: 42"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Bangunan (m)</label>
-                          <FormInput tower={tower} field="tinggi_bangunan" type="number" placeholder="Contoh: 15" />
+                          <FormInput 
+                            value={getEditValue(tower, 'tinggi_bangunan')}
+                            onChange={(value) => updateField(tower.id, 'tinggi_bangunan', value)}
+                            error={getFieldError(tower.id, 'tinggi_bangunan')}
+                            type="number"
+                            placeholder="Contoh: 15"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pengguna</label>
-                          <FormInput tower={tower} field="jumlah_pengguna" type="number" placeholder="Jumlah operator" />
+                          <FormInput 
+                            value={getEditValue(tower, 'jumlah_pengguna')}
+                            onChange={(value) => updateField(tower.id, 'jumlah_pengguna', value)}
+                            error={getFieldError(tower.id, 'jumlah_pengguna')}
+                            type="number"
+                            placeholder="Jumlah operator"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Kaki</label>
-                          <FormInput tower={tower} field="jumlah_kaki" type="number" placeholder="Contoh: 4" />
+                          <FormInput 
+                            value={getEditValue(tower, 'jumlah_kaki')}
+                            onChange={(value) => updateField(tower.id, 'jumlah_kaki', value)}
+                            error={getFieldError(tower.id, 'jumlah_kaki')}
+                            type="number"
+                            placeholder="Contoh: 4"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Tower Type</label>
-                          <FormInput tower={tower} field="tower_type" placeholder="Contoh: Lattice, Monopole" />
+                          <FormInput 
+                            value={getEditValue(tower, 'tower_type')}
+                            onChange={(value) => updateField(tower.id, 'tower_type', value)}
+                            error={getFieldError(tower.id, 'tower_type')}
+                            placeholder="Contoh: Lattice, Monopole"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">PRS</label>
-                          <FormInput tower={tower} field="prs" placeholder="PRS" />
+                          <FormInput 
+                            value={getEditValue(tower, 'prs')}
+                            onChange={(value) => updateField(tower.id, 'prs', value)}
+                            error={getFieldError(tower.id, 'prs')}
+                            placeholder="PRS"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">PRS ID</label>
-                          <FormInput tower={tower} field="prs_id" placeholder="PRS ID" />
+                          <FormInput 
+                            value={getEditValue(tower, 'prs_id')}
+                            onChange={(value) => updateField(tower.id, 'prs_id', value)}
+                            error={getFieldError(tower.id, 'prs_id')}
+                            placeholder="PRS ID"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                       </div>
                     )}
@@ -622,32 +1221,64 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
-                          <FormInput tower={tower} field="no_ijin" placeholder="Nomor ijin" />
+                          <FormInput 
+                            value={getEditValue(tower, 'no_ijin')}
+                            onChange={(value) => updateField(tower.id, 'no_ijin', value)}
+                            error={getFieldError(tower.id, 'no_ijin')}
+                            placeholder="Nomor ijin"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Ijin</label>
-                          <FormInput tower={tower} field="jenis_ijin" options={[
-                            { value: 'IMB', label: 'IMB' },
-                            { value: 'PBG', label: 'PBG' },
-                            { value: 'Lainnya', label: 'Lainnya' }
-                          ]} placeholder="Pilih jenis ijin" />
+                          <FormInput 
+                            value={getEditValue(tower, 'jenis_ijin')}
+                            onChange={(value) => updateField(tower.id, 'jenis_ijin', value)}
+                            error={getFieldError(tower.id, 'jenis_ijin')}
+                            options={[
+                              { value: 'IMB', label: 'IMB' },
+                              { value: 'PBG', label: 'PBG' },
+                              { value: 'Lainnya', label: 'Lainnya' }
+                            ]}
+                            placeholder="Pilih jenis ijin"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Ijin</label>
-                          <FormInput tower={tower} field="tanggal_ijin" type="date" />
+                          <FormInput 
+                            value={getEditValue(tower, 'tanggal_ijin')}
+                            onChange={(value) => updateField(tower.id, 'tanggal_ijin', value)}
+                            error={getFieldError(tower.id, 'tanggal_ijin')}
+                            type="date"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Berlaku Hingga</label>
-                          <FormInput tower={tower} field="berlaku_hingga" type="date" />
+                          <FormInput 
+                            value={getEditValue(tower, 'berlaku_hingga')}
+                            onChange={(value) => updateField(tower.id, 'berlaku_hingga', value)}
+                            error={getFieldError(tower.id, 'berlaku_hingga')}
+                            type="date"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
-                          <FormInput tower={tower} field="status_ijin" options={[
-                            { value: 'Aktif', label: 'Aktif' },
-                            { value: 'Tidak Aktif', label: 'Tidak Aktif' },
-                            { value: 'Pending', label: 'Pending' },
-                            { value: 'Expired', label: 'Expired' }
-                          ]} placeholder="Pilih status ijin" />
+                          <FormInput 
+                            value={getEditValue(tower, 'status_ijin')}
+                            onChange={(value) => updateField(tower.id, 'status_ijin', value)}
+                            error={getFieldError(tower.id, 'status_ijin')}
+                            options={[
+                              { value: 'Aktif', label: 'Aktif' },
+                              { value: 'Tidak Aktif', label: 'Tidak Aktif' },
+                              { value: 'Pending', label: 'Pending' },
+                              { value: 'Expired', label: 'Expired' }
+                            ]}
+                            placeholder="Pilih status ijin"
+                            disabled={!isEditing(tower.id)}
+                          />
                         </div>
                       </div>
                     )}

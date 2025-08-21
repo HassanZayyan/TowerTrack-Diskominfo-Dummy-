@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import TowerSearchInput from '@/Components/TowerSearchInput';
 import LeafletMap from '@/Components/LeafletMap';
-import { Tower as BaseTower } from '@/utils/searchUtils';
+import { Tower as BaseTower, filterTowers } from '@/utils/searchUtils';
 
 interface Tower extends BaseTower {
   latitude: number | string;
@@ -38,9 +38,16 @@ export default function TowerSelectionInput({
   className = ""
 }: TowerSelectionInputProps) {
   const [selectionMode, setSelectionMode] = useState<'search' | 'map'>('search');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Jika ada kata kunci pencarian, sempitkan daftar tower untuk peta juga
+  const towersForMap = useMemo(() => {
+    if (!searchTerm.trim()) return towers;
+    return filterTowers(towers as BaseTower[], searchTerm) as Tower[];
+  }, [towers, searchTerm]);
 
   // Prepare markers for map display (similar to DataTower Index)
-  const markers = useMemo(() => towers
+  const markers = useMemo(() => towersForMap
     .map(t => {
       const lat = Number(t.latitude);
       const lon = Number(t.longitude);
@@ -78,7 +85,7 @@ export default function TowerSelectionInput({
         radiusMeters,
         towerData: t, // Pass the complete tower data
       });
-    }), [towers]);
+    }), [towersForMap]);
 
   const handleMapMarkerClick = (towerData: Tower) => {
     onTowerSelect(towerData);
@@ -141,6 +148,7 @@ export default function TowerSelectionInput({
           required={false}
           error={error}
           errorMessage={errorMessage}
+          onSearchTermChange={setSearchTerm}
         />
       ) : (
         <div className="space-y-3">
@@ -173,7 +181,7 @@ export default function TowerSelectionInput({
                 Klik marker pada peta untuk memilih tower
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                {markers.length} tower dengan koordinat valid dari {towers.length} total tower
+                {markers.length} tower dengan koordinat valid dari {towersForMap.length} {searchTerm.trim() ? 'hasil pencarian' : 'total tower'}
               </p>
             </div>
             

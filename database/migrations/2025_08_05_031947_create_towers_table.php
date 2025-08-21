@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('site_id')->nullable();
             $table->string('site_sap')->nullable();
-            $table->string('site_name');
+            $table->string('site_name')->nullable();
             $table->decimal('longitude', 15, 8)->nullable();
             $table->decimal('latitude', 15, 8)->nullable();
             $table->float('tinggi_menara')->nullable();

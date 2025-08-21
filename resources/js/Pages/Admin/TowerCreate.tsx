@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
@@ -37,6 +37,69 @@ interface FormData {
   owner_alamat: string;
 }
 
+// Move FormInput component outside to prevent re-creation
+const FormInput: React.FC<{
+  field: keyof FormData;
+  type?: string;
+  placeholder?: string;
+  options?: { value: string; label: string }[];
+  rows?: number;
+  required?: boolean;
+  value: string;
+  onChange: (field: keyof FormData, value: string) => void;
+  error?: string;
+}> = ({ field, type = 'text', placeholder, options, rows, required = false, value, onChange, error }) => {
+  const baseClass = `w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-colors ${
+    error ? 'border-red-500 bg-red-50' : 'border-gray-300'
+  }`;
+
+  if (options) {
+    return (
+      <div>
+        <select
+          className={baseClass}
+          value={value}
+          onChange={(e) => onChange(field, e.target.value)}
+        >
+          <option value="">{placeholder || `Pilih ${field}`}</option>
+          {options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  if (rows) {
+    return (
+      <div>
+        <textarea
+          className={`${baseClass} resize-none`}
+          rows={rows}
+          value={value}
+          onChange={(e) => onChange(field, e.target.value)}
+          placeholder={placeholder}
+        />
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <input
+        type={type}
+        className={baseClass}
+        value={value}
+        onChange={(e) => onChange(field, e.target.value)}
+        placeholder={placeholder}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+};
+
 const TowerCreatePage: React.FC<Props> = ({ owners }) => {
   const [activeTab, setActiveTab] = useState('basic');
   const [isNewOwner, setIsNewOwner] = useState(false);
@@ -67,7 +130,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateField = (field: keyof FormData, value: string) => {
+  const updateField = useCallback((field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Handle owner selection
@@ -92,18 +155,18 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
     }
     
     // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
+    setErrors(prev => {
+      if (prev[field]) {
+        return { ...prev, [field]: '' };
+      }
+      return prev;
+    });
+  }, [owners]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Required fields
-    if (!formData.site_name.trim()) {
-      newErrors.site_name = 'Nama site wajib diisi';
-    }
+    // No required fields - site_name is now nullable
 
     // Validate coordinates if provided
     if (formData.latitude && (isNaN(Number(formData.latitude)) || Number(formData.latitude) < -90 || Number(formData.latitude) > 90)) {
@@ -159,66 +222,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
     });
   };
 
-  const FormInput: React.FC<{
-    field: keyof FormData;
-    type?: string;
-    placeholder?: string;
-    options?: { value: string; label: string }[];
-    rows?: number;
-    required?: boolean;
-  }> = ({ field, type = 'text', placeholder, options, rows, required = false }) => {
-    const error = errors[field];
-    const value = formData[field];
-    const baseClass = `w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-colors ${
-      error ? 'border-red-500 bg-red-50' : 'border-gray-300'
-    }`;
 
-    if (options) {
-      return (
-        <div>
-          <select
-            className={baseClass}
-            value={value}
-            onChange={(e) => updateField(field, e.target.value)}
-          >
-            <option value="">{placeholder || `Pilih ${field}`}</option>
-            {options.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-      );
-    }
-
-    if (rows) {
-      return (
-        <div>
-          <textarea
-            className={`${baseClass} resize-none`}
-            rows={rows}
-            value={value}
-            onChange={(e) => updateField(field, e.target.value)}
-            placeholder={placeholder}
-          />
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <input
-          type={type}
-          className={baseClass}
-          value={value}
-          onChange={(e) => updateField(field, e.target.value)}
-          placeholder={placeholder}
-        />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-      </div>
-    );
-  };
 
   return (
     <AdminLayout title="Tambah Tower">
@@ -279,43 +283,88 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Site <span className="text-red-500">*</span>
+                    Nama Site
                   </label>
-                  <FormInput field="site_name" placeholder="Masukkan nama site" required />
+                  <FormInput 
+                    field="site_name" 
+                    placeholder="Masukkan nama site" 
+                    value={formData.site_name}
+                    onChange={updateField}
+                    error={errors.site_name}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Site ID</label>
-                  <FormInput field="site_id" placeholder="Site ID" />
+                  <FormInput 
+                    field="site_id" 
+                    placeholder="Site ID" 
+                    value={formData.site_id}
+                    onChange={updateField}
+                    error={errors.site_id}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Site SAP</label>
-                  <FormInput field="site_sap" placeholder="Site SAP" />
+                  <FormInput 
+                    field="site_sap" 
+                    placeholder="Site SAP" 
+                    value={formData.site_sap}
+                    onChange={updateField}
+                    error={errors.site_sap}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Site Type</label>
-                  <FormInput field="site_type" options={[
-                    { value: 'macro', label: 'Macro' },
-                    { value: 'micro', label: 'Micro' },
-                    { value: 'indoor', label: 'Indoor' },
-                    { value: 'outdoor', label: 'Outdoor' }
-                  ]} placeholder="Pilih site type" />
+                  <FormInput 
+                    field="site_type" 
+                    options={[
+                      { value: 'macro', label: 'Macro' },
+                      { value: 'micro', label: 'Micro' },
+                      { value: 'indoor', label: 'Indoor' },
+                      { value: 'outdoor', label: 'Outdoor' }
+                    ]} 
+                    placeholder="Pilih site type" 
+                    value={formData.site_type}
+                    onChange={updateField}
+                    error={errors.site_type}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
-                  <FormInput field="owner_id" options={[
-                    ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name })),
-                    { value: 'new', label: '+ Tambah Owner Baru' }
-                  ]} placeholder="Pilih atau tambah owner" />
+                  <FormInput 
+                    field="owner_id" 
+                    options={[
+                      ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name })),
+                      { value: 'new', label: '+ Tambah Owner Baru' }
+                    ]} 
+                    placeholder="Pilih atau tambah owner" 
+                    value={formData.owner_id}
+                    onChange={updateField}
+                    error={errors.owner_id}
+                  />
                 </div>
                 {isNewOwner && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Nama Owner Baru</label>
-                      <FormInput field="owner_name" placeholder="Masukkan nama owner" />
+                      <FormInput 
+                        field="owner_name" 
+                        placeholder="Masukkan nama owner" 
+                        value={formData.owner_name}
+                        onChange={updateField}
+                        error={errors.owner_name}
+                      />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
-                      <FormInput field="owner_alamat" rows={3} placeholder="Alamat lengkap owner" />
+                      <FormInput 
+                        field="owner_alamat" 
+                        rows={3} 
+                        placeholder="Alamat lengkap owner" 
+                        value={formData.owner_alamat}
+                        onChange={updateField}
+                        error={errors.owner_alamat}
+                      />
                     </div>
                   </>
                 )}
@@ -335,15 +384,36 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
-                  <FormInput field="longitude" type="number" placeholder="Contoh: 110.4203" />
+                  <FormInput 
+                    field="longitude" 
+                    type="number" 
+                    placeholder="Contoh: 110.4203" 
+                    value={formData.longitude}
+                    onChange={updateField}
+                    error={errors.longitude}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
-                  <FormInput field="latitude" type="number" placeholder="Contoh: -7.7956" />
+                  <FormInput 
+                    field="latitude" 
+                    type="number" 
+                    placeholder="Contoh: -7.7956" 
+                    value={formData.latitude}
+                    onChange={updateField}
+                    error={errors.latitude}
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara</label>
-                  <FormInput field="alamat_menara" rows={3} placeholder="Alamat lengkap lokasi menara" />
+                  <FormInput 
+                    field="alamat_menara" 
+                    rows={3} 
+                    placeholder="Alamat lengkap lokasi menara" 
+                    value={formData.alamat_menara}
+                    onChange={updateField}
+                    error={errors.alamat_menara}
+                  />
                 </div>
               </div>
             )}
@@ -352,31 +422,77 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
-                  <FormInput field="tinggi_menara" type="number" placeholder="Contoh: 42" />
+                  <FormInput 
+                    field="tinggi_menara" 
+                    type="number" 
+                    placeholder="Contoh: 42" 
+                    value={formData.tinggi_menara}
+                    onChange={updateField}
+                    error={errors.tinggi_menara}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Bangunan (m)</label>
-                  <FormInput field="tinggi_bangunan" type="number" placeholder="Contoh: 15" />
+                  <FormInput 
+                    field="tinggi_bangunan" 
+                    type="number" 
+                    placeholder="Contoh: 15" 
+                    value={formData.tinggi_bangunan}
+                    onChange={updateField}
+                    error={errors.tinggi_bangunan}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pengguna</label>
-                  <FormInput field="jumlah_pengguna" type="number" placeholder="Jumlah operator" />
+                  <FormInput 
+                    field="jumlah_pengguna" 
+                    type="number" 
+                    placeholder="Jumlah operator" 
+                    value={formData.jumlah_pengguna}
+                    onChange={updateField}
+                    error={errors.jumlah_pengguna}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Kaki</label>
-                  <FormInput field="jumlah_kaki" type="number" placeholder="Contoh: 4" />
+                  <FormInput 
+                    field="jumlah_kaki" 
+                    type="number" 
+                    placeholder="Contoh: 4" 
+                    value={formData.jumlah_kaki}
+                    onChange={updateField}
+                    error={errors.jumlah_kaki}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tower Type</label>
-                  <FormInput field="tower_type" placeholder="Contoh: Lattice, Monopole" />
+                  <FormInput 
+                    field="tower_type" 
+                    placeholder="Contoh: Lattice, Monopole" 
+                    value={formData.tower_type}
+                    onChange={updateField}
+                    error={errors.tower_type}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">PRS</label>
-                  <FormInput field="prs" placeholder="PRS" />
+                  <FormInput 
+                    field="prs" 
+                    placeholder="PRS" 
+                    value={formData.prs}
+                    onChange={updateField}
+                    error={errors.prs}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">PRS ID</label>
-                  <FormInput field="prs_id" placeholder="PRS ID" />
+                  <FormInput 
+                    field="prs_id" 
+                    placeholder="PRS ID" 
+                    value={formData.prs_id}
+                    onChange={updateField}
+                    error={errors.prs_id}
+                  />
                 </div>
               </div>
             )}
@@ -385,32 +501,64 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
-                  <FormInput field="no_ijin" placeholder="Nomor ijin" />
+                  <FormInput 
+                    field="no_ijin" 
+                    placeholder="Nomor ijin" 
+                    value={formData.no_ijin}
+                    onChange={updateField}
+                    error={errors.no_ijin}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Ijin</label>
-                  <FormInput field="jenis_ijin" options={[
-                    { value: 'IMB', label: 'IMB' },
-                    { value: 'PBG', label: 'PBG' },
-                    { value: 'Lainnya', label: 'Lainnya' }
-                  ]} placeholder="Pilih jenis ijin" />
+                  <FormInput 
+                    field="jenis_ijin" 
+                    options={[
+                      { value: 'IMB', label: 'IMB' },
+                      { value: 'PBG', label: 'PBG' },
+                      { value: 'Lainnya', label: 'Lainnya' }
+                    ]} 
+                    placeholder="Pilih jenis ijin" 
+                    value={formData.jenis_ijin}
+                    onChange={updateField}
+                    error={errors.jenis_ijin}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Ijin</label>
-                  <FormInput field="tanggal_ijin" type="date" />
+                  <FormInput 
+                    field="tanggal_ijin" 
+                    type="date" 
+                    value={formData.tanggal_ijin}
+                    onChange={updateField}
+                    error={errors.tanggal_ijin}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Berlaku Hingga</label>
-                  <FormInput field="berlaku_hingga" type="date" />
+                  <FormInput 
+                    field="berlaku_hingga" 
+                    type="date" 
+                    value={formData.berlaku_hingga}
+                    onChange={updateField}
+                    error={errors.berlaku_hingga}
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
-                  <FormInput field="status_ijin" options={[
-                    { value: 'Aktif', label: 'Aktif' },
-                    { value: 'Tidak Aktif', label: 'Tidak Aktif' },
-                    { value: 'Pending', label: 'Pending' },
-                    { value: 'Expired', label: 'Expired' }
-                  ]} placeholder="Pilih status ijin" />
+                  <FormInput 
+                    field="status_ijin" 
+                    options={[
+                      { value: 'Aktif', label: 'Aktif' },
+                      { value: 'Tidak Aktif', label: 'Tidak Aktif' },
+                      { value: 'Pending', label: 'Pending' },
+                      { value: 'Expired', label: 'Expired' }
+                    ]} 
+                    placeholder="Pilih status ijin" 
+                    value={formData.status_ijin}
+                    onChange={updateField}
+                    error={errors.status_ijin}
+                  />
                 </div>
               </div>
             )}

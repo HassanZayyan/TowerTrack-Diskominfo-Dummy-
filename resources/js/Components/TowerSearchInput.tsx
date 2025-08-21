@@ -8,7 +8,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   const matches = findMatchPositions(text, query);
   if (matches.length === 0) return text;
   
-  const result = [];
+  const result = [] as React.ReactNode[];
   let lastIndex = 0;
   
   matches.forEach((match, index) => {
@@ -47,6 +47,8 @@ interface TowerSearchInputProps {
   error?: boolean;
   errorMessage?: string;
   className?: string;
+  // NEW: notify parent about search term changes to sync other UIs (e.g., map)
+  onSearchTermChange?: (query: string) => void;
 }
 
 export default function TowerSearchInput({
@@ -60,7 +62,8 @@ export default function TowerSearchInput({
   required = false,
   error = false,
   errorMessage,
-  className = ""
+  className = "",
+  onSearchTermChange,
 }: TowerSearchInputProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -77,6 +80,7 @@ export default function TowerSearchInput({
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
+    onSearchTermChange?.(value);
     
     // Show dropdown segera saat ada input, bahkan 1 karakter
     if (value.length > 0) {
@@ -89,12 +93,13 @@ export default function TowerSearchInput({
       setShowDropdown(false);
       setActiveIndex(-1);
     }
-  }, []);
+  }, [onSearchTermChange]);
 
   // Select tower function
   const selectTower = useCallback((tower: Tower) => {
     onTowerSelect(tower);
     setSearchTerm('');
+    onSearchTermChange?.('');
     setShowDropdown(false);
     setActiveIndex(-1);
     
@@ -102,7 +107,7 @@ export default function TowerSearchInput({
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
-  }, [onTowerSelect]);
+  }, [onTowerSelect, onSearchTermChange]);
 
   // Clear selection function
   const clearSelection = useCallback(() => {
@@ -110,6 +115,7 @@ export default function TowerSearchInput({
       onClear();
     }
     setSearchTerm('');
+    onSearchTermChange?.('');
     setShowDropdown(false);
     setActiveIndex(-1);
     
@@ -117,7 +123,7 @@ export default function TowerSearchInput({
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
-  }, [onClear]);
+  }, [onClear, onSearchTermChange]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -240,7 +246,7 @@ export default function TowerSearchInput({
                   ? 'Mulai mengetik nama atau alamat tower...' 
                   : (
                     <div>
-                      <div className="mb-2">Tidak ditemukan tower dengan kata kunci:</div>
+                        <div className="mb-2">Tidak ditemukan tower dengan kata kunci:</div>
                       <div className="font-medium text-gray-700">"{searchTerm}"</div>
                       <div className="text-xs mt-2 text-gray-400">
                         💡 Coba gunakan kata kunci yang lebih umum atau periksa ejaan
