@@ -21,6 +21,15 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
   
   // Show feedback button for guests and non-staff users
   const canSendFeedback = !auth?.user || (auth?.user && !['admin', 'operator'].includes(auth.user.role));
+
+  const formatDetailValue = (fieldId: string, value: any) => {
+    const isNullish = value === null || value === undefined;
+    const isEmptyString = typeof value === 'string' && value.trim() === '';
+    if (fieldId === 'tinggi_menara' || fieldId === 'tinggi_bangunan') {
+      return !isNullish && !isEmptyString ? `${value} meter` : 'Belum Terdata';
+    }
+    return !isNullish && !isEmptyString ? value : 'Belum Terdata';
+  };
   
   // Available tower information fields based on database columns
   const availableFields = [
@@ -110,20 +119,12 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
                   {availableFields.filter(f => f.id !== 'semua_detail').map(field => (
                     <div key={field.id} className="border-b pb-2 last:border-b-0">
                       <h5 className="text-xs sm:text-sm font-medium text-gray-600">{field.label}:</h5>
-                      <p className="text-sm sm:text-base break-words">
-                        {field.id === 'tinggi_menara' || field.id === 'tinggi_bangunan'
-                          ? tower[field.id] ? `${tower[field.id]} meter` : 'Belum Terdata'
-                          : tower[field.id] || 'Belum Terdata'}
-                      </p>
+                      <p className="text-sm sm:text-base break-words">{formatDetailValue(field.id, tower[field.id])}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm sm:text-lg break-words">
-                  {selectedDetail === 'tinggi_menara' || selectedDetail === 'tinggi_bangunan'
-                    ? tower[selectedDetail] ? `${tower[selectedDetail]} meter` : 'Belum Terdata'
-                    : tower[selectedDetail] || 'Belum Terdata'}
-                </p>
+                <p className="text-sm sm:text-lg break-words">{formatDetailValue(selectedDetail, tower[selectedDetail])}</p>
               )}
             </div>
           )}

@@ -10,6 +10,30 @@ use Inertia\Inertia;
 
 class TowerController extends Controller
 {
+    /**
+     * Normalize incoming tower payload: convert empty strings to null for nullable numeric/date fields
+     */
+    protected function normalizeTowerInput(array $input): array
+    {
+        $nullableNumericFields = [
+            'latitude', 'longitude', 'tinggi_menara', 'tinggi_bangunan', 'jumlah_pengguna', 'jumlah_kaki'
+        ];
+        $nullableDateFields = ['tanggal_ijin', 'berlaku_hingga'];
+
+        foreach ($nullableNumericFields as $field) {
+            if (array_key_exists($field, $input) && $input[$field] === '') {
+                $input[$field] = null;
+            }
+        }
+        foreach ($nullableDateFields as $field) {
+            if (array_key_exists($field, $input) && ($input[$field] === '' || $input[$field] === null)) {
+                $input[$field] = null;
+            }
+        }
+
+        return $input;
+    }
+
     public function index(Request $request)
     {
         $perPage = $request->get('per_page', 5); // Default 5 per page
@@ -193,6 +217,9 @@ class TowerController extends Controller
 
     public function store(Request $request)
     {
+        // Pre-normalize payload to avoid validation failures on empty strings
+        $request->merge($this->normalizeTowerInput($request->all()));
+
         $validated = $request->validate([
             // Basic Information
             'site_name' => 'nullable|string|max:255',
@@ -229,14 +256,14 @@ class TowerController extends Controller
 
         // Handle owner creation or selection
         $ownerId = null;
-        if ($validated['owner_id'] === 'new' && $validated['owner_name']) {
+        if (($validated['owner_id'] ?? null) === 'new' && ($validated['owner_name'] ?? null)) {
             // Create new owner
             $owner = Owner::create([
                 'name' => $validated['owner_name'],
                 'alamat' => $validated['owner_alamat'] ?? '',
             ]);
             $ownerId = $owner->id;
-        } elseif ($validated['owner_id'] && $validated['owner_id'] !== 'new') {
+        } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
             // Use existing owner
             $ownerId = (int) $validated['owner_id'];
         }
@@ -257,6 +284,9 @@ class TowerController extends Controller
 
     public function update(Request $request, Tower $tower)
     {
+        // Pre-normalize payload to avoid validation failures on empty strings
+        $request->merge($this->normalizeTowerInput($request->all()));
+
         $validated = $request->validate([
             // Basic Information
             'site_name' => 'nullable|string|max:255',
@@ -292,19 +322,19 @@ class TowerController extends Controller
         ]);
 
         // Handle owner update
-        if (isset($validated['owner_id'])) {
+        if (array_key_exists('owner_id', $validated)) {
             // First, detach all existing owners
             $tower->owners()->detach();
             
             $ownerId = null;
-            if ($validated['owner_id'] === 'new' && $validated['owner_name']) {
+            if ($validated['owner_id'] === 'new' && !empty($validated['owner_name'])) {
                 // Create new owner
                 $owner = Owner::create([
                     'name' => $validated['owner_name'],
                     'alamat' => $validated['owner_alamat'] ?? '',
                 ]);
                 $ownerId = $owner->id;
-            } elseif ($validated['owner_id'] && $validated['owner_id'] !== 'new') {
+            } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
                 // Use existing owner
                 $ownerId = (int) $validated['owner_id'];
             }
