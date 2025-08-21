@@ -374,13 +374,13 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                   rows={6}
                   placeholder="Jelaskan masukan Anda secara detail..."
-                  maxLength={500}
+                  maxLength={1000}
                 ></textarea>
                 {validation.pesan && (
                   <p className="text-red-500 text-sm mt-1">Pesan harus diisi</p>
                 )}
                 <p className="text-gray-500 text-sm mt-1">
-                  {form.pesan.length}/500 karakter
+                  {form.pesan.length}/1000 karakter
                 </p>
               </div>
               

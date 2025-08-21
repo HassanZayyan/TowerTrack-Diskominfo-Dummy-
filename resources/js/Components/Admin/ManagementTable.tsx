@@ -847,6 +847,7 @@ const ManagementTable: React.FC<Props> = ({
                       <textarea 
                         className="w-full border border-gray-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-green-400 focus:border-transparent resize-none"
                         placeholder="Tulis respon Anda di sini..."
+                        maxLength={1000}
                         value={replyModal.item ? (replyText[replyModal.item.id] || '') : ''}
                         onChange={(e) => replyModal.item && setReplyText({ ...replyText, [replyModal.item.id]: e.target.value })}
                       />

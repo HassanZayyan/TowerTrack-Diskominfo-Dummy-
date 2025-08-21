@@ -17,7 +17,7 @@ export default function FileUpload({
   files,
   onFilesChange,
   maxFiles = 3,
-  maxSizeBytes = 20 * 1024 * 1024, // 20MB
+  maxSizeBytes = 50 * 1024 * 1024, // 50MB
   acceptedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'],
   acceptedExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.mov', '.avi', '.mkv'],
   label = "Upload Foto/Video (opsional)",
@@ -43,7 +43,12 @@ export default function FileUpload({
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       
-      if (!acceptedTypes.includes(file.type)) {
+      // Check file type and extension
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      const isValidType = acceptedTypes.includes(file.type);
+      const isValidExtension = acceptedExtensions.some(ext => ext.toLowerCase() === fileExtension);
+      
+      if (!isValidType && !isValidExtension) {
         const extensions = acceptedExtensions.join(', ').toUpperCase();
         const errorMsg = `Hanya file ${extensions} yang diizinkan`;
         if (onError) onError(errorMsg);
@@ -82,13 +87,35 @@ export default function FileUpload({
   };
 
   const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) {
+    // Check if it's an image
+    const isImage = file.type.startsWith('image/') || ['.jpg', '.jpeg', '.png'].some(ext => file.name.toLowerCase().endsWith(ext));
+    // Check if it's a video
+    const isVideo = file.type.startsWith('video/') || ['.mp4', '.mov', '.avi', '.mkv'].some(ext => file.name.toLowerCase().endsWith(ext));
+    
+    if (isImage) {
       return (
         <img 
           src={URL.createObjectURL(file)} 
           alt={`Preview`}
           className="w-full h-full object-cover" 
         />
+      );
+    } else if (isVideo) {
+      return (
+        <div className="relative w-full h-full bg-black">
+          <video 
+            className="w-full h-full object-cover"
+            preload="metadata"
+            muted
+          >
+            <source src={`${URL.createObjectURL(file)}#t=0.1`} type={file.type} />
+          </video>
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+            </svg>
+          </div>
+        </div>
       );
     } else {
       return (
