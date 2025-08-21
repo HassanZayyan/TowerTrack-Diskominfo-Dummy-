@@ -39,13 +39,17 @@ class TowerController extends Controller
             $query->whereNotNull('latitude')
                   ->whereNotNull('longitude')
                   ->where('latitude', '!=', '')
-                  ->where('longitude', '!=', '');
+                  ->where('longitude', '!=', '')
+                  ->where('latitude', '!=', 0)
+                  ->where('longitude', '!=', 0);
         } elseif ($coordFilter === 'without') {
             $query->where(function ($q) {
                 $q->whereNull('latitude')
                   ->orWhereNull('longitude')
                   ->orWhere('latitude', '')
-                  ->orWhere('longitude', '');
+                  ->orWhere('longitude', '')
+                  ->orWhere('latitude', 0)
+                  ->orWhere('longitude', 0);
             });
         }
 
@@ -82,36 +86,57 @@ class TowerController extends Controller
             ];
         });
 
-        // Get towers for map display; apply owner filter as well so peta selaras dengan tabel
-        $mapQuery = Tower::with(['owners:id,name'])
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('latitude', '!=', '')
-            ->where('longitude', '!=', '');
+        // Get towers for map display; apply the SAME filters (search + owner).
+        // Coordinate filter:
+        // - "with" and "all": show towers that have valid coordinates
+        // - "without": map cannot show towers without coordinates → return empty set
+        if ($coordFilter === 'without') {
+            $mapTowers = collect();
+        } else {
+            $mapQuery = Tower::with(['owners:id,name'])
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('latitude', '!=', '')
+                ->where('longitude', '!=', '')
+                ->where('latitude', '!=', 0)
+                ->where('longitude', '!=', 0);
 
-        if ($ownerFilter && $ownerFilter !== 'all') {
-            $mapQuery->whereHas('owners', function ($q) use ($ownerFilter) {
-                $q->where('name', $ownerFilter);
+            // Apply search filter to map as well
+            if ($search) {
+                $mapQuery->where(function ($q) use ($search) {
+                    $q->where('site_name', 'like', "%{$search}%")
+                      ->orWhere('alamat_menara', 'like', "%{$search}%")
+                      ->orWhereHas('owners', function ($ownerQuery) use ($search) {
+                          $ownerQuery->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Apply owner filter to map
+            if ($ownerFilter && $ownerFilter !== 'all') {
+                $mapQuery->whereHas('owners', function ($q) use ($ownerFilter) {
+                    $q->where('name', $ownerFilter);
+                });
+            }
+
+            $mapTowers = $mapQuery->get()->map(function ($tower) use ($ownerFilter) {
+                $ownerNames = $tower->owners->pluck('name');
+                $displayOwner = $ownerFilter !== 'all' && $ownerNames->contains($ownerFilter)
+                    ? $ownerFilter
+                    : ($ownerNames->first() ?? '');
+                return [
+                    'id' => $tower->id,
+                    'site_name' => $tower->site_name ?? '',
+                    'latitude' => $tower->latitude,
+                    'longitude' => $tower->longitude,
+                    'alamat_menara' => $tower->alamat_menara ?? '',
+                    'tinggi_menara' => $tower->tinggi_menara,
+                    'site_type' => $tower->site_type,
+                    'owner' => $displayOwner,
+                    'status' => $tower->status_ijin ?? '',
+                ];
             });
         }
-
-        $mapTowers = $mapQuery->get()->map(function ($tower) use ($ownerFilter) {
-            $ownerNames = $tower->owners->pluck('name');
-            $displayOwner = $ownerFilter !== 'all' && $ownerNames->contains($ownerFilter)
-                ? $ownerFilter
-                : ($ownerNames->first() ?? '');
-            return [
-                'id' => $tower->id,
-                'site_name' => $tower->site_name ?? '',
-                'latitude' => $tower->latitude,
-                'longitude' => $tower->longitude,
-                'alamat_menara' => $tower->alamat_menara ?? '',
-                'tinggi_menara' => $tower->tinggi_menara,
-                'site_type' => $tower->site_type,
-                'owner' => $displayOwner,
-                'status' => $tower->status_ijin ?? '',
-            ];
-        });
 
         // Get all owners that have towers for filter dropdown
         $availableOwners = Owner::whereHas('towers')

@@ -40,7 +40,10 @@ export default function DataTowerIndex({
   total = 0,
   lastPage = 1
 }: DataTowerProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('search') || '';
+  });
   const [distance, setDistance] = useState<number>(0);
   const [coordFilter, setCoordFilter] = useState<'all' | 'with' | 'without'>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -79,33 +82,17 @@ export default function DataTowerIndex({
     // Clean up params - remove 'all' values and empty strings, keep page
     const cleanParams = {
       page: params.page,
-      ...(params.search && params.search.trim() && { search: params.search }),
+      ...(params.search && params.search.trim() && { search: params.search.trim() }),
       ...(params.coord && params.coord !== 'all' && { coord: params.coord }),
       ...(params.owner && params.owner !== 'all' && { owner: params.owner })
     };
-    
-    console.log('=== FILTER PARAMS DEBUG ===');
-    console.log('Raw params:', params);
-    console.log('Clean params sent to backend:', cleanParams);
-    
+
     return cleanParams;
   };
 
   // Use owners from backend (those that actually have tower relationships)
   const uniqueOwners = useMemo(() => {
-    console.log('=== OWNERS FROM BACKEND ===');
-    console.log('Available owners from database:', availableOwners.length);
-    console.log('Owner list:', availableOwners);
-    
-    // Debug: Count towers per owner in current data
-    const ownerCounts: Record<string, number> = {};
-    mapTowers.forEach(tower => {
-      const owner = tower.owner || 'No Owner';
-      ownerCounts[owner] = (ownerCounts[owner] || 0) + 1;
-    });
-    console.log('Tower count per owner in map data:', ownerCounts);
-    
-    return availableOwners.sort();
+    return [...availableOwners].sort();
   }, [availableOwners, mapTowers]);
 
   // Use mapTowers (all towers with coordinates) for the map display
