@@ -9,6 +9,7 @@ interface Feedback {
     id: number;
     site_name: string;
   };
+  sender_name?: string;
   category: string;
   message: string;
   status: 'pending' | 'in_progress' | 'responded' | 'resolved' | 'closed';

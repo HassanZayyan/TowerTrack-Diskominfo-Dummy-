@@ -37,7 +37,7 @@ export default function MessageStats({ items }: MessageStatsProps) {
       </div>
       <div className="bg-white rounded-lg p-3 text-center shadow-sm">
         <div className="text-2xl font-bold text-green-600">
-          {items.filter(r => r.status === 'resolved').length}
+          {items.filter(r => r.status === 'resolved' || r.status === 'closed').length}
         </div>
         <div className="text-xs text-gray-600">Selesai</div>
       </div>

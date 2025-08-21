@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::query()->orderBy('name')->get(['id','name','email','role','created_at']);
+        $users = User::query()->orderBy('name')->get(['id', 'name', 'email', 'role', 'created_at', 'banned']);
         return Inertia::render('Admin/Users', [
             'users' => $users,
         ]);
@@ -24,8 +24,12 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,operator',
+            'role' => 'required|in:admin,operator,complainant',
+            'banned' => 'boolean',
         ]);
+
+        // Set default banned status to false for new users
+        $validated['banned'] = false;
         $validated['password'] = Hash::make($validated['password']);
         User::create($validated);
         return back();
@@ -36,14 +40,27 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,'.$user->id,
-            'role' => 'required|in:admin,operator',
+            'role' => 'required|in:admin,operator,complainant',
             'password' => 'nullable|string|min:8',
+            'banned' => 'boolean',
         ]);
+
+        // Ensure only admin can ban users
+        if (!auth()->user()->isAdmin() && $request->has('banned')) {
+            return back()->with('error', 'Hanya admin yang dapat mengubah status banned pengguna.');
+        }
+
+        // Prevent self-banning
+        if ($user->id === auth()->id() && $request->input('banned', false)) {
+            return back()->with('error', 'Anda tidak dapat membanned akun Anda sendiri.');
+        }
+
         if (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
         }
+
         $user->update($validated);
         return back();
     }

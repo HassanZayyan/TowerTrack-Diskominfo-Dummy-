@@ -60,6 +60,7 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
       in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
       responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
       resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
+      closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
     };
     
     // If status is undefined or null, return a default styling
@@ -128,19 +129,28 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
     }
   };
   const closeDetail = () => setDetail(null);
+  const [previewAsset, setPreviewAsset] = React.useState<{ file_path: string; file_type?: string } | null>(null);
+
   const renderAssets = (assets?: Array<{ file_path: string; file_type?: string }>) => {
     if (!assets || assets.length === 0) return null;
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
         {assets.map((a, i) => (
-          <div key={i} className="rounded overflow-hidden border bg-black">
+          <div key={i} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
             {a.file_type === 'video' ? (
-              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+              <div className="relative w-full h-40 bg-black">
                 <video
-                  src={`/storage/${a.file_path}`}
-                  controls
-                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                  src={`/storage/${a.file_path}#t=0.1`}
+                  preload="metadata"
+                  className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                  <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M8 5v10l8-5-8-5z"/>
+                    </svg>
+                  </div>
+                </div>
               </div>
             ) : (
               <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
@@ -166,9 +176,9 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
   return (
     <MainLayout title="Pesan Saya" currentPage="/my-messages">
       <Head title="Pesan Saya" />
-      <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Header Card */}
-        <div className="rounded-xl shadow-sm mb-4 sm:mb-6 px-4 sm:px-6 py-4 sm:py-5" style={{ backgroundColor: '#FFF8E1' }}>
+        <div className="rounded-xl shadow-sm mb-4 sm:mb-6 px-4 sm:px-6 py-4 sm:py-5 mx-3 sm:mx-4 md:mx-6" style={{ backgroundColor: '#FFF8E1' }}>
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: '#212121' }}>
             Keluhan/Masukan
           </h1>
@@ -177,16 +187,23 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
           </p>
         </div>
 
+        {/* Summary Stats */}
+        <div className="mx-3 sm:mx-4 md:mx-6 mb-4 sm:mb-6">
+          <MessageStats items={items} />
+        </div>
+
         {/* Desktop Table View */}
-        <MessageTable 
-          items={items}
-          getStatusColor={getStatusColor}
-          formatDate={formatDate}
-          onOpen={openDetail}
-        />
+        <div className="mx-3 sm:mx-4 md:mx-6">
+          <MessageTable 
+            items={items}
+            getStatusColor={getStatusColor}
+            formatDate={formatDate}
+            onOpen={openDetail}
+          />
+        </div>
 
         {/* Mobile/Tablet Card View */}
-        <div className="lg:hidden space-y-3">
+        <div className="lg:hidden space-y-3 mx-3 sm:mx-4 md:mx-6">
           {items.length === 0 ? (
             <EmptyState />
           ) : (
@@ -202,8 +219,7 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
           )}
         </div>
 
-        {/* Summary Stats */}
-        <MessageStats items={items} />
+
         {detail && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeDetail}>
             <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -230,30 +246,59 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                   <div className="text-gray-900 whitespace-pre-wrap">{(detail.data as any).message}</div>
                 </div>
                 {detail.type === 'report' ? (
-                  renderAssets((detail.data as any).images)
+                  renderAssets((detail.data as any).images || (detail.data as any).assets)
                 ) : (
-                  renderAssets((detail.data as any).assets)
+                  renderAssets((detail.data as any).assets || (detail.data as any).images)
                 )}
                 <div>
                   <div className="text-sm font-medium text-gray-900 mb-2">Balasan Admin</div>
                   {detail.type === 'report' && (detail.data as any).responses?.length > 0 ? (
                     <div className="space-y-3">
-                      {(detail.data as any).responses.map((r: any, i: number) => (
+                      {(detail.data as any).responses.map((r: any, i: number) => {
+                        // Determine status label based on response position and overall status
+                        const isLastResponse = i === (detail.data as any).responses.length - 1;
+                        const overallStatus = (detail.data as any).status;
+                        let statusLabel = 'Diproses';
+                        let statusColor = 'bg-blue-100 text-blue-800';
+                        
+                        if (isLastResponse) {
+                          const statusConfig = getStatusColor(overallStatus);
+                          statusLabel = statusConfig.label;
+                          if (overallStatus === 'closed' || overallStatus === 'resolved') {
+                            statusColor = 'bg-green-100 text-green-800';
+                          } else if (overallStatus === 'pending') {
+                            statusColor = 'bg-yellow-100 text-yellow-800';
+                          }
+                        }
+                        
+                        return (
                         <div key={i} className="bg-gray-50 rounded p-3">
-                          <div className="text-sm text-gray-600 mb-1">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-sm text-gray-600">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                              {statusLabel}
+                            </span>
+                          </div>
                           {r.message && <div className="text-gray-900">{r.message}</div>}
                           {/* Media balasan */}
                           {r.assets && r.assets.length > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                               {r.assets.map((a: any, idx: number) => (
-                                <div key={idx} className="rounded overflow-hidden border bg-black">
+                                <div key={idx} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
                                   {a.file_type === 'video' ? (
-                                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                                    <div className="relative w-full h-40 bg-black">
                                       <video
-                                        src={`/storage/${a.file_path}`}
-                                        controls
-                                        className="absolute inset-0 w-full h-full object-contain bg-black"
+                                        src={`/storage/${a.file_path}#t=0.1`}
+                                        preload="metadata"
+                                        className="w-full h-full object-cover"
                                       />
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                                        <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
+                                          <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M8 5v10l8-5-8-5z"/>
+                                          </svg>
+                                        </div>
+                                      </div>
                                     </div>
                                   ) : (
                                     <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
@@ -263,26 +308,56 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : null}
                   {detail.type === 'feedback' && (detail.data as any).responses?.length > 0 ? (
                     <div className="space-y-3">
-                      {(detail.data as any).responses.map((r: any, i: number) => (
+                      {(detail.data as any).responses.map((r: any, i: number) => {
+                        // Determine status label based on response position and overall status
+                        const isLastResponse = i === (detail.data as any).responses.length - 1;
+                        const overallStatus = (detail.data as any).status;
+                        let statusLabel = 'Diproses';
+                        let statusColor = 'bg-blue-100 text-blue-800';
+                        
+                        if (isLastResponse) {
+                          const statusConfig = getStatusColor(overallStatus);
+                          statusLabel = statusConfig.label;
+                          if (overallStatus === 'closed' || overallStatus === 'resolved') {
+                            statusColor = 'bg-green-100 text-green-800';
+                          } else if (overallStatus === 'pending') {
+                            statusColor = 'bg-yellow-100 text-yellow-800';
+                          }
+                        }
+                        
+                        return (
                         <div key={i} className="bg-gray-50 rounded p-3">
-                          <div className="text-sm text-gray-600 mb-1">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-sm text-gray-600">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                              {statusLabel}
+                            </span>
+                          </div>
                           {r.message && <div className="text-gray-900">{r.message}</div>}
                           {r.assets && r.assets.length > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                               {r.assets.map((a: any, idx: number) => (
-                                <div key={idx} className="rounded overflow-hidden border bg-black">
+                                <div key={idx} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
                                   {a.file_type === 'video' ? (
-                                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                                    <div className="relative w-full h-40 bg-black">
                                       <video
-                                        src={`/storage/${a.file_path}`}
-                                        controls
-                                        className="absolute inset-0 w-full h-full object-contain bg-black"
+                                        src={`/storage/${a.file_path}#t=0.1`}
+                                        preload="metadata"
+                                        className="w-full h-full object-cover"
                                       />
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                                        <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
+                                          <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M8 5v10l8-5-8-5z"/>
+                                          </svg>
+                                        </div>
+                                      </div>
                                     </div>
                                   ) : (
                                     <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
@@ -292,7 +367,8 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : null}
                   {((detail.type === 'report' && (!(detail.data as any).responses || (detail.data as any).responses.length === 0)) ||
@@ -308,6 +384,37 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
           </div>
         )}
       </div>
+      
+      {/* Asset Preview Modal */}
+      {previewAsset && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
+          <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
+            {previewAsset.file_type === 'video' ? (
+              <video
+                src={`/storage/${previewAsset.file_path}`}
+                controls
+                autoPlay
+                className="max-w-full max-h-[90vh] object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img 
+                src={`/storage/${previewAsset.file_path}`} 
+                className="max-w-full max-h-[90vh] object-contain" 
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <button 
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+              onClick={() => setPreviewAsset(null)}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

@@ -15,6 +15,7 @@ class Feedback extends Model
         'tower_id',
         'user_id',
         'sender_phone',
+        'sender_name',
         'category',
         'message',
         'status',

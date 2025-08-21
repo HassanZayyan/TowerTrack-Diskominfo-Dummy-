@@ -12,6 +12,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Add banned column to users table if it doesn't exist
+        $this->call([
+            AddBannedColumnSeeder::class,
+        ]);
+        
         // Seed users first
         $this->call([
             UserSeeder::class,

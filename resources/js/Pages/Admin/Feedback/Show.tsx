@@ -43,6 +43,7 @@ interface Feedback {
   tower_id: number | null;
   user_id: number;
   sender_phone: string;
+  sender_name?: string;
   category: string;
   message: string;
   status: string;
@@ -228,12 +229,12 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                 <div className="flex items-center">
                   <div className="h-12 w-12 rounded-full bg-red-500 flex items-center justify-center">
                     <span className="text-white font-semibold text-lg">
-                      {extractSenderName(feedback.category).name.charAt(0).toUpperCase() || '?'}
+                      {(feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="ml-4">
                     <h2 className="text-lg font-medium text-gray-800">
-                      {extractSenderName(feedback.category).name || feedback.user?.name || 'Pengguna'}
+                      {feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || 'Pengguna'}
                     </h2>
                     <p className="text-sm text-gray-600">
                       {feedback.sender_phone || feedback.user?.email || '-'}
