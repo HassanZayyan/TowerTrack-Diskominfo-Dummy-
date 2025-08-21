@@ -166,7 +166,10 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // No required fields - site_name is now nullable
+    // Required fields
+    if (!formData.alamat_menara || formData.alamat_menara.trim() === '') {
+      newErrors.alamat_menara = 'Alamat menara wajib diisi';
+    }
 
     // Validate coordinates if provided
     if (formData.latitude && (isNaN(Number(formData.latitude)) || Number(formData.latitude) < -90 || Number(formData.latitude) > 90)) {
@@ -405,7 +408,9 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Alamat Menara <span className="text-red-500">*</span>
+                  </label>
                   <FormInput 
                     field="alamat_menara" 
                     rows={3} 
@@ -413,6 +418,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                     value={formData.alamat_menara}
                     onChange={updateField}
                     error={errors.alamat_menara}
+                    required={true}
                   />
                 </div>
               </div>
