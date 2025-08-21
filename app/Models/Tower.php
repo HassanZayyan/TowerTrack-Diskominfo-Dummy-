@@ -42,6 +42,8 @@ class Tower extends Model
         'latitude' => 'decimal:8',
         'tinggi_menara' => 'float',
         'tinggi_bangunan' => 'float',
+        'jumlah_pengguna' => 'integer',
+        'jumlah_kaki' => 'integer',
     ];
 
     // We're not using appends to avoid issues with special characters in attribute names

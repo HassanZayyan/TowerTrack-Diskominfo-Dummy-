@@ -65,7 +65,7 @@ class TowerController extends Controller
                        ->paginate($perPage)
                        ->withQueryString();
 
-        // Transform the data to match frontend expectations
+        // Transform the data to match frontend expectations (include full detail for modal)
         $towersData = $towers->map(function ($tower) use ($ownerFilter) {
             // If filtered by a specific owner, show that owner explicitly when present
             $ownerNames = $tower->owners->pluck('name');
@@ -76,13 +76,25 @@ class TowerController extends Controller
             return [
                 'id' => $tower->id,
                 'site_name' => $tower->site_name ?? '',
+                'site_id' => $tower->site_id ?? '',
+                'site_sap' => $tower->site_sap ?? '',
                 'latitude' => $tower->latitude,
                 'longitude' => $tower->longitude,
                 'alamat_menara' => $tower->alamat_menara ?? '',
                 'tinggi_menara' => $tower->tinggi_menara,
+                'tinggi_bangunan' => $tower->tinggi_bangunan,
+                'jumlah_pengguna' => $tower->jumlah_pengguna,
+                'jumlah_kaki' => $tower->jumlah_kaki,
+                'tower_type' => $tower->tower_type,
                 'site_type' => $tower->site_type,
-                'owner' => $displayOwner,
+                'no_ijin' => $tower->no_ijin,
+                'tanggal_ijin' => $tower->tanggal_ijin ? $tower->tanggal_ijin->format('Y-m-d') : null,
+                'berlaku_hingga' => $tower->berlaku_hingga ? $tower->berlaku_hingga->format('Y-m-d') : null,
+                'jenis_ijin' => $tower->jenis_ijin,
                 'status' => $tower->status_ijin ?? '',
+                'prs' => $tower->prs,
+                'prs_id' => $tower->prs_id,
+                'owner' => $displayOwner,
             ];
         });
 
@@ -127,13 +139,25 @@ class TowerController extends Controller
                 return [
                     'id' => $tower->id,
                     'site_name' => $tower->site_name ?? '',
+                    'site_id' => $tower->site_id ?? '',
+                    'site_sap' => $tower->site_sap ?? '',
                     'latitude' => $tower->latitude,
                     'longitude' => $tower->longitude,
                     'alamat_menara' => $tower->alamat_menara ?? '',
                     'tinggi_menara' => $tower->tinggi_menara,
+                    'tinggi_bangunan' => $tower->tinggi_bangunan,
+                    'jumlah_pengguna' => $tower->jumlah_pengguna,
+                    'jumlah_kaki' => $tower->jumlah_kaki,
+                    'tower_type' => $tower->tower_type,
                     'site_type' => $tower->site_type,
-                    'owner' => $displayOwner,
+                    'no_ijin' => $tower->no_ijin,
+                    'tanggal_ijin' => $tower->tanggal_ijin ? $tower->tanggal_ijin->format('Y-m-d') : null,
+                    'berlaku_hingga' => $tower->berlaku_hingga ? $tower->berlaku_hingga->format('Y-m-d') : null,
+                    'jenis_ijin' => $tower->jenis_ijin,
                     'status' => $tower->status_ijin ?? '',
+                    'prs' => $tower->prs,
+                    'prs_id' => $tower->prs_id,
+                    'owner' => $displayOwner,
                 ];
             });
         }
