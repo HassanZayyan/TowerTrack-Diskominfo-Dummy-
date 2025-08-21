@@ -238,6 +238,11 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
           return 'Nama site wajib diisi';
         }
         return '';
+      case 'alamat_menara':
+        if (!value || value.trim() === '') {
+          return 'Alamat menara wajib diisi';
+        }
+        return '';
       case 'latitude':
         if (value && (isNaN(value) || value < -90 || value > 90)) {
           return 'Latitude harus antara -90 dan 90';
@@ -273,9 +278,18 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       hasErrors = true;
     }
 
+    // Validate alamat_menara (only required if tower doesn't already have one)
+    const currentAlamatMenara = editData.alamat_menara !== undefined ? editData.alamat_menara : tower.alamat_menara;
+    const hasExistingAddress = tower.alamat_menara && tower.alamat_menara.trim() !== '';
+    
+    if (!hasExistingAddress && (!currentAlamatMenara || currentAlamatMenara.trim() === '')) {
+      errors.alamat_menara = 'Alamat menara wajib diisi';
+      hasErrors = true;
+    }
+
     // Validate other fields
     Object.keys(editData).forEach(key => {
-      if (key !== 'site_name' && key !== 'owner_name' && key !== 'owner_alamat' && key !== 'owner_id') {
+      if (key !== 'site_name' && key !== 'alamat_menara' && key !== 'owner_name' && key !== 'owner_alamat' && key !== 'owner_id') {
         const error = validateField(key as keyof Tower, editData[key as keyof Tower]);
         if (error) {
           errors[key] = error;
@@ -359,10 +373,34 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
     setActiveTab(prev => ({ ...prev, [id]: tab }));
   };
 
+  // Helper function to format date for HTML date input (YYYY-MM-DD)
+  const formatDateForInput = (dateValue: string | null | undefined): string => {
+    if (!dateValue) return '';
+    
+    try {
+      // Handle various date formats from backend
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return '';
+      
+      // Format to YYYY-MM-DD for HTML date input
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.warn('Error formatting date:', dateValue, error);
+      return '';
+    }
+  };
+
   const getEditValue = (tower: Tower, field: keyof Tower) => {
-    return editing[tower.id]?.[field] !== undefined 
+    const value = editing[tower.id]?.[field] !== undefined 
       ? editing[tower.id][field] 
       : tower[field];
+    
+    // Special handling for date fields
+    if (field === 'tanggal_ijin' || field === 'berlaku_hingga') {
+      return formatDateForInput(value as string);
+    }
+    
+    return value;
   };
 
   const getFieldError = (id: number, field: string) => {
@@ -1125,7 +1163,9 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Alamat Menara <span className="text-red-500">*</span>
+                          </label>
                           <FormInput 
                             value={getEditValue(tower, 'alamat_menara')}
                             onChange={(value) => updateField(tower.id, 'alamat_menara', value)}

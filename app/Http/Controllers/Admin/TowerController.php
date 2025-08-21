@@ -220,7 +220,8 @@ class TowerController extends Controller
         // Pre-normalize payload to avoid validation failures on empty strings
         $request->merge($this->normalizeTowerInput($request->all()));
 
-        $validated = $request->validate([
+        // Custom validation for alamat_menara - only required if tower doesn't have existing address
+        $rules = [
             // Basic Information
             'site_name' => 'nullable|string|max:255',
             'site_id' => 'nullable|string|max:100',
@@ -233,7 +234,6 @@ class TowerController extends Controller
             'owner_alamat' => 'nullable|string|max:1000',
             
             // Location Information
-            'alamat_menara' => 'nullable|string|max:1000',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             
@@ -252,7 +252,17 @@ class TowerController extends Controller
             'tanggal_ijin' => 'nullable|date',
             'berlaku_hingga' => 'nullable|date',
             'jenis_ijin' => 'nullable|string|max:100',
-        ]);
+        ];
+        
+        // Only require alamat_menara if tower doesn't already have one
+        $hasExistingAddress = $tower->alamat_menara && trim($tower->alamat_menara) !== '';
+        if (!$hasExistingAddress) {
+            $rules['alamat_menara'] = 'required|string|max:1000';
+        } else {
+            $rules['alamat_menara'] = 'nullable|string|max:1000';
+        }
+        
+        $validated = $request->validate($rules);
 
         // Handle owner creation or selection
         $ownerId = null;
@@ -299,7 +309,7 @@ class TowerController extends Controller
             'owner_name' => 'nullable|string|max:255',
             'owner_alamat' => 'nullable|string|max:1000',
             
-            // Location Information
+            // Location Information  
             'alamat_menara' => 'nullable|string|max:1000',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
