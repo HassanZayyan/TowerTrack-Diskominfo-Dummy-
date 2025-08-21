@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { useLogoutConfirmation } from '@/Hooks/useLogoutConfirmation';
+import LogoutConfirmDialog from '@/Components/LogoutConfirmDialog';
 
 interface AppBarProps {
   currentPage?: string;
@@ -15,6 +17,15 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { auth } = usePage().props as any;
   const user = auth?.user;
+
+  // Use logout confirmation hook
+  const { openDialog, dialogProps } = useLogoutConfirmation({
+    variant: 'warning',
+    title: 'Konfirmasi Logout',
+    message: 'Apakah Anda yakin ingin keluar dari sistem?',
+    confirmText: 'Ya, Logout',
+    cancelText: 'Batal'
+  });
   
   const links: AppBarLink[] = [
     { href: '/data-tower', label: 'Data Tower', icon: 'cell_tower' },
@@ -89,11 +100,15 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                         <span className="lg:hidden text-xs">Admin</span>
                       </Link>
                     )}
-                    <Link href={route('logout')} method="post" as="button" className="flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" style={{ color: 'white' }}>
+                    <button 
+                      onClick={openDialog}
+                      className="flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
+                      style={{ color: 'white' }}
+                    >
                       <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">logout</span>
                       <span className="hidden lg:inline">Keluar</span>
                       <span className="lg:hidden text-xs">Logout</span>
-                    </Link>
+                    </button>
                   </>
                 ) : (
                   <Link
@@ -163,10 +178,17 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                           <span>Dashboard Admin</span>
                         </Link>
                       )}
-                      <Link href={route('logout')} method="post" as="button" className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" style={{ color: 'white' }} onClick={() => setMobileMenuOpen(false)}>
+                      <button 
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          openDialog();
+                        }}
+                        className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm w-full text-left" 
+                        style={{ color: 'white' }}
+                      >
                         <span className="material-icons-outlined mr-3 text-lg">logout</span>
                         <span>Keluar</span>
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -185,6 +207,9 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
           </nav>
         </div>
       )}
+      
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmDialog {...dialogProps} />
     </>
   );
 };

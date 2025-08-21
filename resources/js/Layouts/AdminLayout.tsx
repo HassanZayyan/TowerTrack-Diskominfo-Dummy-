@@ -1,5 +1,7 @@
 import React, { ReactNode } from 'react';
-import { Link, usePage, router } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+import { useLogoutConfirmation } from '@/Hooks/useLogoutConfirmation';
+import LogoutConfirmDialog from '@/Components/LogoutConfirmDialog';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -13,16 +15,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
   const currentUrl = page.url;
   const currentRoute = page.component; // Get current route component name
 
-  // Function to handle logout with confirmation
-  const handleLogout = (e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    const confirmed = window.confirm('Apakah Anda yakin ingin keluar dari sistem?');
-    
-    if (confirmed) {
-      router.post(route('logout'));
-    }
-  };
+  // Use logout confirmation hook
+  const { openDialog, dialogProps } = useLogoutConfirmation({
+    variant: 'danger',
+    title: 'Konfirmasi Logout Admin',
+    message: 'Apakah Anda yakin ingin keluar dari sistem admin?',
+    confirmText: 'Ya, Logout',
+    cancelText: 'Batal'
+  });
 
   // Function to check if current menu item is active
   const isActive = (routeName: string) => {
@@ -115,7 +115,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
           <div className="flex items-center gap-2 md:gap-4">
             <span className="text-sm hidden sm:inline" style={{ color: '#FFD700' }}>{user?.name} ({user?.role})</span>
             <button 
-              onClick={handleLogout}
+              onClick={openDialog}
               className="text-sm px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:shadow-md"
               style={{ 
                 backgroundColor: '#FF6B6B', 
@@ -191,6 +191,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
+      
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmDialog {...dialogProps} />
     </div>
   );
 };

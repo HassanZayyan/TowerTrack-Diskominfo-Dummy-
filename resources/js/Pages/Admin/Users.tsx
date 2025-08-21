@@ -56,7 +56,17 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     }
     
     if (form.id) {
-      router.put(route('admin.users.update', { user: form.id }), form);
+      // Jika editing complainant user, hanya kirim role dan banned status
+      const originalUser = users.find(u => u.id === form.id);
+      if (originalUser && originalUser.role === 'complainant') {
+        const updateData = {
+          role: form.role,
+          banned: form.banned
+        };
+        router.put(route('admin.users.update', { user: form.id }), updateData);
+      } else {
+        router.put(route('admin.users.update', { user: form.id }), form);
+      }
     } else {
       router.post(route('admin.users.store'), form);
     }
@@ -67,6 +77,12 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   };
 
   const handleDelete = (user: User) => {
+    // Cek apakah user yang akan dihapus adalah admin yang sedang login
+    if (user.id === auth.user.id) {
+      alert('Anda tidak dapat menghapus akun Anda sendiri!');
+      return;
+    }
+    
     const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus user "${user.name}"?`);
     if (confirmed) {
       router.delete(route('admin.users.destroy', { user: user.id }));
@@ -157,18 +173,36 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                 </tr>
               ) : (
                 users.map((u, index) => (
-                  <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
+                  <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${
+                    u.id === auth.user.id 
+                      ? 'bg-blue-50 border-l-4 border-blue-500' 
+                      : index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
+                  }`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                            u.id === auth.user.id 
+                              ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
+                              : 'bg-gradient-to-r from-red-500 to-red-600'
+                          }`}>
                             <span className="text-white font-semibold text-sm">
                               {u.name.charAt(0).toUpperCase()}
                             </span>
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                            {u.id === auth.user.id && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Anda
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -210,7 +244,25 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                         <button 
                           className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
                           onClick={() => {
-                            setForm({ id: u.id, name: u.name, email: u.email, role: u.role, banned: u.banned || false });
+                            // Untuk complainant users, preserve original name dan email
+                            if (u.role === 'complainant') {
+                              setForm({ 
+                                id: u.id, 
+                                name: u.name, 
+                                email: u.email, 
+                                role: u.role, 
+                                banned: u.banned || false,
+                                password: undefined // Reset password field
+                              });
+                            } else {
+                              setForm({ 
+                                id: u.id, 
+                                name: u.name, 
+                                email: u.email, 
+                                role: u.role, 
+                                banned: u.banned || false 
+                              });
+                            }
                             setShowModal(true);
                           }}
                         >
@@ -220,13 +272,19 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                           Edit
                         </button>
                         <button 
-                          className="inline-flex items-center px-3 py-2 border border-red-300 rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors text-xs font-medium"
+                          className={`inline-flex items-center px-3 py-2 border rounded-lg text-xs font-medium transition-colors ${
+                            u.id === auth.user.id
+                              ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                              : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
+                          }`}
                           onClick={() => handleDelete(u)}
+                          disabled={u.id === auth.user.id}
+                          title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Hapus user'}
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className={`w-4 h-4 mr-1 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                          Hapus
+                          {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Hapus'}
                         </button>
                       </div>
                     </td>
@@ -251,7 +309,14 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   )}
                 </svg>
-                {form.id ? 'Edit User' : 'Tambah User Baru'}
+                <div>
+                  {form.id ? 'Edit User' : 'Tambah User Baru'}
+                  {form.id && form.role === 'complainant' && (
+                    <p className="text-xs text-gray-500 font-normal mt-1">
+                      Hanya role dan status akun yang dapat diubah
+                    </p>
+                  )}
+                </div>
               </h3>
               <button 
                 onClick={() => setShowModal(false)}
@@ -286,13 +351,21 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Email</label>
                     <input 
-                      className={`w-full border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 focus:ring-2 ${emailError ? 'focus:ring-red-400' : 'focus:ring-yellow-400'} focus:border-transparent transition-all`} 
+                      className={`w-full border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 focus:ring-2 ${emailError ? 'focus:ring-red-400' : 'focus:ring-yellow-400'} focus:border-transparent transition-all ${
+                        form.id && form.role === 'complainant' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`} 
                       type="email"
                       placeholder="Masukkan email" 
                       value={form.email} 
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      disabled={!!(form.id && form.role === 'complainant')}
                       required 
                     />
+                    {form.id && form.role === 'complainant' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Email user dengan role complainant tidak dapat diubah
+                      </p>
+                    )}
                     {emailError && (
                       <div className="mt-1 text-sm text-red-600 flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,6 +386,11 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                       <option value="admin">Admin</option>
                       <option value="complainant">Complainant</option>
                     </select>
+                    {form.id && form.role === 'complainant' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Role dapat diubah untuk user complainant
+                      </p>
+                    )}
                   </div>
                   
                   {/* Banned status checkbox - hanya muncul saat edit user */}
@@ -341,6 +419,11 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                         {form.banned 
                           ? 'User tidak akan dapat login ke sistem jika dibanned' 
                           : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
+                        {form.id && form.role === 'complainant' && (
+                          <span className="block mt-1 text-blue-600">
+                            Status akun dapat diubah untuk user complainant
+                          </span>
+                        )}
                       </p>
                     </div>
                   )}
@@ -350,17 +433,26 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     </label>
                     <div className="relative">
                       <input 
-                        className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
+                        className={`w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
+                          form.id && form.role === 'complainant' ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`} 
                         type={showPassword ? 'text' : 'password'}
                         placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
                         value={form.password ?? ''} 
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        disabled={!!(form.id && form.role === 'complainant')}
                         required={!form.id}
                       />
+                      {form.id && form.role === 'complainant' && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Password user dengan role complainant tidak dapat diubah
+                        </p>
+                      )}
                       <button
                         type="button"
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         onClick={() => setShowPassword(!showPassword)}
+                        disabled={!!(form.id && form.role === 'complainant')}
                       >
                         {showPassword ? (
                           <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
