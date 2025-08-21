@@ -49,6 +49,16 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Check if user is banned
+        $user = Auth::user();
+        if ($user && $user->banned) {
+            Auth::logout();
+            
+            throw ValidationException::withMessages([
+                'email' => 'Akun Anda telah dibanned. Silahkan hubungi administrator untuk informasi lebih lanjut.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

@@ -152,7 +152,7 @@ const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-green-600 font-medium">Resolved</span>
+              <span className="text-green-600 font-medium">Selesai</span>
               <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
                 {stats.closedCount}
               </span>
@@ -176,7 +176,7 @@ const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-green-600 font-medium">Resolved</span>
+              <span className="text-green-600 font-medium">Selesai</span>
               <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
                 {stats.feedbackClosedCount}
               </span>

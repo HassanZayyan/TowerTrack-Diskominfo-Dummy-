@@ -48,6 +48,7 @@ interface ReportItem {
 interface FeedbackItem {
   id: number;
   user_id: number;
+  sender_name?: string;
   sender_phone?: string;
   category?: string;
   message: string;

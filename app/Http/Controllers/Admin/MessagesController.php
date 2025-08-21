@@ -40,6 +40,7 @@ class MessagesController extends Controller
                     $query->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 },
             ])
+            ->select('id', 'user_id', 'tower_id', 'sender_name', 'sender_phone', 'category', 'message', 'status', 'created_at', 'updated_at')
             ->orderByDesc('created_at')
             ->get();
 

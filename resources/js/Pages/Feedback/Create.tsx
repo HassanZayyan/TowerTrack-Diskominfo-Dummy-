@@ -302,7 +302,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                           handleChange(e);
                         }
                       }}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] text-base sm:text-sm p-3`}
                       style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
                     >
                       <option value="">Pilih kategori</option>

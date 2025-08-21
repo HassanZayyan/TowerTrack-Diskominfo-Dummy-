@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('tower_id')->constrained('towers')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('sender_phone')->nullable();
+            $table->string('sender_name')->nullable();
             $table->string('category');
             $table->text('message');
             $table->enum('status', ['pending', 'in_progress', 'responded', 'resolved', 'closed'])->default('pending');

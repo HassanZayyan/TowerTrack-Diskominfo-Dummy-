@@ -35,6 +35,7 @@ interface Feedback {
     email: string;
   };
   sender_phone: string;
+  sender_name?: string;
   category: string;
   message: string;
   status: 'pending' | 'in_progress' | 'responded' | 'resolved' | 'closed';
@@ -192,7 +193,7 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-600">Pengirim</label>
-                        <p className="text-gray-900">{feedback.user.name}</p>
+                        <p className="text-gray-900">{feedback.sender_name || feedback.user.name}</p>
                         <p className="text-sm text-gray-600">{feedback.user.email}</p>
                       </div>
                     </div>

@@ -1,24 +1,69 @@
-import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-interface User { id: number; name: string; email: string; role: 'admin' | 'operator'; created_at?: string }
+interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant'; created_at?: string; banned?: boolean }
 
 interface Props { users: User[] }
 
 const UsersPage: React.FC<Props> = ({ users = [] }) => {
-  const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator'; password?: string }>({ name: '', email: '', role: 'operator' });
+  const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant'; password?: string; banned?: boolean }>({ name: '', email: '', role: 'operator', banned: false });
+  const { auth } = usePage().props as any;
   const [showPassword, setShowPassword] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [emailError, setEmailError] = useState<string>('');
+
+  // Validasi email saat nilai berubah
+  useEffect(() => {
+    if (form.email) {
+      validateEmail();
+    } else {
+      setEmailError('');
+    }
+  }, [form.email]);
+
+  // Fungsi untuk validasi email
+  const validateEmail = () => {
+    // Jika sedang edit, kita perlu mengecualikan email user yang sedang diedit
+    const existingEmails = users.filter(user => !form.id || user.id !== form.id).map(user => user.email.toLowerCase());
+    
+    if (existingEmails.includes(form.email.toLowerCase())) {
+      setEmailError('Email ini sudah digunakan oleh pengguna lain');
+      return false;
+    } else {
+      setEmailError('');
+      return true;
+    }
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validasi email sebelum submit
+    if (!validateEmail()) {
+      return; // Berhenti jika email tidak valid
+    }
+
+    // Validasi banned status jika user mencoba banned diri sendiri
+    if (form.banned && form.id === auth.user.id) {
+      alert('Anda tidak dapat membanned akun Anda sendiri!');
+      return;
+    }
+    
+    // Konfirmasi jika user akan dibanned
+    if (form.banned && form.id && !confirm(`Apakah Anda yakin ingin membanned user "${form.name}"?`)) {
+      return;
+    }
+    
     if (form.id) {
       router.put(route('admin.users.update', { user: form.id }), form);
     } else {
       router.post(route('admin.users.store'), form);
     }
-    setForm({ name: '', email: '', role: 'operator' });
+    setForm({ name: '', email: '', role: 'operator', banned: false });
     setShowPassword(false);
+    setShowModal(false);
+    setEmailError('');
   };
 
   const handleDelete = (user: User) => {
@@ -29,112 +74,36 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   };
 
   return (
-    <AdminLayout title="User Management">
-      <Head title="User Management" />
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border-t-4 border-yellow-400">
-        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-          <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          {form.id ? 'Edit User' : 'Tambah User Baru'}
-        </h2>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
-              <input 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                placeholder="Masukkan nama lengkap" 
-                value={form.name} 
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <input 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                type="email"
-                placeholder="Masukkan email" 
-                value={form.email} 
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Role</label>
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                value={form.role} 
-                onChange={(e) => setForm({ ...form, role: e.target.value as any })}
-              >
-                <option value="operator">Operator</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Password {form.id && '(kosongkan jika tidak diubah)'}
-              </label>
-              <div className="relative">
-                <input 
-                  className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
-                  value={form.password ?? ''} 
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required={!form.id}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L7.05 7.05M9.878 9.878a3 3 0 105.656 5.656m0 0L12 12m0 0l3.5-3.5M12 12l-3.5 3.5" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end pt-4">
-            {form.id && (
-              <button 
-                type="button"
-                className="mr-3 px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                onClick={() => {
-                  setForm({ name: '', email: '', role: 'operator' });
-                  setShowPassword(false);
-                }}
-              >
-                Batal
-              </button>
-            )}
-            <button 
-              className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
-              type="submit"
-            >
-              {form.id ? 'Update User' : 'Tambah User'}
-            </button>
-          </div>
-        </form>
+    <AdminLayout title="Kelola Pengguna">
+      <Head title="Kelola Pengguna" />
+      
+      {/* Header Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola Pengguna</h1>
+        <p className="text-gray-600">Kelola informasi pengguna sistem dan atur hak akses sesuai kebutuhan</p>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
             <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
             </svg>
             Daftar Pengguna ({users.length})
           </h3>
+          <button 
+            onClick={() => {
+              setForm({ name: '', email: '', role: 'operator' });
+              setShowPassword(false);
+              setShowModal(true);
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg font-medium flex items-center text-sm"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Tambah User
+          </button>
         </div>
         
         <div className="overflow-x-auto">
@@ -207,28 +176,43 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                       <div className="text-sm text-gray-900">{u.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        u.role === 'admin' 
-                          ? 'bg-red-100 text-red-800 border border-red-200' 
-                          : 'bg-blue-100 text-blue-800 border border-blue-200'
-                      }`}>
-                        {u.role === 'admin' ? (
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
+                      <div className="flex flex-col space-y-2">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          u.role === 'admin' 
+                            ? 'bg-red-100 text-red-800 border border-red-200' 
+                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}>
+                          {u.role === 'admin' ? (
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          )}
+                          {u.role}
+                        </span>
+                        
+                        {/* Status banned indicator */}
+                        {u.banned && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                            Banned
+                          </span>
                         )}
-                        {u.role}
-                      </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button 
                           className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
-                          onClick={() => setForm({ id: u.id, name: u.name, email: u.email, role: u.role })}
+                          onClick={() => {
+                            setForm({ id: u.id, name: u.name, email: u.email, role: u.role, banned: u.banned || false });
+                            setShowModal(true);
+                          }}
                         >
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -253,6 +237,165 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
           </table>
         </div>
       </div>
+
+      {/* Modal untuk tambah/edit user */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {form.id ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  )}
+                </svg>
+                {form.id ? 'Edit User' : 'Tambah User Baru'}
+              </h3>
+              <button 
+                onClick={() => setShowModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <form onSubmit={submit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
+                    <input 
+                      className={`w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
+                        form.id && form.role === 'complainant' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
+                      placeholder="Masukkan nama lengkap" 
+                      value={form.name} 
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      disabled={!!(form.id && form.role === 'complainant')}
+                      required 
+                    />
+                    {form.id && form.role === 'complainant' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nama user dengan role complainant tidak dapat diubah
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Email</label>
+                    <input 
+                      className={`w-full border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 focus:ring-2 ${emailError ? 'focus:ring-red-400' : 'focus:ring-yellow-400'} focus:border-transparent transition-all`} 
+                      type="email"
+                      placeholder="Masukkan email" 
+                      value={form.email} 
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      required 
+                    />
+                    {emailError && (
+                      <div className="mt-1 text-sm text-red-600 flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        {emailError}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Role</label>
+                    <select 
+                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
+                      value={form.role} 
+                      onChange={(e) => setForm({ ...form, role: e.target.value as any })}
+                    >
+                      <option value="operator">Operator</option>
+                      <option value="admin">Admin</option>
+                      <option value="complainant">Complainant</option>
+                    </select>
+                  </div>
+                  
+                  {/* Banned status checkbox - hanya muncul saat edit user */}
+                  {form.id && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Status Akun</label>
+                      <div className="flex items-center mt-3">
+                        <input
+                          type="checkbox"
+                          id="banned"
+                          checked={form.banned}
+                          onChange={(e) => setForm({ ...form, banned: e.target.checked })}
+                          className="h-5 w-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                          disabled={form.id === auth.user.id} // Disable jika user mencoba banned dirinya sendiri
+                        />
+                        <label htmlFor="banned" className="ml-2 block text-sm text-gray-900">
+                          <span className={`font-medium ${form.banned ? 'text-red-600' : 'text-gray-700'}`}>
+                            {form.banned ? 'Akun Dibanned' : 'Akun Aktif'}
+                          </span>
+                          {form.id === auth.user.id && (
+                            <span className="ml-2 text-xs text-gray-500">(Tidak dapat membanned akun sendiri)</span>
+                          )}
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {form.banned 
+                          ? 'User tidak akan dapat login ke sistem jika dibanned' 
+                          : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
+                      </p>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Password {form.id && '(kosongkan jika tidak diubah)'}
+                    </label>
+                    <div className="relative">
+                      <input 
+                        className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
+                        value={form.password ?? ''} 
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        required={!form.id}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L7.05 7.05M9.878 9.878a3 3 0 105.656 5.656m0 0L12 12m0 0l3.5-3.5M12 12l-3.5 3.5" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end pt-4 space-x-3">
+                  <button 
+                    type="button"
+                    className="px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    onClick={() => setShowModal(false)}
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
+                    type="submit"
+                  >
+                    {form.id ? 'Update User' : 'Tambah User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

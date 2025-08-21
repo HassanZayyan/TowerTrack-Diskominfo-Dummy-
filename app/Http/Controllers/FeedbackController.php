@@ -56,14 +56,12 @@ class FeedbackController extends Controller
             'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
         ]);
 
-        // Gabungkan nama pengirim dengan kategori untuk disimpan tanpa migrasi baru
-        $categoryWithName = $validated['category'] . ' [Dari: ' . $validated['sender_name'] . ']';
-
         $feedback = Feedback::create([
             'tower_id' => $validated['tower_id'],
             'user_id' => $request->user()->id,
             'sender_phone' => $validated['sender_phone'],
-            'category' => $categoryWithName, // Simpan kategori beserta nama pengirim
+            'sender_name' => $validated['sender_name'],
+            'category' => $validated['category'],
             'message' => $validated['message'],
             'status' => 'pending',
         ]);
