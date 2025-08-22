@@ -50,11 +50,12 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is staff (admin or operator)
+     * Check if user is staff (admin, operator, or tower_owner)
+     * Tower owner is considered staff for basic admin access
      */
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'operator'], true);
+        return in_array($this->role, ['admin', 'operator', 'tower_owner'], true);
     }
 
     /**
@@ -71,6 +72,14 @@ class User extends Authenticatable
     public function isUser(): bool
     {
         return $this->role === 'user';
+    }
+
+    /**
+     * Check if user is tower owner
+     */
+    public function isTowerOwner(): bool
+    {
+        return $this->role === 'tower_owner';
     }
 
     /**

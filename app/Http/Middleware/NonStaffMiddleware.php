@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Allow only non-staff (regular) users to proceed.
- * Staff here means users with roles: admin or operator.
+ * Staff here means users with roles: admin, operator, or tower_owner.
  * If a staff user hits these routes, redirect them to the staff dashboard.
  */
 class NonStaffMiddleware
@@ -26,7 +26,7 @@ class NonStaffMiddleware
         }
 
         // Route should already be protected by 'auth'. As an extra guard:
-        if ($user && in_array($user->role, ['admin', 'operator'], true)) {
+        if ($user && in_array($user->role, ['admin', 'operator', 'tower_owner'], true)) {
             return redirect()->route('admin.dashboard');
         }
 
