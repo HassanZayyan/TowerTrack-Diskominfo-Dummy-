@@ -50,10 +50,6 @@ Aplikasi web untuk mengelola dan memantau data menara telekomunikasi di Kabupate
    DB_DATABASE=nama_database_anda
    DB_USERNAME=username_database_anda
    DB_PASSWORD=password_database_anda
-
-   # Untuk produksi dengan ngrok
-   APP_URL=https://url-ngrok-anda.ngrok.app
-   ASSET_URL=https://url-ngrok-anda.ngrok.app
    ```
 
 5. **Generate application key**
@@ -84,39 +80,8 @@ Aplikasi web untuk mengelola dan memantau data menara telekomunikasi di Kabupate
 9. **Akses aplikasi**
    Buka browser dan navigasikan ke: http://127.0.0.1:8000
 
-## 🌐 Deployment Produksi dengan Ngrok
-
-Saat menggunakan ngrok untuk demo aplikasi:
-
-1. Gunakan build produksi (bukan server development)
-2. Perbarui file `.env` dengan URL ngrok Anda:
-   ```
-   APP_URL=https://url-ngrok-anda.ngrok.app
-   ASSET_URL=https://url-ngrok-anda.ngrok.app
-   ```
-3. Paksa URL HTTPS di `AppServiceProvider.php`:
-   ```php
-   URL::forceScheme('https');
-   ```
-4. Percayai proxy di `bootstrap/app.php`
-5. Bersihkan cache Laravel setelah memperbarui:
-   ```bash
-   php artisan config:clear
-   php artisan route:clear
-   php artisan view:clear
-   php artisan cache:clear
-   ```
-
 ## 👥 Peran Pengguna
 
 - **👑 Admin**: Akses penuh untuk mengelola pengguna, menara, dan merespons pengaduan
 - **🛠️ Operator**: Dapat mengelola menara dan merespons pengaduan pengguna
 - **👤 Pengguna**: Dapat melihat data menara, mengajukan pengaduan, dan memberikan umpan balik
-
-## 🤝 Kontribusi
-
-Kontribusi sangat disambut! Silakan ajukan Pull Request.
-
-## 📄 Lisensi
-
-Proyek ini adalah perangkat lunak open-source yang dilisensikan di bawah [lisensi MIT](https://opensource.org/licenses/MIT).
