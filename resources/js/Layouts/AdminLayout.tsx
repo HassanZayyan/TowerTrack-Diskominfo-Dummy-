@@ -90,16 +90,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
                   Users
                 </Link>
               )}
-              <Link 
-                href={route('admin.messages.index')}
-                className={getMenuClasses('/admin/messages')}
-                style={{ 
-                  backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'transparent',
-                  color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                Messages
-              </Link>
+              {user?.role !== 'tower_owner' && (
+                <Link 
+                  href={route('admin.messages.index')}
+                  className={getMenuClasses('/admin/messages')}
+                  style={{ 
+                    backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'transparent',
+                    color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
+                  }}
+                >
+                  Messages
+                </Link>
+              )}
               <Link 
                 href={route('admin.towers.index')} 
                 className={getMenuClasses('/admin/towers')}
@@ -165,16 +167,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
                 Users
               </Link>
             )}
-            <Link 
-              href={route('admin.messages.index')} 
-              className={getMenuClasses('/admin/messages', true)}
-              style={{ 
-                backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
-              }}
-            >
-              Messages
-            </Link>
+            {user?.role !== 'tower_owner' && (
+              <Link 
+                href={route('admin.messages.index')} 
+                className={getMenuClasses('/admin/messages', true)}
+                style={{ 
+                  backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
+                    color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
+                }}
+              >
+                Messages
+              </Link>
+            )}
             <Link 
               href={route('admin.towers.index')} 
               className={getMenuClasses('/admin/towers', true)}

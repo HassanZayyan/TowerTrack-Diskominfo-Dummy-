@@ -47,9 +47,11 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        $dest = in_array($user->role ?? 'complainant', ['admin','operator'], true)
-            ? route('admin.dashboard', absolute: false)
-            : route('dashboard', absolute: false);
+        if (in_array($user->role ?? 'complainant', ['admin','operator','tower_owner'], true)) {
+            $dest = route('admin.dashboard', absolute: false);
+        } else {
+            $dest = route('dashboard', absolute: false);
+        }
         return redirect($dest);
     }
 }
