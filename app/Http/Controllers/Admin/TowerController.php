@@ -254,13 +254,8 @@ class TowerController extends Controller
             'jenis_ijin' => 'nullable|string|max:100',
         ];
         
-        // Only require alamat_menara if tower doesn't already have one
-        $hasExistingAddress = $tower->alamat_menara && trim($tower->alamat_menara) !== '';
-        if (!$hasExistingAddress) {
-            $rules['alamat_menara'] = 'required|string|max:1000';
-        } else {
-            $rules['alamat_menara'] = 'nullable|string|max:1000';
-        }
+        // Address is required for new towers
+        $rules['alamat_menara'] = 'required|string|max:1000';
         
         $validated = $request->validate($rules);
 
