@@ -50,15 +50,27 @@ class FeedbackController extends Controller
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100', // Tambahkan validasi untuk nama pengirim
+            'email' => 'nullable|email|max:255', // Tambahkan validasi untuk email
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
             'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
         ]);
 
+        // Handle user ID and email for anonymous users
+        $userId = null;
+        $email = null;
+        
+        if (auth()->check()) {
+            $userId = auth()->id();
+        } else {
+            $email = $validated['email'];
+        }
+
         $feedback = Feedback::create([
             'tower_id' => $validated['tower_id'],
-            'user_id' => $request->user()->id,
+            'user_id' => $userId,
+            'email' => $email,
             'sender_phone' => $validated['sender_phone'],
             'sender_name' => $validated['sender_name'],
             'category' => $validated['category'],
@@ -103,7 +115,11 @@ class FeedbackController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'Masukan berhasil dikirim! Terima kasih atas masukan Anda.');
+        $message = auth()->check() 
+            ? 'Masukan berhasil dikirim! Terima kasih atas masukan Anda.'
+            : 'Masukan berhasil dikirim! Gunakan email Anda untuk melihat status dan respons.';
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**

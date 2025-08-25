@@ -4,6 +4,9 @@ import MainLayout from '@/Layouts/MainLayout';
 import MessageTable from '@/Components/MyMessages/MessageTable';
 import MessageCard from '@/Components/MyMessages/MessageCard';
 import MessageStats from '@/Components/MyMessages/MessageStats';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 type ReportItem = {
   id: number;
@@ -30,6 +33,8 @@ type FeedbackItem = {
 type MyMessagesProps = {
   reports?: ReportItem[];
   feedbacks?: FeedbackItem[];
+  showEmailInput?: boolean;
+  isAnonymous?: boolean;
 };
 
 type MessageItem = {
@@ -42,9 +47,16 @@ type MessageItem = {
   responsesCount: number;
 };
 
-export default function MyMessagesIndex({ reports = [] as ReportItem[], feedbacks = [] as FeedbackItem[] }: MyMessagesProps) {
+export default function MyMessagesIndex({ 
+  reports = [] as ReportItem[], 
+  feedbacks = [] as FeedbackItem[],
+  showEmailInput = false,
+  isAnonymous = false
+}: MyMessagesProps) {
   const { auth } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin','operator'].includes(auth.user.role));
+
+  const [email, setEmail] = React.useState('');
 
   React.useEffect(() => {
     if (isStaff) {
@@ -53,6 +65,13 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
   }, [isStaff]);
 
   if (isStaff) return null;
+
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      router.visit(`/my-messages?email=${encodeURIComponent(email.trim())}`);
+    }
+  };
 
   const getStatusColor = (status: string | undefined | null) => {
     const statusConfig = {
@@ -161,17 +180,61 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
     );
   };
 
-  const EmptyState = () => (
+  // Memoize EmailInputForm to prevent unnecessary re-renders
+  const EmailInputForm = React.memo(() => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEmail(e.target.value);
+    };
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Lihat Pesan Anda</h3>
+        <p className="text-gray-600 mb-6">
+          Masukkan email yang Anda gunakan saat mengirim keluhan atau masukan untuk melihat status dan respons.
+        </p>
+        
+        <form onSubmit={handleEmailSubmit} className="max-w-md mx-auto">
+          <div className="mb-4">
+            <InputLabel htmlFor="email" value="Email" />
+            <TextInput
+              id="email"
+              type="email"
+              name="email"
+              value={email}
+              onChange={handleInputChange}
+              className="mt-1 block w-full"
+              required
+              placeholder="Masukkan email Anda"
+              autoComplete="email"
+              autoFocus={showEmailInput}
+            />
+          </div>
+          
+          <PrimaryButton type="submit" className="w-full">
+            Lihat Pesan
+          </PrimaryButton>
+        </form>
+      </div>
+    );
+  });
+
+  // Memoize EmptyState to prevent unnecessary re-renders
+  const EmptyState = React.memo(() => (
     <div className="bg-white rounded-xl shadow-sm p-6 text-center">
       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </div>
       <p className="text-gray-500 font-medium">Belum ada pesan</p>
       <p className="text-gray-400 text-sm mt-1">Anda belum mengirimkan laporan apapun</p>
     </div>
-  );
+  ));
 
   return (
     <MainLayout title="Pesan Saya" currentPage="/my-messages">
@@ -180,45 +243,62 @@ export default function MyMessagesIndex({ reports = [] as ReportItem[], feedback
         {/* Header Card */}
         <div className="rounded-xl shadow-sm mb-4 sm:mb-6 px-4 sm:px-6 py-4 sm:py-5 mx-3 sm:mx-4 md:mx-6" style={{ backgroundColor: '#FFF8E1' }}>
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: '#212121' }}>
-            Keluhan/Masukan
+            {isAnonymous ? 'Pesan Anonymous' : 'Keluhan/Masukan'}
           </h1>
           <p className="text-xs sm:text-sm mt-2 text-gray-700">
-            Lihat status penanganan, balasan, atau penutupan laporan Anda
+            {isAnonymous 
+              ? 'Lihat status penanganan keluhan atau masukan yang Anda kirim secara anonymous'
+              : 'Lihat status penanganan, balasan, atau penutupan laporan Anda'
+            }
           </p>
         </div>
 
-        {/* Summary Stats */}
-        <div className="mx-3 sm:mx-4 md:mx-6 mb-4 sm:mb-6">
-          <MessageStats items={items} />
-        </div>
+        {/* Show email input form for anonymous users */}
+        {showEmailInput && (
+          <div className="mx-3 sm:mx-4 md:mx-6 mb-6">
+            <EmailInputForm />
+          </div>
+        )}
 
-        {/* Desktop Table View */}
-        <div className="mx-3 sm:mx-4 md:mx-6">
-          <MessageTable 
-            items={items}
-            getStatusColor={getStatusColor}
-            formatDate={formatDate}
-            onOpen={openDetail}
-          />
-        </div>
+        {/* Show content only if not showing email input or if there are items */}
+        {(!showEmailInput && items.length > 0) && (
+          <>
+            {/* Summary Stats */}
+            <div className="mx-3 sm:mx-4 md:mx-6 mb-4 sm:mb-6">
+              <MessageStats items={items} />
+            </div>
 
-        {/* Mobile/Tablet Card View */}
-        <div className="lg:hidden space-y-3 mx-3 sm:mx-4 md:mx-6">
-          {items.length === 0 ? (
-            <EmptyState />
-          ) : (
-            items.map((item) => (
-              <MessageCard
-                key={item.id}
-                item={item}
+            {/* Desktop Table View */}
+            <div className="mx-3 sm:mx-4 md:mx-6">
+              <MessageTable 
+                items={items}
                 getStatusColor={getStatusColor}
                 formatDate={formatDate}
                 onOpen={openDetail}
               />
-            ))
-          )}
-        </div>
+            </div>
 
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden space-y-3 mx-3 sm:mx-4 md:mx-6">
+              {items.map((item) => (
+                <MessageCard
+                  key={item.id}
+                  item={item}
+                  getStatusColor={getStatusColor}
+                  formatDate={formatDate}
+                  onOpen={openDetail}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Show empty state if not showing email input and no items */}
+        {!showEmailInput && items.length === 0 && (
+          <div className="mx-3 sm:mx-4 md:mx-6">
+            <EmptyState />
+          </div>
+        )}
 
         {detail && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeDetail}>

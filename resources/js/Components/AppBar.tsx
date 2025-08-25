@@ -32,9 +32,9 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
     { href: '/data-fo', label: 'Jalur FO', icon: 'timeline' },
   ];
 
-  // Add links only for non-staff users (regular complainants)
+  // Add "My Messages" link for all users (authenticated and anonymous)
   const isStaff = user && ['admin', 'operator'].includes(user.role);
-  if (user && !isStaff) {
+  if (!isStaff) {
     links.push({ href: '/my-messages', label: 'Pesan Saya', icon: 'message' });
   }
 
