@@ -37,12 +37,6 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password123'),
         ]);
 
-        // Create tower owner user
-        User::factory()->create([
-            'name' => 'Tower Owner',
-            'email' => 'tower_owner@example.com',
-            'role' => 'tower_owner',
-            'password' => Hash::make('password123'),
-        ]);
+
     }
 }

@@ -44,6 +44,13 @@ class TowerController extends Controller
         }
 
         $query = Tower::with('owners')->orderBy('site_name');
+        
+        // For tower owners, only show towers they own
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $query->whereHas('owners', function($ownerQuery) {
+                $ownerQuery->where('owners.id', auth()->user()->owner_id);
+            });
+        }
 
         // Handle search
         if ($search = $request->get('search')) {
@@ -162,23 +169,37 @@ class TowerController extends Controller
             ]
         );
 
-        // Get statistics for all towers using direct database queries for better performance
+        // Get statistics for towers (filtered for tower owners)
+        $statisticsQuery = Tower::query();
+        
+        // For tower owners, only count towers they own
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $statisticsQuery->whereHas('owners', function($ownerQuery) {
+                $ownerQuery->where('owners.id', auth()->user()->owner_id);
+            });
+        }
+        
         $statistics = [
-            'total' => Tower::count(),
-            'with_permits' => Tower::whereNotNull('status_ijin')->where('status_ijin', '!=', '')->count(),
-            'with_coordinates' => Tower::whereNotNull('latitude')->whereNotNull('longitude')->count(),
-            'without_coordinates' => Tower::where(function($query) {
+            'total' => $statisticsQuery->count(),
+            'with_permits' => (clone $statisticsQuery)->whereNotNull('status_ijin')->where('status_ijin', '!=', '')->count(),
+            'with_coordinates' => (clone $statisticsQuery)->whereNotNull('latitude')->whereNotNull('longitude')->count(),
+            'without_coordinates' => (clone $statisticsQuery)->where(function($query) {
                 $query->whereNull('latitude')->orWhereNull('longitude')
                       ->orWhere('latitude', '')->orWhere('longitude', '');
             })->count(),
-            'average_height' => round(Tower::where('tinggi_menara', '>', 0)->avg('tinggi_menara') ?: 0, 2),
+            'average_height' => round((clone $statisticsQuery)->where('tinggi_menara', '>', 0)->avg('tinggi_menara') ?: 0, 2),
         ];
 
-        $owners = Owner::orderBy('name')->get();
+        // Get owners (filtered for tower owners)
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $owners = Owner::where('id', auth()->user()->owner_id)->orderBy('name')->get();
+        } else {
+            $owners = Owner::orderBy('name')->get();
+        }
 
         // Get all towers for FilterPanel TowerSelectionInput (with structure compatible with feedback/complaint pages)
         // Only include towers with valid coordinates since TowerSelectionInput requires them
-        $allTowersForFilter = Tower::select([
+        $allTowersForFilterQuery = Tower::select([
             'id', 
             'site_name', 
             'alamat_menara',
@@ -193,10 +214,16 @@ class TowerController extends Controller
         ->whereNotNull('latitude')
         ->whereNotNull('longitude')
         ->where('latitude', '!=', 0)
-        ->where('longitude', '!=', 0)
-        ->orderBy('site_name')
-        ->get()
-        ->toArray();
+        ->where('longitude', '!=', 0);
+        
+        // For tower owners, only include towers they own
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $allTowersForFilterQuery->whereHas('owners', function($ownerQuery) {
+                $ownerQuery->where('owners.id', auth()->user()->owner_id);
+            });
+        }
+        
+        $allTowersForFilter = $allTowersForFilterQuery->orderBy('site_name')->get()->toArray();
 
         return Inertia::render('Admin/Towers', [
             'towers' => $towersCollection,
@@ -208,7 +235,12 @@ class TowerController extends Controller
 
     public function create()
     {
-        $owners = Owner::orderBy('name')->get();
+        // For tower owners, only show their own owner record
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $owners = Owner::where('id', auth()->user()->owner_id)->orderBy('name')->get();
+        } else {
+            $owners = Owner::orderBy('name')->get();
+        }
         
         return Inertia::render('Admin/TowerCreate', [
             'owners' => $owners,
@@ -261,16 +293,23 @@ class TowerController extends Controller
 
         // Handle owner creation or selection
         $ownerId = null;
-        if (($validated['owner_id'] ?? null) === 'new' && ($validated['owner_name'] ?? null)) {
-            // Create new owner
-            $owner = Owner::create([
-                'name' => $validated['owner_name'],
-                'alamat' => $validated['owner_alamat'] ?? '',
-            ]);
-            $ownerId = $owner->id;
-        } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
-            // Use existing owner
-            $ownerId = (int) $validated['owner_id'];
+        
+        // For tower owners, force them to use their own owner record
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $ownerId = auth()->user()->owner_id;
+        } else {
+            // For admin/operator, allow owner selection
+            if (($validated['owner_id'] ?? null) === 'new' && ($validated['owner_name'] ?? null)) {
+                // Create new owner
+                $owner = Owner::create([
+                    'name' => $validated['owner_name'],
+                    'alamat' => $validated['owner_alamat'] ?? '',
+                ]);
+                $ownerId = $owner->id;
+            } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
+                // Use existing owner
+                $ownerId = (int) $validated['owner_id'];
+            }
         }
 
         // Remove owner fields from tower data
@@ -289,6 +328,13 @@ class TowerController extends Controller
 
     public function update(Request $request, Tower $tower)
     {
+        // For tower owners, ensure they can only update their own towers
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            if (!$tower->owners()->where('id', auth()->user()->owner_id)->exists()) {
+                abort(403, 'You can only update towers you own');
+            }
+        }
+        
         // Pre-normalize payload to avoid validation failures on empty strings
         $request->merge($this->normalizeTowerInput($request->all()));
 
@@ -328,25 +374,34 @@ class TowerController extends Controller
 
         // Handle owner update
         if (array_key_exists('owner_id', $validated)) {
-            // First, detach all existing owners
-            $tower->owners()->detach();
-            
-            $ownerId = null;
-            if ($validated['owner_id'] === 'new' && !empty($validated['owner_name'])) {
-                // Create new owner
-                $owner = Owner::create([
-                    'name' => $validated['owner_name'],
-                    'alamat' => $validated['owner_alamat'] ?? '',
-                ]);
-                $ownerId = $owner->id;
-            } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
-                // Use existing owner
-                $ownerId = (int) $validated['owner_id'];
-            }
-            
-            // Attach new owner if selected
-            if ($ownerId) {
+            // For tower owners, force them to keep their own owner record
+            if (auth()->user() && auth()->user()->role === 'tower_owner') {
+                $ownerId = auth()->user()->owner_id;
+                // Detach all existing owners and attach only their own
+                $tower->owners()->detach();
                 $tower->owners()->attach($ownerId);
+            } else {
+                // For admin/operator, allow owner changes
+                // First, detach all existing owners
+                $tower->owners()->detach();
+                
+                $ownerId = null;
+                if ($validated['owner_id'] === 'new' && !empty($validated['owner_name'])) {
+                    // Create new owner
+                    $owner = Owner::create([
+                        'name' => $validated['owner_name'],
+                        'alamat' => $validated['owner_alamat'] ?? '',
+                    ]);
+                    $ownerId = $owner->id;
+                } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
+                    // Use existing owner
+                    $ownerId = (int) $validated['owner_id'];
+                }
+                
+                // Attach new owner if selected
+                if ($ownerId) {
+                    $tower->owners()->attach($ownerId);
+                }
             }
         }
 

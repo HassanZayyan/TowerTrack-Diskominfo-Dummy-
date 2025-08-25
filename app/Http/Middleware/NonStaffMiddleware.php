@@ -27,7 +27,11 @@ class NonStaffMiddleware
 
         // Route should already be protected by 'auth'. As an extra guard:
         if ($user && in_array($user->role, ['admin', 'operator', 'tower_owner'], true)) {
-            return redirect()->route('admin.dashboard');
+            if ($user->role === 'tower_owner') {
+                return redirect()->route('admin.towers.index');
+            } else {
+                return redirect()->route('admin.dashboard');
+            }
         }
 
         return $next($request);
