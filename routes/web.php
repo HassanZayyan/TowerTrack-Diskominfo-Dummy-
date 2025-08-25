@@ -146,14 +146,14 @@ Route::get('/my-messages', function () {
 })->name('my.messages');
 
 // Admin/Authenticated Routes
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 // Admin/Operator/Tower Owner routes (staff) - All staff can access dashboard and towers
-Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
     // Users management

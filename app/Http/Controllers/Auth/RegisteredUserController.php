@@ -47,11 +47,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        if (in_array($user->role ?? 'complainant', ['admin','operator','tower_owner'], true)) {
-            $dest = route('admin.dashboard', absolute: false);
-        } else {
-            $dest = route('dashboard', absolute: false);
-        }
-        return redirect($dest);
+        return redirect(route('verification.notice'));
     }
 }
