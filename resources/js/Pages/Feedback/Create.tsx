@@ -4,8 +4,10 @@ import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
 import FileUpload from '@/Components/FileUpload';
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
+import AlertDialog from '@/Components/AlertDialog';
 
 import { validatePhoneNumber } from '@/utils/validationUtils';
+import { requestLocationAndValidate } from '@/utils/locationUtils';
 import 'leaflet/dist/leaflet.css';
 
 interface FeedbackCreateProps {
@@ -51,9 +53,13 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const [files, setFiles] = useState<File[]>([]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  
+  // Dialog states
+  const [showDialog, setShowDialog] = useState(false);
+  const [dialogType, setDialogType] = useState<'success' | 'error' | 'warning'>('error');
+  const [dialogTitle, setDialogTitle] = useState('');
+  const [dialogMessage, setDialogMessage] = useState('');
 
 
 
@@ -101,14 +107,29 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       setValidation(prev => ({ ...prev, [name]: false }));
     }
   };
-  
 
+  const showErrorDialog = (title: string, message: string) => {
+    setDialogType('error');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  };
 
+  const showSuccessDialog = (title: string, message: string) => {
+    setDialogType('success');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  };
 
+  const showWarningDialog = (title: string, message: string) => {
+    setDialogType('warning');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  };
 
-
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -123,67 +144,90 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     setValidation(newValidation);
     
     if (Object.values(newValidation).some(Boolean)) {
-      setErrorMessage('Silakan lengkapi semua field yang wajib diisi');
+      showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi');
       return;
     }
     
     // Validasi format nomor telepon
     const phoneValidation = validatePhoneNumber(form.telepon);
     if (!phoneValidation.valid) {
-      setErrorMessage(phoneValidation.message);
+      showErrorDialog('Format Telepon Salah', phoneValidation.message);
+      return;
+    }
+    
+    // Find selected tower to get coordinates
+    const selectedTower = towers.find(tower => tower.id.toString() === form.tower_id);
+    if (!selectedTower || !selectedTower.latitude || !selectedTower.longitude) {
+      showErrorDialog('Data Tower Tidak Tersedia', 'Data koordinat tower tidak tersedia');
       return;
     }
     
     setIsSubmitting(true);
-    setErrorMessage('');
     
-    // Create form data to handle file uploads
-    const formData = new FormData();
-    
-    // Map form field names to controller expected names
-    formData.append('sender_phone', form.telepon);
-    formData.append('category', form.kategori);
-    formData.append('tower_id', form.tower_id);
-    formData.append('message', form.pesan);
-    formData.append('sender_name', form.nama); // Tambahkan nama pengirim dari form
-
-    
-    // Separate images and videos
-    const images = files.filter(file => file.type.startsWith('image/'));
-    const videos = files.filter(file => file.type.startsWith('video/'));
-    
-    // Append images with 'foto' field
-    images.forEach((file, index) => {
-      formData.append(`foto[${index}]`, file);
-    });
-    
-    // Append videos with 'video' field
-    videos.forEach((file, index) => {
-      formData.append(`video[${index}]`, file);
-    });
-    
-    // Submit using Inertia router
-    router.post('/feedback', formData, {
-      onSuccess: () => {
-        setSuccessMessage('Masukan Anda telah berhasil dikirimkan');
-        setForm({
-          nama: '',
-          telepon: '',
-          kategori: '',
-          lokasi_tower: '',
-          lokasi_tower_display: '',
-          tower_id: '',
-          pesan: '',
-        });
-        setFiles([]);
-        setIsOtherCategory(false);
+    try {
+      // Validate location distance
+      const locationValidation = await requestLocationAndValidate({
+        latitude: Number(selectedTower.latitude),
+        longitude: Number(selectedTower.longitude)
+      }, 1); // 1 km maximum distance
+      
+      if (!locationValidation.success) {
+        showWarningDialog('Jarak Terlalu Jauh', locationValidation.message);
         setIsSubmitting(false);
-      },
-      onError: (errors: Record<string, string>) => {
-        setErrorMessage(Object.values(errors).join(', '));
-        setIsSubmitting(false);
+        return;
       }
-    });
+      
+      // Create form data to handle file uploads
+      const formData = new FormData();
+      
+      // Map form field names to controller expected names
+      formData.append('sender_phone', form.telepon);
+      formData.append('category', form.kategori);
+      formData.append('tower_id', form.tower_id);
+      formData.append('message', form.pesan);
+      formData.append('sender_name', form.nama); // Tambahkan nama pengirim dari form
+
+      
+      // Separate images and videos
+      const images = files.filter(file => file.type.startsWith('image/'));
+      const videos = files.filter(file => file.type.startsWith('video/'));
+      
+      // Append images with 'foto' field
+      images.forEach((file, index) => {
+        formData.append(`foto[${index}]`, file);
+      });
+      
+      // Append videos with 'video' field
+      videos.forEach((file, index) => {
+        formData.append(`video[${index}]`, file);
+      });
+      
+      // Submit using Inertia router
+      router.post('/feedback', formData, {
+        onSuccess: () => {
+          showSuccessDialog('Berhasil Dikirim', 'Masukan Anda telah berhasil dikirimkan');
+          setForm({
+            nama: '',
+            telepon: '',
+            kategori: '',
+            lokasi_tower: '',
+            lokasi_tower_display: '',
+            tower_id: '',
+            pesan: '',
+          });
+          setFiles([]);
+          setIsOtherCategory(false);
+          setIsSubmitting(false);
+        },
+        onError: (errors: Record<string, string>) => {
+          showErrorDialog('Gagal Mengirim', Object.values(errors).join(', '));
+          setIsSubmitting(false);
+        }
+      });
+    } catch (error) {
+      showErrorDialog('Error Validasi Lokasi', 'Terjadi kesalahan saat memvalidasi lokasi');
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -205,8 +249,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       lokasi_tower: false,
       pesan: false
     });
-    setErrorMessage('');
-    setSuccessMessage('');
+    setShowDialog(false);
   };
 
   return (
@@ -230,17 +273,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           <div className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Masukan</h2>
             
-            {successMessage && (
-              <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
-                {successMessage}
-              </div>
-            )}
-            
-            {errorMessage && (
-              <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
-                {errorMessage}
-              </div>
-            )}
+
             
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
@@ -358,7 +391,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
               <FileUpload
                 files={files}
                 onFilesChange={setFiles}
-                onError={setErrorMessage}
+                onError={(message: string) => showErrorDialog('Error Upload File', message)}
                 className="mb-6"
               />
               
@@ -411,6 +444,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
 
       
       <Footer />
+      
+      <AlertDialog
+        show={showDialog}
+        onClose={() => setShowDialog(false)}
+        type={dialogType}
+        title={dialogTitle}
+        message={dialogMessage}
+      />
     </MainLayout>
   );
 }
