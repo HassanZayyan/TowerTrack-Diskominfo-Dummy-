@@ -18,8 +18,13 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->enum('role', ['admin', 'operator', 'complainant', 'tower_owner'])->default('complainant');
+            $table->unsignedBigInteger('owner_id')->nullable();
+            $table->boolean('banned')->default(false);
             $table->rememberToken();
             $table->timestamps();
+            
+            // Add foreign key constraint for owner_id
+            $table->foreign('owner_id')->references('id')->on('owners')->onDelete('set null');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

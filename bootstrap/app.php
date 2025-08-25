@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        // Register custom middleware aliases
+        $middleware->alias([
+            'tower.owner.dashboard.redirect' => \App\Http\Middleware\TowerOwnerDashboardRedirectMiddleware::class,
+            'tower.owner.access.control' => \App\Http\Middleware\TowerOwnerAccessControlMiddleware::class,
+        ]);
+
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -30,5 +30,10 @@ class DatabaseSeeder extends Seeder
             StatusSeeder::class,
             FoSeeder::class,
         ]);
+        
+        // Seed tower owner user accounts (must be after OwnerSeeder)
+        $this->call([
+            TowerOwnerUserSeeder::class,
+        ]);
     }
 }

@@ -23,6 +23,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'banned',
+        'owner_id',
     ];
 
     /**
@@ -96,5 +97,25 @@ class User extends Authenticatable implements MustVerifyEmail
     public function feedbackResponses()
     {
         return $this->hasMany(FeedbackResponse::class);
+    }
+
+    /**
+     * Relationship with owner (for tower owners)
+     */
+    public function owner()
+    {
+        return $this->belongsTo(Owner::class, 'owner_id');
+    }
+
+    /**
+     * Get towers owned by this user (if tower owner)
+     */
+    public function ownedTowers()
+    {
+        if ($this->role !== 'tower_owner') {
+            return collect();
+        }
+        
+        return $this->owner ? $this->owner->towers : collect();
     }
 }

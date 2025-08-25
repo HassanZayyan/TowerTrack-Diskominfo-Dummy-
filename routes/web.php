@@ -23,10 +23,13 @@ Route::get('/', function () {
 
 Route::get('/dashboard', function () {
     $user = auth()->user();
-    $destination = ($user && in_array($user->role, ['admin', 'operator', 'tower_owner'], true))
-        ? 'admin.dashboard'
-        : 'data.tower';
-    return redirect()->route($destination);
+    if ($user && $user->role === 'tower_owner') {
+        return redirect()->route('admin.towers.index');
+    } elseif ($user && in_array($user->role, ['admin', 'operator'], true)) {
+        return redirect()->route('admin.dashboard');
+    } else {
+        return redirect()->route('data.tower');
+    }
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Public Routes
@@ -146,15 +149,18 @@ Route::get('/my-messages', function () {
 })->name('my.messages');
 
 // Admin/Authenticated Routes
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 // Admin/Operator/Tower Owner routes (staff) - All staff can access dashboard and towers
-Route::middleware(['auth', 'verified', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+    // Dashboard - accessible by admin and operator only (not tower_owner)
+    Route::middleware(['tower.owner.dashboard.redirect'])->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+    });
 
     // Users management
     Route::middleware(AdminMiddleware::class)->group(function () {
@@ -180,7 +186,7 @@ Route::middleware(['auth', 'verified', StaffMiddleware::class])->prefix('admin')
     Route::put('/complaints/{report}', [\App\Http\Controllers\Admin\ComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
 
     // Tower management - accessible by admin, operator, and tower_owner (full CRUD operations)
-    Route::middleware([TowerAccessMiddleware::class])->group(function () {
+    Route::middleware([TowerAccessMiddleware::class, 'tower.owner.access.control'])->group(function () {
         Route::get('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'index'])->name('towers.index');
         Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerController::class, 'create'])->name('towers.create');
         Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
