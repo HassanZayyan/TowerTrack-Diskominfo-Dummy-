@@ -23,12 +23,12 @@ export default function Register() {
     };
 
     return (
-        <GuestLayout>
-            <Head title="Register" />
+        <GuestLayout title="Daftar" subtitle="Silakan daftar untuk melanjutkan">
+            <Head title="Daftar" />
 
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                    <InputLabel htmlFor="name" value="Nama Lengkap" />
 
                     <TextInput
                         id="name"
@@ -81,7 +81,7 @@ export default function Register() {
                 <div className="mt-4">
                     <InputLabel
                         htmlFor="password_confirmation"
-                        value="Confirm Password"
+                        value="Konfirmasi Password"
                     />
 
                     <TextInput
@@ -103,16 +103,29 @@ export default function Register() {
                     />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
                     <Link
-                        href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        href={route('data.tower')}
+                        className="rounded-md text-sm px-4 py-2 border inline-block text-center"
+                        style={{ color: '#212121', borderColor: '#212121' }}
                     >
-                        Already registered?
+                        Kembali
                     </Link>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
+                    <Link
+                        href={route('login')}
+                        className="rounded-md text-sm underline focus:outline-none"
+                        style={{ color: '#212121' }}
+                    >
+                        Sudah punya akun?
+                    </Link>
+
+                    <PrimaryButton 
+                        className="min-w-[104px] sm:min-w-[120px] px-5 py-2" 
+                        disabled={processing} 
+                        style={{ backgroundColor: '#212121' }}
+                    >
+                        Daftar
                     </PrimaryButton>
                 </div>
             </form>

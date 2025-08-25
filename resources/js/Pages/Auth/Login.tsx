@@ -91,24 +91,33 @@ export default function Login({
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                    <button
-                        type="button"
-                        onClick={() => window.history.back()}
-                        className="rounded-md text-sm px-4 py-2 border"
+                    <Link
+                        href={route('data.tower')}
+                        className="rounded-md text-sm px-4 py-2 border inline-block text-center"
                         style={{ color: '#212121', borderColor: '#212121' }}
                     >
                         Kembali
-                    </button>
+                    </Link>
 
-                    {canResetPassword && (
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center">
+                        {canResetPassword && (
+                            <Link
+                                href={route('password.request')}
+                                className="rounded-md text-sm underline focus:outline-none"
+                                style={{ color: '#212121' }}
+                            >
+                                Forgot your password?
+                            </Link>
+                        )}
+                        
                         <Link
-                            href={route('password.request')}
+                            href={route('register')}
                             className="rounded-md text-sm underline focus:outline-none"
                             style={{ color: '#212121' }}
                         >
-                            Forgot your password?
+                            Belum punya akun?
                         </Link>
-                    )}
+                    </div>
 
                     <PrimaryButton className="min-w-[104px] sm:min-w-[120px] px-5 py-2" disabled={processing} style={{ backgroundColor: '#212121' }}>
                         Masuk
