@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Footer from '@/Components/Footer';
@@ -22,36 +22,40 @@ interface ComplaintCreateProps {
   towers: Tower[];
 }
 
+const INITIAL_FORM_STATE = {
+  nama: '',
+  telepon: '',
+  kategori: '',
+  lokasi_tower: '',
+  lokasi_tower_display: '',
+  tower_id: '',
+  pesan: '',
+  email: '',
+};
+
+const INITIAL_VALIDATION_STATE = {
+  nama: false,
+  telepon: false,
+  kategori: false,
+  lokasi_tower: false,
+  pesan: false,
+  email: false
+};
+
 export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const { auth } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
 
+  // Redirect staff users immediately
   useEffect(() => {
     if (isStaff) {
       router.visit('/admin');
     }
   }, [isStaff]);
   
-  const [form, setForm] = useState({
-    nama: '',
-    telepon: '',
-    kategori: '',
-    lokasi_tower: '', // This will store site_name for display purposes
-    lokasi_tower_display: '', // Display value for the selected tower
-    tower_id: '', // Added to store the tower ID for the foreign key
-    pesan: '',
-  });
-  
-  const [validation, setValidation] = useState({
-    nama: false,
-    telepon: false,
-    kategori: false,
-    lokasi_tower: false,
-    pesan: false
-  });
-
+  const [form, setForm] = useState(INITIAL_FORM_STATE);
+  const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
   const [files, setFiles] = useState<File[]>([]);
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   
@@ -61,7 +65,29 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const [dialogTitle, setDialogTitle] = useState('');
   const [dialogMessage, setDialogMessage] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Memoized dialog handlers
+  const showErrorDialog = useCallback((title: string, message: string) => {
+    setDialogType('error');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  }, []);
+
+  const showSuccessDialog = useCallback((title: string, message: string) => {
+    setDialogType('success');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  }, []);
+
+  const showWarningDialog = useCallback((title: string, message: string) => {
+    setDialogType('warning');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  }, []);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
     
@@ -69,9 +95,9 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     if (validation[name as keyof typeof validation] !== undefined) {
       setValidation(prev => ({ ...prev, [name]: false }));
     }
-  };
+  }, [validation]);
 
-  const handleTowerSelect = (tower: Tower) => {
+  const handleTowerSelect = useCallback((tower: Tower) => {
     const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
     setForm((prev) => ({
       ...prev,
@@ -83,58 +109,64 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     if (validation.lokasi_tower) {
       setValidation((prev) => ({ ...prev, lokasi_tower: false }));
     }
-  };
+  }, [validation.lokasi_tower]);
 
-  const handleTowerClear = () => {
+  const handleTowerClear = useCallback(() => {
     setForm(prev => ({ 
       ...prev, 
       lokasi_tower: '', 
       lokasi_tower_display: '', 
       tower_id: '' 
     }));
-  };
+  }, []);
 
-  const handleFileError = (message: string) => {
+  const handleFileError = useCallback((message: string) => {
     showErrorDialog('Error Upload File', message);
-  };
+  }, [showErrorDialog]);
 
-  const showErrorDialog = (title: string, message: string) => {
-    setDialogType('error');
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setShowDialog(true);
-  };
+  const validateForm = useCallback(() => {
+    const newValidation = {
+      nama: !form.nama.trim(),
+      telepon: !form.telepon.trim(),
+      kategori: !form.kategori.trim(),
+      lokasi_tower: !form.lokasi_tower.trim(),
+      pesan: !form.pesan.trim(),
+      email: form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) // Only validate email if provided
+    };
+    
+    setValidation(newValidation);
+    return !Object.values(newValidation).some(Boolean);
+  }, [form]);
 
-  const showSuccessDialog = (title: string, message: string) => {
-    setDialogType('success');
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setShowDialog(true);
-  };
+  const handleCategoryChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === "Lainnya") {
+      setIsOtherCategory(true);
+      setForm(prev => ({ ...prev, kategori: "" }));
+    } else {
+      handleChange(e);
+    }
+  }, [handleChange]);
 
-  const showWarningDialog = (title: string, message: string) => {
-    setDialogType('warning');
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setShowDialog(true);
-  };
+  const handleCancelOtherCategory = useCallback(() => {
+    setIsOtherCategory(false);
+    setForm(prev => ({ ...prev, kategori: "" }));
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setForm(INITIAL_FORM_STATE);
+    setFiles([]);
+    setIsOtherCategory(false);
+    setValidation(INITIAL_VALIDATION_STATE);
+    setShowDialog(false);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
-    const newValidation = {
-      nama: !form.nama,
-      telepon: !form.telepon,
-      kategori: !form.kategori,
-      lokasi_tower: !form.lokasi_tower,
-      pesan: !form.pesan
-    } as const;
-    
-    setValidation(newValidation);
-    
-    if (Object.values(newValidation).some(Boolean)) {
-      showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi');
+    // Validate form
+    if (!validateForm()) {
+      showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi dengan benar');
       return;
     }
     
@@ -162,10 +194,13 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       
       // Create form data to handle file uploads
       const formData = new FormData();
+      
+      // Append form fields with trimmed values
       Object.entries(form).forEach(([key, value]) => {
-        formData.append(key, value);
+        formData.append(key, typeof value === 'string' ? value.trim() : value);
       });
       
+      // Append files
       files.forEach((file, index) => {
         formData.append(`foto[${index}]`, file);
       });
@@ -174,52 +209,24 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       router.post('/complaint', formData, {
         onSuccess: () => {
           showSuccessDialog('Berhasil Dikirim', 'Keluhan Anda telah berhasil dikirimkan');
-          setForm({
-            nama: '',
-            telepon: '',
-            kategori: '',
-            lokasi_tower: '',
-            lokasi_tower_display: '',
-            tower_id: '',
-            pesan: '',
-          });
-          setFiles([]);
-          setIsOtherCategory(false);
-          setIsSubmitting(false);
+          resetForm();
         },
         onError: (errors: Record<string, string>) => {
-          showErrorDialog('Gagal Mengirim', Object.values(errors).join(', '));
+          const errorMessage = Object.values(errors).join(', ');
+          showErrorDialog('Gagal Mengirim', errorMessage);
+        },
+        onFinish: () => {
           setIsSubmitting(false);
         }
       });
     } catch (error) {
+      console.error('Location validation error:', error);
       showErrorDialog('Error Validasi Lokasi', 'Terjadi kesalahan saat memvalidasi lokasi');
       setIsSubmitting(false);
     }
   };
 
-  const handleReset = () => {
-    setForm({
-      nama: '',
-      telepon: '',
-      kategori: '',
-      lokasi_tower: '',
-      lokasi_tower_display: '',
-      tower_id: '',
-      pesan: '',
-    });
-    setFiles([]);
-    setIsOtherCategory(false);
-    setValidation({
-      nama: false,
-      telepon: false,
-      kategori: false,
-      lokasi_tower: false,
-      pesan: false
-    });
-    setShowDialog(false);
-  };
-
+  // Don't render if user is staff (will be redirected)
   if (isStaff) return null;
 
   return (
@@ -227,7 +234,10 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       <Head title="Form Keluhan" />
       
       <div className="p-4 sm:p-6">
-        <div className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ backgroundColor: '#FFF8E1' }}>
+        <div 
+          className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" 
+          style={{ backgroundColor: '#FFF8E1' }}
+        >
           <div>
             <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
               Guest Complain - Sampaikan Keluhan Anda
@@ -236,16 +246,18 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
               Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi
             </p>
           </div>
-          <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" />
+          <img 
+            src="/images/kab-smg-logo.png" 
+            alt="Kabupaten Semarang" 
+            className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" 
+          />
         </div>
         
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
             
-
-            
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
@@ -256,9 +268,9 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     name="nama"
                     value={form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
-                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
                     placeholder="Masukkan nama lengkap"
+                    maxLength={100}
                   />
                   {validation.nama && (
                     <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
@@ -270,16 +282,34 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     No. Telepon <span className="text-red-600">*</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
-                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
                     placeholder="Masukkan nomor telepon"
+                    maxLength={15}
                   />
                   {validation.telepon && (
                     <p className="text-red-500 text-sm mt-1">Nomor telepon harus diisi</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Email <span className="text-gray-500">(Opsional)</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                    placeholder="Masukkan email (untuk melacak status)"
+                    maxLength={100}
+                  />
+                  {validation.email && (
+                    <p className="text-red-500 text-sm mt-1">Format email tidak valid</p>
                   )}
                 </div>
                 
@@ -291,17 +321,8 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     <select
                       name="kategori"
                       value={form.kategori}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "Lainnya") {
-                          setIsOtherCategory(true);
-                          setForm(prev => ({ ...prev, kategori: "" }));
-                        } else {
-                          handleChange(e);
-                        }
-                      }}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] text-base sm:text-sm p-3`}
-                      style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                      onChange={handleCategoryChange}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 text-base sm:text-sm p-3`}
                     >
                       <option value="">Pilih kategori</option>
                       <option value="Kerusakan">Kerusakan</option>
@@ -310,24 +331,20 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                       <option value="Lainnya">Lainnya</option>
                     </select>
                   ) : (
-                    <div className="flex">
+                    <div className="flex gap-2">
                       <input
                         type="text"
                         name="kategori"
                         value={form.kategori}
                         onChange={handleChange}
-                        className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
-                        style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                        className={`flex-1 rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
                         placeholder="Masukkan kategori keluhan lainnya"
+                        maxLength={50}
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsOtherCategory(false);
-                          setForm(prev => ({ ...prev, kategori: "" }));
-                        }}
-                        className="ml-2 px-3 py-2 rounded-lg hover:opacity-90 text-white"
-                        style={{ backgroundColor: '#212121' }}
+                        onClick={handleCancelOtherCategory}
+                        className="px-3 py-2 rounded-lg hover:opacity-90 text-white bg-gray-600"
                       >
                         Batal
                       </button>
@@ -367,12 +384,12 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                   name="pesan"
                   value={form.pesan}
                   onChange={handleChange}
-                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
-                  style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 resize-vertical`}
                   rows={6}
                   placeholder="Jelaskan keluhan Anda secara detail..."
                   maxLength={1000}
-                ></textarea>
+                  minLength={10}
+                />
                 {validation.pesan && (
                   <p className="text-red-500 text-sm mt-1">Pesan harus diisi</p>
                 )}
@@ -384,17 +401,15 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
               <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
                 <button
                   type="button"
-                  onClick={handleReset}
-                  className="px-6 py-3 border rounded-lg hover:opacity-90 text-white"
-                  style={{ backgroundColor: '#212121', borderColor: '#212121' }}
+                  onClick={resetForm}
+                  className="px-6 py-3 border border-gray-400 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
                   disabled={isSubmitting}
                 >
                   Reset
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white"
-                  style={{ backgroundColor: '#B71C1C' }}
+                  className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Mengirim...' : 'Kirim Keluhan'}

@@ -39,7 +39,7 @@ class UserComplaintController extends Controller
     }
 
     /**
-     * Store complaint submitted by authenticated user.
+     * Store complaint submitted by authenticated or anonymous user.
      */
     public function store(Request $request)
     {
@@ -51,11 +51,9 @@ class UserComplaintController extends Controller
                 'lokasi_tower' => 'required|string|max:255',
                 'tower_id' => 'required|exists:towers,id',
                 'pesan' => 'required|string|max:1000',
-                // Allow images and videos to be submitted under the same key ("foto") for compatibility with the frontend
+                'email' => 'nullable|email|max:255',
                 'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
-                // Still accept dedicated video inputs if provided
                 'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
-                // Optional compatibility key if frontend uses a generic name
                 'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -63,11 +61,22 @@ class UserComplaintController extends Controller
             return back()->withErrors($e->errors())->withInput();
         }
 
+        // Handle user ID and email for anonymous users
+        $userId = null;
+        $email = null;
+        
+        if (auth()->check()) {
+            $userId = auth()->id();
+        } else {
+            $email = $validated['email'];
+        }
+
         // Always set status_id to 1 (pending) for new complaints
         $report = Report::create([
             'tower_id' => $validated['tower_id'],
-            'user_id' => $request->user()->id,
-            'reporter_name' => $validated['nama'] ?? $request->user()->name,
+            'user_id' => $userId,
+            'email' => $email,
+            'reporter_name' => $validated['nama'] ?? (auth()->check() ? $request->user()->name : null),
             'reporter_phone' => $validated['telepon'],
             'category' => $validated['kategori'],
             'message' => $validated['pesan'],
@@ -138,7 +147,11 @@ class UserComplaintController extends Controller
             \Log::error('Error handling video uploads: ' . $e->getMessage());
         }
 
-        return redirect()->back()->with('success', 'Keluhan berhasil dikirim');
+        $message = auth()->check() 
+            ? 'Keluhan berhasil dikirim'
+            : 'Keluhan berhasil dikirim! Gunakan email Anda untuk melihat status dan respons.';
+
+        return redirect()->back()->with('success', $message);
     }
 }
 
