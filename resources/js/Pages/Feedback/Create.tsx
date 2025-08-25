@@ -14,13 +14,13 @@ interface Tower {
   id: number;
   site_name: string;
   alamat_menara?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude: number | string;
+  longitude: number | string;
   tinggi_menara?: number;
   tinggi_bangunan?: number;
   jumlah_pengguna?: number;
   tower_type?: string;
-  site_type?: string;
+  site_type?: string | null;
 }
 
 interface FeedbackCreateProps {
@@ -170,7 +170,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim() || form.pesan.trim().length < 10,
-      email: form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+      email: form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) : false
     };
     
     setValidation(newValidation);
@@ -184,6 +184,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     setValidation(INITIAL_VALIDATION_STATE);
     setShowDialog(false);
   }, []);
+
+  const handleDialogClose = useCallback(() => {
+    setShowDialog(false);
+    // If it was a success dialog, reset the form
+    if (dialogType === 'success') {
+      resetForm();
+    }
+  }, [dialogType, resetForm]);
 
   const handleFileError = useCallback((message: string) => {
     showErrorDialog('Error Upload File', message);
@@ -266,7 +274,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       router.post('/feedback', formData, {
         onSuccess: () => {
           showSuccessDialog('Berhasil Dikirim', 'Masukan Anda telah berhasil dikirimkan');
-          resetForm();
+          // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
           const errorMessage = Object.values(errors).join(', ');
@@ -481,7 +489,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       
       <AlertDialog
         show={showDialog}
-        onClose={() => setShowDialog(false)}
+        onClose={handleDialogClose}
         type={dialogType}
         title={dialogTitle}
         message={dialogMessage}
