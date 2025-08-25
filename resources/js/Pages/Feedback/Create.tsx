@@ -38,6 +38,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     lokasi_tower_display: '', // Display value for the selected tower
     tower_id: '', // Added to store the tower ID for the foreign key
     pesan: '',
+    email: '',
   });
   
   const [validation, setValidation] = useState({
@@ -45,7 +46,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     telepon: false,
     kategori: false,
     lokasi_tower: false,
-    pesan: false
+    pesan: false,
+    email: false
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -117,7 +119,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       telepon: !form.telepon,
       kategori: !form.kategori,
       lokasi_tower: !form.lokasi_tower,
-      pesan: !form.pesan
+      pesan: !form.pesan,
+      email: !form.email
     } as const;
     
     setValidation(newValidation);
@@ -146,6 +149,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     formData.append('tower_id', form.tower_id);
     formData.append('message', form.pesan);
     formData.append('sender_name', form.nama); // Tambahkan nama pengirim dari form
+    formData.append('email', form.email); // Add email field
 
     
     // Separate images and videos
@@ -166,6 +170,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     router.post('/feedback', formData, {
       onSuccess: () => {
         setSuccessMessage('Masukan Anda telah berhasil dikirimkan');
+        
         setForm({
           nama: '',
           telepon: '',
@@ -174,6 +179,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           lokasi_tower_display: '',
           tower_id: '',
           pesan: '',
+          email: '',
         });
         setFiles([]);
         setIsOtherCategory(false);
@@ -195,6 +201,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       lokasi_tower_display: '',
       tower_id: '',
       pesan: '',
+      email: '',
     });
     setFiles([]);
     setIsOtherCategory(false);
@@ -203,7 +210,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       telepon: false,
       kategori: false,
       lokasi_tower: false,
-      pesan: false
+      pesan: false,
+      email: false
     });
     setErrorMessage('');
     setSuccessMessage('');
@@ -282,6 +290,24 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   />
                   {validation.telepon && (
                     <p className="text-red-500 text-sm mt-1">Nomor telepon harus diisi</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Email <span className="text-gray-500">(Opsional)</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3`}
+                    style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+                    placeholder="Masukkan email (untuk melacak status)"
+                  />
+                  {validation.email && (
+                    <p className="text-red-500 text-sm mt-1">Email harus valid</p>
                   )}
                 </div>
                 
@@ -403,6 +429,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   {isSubmitting ? 'Mengirim...' : 'Kirim Masukan'}
                 </button>
               </div>
+              
+
             </form>
           </div>
         </div>

@@ -14,6 +14,7 @@ class Feedback extends Model
     protected $fillable = [
         'tower_id',
         'user_id',
+        'email',
         'sender_phone',
         'sender_name',
         'category',
