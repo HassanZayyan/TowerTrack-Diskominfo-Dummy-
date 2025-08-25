@@ -33,20 +33,40 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   ];
 
   // Add "My Messages" link for all users (authenticated and anonymous)
-  const isStaff = user && ['admin', 'operator'].includes(user.role);
-  if (!isStaff) {
+  const isAdminOrOperator = user && ['admin', 'operator'].includes(user.role);
+  if (!isAdminOrOperator) {
     links.push({ href: '/my-messages', label: 'Pesan Saya', icon: 'message' });
   }
 
-  // Show complaint form link when user is not staff.
-  // Keep it visible for logged-out users so they are encouraged to log in to submit.
-  if (!isStaff) {
+  // Show complaint and feedback form links for non-admin/operator users
+  // Keep them visible for logged-out users so they are encouraged to log in to submit.
+  if (!isAdminOrOperator) {
     links.push({ href: '/complaint', label: 'Kirim Keluhan', icon: 'report_problem' });
     links.push({ href: '/feedback', label: 'Kirim Masukan', icon: 'lightbulb' });
   }
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  // Helper function to get role display text
+  const getRoleDisplay = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Administrator';
+      case 'operator': return 'Operator';
+      case 'tower_owner': return 'Tower Owner';
+      default: return 'User';
+    }
+  };
+
+  // Helper function to get role icon
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'admin': return 'admin_panel_settings';
+      case 'operator': return 'support_agent';
+      case 'tower_owner': return 'business';
+      default: return 'person';
+    }
   };
 
   return (
@@ -92,12 +112,36 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
               <nav className="flex items-center space-x-1 lg:space-x-2">
                 {user ? (
                   <>
-                    <span className="text-white/90 text-xs sm:text-sm lg:text-base hidden sm:block">{user.name}</span>
-                    {['admin','operator'].includes(user.role) && (
-                      <Link href={route('admin.dashboard')} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" style={{ color: 'white' }}>
-                        <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">space_dashboard</span>
-                        <span className="hidden lg:inline">Dashboard</span>
-                        <span className="lg:hidden text-xs">Admin</span>
+                    {/* User Role Display - More subtle and elegant */}
+                    <div className="flex items-center px-2 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm">
+                      <span className="material-icons-outlined mr-1.5 text-sm text-white/80">
+                        {getRoleIcon(user.role)}
+                      </span>
+                      <span className="text-xs text-white/90 font-medium hidden lg:inline">
+                        {getRoleDisplay(user.role)}
+                      </span>
+                      <span className="text-xs text-white/90 font-medium lg:hidden">
+                        {user.role === 'admin' ? 'Admin' : 
+                         user.role === 'operator' ? 'Op' : 
+                         user.role === 'tower_owner' ? 'Owner' : 'User'}
+                      </span>
+                    </div>
+
+                    {['admin','operator','tower_owner'].includes(user.role) && (
+                      <Link 
+                        href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
+                        className="flex items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
+                        style={{ color: 'white' }}
+                      >
+                        <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">
+                          {user.role === 'tower_owner' ? 'tower' : 'space_dashboard'}
+                        </span>
+                        <span className="hidden lg:inline">
+                          {user.role === 'tower_owner' ? 'Kelola Tower' : 'Dashboard'}
+                        </span>
+                        <span className="lg:hidden text-xs">
+                          {user.role === 'tower_owner' ? 'Tower' : 'Admin'}
+                        </span>
                       </Link>
                     )}
                     <button 
@@ -168,14 +212,30 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
               <li>
                 {user ? (
                   <div className="flex flex-col space-y-2 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/90 text-sm font-medium">{user.name}</span>
+                    {/* User Role Display for Mobile */}
+                    <div className="flex items-center px-3 py-2 rounded-lg bg-white/10">
+                      <span className="material-icons-outlined mr-3 text-lg text-white/80">
+                        {getRoleIcon(user.role)}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-white/90 text-sm font-medium">{user.name}</span>
+                        <span className="text-white/70 text-xs">{getRoleDisplay(user.role)}</span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      {['admin','operator'].includes(user.role) && (
-                        <Link href={route('admin.dashboard')} className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" style={{ color: 'white' }} onClick={() => setMobileMenuOpen(false)}>
-                          <span className="material-icons-outlined mr-3 text-lg">space_dashboard</span>
-                          <span>Dashboard Admin</span>
+                      {['admin','operator','tower_owner'].includes(user.role) && (
+                        <Link 
+                          href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
+                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" 
+                          style={{ color: 'white' }} 
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <span className="material-icons-outlined mr-3 text-lg">
+                            {user.role === 'tower_owner' ? 'tower' : 'space_dashboard'}
+                          </span>
+                          <span>
+                            {user.role === 'tower_owner' ? 'Kelola Tower' : 'Dashboard Admin'}
+                          </span>
                         </Link>
                       )}
                       <button 

@@ -68,16 +68,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
           <div className="flex items-center gap-4 md:gap-6">
             <Link href="/" className="text-lg font-semibold whitespace-nowrap" style={{ color: '#FFD700' }}>TowerTrack</Link>
             <div className="hidden md:flex items-center gap-2 lg:gap-4">
-              <Link 
-                href={route('admin.dashboard')} 
-                className={getMenuClasses('/admin/dashboard')}
-                style={{ 
-                  backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'transparent',
-                  color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                Dashboard
-              </Link>
+              {user?.role !== 'tower_owner' && (
+                <Link 
+                  href={route('admin.dashboard')} 
+                  className={getMenuClasses('/admin/dashboard')}
+                  style={{ 
+                    backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'transparent',
+                    color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
+                  }}
+                >
+                  Dashboard
+                </Link>
+              )}
               {user?.role === 'admin' && (
                 <Link 
                   href={route('admin.users.index')} 
@@ -145,16 +147,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
         {/* Mobile admin nav */}
         <div className="md:hidden border-t" style={{ borderTopColor: '#FFD700' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex gap-2 overflow-x-auto">
-            <Link 
-              href={route('admin.dashboard')} 
-              className={getMenuClasses('/admin/dashboard', true)}
-              style={{ 
-                backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
-              }}
-            >
-              Dashboard
-            </Link>
+            {user?.role !== 'tower_owner' && (
+              <Link 
+                href={route('admin.dashboard')} 
+                className={getMenuClasses('/admin/dashboard', true)}
+                style={{ 
+                  backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
+                  color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
+                }}
+              >
+                Dashboard
+              </Link>
+            )}
             {user?.role === 'admin' && (
               <Link 
                 href={route('admin.users.index')} 
