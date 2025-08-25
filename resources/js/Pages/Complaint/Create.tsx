@@ -131,7 +131,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim(),
-      email: form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) // Only validate email if provided
+      email: form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) : false // Only validate email if provided
     };
     
     setValidation(newValidation);
@@ -160,6 +160,14 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     setValidation(INITIAL_VALIDATION_STATE);
     setShowDialog(false);
   }, []);
+
+  const handleDialogClose = useCallback(() => {
+    setShowDialog(false);
+    // If it was a success dialog, reset the form
+    if (dialogType === 'success') {
+      resetForm();
+    }
+  }, [dialogType, resetForm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,7 +217,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       router.post('/complaint', formData, {
         onSuccess: () => {
           showSuccessDialog('Berhasil Dikirim', 'Keluhan Anda telah berhasil dikirimkan');
-          resetForm();
+          // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
           const errorMessage = Object.values(errors).join(', ');
@@ -424,7 +432,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       
       <AlertDialog
         show={showDialog}
-        onClose={() => setShowDialog(false)}
+        onClose={handleDialogClose}
         type={dialogType}
         title={dialogTitle}
         message={dialogMessage}
