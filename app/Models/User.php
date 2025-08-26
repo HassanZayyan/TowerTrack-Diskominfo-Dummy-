@@ -84,6 +84,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if user is complainant
+     */
+    public function isComplainant(): bool
+    {
+        return $this->role === 'complainant';
+    }
+
+    /**
      * One-to-many relationship with feedbacks
      */
     public function feedbacks()

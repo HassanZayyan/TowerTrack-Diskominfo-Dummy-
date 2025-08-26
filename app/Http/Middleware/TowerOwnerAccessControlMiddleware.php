@@ -23,7 +23,10 @@ class TowerOwnerAccessControlMiddleware
         }
         
         // For tower owners, check if they're trying to access a specific tower
-        $towerId = $request->route('tower');
+        $towerParam = $request->route('tower');
+        
+        // Handle both cases: tower ID or tower object
+        $towerId = is_object($towerParam) ? $towerParam->id : $towerParam;
         
         if ($towerId) {
             // Check if the tower belongs to this user
@@ -33,8 +36,8 @@ class TowerOwnerAccessControlMiddleware
                 abort(404, 'Tower not found');
             }
             
-            // Check if user owns this tower
-            if (!$user->ownedTowers()->where('id', $towerId)->exists()) {
+            // Check if user owns this tower - specify table name to avoid ambiguity
+            if ($user->owner && !$user->owner->towers()->where('towers.id', $towerId)->exists()) {
                 abort(403, 'You can only access towers you own');
             }
         }
@@ -42,5 +45,6 @@ class TowerOwnerAccessControlMiddleware
         return $next($request);
     }
 }
+
 
 

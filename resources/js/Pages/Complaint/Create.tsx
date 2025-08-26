@@ -45,19 +45,23 @@ const INITIAL_VALIDATION_STATE = {
 export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const { auth } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
-
+  const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
+  
+  const [form, setForm] = useState({
+    ...INITIAL_FORM_STATE,
+    nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+  });
+  const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
+  const [files, setFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOtherCategory, setIsOtherCategory] = useState(false);
+  
   // Redirect staff users immediately
   useEffect(() => {
     if (isStaff) {
       router.visit('/admin');
     }
   }, [isStaff]);
-  
-  const [form, setForm] = useState(INITIAL_FORM_STATE);
-  const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
-  const [files, setFiles] = useState<File[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOtherCategory, setIsOtherCategory] = useState(false);
   
   // Dialog states
   const [showDialog, setShowDialog] = useState(false);
@@ -126,17 +130,17 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
 
   const validateForm = useCallback(() => {
     const newValidation = {
-      nama: !form.nama.trim(),
+      nama: isComplainant ? false : !form.nama.trim(), // Skip name validation for complainant users
       telepon: !form.telepon.trim(),
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim(),
-      email: form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) : false // Only validate email if provided
+      email: isComplainant ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) : false) // Skip email validation for complainant users
     };
     
     setValidation(newValidation);
     return !Object.values(newValidation).some(Boolean);
-  }, [form]);
+  }, [form, isComplainant]);
 
   const handleCategoryChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -154,12 +158,15 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   }, []);
 
   const resetForm = useCallback(() => {
-    setForm(INITIAL_FORM_STATE);
+    setForm({
+      ...INITIAL_FORM_STATE,
+      nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+    });
     setFiles([]);
     setIsOtherCategory(false);
     setValidation(INITIAL_VALIDATION_STATE);
     setShowDialog(false);
-  }, []);
+  }, [isComplainant, auth?.user?.name]);
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
@@ -203,10 +210,19 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       // Create form data to handle file uploads
       const formData = new FormData();
       
-      // Append form fields with trimmed values
+      // Append form fields with trimmed values, excluding email for complainant users
       Object.entries(form).forEach(([key, value]) => {
+        // Skip email field for authenticated complainant users
+        if (key === 'email' && isComplainant) {
+          return;
+        }
         formData.append(key, typeof value === 'string' ? value.trim() : value);
       });
+      
+      // For complainant users, use their authenticated name
+      if (isComplainant) {
+        formData.set('nama', auth?.user?.name || '');
+      }
       
       // Append files
       files.forEach((file, index) => {
@@ -248,10 +264,13 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         >
           <div>
             <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              Guest Complain - Sampaikan Keluhan Anda
+              {isComplainant ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi
+              {isComplainant 
+                ? 'Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi'
+                : 'Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi'
+              }
             </p>
           </div>
           <img 
@@ -265,6 +284,14 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
           <div className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
             
+            {isComplainant && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm">
+                  <strong>Info:</strong> Email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field email.
+                </p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
                 <div>
@@ -274,11 +301,12 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                   <input
                     type="text"
                     name="nama"
-                    value={form.nama}
+                    value={isComplainant ? (auth?.user?.name || '') : form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isComplainant ? 'bg-gray-100' : ''}`}
                     placeholder="Masukkan nama lengkap"
                     maxLength={100}
+                    readOnly={isComplainant}
                   />
                   {validation.nama && (
                     <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
@@ -303,23 +331,25 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                   )}
                 </div>
                 
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Email <span className="text-gray-500">(Opsional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
-                    placeholder="Masukkan email (untuk melacak status)"
-                    maxLength={100}
-                  />
-                  {validation.email && (
-                    <p className="text-red-500 text-sm mt-1">Format email tidak valid</p>
-                  )}
-                </div>
+                {!isComplainant && (
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Email <span className="text-gray-500">(Opsional)</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                      placeholder="Masukkan email (untuk melacak status)"
+                      maxLength={100}
+                    />
+                    {validation.email && (
+                      <p className="text-red-500 text-sm mt-1">Format email tidak valid</p>
+                    )}
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">

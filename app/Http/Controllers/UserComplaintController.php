@@ -51,7 +51,9 @@ class UserComplaintController extends Controller
                 'lokasi_tower' => 'required|string|max:255',
                 'tower_id' => 'required|exists:towers,id',
                 'pesan' => 'required|string|max:1000',
-                'email' => 'nullable|email|max:255',
+                'email' => auth()->check() && auth()->user()->isComplainant() 
+                    ? 'prohibited' // Email not allowed for authenticated complainant users
+                    : 'nullable|email|max:255', // Email allowed for anonymous users
                 'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
                 'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
                 'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -61,14 +63,19 @@ class UserComplaintController extends Controller
             return back()->withErrors($e->errors())->withInput();
         }
 
-        // Handle user ID and email for anonymous users
+        // Handle user ID and email for authenticated vs anonymous users
         $userId = null;
         $email = null;
         
         if (auth()->check()) {
             $userId = auth()->id();
+            // For authenticated complainant users, use their email automatically
+            if (auth()->user()->isComplainant()) {
+                $email = auth()->user()->email;
+            }
         } else {
-            $email = $validated['email'];
+            // For anonymous users, email is optional
+            $email = $validated['email'] ?? null;
         }
 
         // Always set status_id to 1 (pending) for new complaints
@@ -148,7 +155,7 @@ class UserComplaintController extends Controller
         }
 
         $message = auth()->check() 
-            ? 'Keluhan berhasil dikirim'
+            ? 'Keluhan berhasil dikirim! Terima kasih atas laporan Anda.'
             : 'Keluhan berhasil dikirim! Gunakan email Anda untuk melihat status dan respons.';
 
         return redirect()->back()->with('success', $message);

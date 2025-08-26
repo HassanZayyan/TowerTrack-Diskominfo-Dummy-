@@ -139,6 +139,31 @@ const FormInput: React.FC<{
   );
 };
 
+// Constants for better maintainability
+interface OptionType {
+  value: string;
+  label: string;
+}
+
+const SITE_TYPE_OPTIONS: OptionType[] = [
+  { value: 'GF', label: 'GF' },
+  { value: 'IBS', label: 'IBS' },
+  { value: 'RT', label: 'RT' }
+];
+
+const PERMIT_TYPE_OPTIONS: OptionType[] = [
+  { value: 'IMB', label: 'IMB' },
+  { value: 'PBG', label: 'PBG' },
+  { value: 'Lainnya', label: 'Lainnya' }
+];
+
+const PERMIT_STATUS_OPTIONS: OptionType[] = [
+  { value: 'Aktif', label: 'Aktif' },
+  { value: 'Tidak Aktif', label: 'Tidak Aktif' },
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Expired', label: 'Expired' }
+];
+
 const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) => {
   const [editing, setEditing] = useState<Record<number, Partial<Tower>>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -258,6 +283,16 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
           return 'Tinggi menara harus berupa angka positif';
         }
         return '';
+      case 'site_type':
+        if (value && !SITE_TYPE_OPTIONS.map(opt => opt.value).includes(value)) {
+          return 'Site type harus salah satu dari: GF, IBS, atau RT';
+        }
+        return '';
+      case 'prs_id':
+        if (value && value.toString().trim() === '') {
+          return 'PRS ID tidak boleh kosong jika diisi';
+        }
+        return '';
       default:
         return '';
     }
@@ -287,9 +322,18 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       hasErrors = true;
     }
 
+    // Validate site_type if provided
+    if (editData.site_type !== undefined && editData.site_type !== '') {
+      const siteTypeError = validateField('site_type', editData.site_type);
+      if (siteTypeError) {
+        errors.site_type = siteTypeError;
+        hasErrors = true;
+      }
+    }
+
     // Validate other fields
     Object.keys(editData).forEach(key => {
-      if (key !== 'site_name' && key !== 'alamat_menara' && key !== 'owner_name' && key !== 'owner_alamat' && key !== 'owner_id') {
+      if (key !== 'site_name' && key !== 'alamat_menara' && key !== 'owner_name' && key !== 'owner_alamat' && key !== 'owner_id' && key !== 'site_type') {
         const error = validateField(key as keyof Tower, editData[key as keyof Tower]);
         if (error) {
           errors[key] = error;
@@ -405,6 +449,18 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
   const getFieldError = (id: number, field: string) => {
     return validationErrors[id]?.[field] || '';
+  };
+
+  // Helper function to get display value for dropdown fields
+  const getDisplayValue = (value: any, options: OptionType[]) => {
+    if (!value) return '';
+    const option = options.find(opt => opt.value === value);
+    return option ? option.label : value;
+  };
+
+  // Helper function to check if a field has a valid value
+  const hasValidValue = (value: any): boolean => {
+    return value !== null && value !== undefined && value !== '';
   };
 
   const hasChanges = (id: number) => {
@@ -1135,6 +1191,24 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             </div>
                           </div>
                         )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Site Type <span className="text-gray-500">(Opsional)</span>
+                          </label>
+                          <FormInput 
+                            value={getEditValue(tower, 'site_type')}
+                            onChange={(value) => updateField(tower.id, 'site_type', value)}
+                            error={getFieldError(tower.id, 'site_type')}
+                            options={SITE_TYPE_OPTIONS}
+                            placeholder="Pilih site type"
+                            disabled={!isEditing(tower.id)}
+                          />
+                          <div className="text-xs text-gray-500 mt-1 space-y-1">
+                            <p><span className="font-medium">GF:</span> Ground Floor - Menara di lantai dasar</p>
+                            <p><span className="font-medium">IBS:</span> Integrated Building System - Sistem bangunan terintegrasi</p>
+                            <p><span className="font-medium">RT:</span> Rooftop - Menara di atas bangunan</p>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1275,11 +1349,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             value={getEditValue(tower, 'jenis_ijin')}
                             onChange={(value) => updateField(tower.id, 'jenis_ijin', value)}
                             error={getFieldError(tower.id, 'jenis_ijin')}
-                            options={[
-                              { value: 'IMB', label: 'IMB' },
-                              { value: 'PBG', label: 'PBG' },
-                              { value: 'Lainnya', label: 'Lainnya' }
-                            ]}
+                            options={PERMIT_TYPE_OPTIONS}
                             placeholder="Pilih jenis ijin"
                             disabled={!isEditing(tower.id)}
                           />
@@ -1310,12 +1380,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             value={getEditValue(tower, 'status_ijin')}
                             onChange={(value) => updateField(tower.id, 'status_ijin', value)}
                             error={getFieldError(tower.id, 'status_ijin')}
-                            options={[
-                              { value: 'Aktif', label: 'Aktif' },
-                              { value: 'Tidak Aktif', label: 'Tidak Aktif' },
-                              { value: 'Pending', label: 'Pending' },
-                              { value: 'Expired', label: 'Expired' }
-                            ]}
+                            options={PERMIT_STATUS_OPTIONS}
                             placeholder="Pilih status ijin"
                             disabled={!isEditing(tower.id)}
                           />
@@ -1325,7 +1390,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                   </div>
                 ) : (
                   // View Mode
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                       <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Informasi Dasar</h4>
                       <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
@@ -1341,12 +1406,76 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                         <p><span className="text-gray-600">Alamat:</span> <span className="break-words">{tower.alamat_menara || '-'}</span></p>
                       </div>
                     </div>
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg sm:col-span-2 lg:col-span-1">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                       <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Teknis</h4>
                       <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600">Tinggi:</span> {tower.tinggi_menara ? `${tower.tinggi_menara}m` : '-'}</p>
-                        <p><span className="text-gray-600">Type:</span> {tower.site_type || '-'}</p>
-                        <p><span className="text-gray-600">Status:</span> {tower.status_ijin || '-'}</p>
+                        <p><span className="text-gray-600">Tinggi Menara:</span> {tower.tinggi_menara ? `${tower.tinggi_menara}m` : '-'}</p>
+                        <p><span className="text-gray-600">Tinggi Bangunan:</span> {tower.tinggi_bangunan ? `${tower.tinggi_bangunan}m` : '-'}</p>
+                        <p><span className="text-gray-600">Tower Type:</span> 
+                          {hasValidValue(tower.tower_type) ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              {tower.tower_type}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </p>
+                        <p><span className="text-gray-600">Site Type:</span> 
+                          {hasValidValue(tower.site_type) ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {getDisplayValue(tower.site_type, SITE_TYPE_OPTIONS)}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Perijinan & PRS</h4>
+                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600">Status Ijin:</span> 
+                          {hasValidValue(tower.status_ijin) ? (
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              tower.status_ijin === 'Aktif' ? 'bg-green-100 text-green-800' :
+                              tower.status_ijin === 'Tidak Aktif' ? 'bg-red-100 text-red-800' :
+                              tower.status_ijin === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                              tower.status_ijin === 'Expired' ? 'bg-orange-100 text-orange-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {getDisplayValue(tower.status_ijin, PERMIT_STATUS_OPTIONS)}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </p>
+                        <p><span className="text-gray-600">PRS:</span> 
+                          {hasValidValue(tower.prs) ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                              {tower.prs}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </p>
+                        <p><span className="text-gray-600">PRS ID:</span> 
+                          {hasValidValue(tower.prs_id) ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                              {tower.prs_id}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </p>
+                        <p><span className="text-gray-600">No Ijin:</span> 
+                          {hasValidValue(tower.no_ijin) ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                              {tower.no_ijin}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
