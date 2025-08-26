@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import MainLayout from '@/Layouts/MainLayout';
 import { PageProps } from '@/types';
 import { Head } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
@@ -10,34 +10,39 @@ export default function Edit({
     status,
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Profile
-                </h2>
-            }
-        >
-            <Head title="Profile" />
+        <MainLayout currentPage="/profile">
+            <Head title="Edit Profil - TowerTrack" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <UpdateProfileInformationForm
-                            mustVerifyEmail={mustVerifyEmail}
-                            status={status}
-                            className="max-w-xl"
-                        />
+            <div className="min-h-screen bg-gray-50 py-8">
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-900">Edit Profil</h1>
+                        <p className="mt-2 text-gray-600">Kelola informasi profil dan pengaturan akun Anda</p>
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <UpdatePasswordForm className="max-w-xl" />
-                    </div>
+                    <div className="space-y-6">
+                        {/* Profile Information */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <UpdateProfileInformationForm
+                                mustVerifyEmail={mustVerifyEmail}
+                                status={status}
+                                className=""
+                            />
+                        </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <DeleteUserForm className="max-w-xl" />
+                        {/* Update Password */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <UpdatePasswordForm className="" />
+                        </div>
+
+                        {/* Delete Account */}
+                        <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
+                            <DeleteUserForm className="" />
+                        </div>
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </MainLayout>
     );
 }
