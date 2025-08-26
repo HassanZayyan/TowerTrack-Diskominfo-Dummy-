@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useLogoutConfirmation } from '@/Hooks/useLogoutConfirmation';
 import LogoutConfirmDialog from '@/Components/LogoutConfirmDialog';
+import Dropdown from '@/Components/Dropdown';
 
 interface AppBarProps {
   currentPage?: string;
@@ -112,19 +113,72 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
               <nav className="flex items-center space-x-1 lg:space-x-2">
                 {user ? (
                   <>
-                    {/* User Role Display - More subtle and elegant */}
-                    <div className="flex items-center px-2 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm">
-                      <span className="material-icons-outlined mr-1.5 text-sm text-white/80">
-                        {getRoleIcon(user.role)}
-                      </span>
-                      <span className="text-xs text-white/90 font-medium hidden lg:inline">
-                        {getRoleDisplay(user.role)}
-                      </span>
-                      <span className="text-xs text-white/90 font-medium lg:hidden">
-                        {user.role === 'admin' ? 'Admin' : 
-                         user.role === 'operator' ? 'Op' : 
-                         user.role === 'tower_owner' ? 'Owner' : 'User'}
-                      </span>
+                    {/* User Profile Dropdown */}
+                    <div className="relative">
+                      <Dropdown>
+                        <Dropdown.Trigger>
+                          <button className="flex items-center px-2 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-200">
+                            {user.avatar ? (
+                              <img 
+                                src={`/storage/${user.avatar}`} 
+                                alt={user.name}
+                                className="w-6 h-6 rounded-full object-cover mr-1.5 border border-white/20"
+                              />
+                            ) : (
+                              <span className="material-icons-outlined mr-1.5 text-sm text-white/80">
+                                {getRoleIcon(user.role)}
+                              </span>
+                            )}
+                            <span className="text-xs text-white/90 font-medium hidden lg:inline">
+                              {user.name}
+                            </span>
+                            <span className="text-xs text-white/90 font-medium lg:hidden">
+                              {user.role === 'admin' ? 'Admin' : 
+                               user.role === 'operator' ? 'Op' : 
+                               user.role === 'tower_owner' ? 'Owner' : 'User'}
+                            </span>
+                            <svg
+                              className="ml-1 h-3 w-3 text-white/70"
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        </Dropdown.Trigger>
+                        <Dropdown.Content align="right" contentClasses="py-1 shadow-lg bg-red-900 border border-white">
+                          <div className="px-4 py-3 border-b border-white">
+                            <div className="flex items-center">
+                              {user.avatar ? (
+                                <img 
+                                  src={`/storage/${user.avatar}`} 
+                                  alt={user.name}
+                                  className="w-10 h-10 rounded-full object-cover mr-3 border border-gray-200"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                  <span className="material-icons-outlined text-gray-500 text-lg">
+                                    {getRoleIcon(user.role)}
+                                  </span>
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-yellow-400">{user.name}</div>
+                                <div className="text-xs text-white">{getRoleDisplay(user.role)}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <Dropdown.Link href={route('profile.edit')} className="text-white hover:bg-white/10 transition-colors duration-200">
+                            <span className="material-icons-outlined mr-2 text-sm">person</span>
+                            Profil
+                          </Dropdown.Link>
+                        </Dropdown.Content>
+                      </Dropdown>
                     </div>
 
                     {['admin','operator','tower_owner'].includes(user.role) && (
@@ -214,15 +268,32 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                   <div className="flex flex-col space-y-2 p-3">
                     {/* User Role Display for Mobile */}
                     <div className="flex items-center px-3 py-2 rounded-lg bg-white/10">
-                      <span className="material-icons-outlined mr-3 text-lg text-white/80">
-                        {getRoleIcon(user.role)}
-                      </span>
+                      {user.avatar ? (
+                        <img 
+                          src={`/storage/${user.avatar}`} 
+                          alt={user.name}
+                          className="w-8 h-8 rounded-full object-cover mr-3 border border-white/20"
+                        />
+                      ) : (
+                        <span className="material-icons-outlined mr-3 text-lg text-white/80">
+                          {getRoleIcon(user.role)}
+                        </span>
+                      )}
                       <div className="flex flex-col">
                         <span className="text-white/90 text-sm font-medium">{user.name}</span>
                         <span className="text-white/70 text-xs">{getRoleDisplay(user.role)}</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
+                      <Link 
+                        href={route('profile.edit')}
+                        className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" 
+                        style={{ color: 'white' }} 
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <span className="material-icons-outlined mr-3 text-lg">person</span>
+                        <span>Profil</span>
+                      </Link>
                       {['admin','operator','tower_owner'].includes(user.role) && (
                         <Link 
                           href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 

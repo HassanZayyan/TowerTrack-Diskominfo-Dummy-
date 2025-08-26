@@ -52,12 +52,12 @@ export default function UpdatePasswordForm({
         <section className={className}>
             <header>
                 <h2 className="text-lg font-medium text-gray-900">
-                    Update Password
+                    Perbarui Kata Sandi
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600">
-                    Ensure your account is using a long, random password to stay
-                    secure.
+                    Pastikan akun Anda menggunakan kata sandi yang panjang dan acak
+                    agar tetap aman.
                 </p>
             </header>
 
@@ -65,7 +65,7 @@ export default function UpdatePasswordForm({
                 <div>
                     <InputLabel
                         htmlFor="current_password"
-                        value="Current Password"
+                        value="Kata Sandi Saat Ini"
                     />
 
                     <TextInput
@@ -87,7 +87,7 @@ export default function UpdatePasswordForm({
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="password" value="New Password" />
+                    <InputLabel htmlFor="password" value="Kata Sandi Baru" />
 
                     <TextInput
                         id="password"
@@ -105,7 +105,7 @@ export default function UpdatePasswordForm({
                 <div>
                     <InputLabel
                         htmlFor="password_confirmation"
-                        value="Confirm Password"
+                        value="Konfirmasi Kata Sandi"
                     />
 
                     <TextInput
@@ -126,7 +126,13 @@ export default function UpdatePasswordForm({
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                    <PrimaryButton 
+                        disabled={processing}
+                        className="inline-flex items-center px-6 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-sm text-black uppercase tracking-widest hover:bg-yellow-600 focus:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                        style={{ backgroundColor: '#FFD700', color: '#212121' }}
+                    >
+                        Simpan Perubahan
+                    </PrimaryButton>
 
                     <Transition
                         show={recentlySuccessful}
@@ -136,7 +142,7 @@ export default function UpdatePasswordForm({
                         leaveTo="opacity-0"
                     >
                         <p className="text-sm text-gray-600">
-                            Saved.
+                            Tersimpan.
                         </p>
                     </Transition>
                 </div>
