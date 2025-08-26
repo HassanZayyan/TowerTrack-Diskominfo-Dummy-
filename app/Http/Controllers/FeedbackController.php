@@ -49,21 +49,28 @@ class FeedbackController extends Controller
             'category' => 'required|string|max:100',
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
-            'sender_name' => 'required|string|max:100', // Tambahkan validasi untuk nama pengirim
-            'email' => 'nullable|email|max:255', // Tambahkan validasi untuk email
+            'sender_name' => 'required|string|max:100',
+            'email' => auth()->check() && auth()->user()->isComplainant() 
+                ? 'prohibited' // Email not allowed for authenticated complainant users
+                : 'nullable|email|max:255', // Email required for anonymous users
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
             'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
         ]);
 
-        // Handle user ID and email for anonymous users
+        // Handle user ID and email for authenticated vs anonymous users
         $userId = null;
         $email = null;
         
         if (auth()->check()) {
             $userId = auth()->id();
+            // For authenticated complainant users, use their email automatically
+            if (auth()->user()->isComplainant()) {
+                $email = auth()->user()->email;
+            }
         } else {
+            // For anonymous users, email is required
             $email = $validated['email'];
         }
 

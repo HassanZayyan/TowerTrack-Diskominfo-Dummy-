@@ -59,9 +59,13 @@ const MAX_MESSAGE_LENGTH = 1000;
 const MAX_DISTANCE_KM = 1;
 
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
-  const { errors, flash } = usePage().props as any;
+  const { errors, flash, auth } = usePage().props as any;
+  const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   
-  const [form, setForm] = useState(INITIAL_FORM_STATE);
+  const [form, setForm] = useState({
+    ...INITIAL_FORM_STATE,
+    nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+  });
   const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,25 +169,28 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
 
   const validateForm = useCallback(() => {
     const newValidation = {
-      nama: !form.nama.trim(),
+      nama: isComplainant ? false : !form.nama.trim(), // Skip name validation for complainant users
       telepon: !form.telepon.trim(),
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim() || form.pesan.trim().length < 10,
-      email: form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) : false
+      email: isComplainant ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) : false) // Skip email validation for complainant users
     };
     
     setValidation(newValidation);
     return !Object.values(newValidation).some(Boolean);
-  }, [form]);
+  }, [form, isComplainant]);
 
   const resetForm = useCallback(() => {
-    setForm(INITIAL_FORM_STATE);
+    setForm({
+      ...INITIAL_FORM_STATE,
+      nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+    });
     setFiles([]);
     setIsOtherCategory(false);
     setValidation(INITIAL_VALIDATION_STATE);
     setShowDialog(false);
-  }, []);
+  }, [isComplainant, auth?.user?.name]);
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
@@ -201,14 +208,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     const formData = new FormData();
     
     // Map form field names to controller expected names
-    formData.append('sender_name', form.nama.trim());
+    formData.append('sender_name', isComplainant ? (auth?.user?.name || '') : form.nama.trim());
     formData.append('sender_phone', form.telepon.trim());
     formData.append('category', form.kategori.trim());
     formData.append('tower_id', form.tower_id);
     formData.append('message', form.pesan.trim());
     
-    // Only append email if provided
-    if (form.email.trim()) {
+    // Only append email if provided and user is not complainant
+    if (!isComplainant && form.email.trim()) {
       formData.append('email', form.email.trim());
     }
     
@@ -227,7 +234,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     });
     
     return formData;
-  }, [form, files]);
+  }, [form, files, isComplainant, auth?.user?.name]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,10 +309,13 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         >
           <div>
             <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              Guest Feedback - Sampaikan Masukan Anda
+              {isComplainant ? 'Form Masukan - Sampaikan Masukan Anda' : 'Guest Feedback - Sampaikan Masukan Anda'}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi
+              {isComplainant 
+                ? 'Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi'
+                : 'Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi'
+              }
             </p>
           </div>
           <img 
@@ -319,6 +329,14 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           <div className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Masukan</h2>
             
+            {isComplainant && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm">
+                  <strong>Info:</strong> Email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field email.
+                </p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
                 <div>
@@ -328,11 +346,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   <input
                     type="text"
                     name="nama"
-                    value={form.nama}
+                    value={isComplainant ? (auth?.user?.name || '') : form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isComplainant ? 'bg-gray-100' : ''}`}
                     placeholder="Masukkan nama lengkap"
                     maxLength={100}
+                    readOnly={isComplainant}
                   />
                   {validation.nama && (
                     <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
@@ -357,23 +376,25 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   )}
                 </div>
                 
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Email <span className="text-gray-500">(Opsional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
-                    placeholder="Masukkan email (untuk melacak status)"
-                    maxLength={100}
-                  />
-                  {validation.email && (
-                    <p className="text-red-500 text-sm mt-1">Format email tidak valid</p>
-                  )}
-                </div>
+                {!isComplainant && (
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Email <span className="text-gray-500">(Opsional)</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                      placeholder="Masukkan email (untuk melacak status)"
+                      maxLength={100}
+                    />
+                    {validation.email && (
+                      <p className="text-red-500 text-sm mt-1">Format email tidak valid</p>
+                    )}
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">

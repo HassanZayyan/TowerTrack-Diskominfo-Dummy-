@@ -330,7 +330,7 @@ class TowerController extends Controller
     {
         // For tower owners, ensure they can only update their own towers
         if (auth()->user() && auth()->user()->role === 'tower_owner') {
-            if (!$tower->owners()->where('id', auth()->user()->owner_id)->exists()) {
+            if (!$tower->owners()->where('owners.id', auth()->user()->owner_id)->exists()) {
                 abort(403, 'You can only update towers you own');
             }
         }

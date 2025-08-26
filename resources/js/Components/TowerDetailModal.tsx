@@ -53,6 +53,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
     { id: 'jenis_ijin', label: 'Jenis Ijin (IMB/PBG)' },
     { id: 'status', label: 'Status Ijin' },
     { id: 'prs', label: 'PRS' },
+    { id: 'prs_id', label: 'PRS ID' },
     { id: 'semua_detail', label: 'Semua Detail Tower' }
   ];
   
