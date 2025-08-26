@@ -84,13 +84,13 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
 
             {/* Right side: nav links + auth - Hidden on small screens, visible on medium and up */}
             <div className="hidden sm:flex items-center gap-2 lg:gap-3">
-              <nav className="flex items-center space-x-1 lg:space-x-2">
+              <nav className="flex items-center space-x-1 lg:space-x-2 max-w-[55vw] xl:max-w-[60vw] overflow-hidden min-w-0">
                 {links.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     className={`
-                      flex items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 text-sm lg:text-base
+                      flex items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 text-sm lg:text-base whitespace-nowrap
                       ${currentPage === link.href ? 
                         'font-medium shadow-sm' : 
                         'hover:bg-white hover:bg-opacity-10 hover:scale-105'
@@ -100,9 +100,10 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                       { backgroundColor: '#FFD700', color: '#212121' } : 
                       { color: 'white' }
                     }
+                    title={link.label}
                   >
                     <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">{link.icon}</span>
-                    <span className="hidden lg:inline">{link.label}</span>
+                    <span className="hidden lg:inline-block truncate max-w-[18ch] xl:max-w-[24ch]" title={link.label}>{link.label}</span>
                     <span className="lg:hidden text-xs">{link.label.length > 8 ? link.label.substring(0, 8) + '...' : link.label}</span>
                   </Link>
                 ))}
@@ -114,7 +115,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                 {user ? (
                   <>
                     {/* User Profile Dropdown */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                       <Dropdown>
                         <Dropdown.Trigger>
                           <button className="flex items-center px-2 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-200">
@@ -129,7 +130,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                                 {getRoleIcon(user.role)}
                               </span>
                             )}
-                            <span className="text-xs text-white/90 font-medium hidden lg:inline">
+                            <span className="text-xs text-white/90 font-medium hidden lg:inline-block max-w-[18ch] truncate" title={user.name}>
                               {user.name}
                             </span>
                             <span className="text-xs text-white/90 font-medium lg:hidden">
@@ -184,11 +185,11 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     {['admin','operator','tower_owner'].includes(user.role) && (
                       <Link 
                         href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
-                        className="flex items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
+                        className="flex-none inline-flex w-fit items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
                         style={{ color: 'white' }}
                       >
                         <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">
-                          {user.role === 'tower_owner' ? 'tower' : 'space_dashboard'}
+                          {user.role === 'tower_owner' ? 'cell_tower' : 'space_dashboard'}
                         </span>
                         <span className="hidden lg:inline">
                           {user.role === 'tower_owner' ? 'Kelola Tower' : 'Dashboard'}
@@ -200,7 +201,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     )}
                     <button 
                       onClick={openDialog}
-                      className="flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
+                      className="flex-none inline-flex w-fit items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
                       style={{ color: 'white' }}
                     >
                       <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">logout</span>
@@ -302,7 +303,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <span className="material-icons-outlined mr-3 text-lg">
-                            {user.role === 'tower_owner' ? 'tower' : 'space_dashboard'}
+                            {user.role === 'tower_owner' ? 'cell_tower' : 'space_dashboard'}
                           </span>
                           <span>
                             {user.role === 'tower_owner' ? 'Kelola Tower' : 'Dashboard Admin'}
