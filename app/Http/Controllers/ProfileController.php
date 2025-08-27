@@ -33,6 +33,9 @@ class ProfileController extends Controller
         $user = $request->user();
         $validated = $request->validated();
         
+        // Remove email from validated data to prevent email changes
+        unset($validated['email']);
+        
         // Handle avatar upload
         if ($request->hasFile('avatar')) {
             // Delete old avatar if exists
@@ -47,9 +50,10 @@ class ProfileController extends Controller
         
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
+        // Email verification is no longer needed since email can't be changed
+        // if ($user->isDirty('email')) {
+        //     $user->email_verified_at = null;
+        // }
 
         $user->save();
 
