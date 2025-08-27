@@ -46,10 +46,13 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const { auth } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
+  const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
+  const isAuthenticatedUser = isComplainant || isTowerOwner;
   
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
-    nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+    nama: isAuthenticatedUser ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama,
+    email: isAuthenticatedUser ? (auth?.user?.email || '') : INITIAL_FORM_STATE.email
   });
   const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
   const [files, setFiles] = useState<File[]>([]);
@@ -130,17 +133,17 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
 
   const validateForm = useCallback(() => {
     const newValidation = {
-      nama: isComplainant ? false : !form.nama.trim(), // Skip name validation for complainant users
+      nama: isAuthenticatedUser ? false : !form.nama.trim(), // Skip name validation for authenticated users
       telepon: !form.telepon.trim(),
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim(),
-      email: isComplainant ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) : false) // Skip email validation for complainant users
+      email: isAuthenticatedUser ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) : false) // Skip email validation for authenticated users
     };
     
     setValidation(newValidation);
     return !Object.values(newValidation).some(Boolean);
-  }, [form, isComplainant]);
+  }, [form, isAuthenticatedUser]);
 
   const handleCategoryChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -160,13 +163,14 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const resetForm = useCallback(() => {
     setForm({
       ...INITIAL_FORM_STATE,
-      nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+      nama: isAuthenticatedUser ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama,
+      email: isAuthenticatedUser ? (auth?.user?.email || '') : INITIAL_FORM_STATE.email
     });
     setFiles([]);
     setIsOtherCategory(false);
     setValidation(INITIAL_VALIDATION_STATE);
     setShowDialog(false);
-  }, [isComplainant, auth?.user?.name]);
+  }, [isAuthenticatedUser, auth?.user?.name, auth?.user?.email]);
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
@@ -210,18 +214,21 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       // Create form data to handle file uploads
       const formData = new FormData();
       
-      // Append form fields with trimmed values, excluding email for complainant users
+      // Append form fields with trimmed values, excluding email for authenticated users
       Object.entries(form).forEach(([key, value]) => {
-        // Skip email field for authenticated complainant users
-        if (key === 'email' && isComplainant) {
+        // Skip email field for authenticated users
+        if (key === 'email' && isAuthenticatedUser) {
           return;
         }
         formData.append(key, typeof value === 'string' ? value.trim() : value);
       });
       
-      // For complainant users, use their authenticated name
-      if (isComplainant) {
+      // For authenticated users, use their authenticated name and email
+      if (isAuthenticatedUser) {
         formData.set('nama', auth?.user?.name || '');
+        if (auth?.user?.email) {
+          formData.set('email', auth.user.email);
+        }
       }
       
       // Append files
@@ -264,10 +271,10 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         >
           <div>
             <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              {isComplainant ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
+              {isAuthenticatedUser ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              {isComplainant 
+              {isAuthenticatedUser 
                 ? 'Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi'
                 : 'Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi'
               }
@@ -284,10 +291,10 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
           <div className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
             
-            {isComplainant && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 text-sm">
-                  <strong>Info:</strong> Email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field email.
+            {isAuthenticatedUser && (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Info:</strong> Nama dan email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field tersebut.
                 </p>
               </div>
             )}
@@ -301,12 +308,12 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                   <input
                     type="text"
                     name="nama"
-                    value={isComplainant ? (auth?.user?.name || '') : form.nama}
+                    value={isAuthenticatedUser ? (auth?.user?.name || '') : form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isComplainant ? 'bg-gray-100' : ''}`}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isAuthenticatedUser ? 'bg-gray-100' : ''}`}
                     placeholder="Masukkan nama lengkap"
                     maxLength={100}
-                    readOnly={isComplainant}
+                    readOnly={isAuthenticatedUser}
                   />
                   {validation.nama && (
                     <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
@@ -331,7 +338,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                   )}
                 </div>
                 
-                {!isComplainant && (
+                {!isAuthenticatedUser && (
                   <div>
                     <label className="block text-gray-700 font-medium mb-2">
                       Email <span className="text-gray-500">(Opsional)</span>

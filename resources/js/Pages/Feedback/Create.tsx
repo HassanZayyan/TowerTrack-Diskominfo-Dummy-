@@ -61,10 +61,13 @@ const MAX_DISTANCE_KM = 1;
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const { errors, flash, auth } = usePage().props as any;
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
+  const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
+  const isAuthenticatedUser = isComplainant || isTowerOwner;
   
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
-    nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+    nama: isAuthenticatedUser ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama,
+    email: isAuthenticatedUser ? (auth?.user?.email || '') : INITIAL_FORM_STATE.email
   });
   const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
   const [files, setFiles] = useState<File[]>([]);
@@ -169,28 +172,29 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
 
   const validateForm = useCallback(() => {
     const newValidation = {
-      nama: isComplainant ? false : !form.nama.trim(), // Skip name validation for complainant users
+      nama: isAuthenticatedUser ? false : !form.nama.trim(), // Skip name validation for authenticated users
       telepon: !form.telepon.trim(),
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim() || form.pesan.trim().length < 10,
-      email: isComplainant ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) : false) // Skip email validation for complainant users
+      email: isAuthenticatedUser ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) : false) // Skip email validation for authenticated users
     };
     
     setValidation(newValidation);
     return !Object.values(newValidation).some(Boolean);
-  }, [form, isComplainant]);
+  }, [form, isAuthenticatedUser]);
 
   const resetForm = useCallback(() => {
     setForm({
       ...INITIAL_FORM_STATE,
-      nama: isComplainant ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama
+      nama: isAuthenticatedUser ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama,
+      email: isAuthenticatedUser ? (auth?.user?.email || '') : INITIAL_FORM_STATE.email
     });
     setFiles([]);
     setIsOtherCategory(false);
     setValidation(INITIAL_VALIDATION_STATE);
     setShowDialog(false);
-  }, [isComplainant, auth?.user?.name]);
+  }, [isAuthenticatedUser, auth?.user?.name, auth?.user?.email]);
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
@@ -208,15 +212,18 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     const formData = new FormData();
     
     // Map form field names to controller expected names
-    formData.append('sender_name', isComplainant ? (auth?.user?.name || '') : form.nama.trim());
+    formData.append('sender_name', isAuthenticatedUser ? (auth?.user?.name || '') : form.nama.trim());
     formData.append('sender_phone', form.telepon.trim());
     formData.append('category', form.kategori.trim());
     formData.append('tower_id', form.tower_id);
     formData.append('message', form.pesan.trim());
     
-    // Only append email if provided and user is not complainant
-    if (!isComplainant && form.email.trim()) {
+    // Only append email if provided and user is not authenticated
+    if (!isAuthenticatedUser && form.email.trim()) {
       formData.append('email', form.email.trim());
+    } else if (isAuthenticatedUser && auth?.user?.email) {
+      // For authenticated users, always include their email
+      formData.append('email', auth.user.email);
     }
     
     // Separate images and videos for better organization
@@ -234,7 +241,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     });
     
     return formData;
-  }, [form, files, isComplainant, auth?.user?.name]);
+  }, [form, files, isAuthenticatedUser, auth?.user?.name, auth?.user?.email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -309,10 +316,10 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         >
           <div>
             <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              {isComplainant ? 'Form Masukan - Sampaikan Masukan Anda' : 'Guest Feedback - Sampaikan Masukan Anda'}
+              {isAuthenticatedUser ? 'Form Masukan - Sampaikan Masukan Anda' : 'Guest Feedback - Sampaikan Masukan Anda'}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              {isComplainant 
+              {isAuthenticatedUser 
                 ? 'Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi'
                 : 'Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi'
               }
@@ -329,10 +336,10 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           <div className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Masukan</h2>
             
-            {isComplainant && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 text-sm">
-                  <strong>Info:</strong> Email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field email.
+            {isAuthenticatedUser && (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Info:</strong> Nama dan email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field tersebut.
                 </p>
               </div>
             )}
@@ -346,12 +353,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   <input
                     type="text"
                     name="nama"
-                    value={isComplainant ? (auth?.user?.name || '') : form.nama}
+                    value={isAuthenticatedUser ? (auth?.user?.name || '') : form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isComplainant ? 'bg-gray-100' : ''}`}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isAuthenticatedUser ? 'bg-gray-100' : ''}`}
                     placeholder="Masukkan nama lengkap"
                     maxLength={100}
-                    readOnly={isComplainant}
+                    readOnly={isAuthenticatedUser}
                   />
                   {validation.nama && (
                     <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
@@ -376,7 +383,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                   )}
                 </div>
                 
-                {!isComplainant && (
+                {!isAuthenticatedUser && (
                   <div>
                     <label className="block text-gray-700 font-medium mb-2">
                       Email <span className="text-gray-500">(Opsional)</span>

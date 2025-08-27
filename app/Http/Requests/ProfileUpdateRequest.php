@@ -19,21 +19,22 @@ class ProfileUpdateRequest extends FormRequest
             'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ];
 
-        // Only validate name and email if they are provided and different from current values
+        // Only validate name if it is provided and different from current values
         if ($this->filled('name')) {
             $rules['name'] = ['required', 'string', 'max:255'];
         }
 
-        if ($this->filled('email')) {
-            $rules['email'] = [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
-            ];
-        }
+        // Email validation removed since email can no longer be updated
+        // if ($this->filled('email')) {
+        //     $rules['email'] = [
+        //         'required',
+        //         'string',
+        //         'lowercase',
+        //         'email',
+        //         'max:255',
+        //         Rule::unique(User::class)->ignore($this->user()->id),
+        //     ];
+        // }
 
         return $rules;
     }

@@ -106,9 +106,10 @@ export default function UpdateProfileInformation({
             formData.append('name', data.name);
         }
         
-        if (data.email !== user.email) {
-            formData.append('email', data.email);
-        }
+        // Email is now read-only, so we don't send it
+        // if (data.email !== user.email) {
+        //     formData.append('email', data.email);
+        // }
         
         // Always include avatar if it's being uploaded
         if (data.avatar !== null) {
@@ -135,7 +136,7 @@ export default function UpdateProfileInformation({
                 </h2>
 
                 <p className="mt-2 text-sm text-gray-600">
-                    Perbarui informasi profil dan alamat email Anda.
+                    Perbarui informasi profil Anda. Alamat email tidak dapat diubah untuk keamanan akun.
                 </p>
             </header>
 
@@ -239,12 +240,18 @@ export default function UpdateProfileInformation({
                     <TextInput
                         id="email"
                         type="email"
-                        className="mt-1 block w-full"
+                        className="mt-1 block w-full bg-gray-100 cursor-not-allowed"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         required
                         autoComplete="username"
+                        disabled={true}
+                        readOnly={true}
                     />
+
+                    <p className="mt-2 text-sm text-gray-600">
+                        Email tidak dapat diubah untuk keamanan akun.
+                    </p>
 
                     <InputError className="mt-2" message={errors.email} />
                 </div>
