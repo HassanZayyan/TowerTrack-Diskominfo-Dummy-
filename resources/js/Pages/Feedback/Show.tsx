@@ -1,7 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
-import Footer from '@/Components/Footer';
+
 
 interface FeedbackAsset {
   id: number;
@@ -332,7 +332,7 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
         </div>
       </div>
       
-      <Footer />
+
     </MainLayout>
   );
 }

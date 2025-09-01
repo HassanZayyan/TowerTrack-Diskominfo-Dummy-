@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MainLayout from '@/Layouts/MainLayout';
 import AlertToast from '@/Components/AlertToast';
-import Footer from '@/Components/Footer';
+
 import FoStats from '@/Components/DataFo/FoStats';
 import FoFilters from '@/Components/DataFo/FoFilters';
 import FoTable from '@/Components/DataFo/FoTable';
@@ -423,7 +423,7 @@ export default function DataFoIndex({
         onClose={() => setToast({ ...toast, show: false })}
       />
 
-      <Footer />
+
     </MainLayout>
   );
 }

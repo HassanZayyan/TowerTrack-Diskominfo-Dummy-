@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
-import Footer from '@/Components/Footer';
+
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
 import FileUpload from '@/Components/FileUpload';
 import AlertDialog from '@/Components/AlertDialog';
@@ -206,7 +206,25 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       }, 1); // 1 km maximum distance
       
       if (!locationValidation.success) {
-        showWarningDialog('Jarak Terlalu Jauh', locationValidation.message);
+        // Provide more informative location error messages
+        let locationTitle = 'Validasi Lokasi Gagal';
+        let locationMessage = locationValidation.message;
+        
+        if (locationValidation.message.includes('Izin lokasi ditolak')) {
+          locationTitle = 'Izin Lokasi Diperlukan';
+          locationMessage = 'Untuk mengirim keluhan, Anda perlu mengizinkan akses lokasi. Silakan aktifkan izin lokasi di browser dan coba lagi.';
+        } else if (locationValidation.message.includes('terlalu jauh')) {
+          locationTitle = 'Jarak Terlalu Jauh';
+          locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
+        } else if (locationValidation.message.includes('Waktu permintaan lokasi habis')) {
+          locationTitle = 'Timeout Lokasi';
+          locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
+        } else if (locationValidation.message.includes('tidak tersedia')) {
+          locationTitle = 'Lokasi Tidak Tersedia';
+          locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+        }
+        
+        showWarningDialog(locationTitle, locationMessage);
         setIsSubmitting(false);
         return;
       }
@@ -216,19 +234,17 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       
       // Append form fields with trimmed values, excluding email for authenticated users
       Object.entries(form).forEach(([key, value]) => {
-        // Skip email field for authenticated users
+        // Skip email field for authenticated users to avoid 'prohibited' validation error
         if (key === 'email' && isAuthenticatedUser) {
           return;
         }
         formData.append(key, typeof value === 'string' ? value.trim() : value);
       });
       
-      // For authenticated users, use their authenticated name and email
+      // For authenticated users, use their authenticated name
       if (isAuthenticatedUser) {
         formData.set('nama', auth?.user?.name || '');
-        if (auth?.user?.email) {
-          formData.set('email', auth.user.email);
-        }
+        // Don't set email field for authenticated users - backend will use user's email automatically
       }
       
       // Append files
@@ -243,8 +259,36 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
           // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
-          const errorMessage = Object.values(errors).join(', ');
-          showErrorDialog('Gagal Mengirim', errorMessage);
+          console.error('Form submission errors:', errors);
+          
+          // Handle specific validation errors with user-friendly messages
+          let errorTitle = 'Gagal Mengirim';
+          let errorMessage = '';
+          
+          if (errors.email && errors.email.includes('prohibited')) {
+            errorTitle = 'Error Sistem';
+            errorMessage = 'Terjadi kesalahan sistem. Silakan refresh halaman dan coba lagi.';
+          } else if (errors.telepon) {
+            errorTitle = 'Format Telepon Salah';
+            errorMessage = 'Nomor telepon tidak valid. Pastikan menggunakan format yang benar (contoh: 08123456789).';
+          } else if (errors.tower_id) {
+            errorTitle = 'Tower Tidak Valid';
+            errorMessage = 'Tower yang dipilih tidak valid. Silakan pilih tower yang tersedia.';
+          } else if (errors.pesan) {
+            errorTitle = 'Pesan Tidak Valid';
+            errorMessage = 'Pesan terlalu panjang atau mengandung karakter yang tidak diizinkan.';
+          } else if (errors['foto.0'] || errors['assets.0']) {
+            errorTitle = 'File Tidak Valid';
+            errorMessage = 'File yang diupload tidak valid. Pastikan file berformat JPG, PNG, atau MP4 dan ukuran maksimal 100MB.';
+          } else {
+            // Generic error message for other cases
+            errorMessage = Object.values(errors).join('. ');
+            if (errorMessage.length > 200) {
+              errorMessage = 'Terjadi kesalahan validasi. Silakan periksa kembali data yang diisi.';
+            }
+          }
+          
+          showErrorDialog(errorTitle, errorMessage);
         },
         onFinish: () => {
           setIsSubmitting(false);
@@ -465,7 +509,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         </div>
       </div>
       
-      <Footer />
+
       
       <AlertDialog
         show={showDialog}
