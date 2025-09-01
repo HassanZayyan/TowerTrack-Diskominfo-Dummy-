@@ -1,7 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
-import Footer from '@/Components/Footer';
+
 
 interface Feedback {
   id: number;
@@ -213,7 +213,7 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
         </div>
       </div>
       
-      <Footer />
+
     </MainLayout>
   );
 }

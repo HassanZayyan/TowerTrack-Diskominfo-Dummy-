@@ -100,7 +100,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
       </div>
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
             <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -113,7 +113,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
               setShowPassword(false);
               setShowModal(true);
             }}
-            className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg font-medium flex items-center text-sm"
+            className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg font-medium flex items-center justify-center text-sm"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -122,7 +122,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
           </button>
         </div>
         
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-yellow-50 border-b border-yellow-200">
@@ -293,6 +294,147 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+          {users.length === 0 ? (
+            <div className="px-4 py-12 text-center text-gray-500">
+              <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
+              <p className="text-sm">Belum ada pengguna terdaftar</p>
+              <p className="text-xs text-gray-400 mt-1">Tambahkan pengguna pertama dengan tombol di atas</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {users.map((u, index) => (
+                <div key={u.id} className={`p-4 ${
+                  u.id === auth.user.id 
+                    ? 'bg-blue-50 border-l-4 border-blue-500' 
+                    : index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
+                }`}>
+                  {/* User Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                          u.id === auth.user.id 
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
+                            : 'bg-gradient-to-r from-red-500 to-red-600'
+                        }`}>
+                          <span className="text-white font-semibold text-sm">
+                            {u.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                          {u.id === auth.user.id && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              Anda
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* User Details */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 3.26a2 2 0 001.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span className="break-all">{u.email}</span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                        u.role === 'admin' 
+                          ? 'bg-red-100 text-red-800 border border-red-200' 
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
+                        {u.role === 'admin' ? (
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )}
+                        {u.role}
+                      </span>
+                      
+                      {/* Status banned indicator */}
+                      {u.banned && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
+                          Banned
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col space-y-2">
+                    <button 
+                      className="w-full inline-flex items-center justify-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-sm font-medium"
+                      onClick={() => {
+                        // Untuk complainant users atau tower_owner, preserve original name dan email
+                        if (u.role === 'complainant' || u.role === 'tower_owner') {
+                          setForm({ 
+                            id: u.id, 
+                            name: u.name, 
+                            email: u.email, 
+                            role: u.role, 
+                            banned: u.banned || false,
+                            password: undefined // Reset password field
+                          });
+                        } else {
+                          setForm({ 
+                            id: u.id, 
+                            name: u.name, 
+                            email: u.email, 
+                            role: u.role, 
+                            banned: u.banned || false 
+                          });
+                        }
+                        setShowModal(true);
+                      }}
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit User
+                    </button>
+                    <button 
+                      className={`w-full inline-flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                        u.id === auth.user.id
+                          ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                          : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
+                      }`}
+                      onClick={() => handleDelete(u)}
+                      disabled={u.id === auth.user.id}
+                      title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Hapus user'}
+                    >
+                      <svg className={`w-4 h-4 mr-2 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Hapus User'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

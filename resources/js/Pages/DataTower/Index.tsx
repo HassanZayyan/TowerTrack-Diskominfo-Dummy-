@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import TowerDetailModal from '@/Components/TowerDetailModal';
 import AlertToast from '@/Components/AlertToast';
-import Footer from '@/Components/Footer';
+
 import TowerStats from '@/Components/DataTower/TowerStats';
 import TowerMap from '@/Components/DataTower/TowerMap';
 import TowerTable from '@/Components/DataTower/TowerTable';
@@ -197,13 +197,12 @@ export default function DataTowerIndex({
 
       {/* Welcome Bar */}
       <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
-        <div className="mb-3 sm:mb-0">
-          <h2 className="text-xl sm:text-2xl font-bold leading-snug" style={{ color: '#212121' }}>Selamat datang di TowerTrack!</h2>
-          <p className="mt-1 text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
+        <div className="flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold leading-snug mb-2" style={{ color: '#212121' }}>Selamat datang di TowerTrack!</h2>
+          <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
             Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
           </p>
         </div>
-        <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
       </div>
 
       <div className="p-4 sm:p-6">
@@ -289,7 +288,7 @@ export default function DataTowerIndex({
         onClose={() => setToast({ ...toast, show: false })}
       />
 
-      <Footer />
+
     </MainLayout>
   );
 }

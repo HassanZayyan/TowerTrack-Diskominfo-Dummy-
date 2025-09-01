@@ -232,15 +232,15 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
       <Head title="Tambah Tower" />
       
       {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Tambah Tower Baru</h1>
-            <p className="text-gray-600">Masukkan informasi lengkap tower telekomunikasi yang akan didaftarkan</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Tambah Tower Baru</h1>
+            <p className="text-sm sm:text-base text-gray-600">Masukkan informasi lengkap tower telekomunikasi yang akan didaftarkan</p>
           </div>
           <button
             onClick={() => router.get(route('admin.towers.index'))}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -253,37 +253,39 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
       <form onSubmit={handleSubmit}>
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Tab Navigation */}
-          <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-gray-200">
-            <nav className="flex flex-wrap gap-2 sm:flex-nowrap sm:space-x-4 sm:gap-0">
-              {[
-                { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
-                { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-                { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-red-100 text-red-700 border-red-300'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                  </svg>
-                  {tab.label}
-                </button>
-              ))}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-gray-200">
+            <nav className="overflow-x-auto">
+              <div className="flex space-x-2 sm:space-x-4 min-w-max">
+                {[
+                  { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                  { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
+                  { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
+                  { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-red-100 text-red-700 border border-red-300'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                    </svg>
+                    <span className="hidden xs:inline sm:inline">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
             </nav>
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {activeTab === 'basic' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nama Site
@@ -358,7 +360,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                         error={errors.owner_name}
                       />
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="sm:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
                       <FormInput 
                         field="owner_alamat" 
@@ -372,11 +374,11 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                   </>
                 )}
                 {!isNewOwner && formData.owner_id && formData.owner_id !== 'new' && (
-                  <div className="md:col-span-2">
-                    <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="sm:col-span-2">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Detail Owner</h4>
-                      <p className="text-sm text-gray-600"><strong>Nama:</strong> {formData.owner_name}</p>
-                      <p className="text-sm text-gray-600"><strong>Alamat:</strong> {formData.owner_alamat}</p>
+                      <p className="text-xs sm:text-sm text-gray-600"><strong>Nama:</strong> {formData.owner_name}</p>
+                      <p className="text-xs sm:text-sm text-gray-600"><strong>Alamat:</strong> {formData.owner_alamat}</p>
                     </div>
                   </div>
                 )}
@@ -384,7 +386,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
             )}
 
             {activeTab === 'location' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
                   <FormInput 
@@ -407,10 +409,8 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                     error={errors.latitude}
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Alamat Menara <span className="text-red-500">*</span>
-                  </label>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara <span className="text-red-500">*</span></label>
                   <FormInput 
                     field="alamat_menara" 
                     rows={3} 
@@ -425,7 +425,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
             )}
 
             {activeTab === 'technical' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
                   <FormInput 
@@ -504,7 +504,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
             )}
 
             {activeTab === 'permits' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
                   <FormInput 
@@ -550,7 +550,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                     error={errors.berlaku_hingga}
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
                   <FormInput 
                     field="status_ijin" 
@@ -571,39 +571,41 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
           </div>
 
           {/* Footer Actions */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              <span className="text-red-500">*</span> Field wajib diisi
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => router.get(route('admin.towers.index'))}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Menyimpan...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Simpan Tower
-                  </>
-                )}
-              </button>
+          <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
+                <span className="text-red-500">*</span> Field wajib diisi
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.get(route('admin.towers.index'))}
+                  className="w-full sm:w-auto px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Simpan Tower
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

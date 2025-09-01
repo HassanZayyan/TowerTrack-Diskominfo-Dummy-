@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useLogoutConfirmation } from '@/Hooks/useLogoutConfirmation';
 import LogoutConfirmDialog from '@/Components/LogoutConfirmDialog';
@@ -14,6 +14,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
   const user = auth?.user;
   const currentUrl = page.url;
   const currentRoute = page.component; // Get current route component name
+  
+  // Hamburger menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Use logout confirmation hook
   const { openDialog, dialogProps } = useLogoutConfirmation({
@@ -23,6 +28,58 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
     confirmText: 'Ya, Logout',
     cancelText: 'Batal'
   });
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isMenuOpen && 
+          menuRef.current && 
+          buttonRef.current &&
+          !menuRef.current.contains(event.target as Node) &&
+          !buttonRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
+
+  // Close menu on escape key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isMenuOpen) {
+        setIsMenuOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isMenuOpen]);
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMenuOpen]);
+
+  // Toggle menu function
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  // Close menu when navigating
+  const handleNavClick = () => {
+    setIsMenuOpen(false);
+  };
 
   // Function to check if current menu item is active
   const isActive = (routeName: string) => {
@@ -48,73 +105,41 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
     return currentUrl.startsWith(routeName);
   };
 
-  // Function to get menu item classes
-  const getMenuClasses = (routeName: string, isMobile: boolean = false) => {
-    const baseClasses = isMobile 
-      ? "text-xs px-3 py-2 rounded whitespace-nowrap transition-all duration-200" 
-      : "text-sm px-3 py-2 rounded transition-all duration-200";
-    
-    if (isActive(routeName)) {
-      return `${baseClasses} font-bold` + (isMobile ? " text-yellow-400" : " text-yellow-400");
-    }
-    
-    return `${baseClasses} hover:bg-white/10` + (isMobile ? " text-white" : " text-white");
-  };
+
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f7f7f7' }}>
       <nav className="border-b sticky top-0 z-30" style={{ backgroundColor: '#B71C1C', borderBottomColor: '#FFD700' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-4">
+            {/* Hamburger Button */}
+            <button
+              ref={buttonRef}
+              onClick={toggleMenu}
+              className="p-2 rounded-md transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-red-800"
+              aria-label={isMenuOpen ? 'Tutup menu' : 'Buka menu'}
+              aria-expanded={isMenuOpen}
+              aria-controls="admin-menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span 
+                  className={`block h-0.5 w-6 bg-yellow-400 transform transition-all duration-300 ease-in-out ${
+                    isMenuOpen ? 'rotate-45 translate-y-1.5' : ''
+                  }`}
+                />
+                <span 
+                  className={`block h-0.5 w-6 bg-yellow-400 transform transition-all duration-300 ease-in-out mt-1 ${
+                    isMenuOpen ? 'opacity-0' : ''
+                  }`}
+                />
+                <span 
+                  className={`block h-0.5 w-6 bg-yellow-400 transform transition-all duration-300 ease-in-out mt-1 ${
+                    isMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
+                  }`}
+                />
+              </div>
+            </button>
             <Link href="/" className="text-lg font-semibold whitespace-nowrap" style={{ color: '#FFD700' }}>TowerTrack</Link>
-            <div className="hidden md:flex items-center gap-2 lg:gap-4">
-              {user?.role !== 'tower_owner' && (
-                <Link 
-                  href={route('admin.dashboard')} 
-                  className={getMenuClasses('/admin/dashboard')}
-                  style={{ 
-                    backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'transparent',
-                    color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
-                  }}
-                >
-                  Dashboard
-                </Link>
-              )}
-              {user?.role === 'admin' && (
-                <Link 
-                  href={route('admin.users.index')} 
-                  className={getMenuClasses('/admin/users')}
-                  style={{ 
-                    backgroundColor: isActive('/admin/users') ? '#FFD700' : 'transparent',
-                    color: isActive('/admin/users') ? '#B71C1C' : '#FFFFFF'
-                  }}
-                >
-                  Users
-                </Link>
-              )}
-              {user?.role !== 'tower_owner' && (
-                <Link 
-                  href={route('admin.messages.index')}
-                  className={getMenuClasses('/admin/messages')}
-                  style={{ 
-                    backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'transparent',
-                    color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
-                  }}
-                >
-                  Messages
-                </Link>
-              )}
-              <Link 
-                href={route('admin.towers.index')} 
-                className={getMenuClasses('/admin/towers')}
-                style={{ 
-                  backgroundColor: isActive('/admin/towers') ? '#FFD700' : 'transparent',
-                  color: isActive('/admin/towers') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                Towers
-              </Link>
-            </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <span className="text-sm hidden sm:inline" style={{ color: '#FFD700' }}>{user?.name} ({user?.role})</span>
@@ -144,58 +169,176 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
             </button>
           </div>
         </div>
-        {/* Mobile admin nav */}
-        <div className="md:hidden border-t" style={{ borderTopColor: '#FFD700' }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex gap-2 overflow-x-auto">
-            {user?.role !== 'tower_owner' && (
-              <Link 
-                href={route('admin.dashboard')} 
-                className={getMenuClasses('/admin/dashboard', true)}
-                style={{ 
-                  backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                  color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                Dashboard
-              </Link>
-            )}
-            {user?.role === 'admin' && (
-              <Link 
-                href={route('admin.users.index')} 
-                className={getMenuClasses('/admin/users', true)}
-                style={{ 
-                  backgroundColor: isActive('/admin/users') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                  color: isActive('/admin/users') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                Users
-              </Link>
-            )}
-            {user?.role !== 'tower_owner' && (
-              <Link 
-                href={route('admin.messages.index')} 
-                className={getMenuClasses('/admin/messages', true)}
-                style={{ 
-                  backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                    color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                Messages
-              </Link>
-            )}
-            <Link 
-              href={route('admin.towers.index')} 
-              className={getMenuClasses('/admin/towers', true)}
-              style={{ 
-                backgroundColor: isActive('/admin/towers') ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                color: isActive('/admin/towers') ? '#B71C1C' : '#FFFFFF'
-              }}
-            >
-              Towers
-            </Link>
+      </nav>
+
+      {/* Overlay */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
+          onClick={() => setIsMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Menu */}
+      <div
+        ref={menuRef}
+        id="admin-menu"
+        className={`fixed top-0 left-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out ${
+          isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ backgroundColor: '#B71C1C' }}
+        role="navigation"
+        aria-label="Menu navigasi admin"
+      >
+        {/* Menu Header */}
+        <div className="flex items-center justify-between p-4 border-b" style={{ borderBottomColor: '#FFD700' }}>
+          <h2 className="text-lg font-semibold" style={{ color: '#FFD700' }}>Menu Admin</h2>
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            className="p-2 rounded-md transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            aria-label="Tutup menu"
+          >
+            <svg className="w-5 h-5" style={{ color: '#FFD700' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* User Info */}
+        <div className="p-4 border-b" style={{ borderBottomColor: '#FFD700' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD700' }}>
+              <span className="text-sm font-semibold" style={{ color: '#B71C1C' }}>
+                {user?.name?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-medium" style={{ color: '#FFD700' }}>{user?.name}</p>
+              <p className="text-xs" style={{ color: '#FFFFFF' }}>({user?.role})</p>
+            </div>
           </div>
         </div>
-      </nav>
+
+        {/* Navigation Links */}
+        <nav className="flex-1 p-4">
+          <ul className="space-y-2">
+            {user?.role !== 'tower_owner' && (
+              <li>
+                <Link 
+                  href={route('admin.dashboard')} 
+                  onClick={handleNavClick}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    isActive('/admin/dashboard') 
+                      ? 'font-semibold shadow-md' 
+                      : 'hover:bg-white/10'
+                  }`}
+                  style={{ 
+                    backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'transparent',
+                    color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
+                  </svg>
+                  Dashboard
+                </Link>
+              </li>
+            )}
+            {user?.role === 'admin' && (
+              <li>
+                <Link 
+                  href={route('admin.users.index')} 
+                  onClick={handleNavClick}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    isActive('/admin/users') 
+                      ? 'font-semibold shadow-md' 
+                      : 'hover:bg-white/10'
+                  }`}
+                  style={{ 
+                    backgroundColor: isActive('/admin/users') ? '#FFD700' : 'transparent',
+                    color: isActive('/admin/users') ? '#B71C1C' : '#FFFFFF'
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                  Users
+                </Link>
+              </li>
+            )}
+            {user?.role !== 'tower_owner' && (
+              <li>
+                <Link 
+                  href={route('admin.messages.index')}
+                  onClick={handleNavClick}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    isActive('/admin/messages') 
+                      ? 'font-semibold shadow-md' 
+                      : 'hover:bg-white/10'
+                  }`}
+                  style={{ 
+                    backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'transparent',
+                    color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Messages
+                </Link>
+              </li>
+            )}
+            <li>
+              <Link 
+                href={route('admin.towers.index')} 
+                onClick={handleNavClick}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  isActive('/admin/towers') 
+                    ? 'font-semibold shadow-md' 
+                    : 'hover:bg-white/10'
+                }`}
+                style={{ 
+                  backgroundColor: isActive('/admin/towers') ? '#FFD700' : 'transparent',
+                  color: isActive('/admin/towers') ? '#B71C1C' : '#FFFFFF'
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Towers
+              </Link>
+            </li>
+          </ul>
+        </nav>
+
+        {/* Logout Button in Sidebar */}
+        <div className="p-4 border-t" style={{ borderTopColor: '#FFD700' }}>
+          <button 
+            onClick={() => {
+              setIsMenuOpen(false);
+              openDialog();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:shadow-md"
+            style={{ 
+              backgroundColor: '#FF6B6B', 
+              color: '#FFFFFF'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#FF5252';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FF6B6B';
+            }}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout
+          </button>
+        </div>
+      </div>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>

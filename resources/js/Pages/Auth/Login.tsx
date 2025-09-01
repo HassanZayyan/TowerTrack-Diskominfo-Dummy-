@@ -38,42 +38,40 @@ export default function Login({
                 </div>
             )}
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
-
+            <form onSubmit={submit} className="space-y-6">
+                <div className="space-y-2">
+                    <InputLabel htmlFor="email" value="Email" className="text-sm font-medium" />
                     <TextInput
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
+                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                         autoComplete="username"
                         isFocused={true}
                         onChange={(e) => setData('email', e.target.value)}
+                        placeholder="Masukkan email Anda"
                     />
-
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.email} className="mt-1" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
+                <div className="space-y-2">
+                    <InputLabel htmlFor="password" value="Password" className="text-sm font-medium" />
                     <TextInput
                         id="password"
                         type="password"
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
+                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                         autoComplete="current-password"
                         onChange={(e) => setData('password', e.target.value)}
+                        placeholder="Masukkan password Anda"
                     />
-
-                    <InputError message={errors.password} className="mt-2" />
+                    <InputError message={errors.password} className="mt-1" />
                 </div>
 
-                <div className="mt-4 block">
-                    <label className="flex items-center">
+                <div className="flex items-center justify-between">
+                    <label className="flex items-center cursor-pointer">
                         <Checkbox
                             name="remember"
                             checked={data.remember}
@@ -83,45 +81,53 @@ export default function Login({
                                     (e.target.checked || false) as false,
                                 )
                             }
+                            className="rounded focus:ring-2 focus:ring-gray-500"
                         />
-                        <span className="ms-2 text-sm text-gray-600">
-                            Remember me
+                        <span className="ml-2 text-sm text-gray-600 select-none">
+                            Ingat saya
                         </span>
                     </label>
+                    
+                    {canResetPassword && (
+                        <Link
+                            href={route('password.request')}
+                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
+                        >
+                            Lupa password?
+                        </Link>
+                    )}
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                    <Link
-                        href={route('data.tower')}
-                        className="rounded-md text-sm px-4 py-2 border inline-block text-center"
-                        style={{ color: '#212121', borderColor: '#212121' }}
+                {/* Main Action Button */}
+                <div className="pt-2">
+                    <PrimaryButton 
+                        className="w-full px-6 py-3 font-medium rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 justify-center" 
+                        disabled={processing} 
+                        style={{ backgroundColor: '#212121' }}
                     >
-                        Kembali
-                    </Link>
+                        {processing ? 'Memproses...' : 'Masuk'}
+                    </PrimaryButton>
+                </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center">
-                        {canResetPassword && (
-                            <Link
-                                href={route('password.request')}
-                                className="rounded-md text-sm underline focus:outline-none"
-                                style={{ color: '#212121' }}
-                            >
-                                Forgot your password?
-                            </Link>
-                        )}
-                        
+                {/* Navigation Links */}
+                <div className="pt-6 border-t border-gray-200">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-center">
                         <Link
                             href={route('register')}
-                            className="rounded-md text-sm underline focus:outline-none"
-                            style={{ color: '#212121' }}
+                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
                         >
-                            Belum punya akun?
+                            Belum punya akun? Daftar di sini
+                        </Link>
+                        
+                        <span className="hidden sm:inline text-gray-300">|</span>
+                        
+                        <Link
+                            href={route('data.tower')}
+                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
+                        >
+                            Kembali ke Beranda
                         </Link>
                     </div>
-
-                    <PrimaryButton className="min-w-[104px] sm:min-w-[120px] px-5 py-2" disabled={processing} style={{ backgroundColor: '#212121' }}>
-                        Masuk
-                    </PrimaryButton>
                 </div>
             </form>
         </GuestLayout>

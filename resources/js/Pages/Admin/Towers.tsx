@@ -672,19 +672,20 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <div className="flex-1 max-w-md">
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+        <div className="space-y-4">
+          {/* Search Input */}
+          <div className="w-full">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Cari berdasarkan nama site, site ID, atau owner..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                placeholder="Cari nama site, site ID, atau owner..."
+                className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
-              <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               {searchTerm && (
@@ -696,7 +697,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                       per_page: currentPerPage 
                     }, { preserveState: true });
                   }}
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600"
                 >
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -705,10 +706,12 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               )}
             </div>
           </div>
-          <div className="flex gap-2">
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col xs:flex-row gap-2 sm:gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+              className={`flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${
                 showFilters || hasActiveFilters()
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -717,7 +720,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
-              Filter
+              <span>Filter</span>
               {hasActiveFilters() && (
                 <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-1">
                   {getActiveFilterCount()}
@@ -726,21 +729,22 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
             </button>
             <button
               onClick={handleSearch}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Cari
+              <span>Cari</span>
             </button>
             <button
               onClick={() => router.get(route('admin.towers.create'))}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              Tambah Tower
+              <span className="hidden xs:inline">Tambah Tower</span>
+              <span className="xs:hidden">Tambah</span>
             </button>
           </div>
         </div>
@@ -957,19 +961,19 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       )}
 
       {/* Main Content - Card-based Layout */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {displayedTowers.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-lg shadow-lg p-6 sm:p-12 text-center">
+            <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
               {searchTerm || hasActiveFilters() 
                 ? 'Tidak ada data tower yang sesuai dengan kriteria pencarian'
                 : 'Belum ada data tower'
               }
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
               {searchTerm || hasActiveFilters() 
                 ? 'Coba ubah filter atau kata kunci pencarian'
                 : 'Data tower akan muncul di sini setelah ditambahkan'
@@ -981,14 +985,14 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                   setSearchTerm('');
                   clearAllFilters();
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
               >
                 Reset Pencarian
               </button>
             ) : (
               <button 
                 onClick={() => router.get(route('admin.towers.create'))}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
               >
                 Tambah Tower Pertama
               </button>
@@ -1060,35 +1064,37 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                 {/* Tab Navigation - only show when editing */}
                 {isEditing(tower.id) && (
                   <div className="mt-4 border-t pt-4">
-                    <nav className="flex flex-wrap gap-2 sm:flex-nowrap sm:space-x-4 sm:gap-0">
-                      {[
-                        { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                        { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
-                        { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-                        { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
-                      ].map((tab) => (
-                        <button
-                          key={tab.id}
-                          onClick={() => setTowerTab(tower.id, tab.id)}
-                          className={`flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
-                            getActiveTab(tower.id) === tab.id
-                              ? 'bg-blue-100 text-blue-700 border-blue-300'
-                              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                          }`}
-                        >
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                          </svg>
-                          <span className="hidden sm:inline">{tab.label}</span>
-                          <span className="sm:hidden">
-                            {tab.id === 'basic' && 'Info'}
-                            {tab.id === 'location' && 'Lok'}
-                            {tab.id === 'technical' && 'Tek'}
-                            {tab.id === 'permits' && 'Ijin'}
-                          </span>
-                        </button>
-                      ))}
-                    </nav>
+                    <div className="overflow-x-auto">
+                      <nav className="flex space-x-2 min-w-max pb-2">
+                        {[
+                          { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                          { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
+                          { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
+                          { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
+                        ].map((tab) => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setTowerTab(tower.id, tab.id)}
+                            className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                              getActiveTab(tower.id) === tab.id
+                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                            }`}
+                          >
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                            </svg>
+                            <span className="hidden xs:inline">{tab.label}</span>
+                            <span className="xs:hidden">
+                              {tab.id === 'basic' && 'Info'}
+                              {tab.id === 'location' && 'Lok'}
+                              {tab.id === 'technical' && 'Tek'}
+                              {tab.id === 'permits' && 'Ijin'}
+                            </span>
+                          </button>
+                        ))}
+                      </nav>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1099,7 +1105,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                   // Edit Mode with Tabs
                   <div>
                     {getActiveTab(tower.id) === 'basic' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Nama Site
@@ -1213,7 +1219,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                     )}
 
                     {getActiveTab(tower.id) === 'location' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
                           <FormInput 
@@ -1236,7 +1242,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             disabled={!isEditing(tower.id)}
                           />
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="sm:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Alamat Menara <span className="text-red-500">*</span>
                           </label>
@@ -1253,7 +1259,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                     )}
 
                     {getActiveTab(tower.id) === 'technical' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
                           <FormInput 
@@ -1332,7 +1338,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                     )}
 
                     {getActiveTab(tower.id) === 'permits' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
                           <FormInput 
@@ -1374,7 +1380,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             disabled={!isEditing(tower.id)}
                           />
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="sm:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
                           <FormInput 
                             value={getEditValue(tower, 'status_ijin')}
@@ -1390,53 +1396,56 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                   </div>
                 ) : (
                   // View Mode
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Informasi Dasar</h4>
-                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600">ID:</span> {tower.site_id || '-'}</p>
-                        <p><span className="text-gray-600">SAP:</span> {tower.site_sap || '-'}</p>
-                        <p><span className="text-gray-600">Owner:</span> {tower.owner || '-'}</p>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Informasi Dasar</h4>
+                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600 font-medium">ID:</span> <span className="ml-1">{tower.site_id || '-'}</span></p>
+                        <p><span className="text-gray-600 font-medium">SAP:</span> <span className="ml-1">{tower.site_sap || '-'}</span></p>
+                        <p><span className="text-gray-600 font-medium">Owner:</span> <span className="ml-1 break-words">{tower.owner || '-'}</span></p>
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Lokasi</h4>
-                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600">Koordinat:</span> {tower.latitude && tower.longitude ? `${tower.latitude}, ${tower.longitude}` : '-'}</p>
-                        <p><span className="text-gray-600">Alamat:</span> <span className="break-words">{tower.alamat_menara || '-'}</span></p>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Lokasi</h4>
+                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600 font-medium">Koordinat:</span> <span className="ml-1 break-all">{tower.latitude && tower.longitude ? `${tower.latitude}, ${tower.longitude}` : '-'}</span></p>
+                        <p><span className="text-gray-600 font-medium">Alamat:</span> <span className="ml-1 break-words">{tower.alamat_menara || '-'}</span></p>
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Teknis</h4>
-                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600">Tinggi Menara:</span> {tower.tinggi_menara ? `${tower.tinggi_menara}m` : '-'}</p>
-                        <p><span className="text-gray-600">Tinggi Bangunan:</span> {tower.tinggi_bangunan ? `${tower.tinggi_bangunan}m` : '-'}</p>
-                        <p><span className="text-gray-600">Tower Type:</span> 
+                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Teknis</h4>
+                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <p><span className="text-gray-600 font-medium">Tinggi Menara:</span> <span className="ml-1">{tower.tinggi_menara ? `${tower.tinggi_menara}m` : '-'}</span></p>
+                        <p><span className="text-gray-600 font-medium">Tinggi Bangunan:</span> <span className="ml-1">{tower.tinggi_bangunan ? `${tower.tinggi_bangunan}m` : '-'}</span></p>
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-gray-600 font-medium">Tower Type:</span>
                           {hasValidValue(tower.tower_type) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 w-fit">
                               {tower.tower_type}
                             </span>
                           ) : (
-                            '-'
+                            <span className="ml-1">-</span>
                           )}
-                        </p>
-                        <p><span className="text-gray-600">Site Type:</span> 
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-gray-600 font-medium">Site Type:</span>
                           {hasValidValue(tower.site_type) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
                               {getDisplayValue(tower.site_type, SITE_TYPE_OPTIONS)}
                             </span>
                           ) : (
-                            '-'
+                            <span className="ml-1">-</span>
                           )}
-                        </p>
+                        </div>
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Perijinan & PRS</h4>
-                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600">Status Ijin:</span> 
+                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Perijinan & PRS</h4>
+                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-gray-600 font-medium">Status Ijin:</span>
                           {hasValidValue(tower.status_ijin) ? (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium w-fit ${
                               tower.status_ijin === 'Aktif' ? 'bg-green-100 text-green-800' :
                               tower.status_ijin === 'Tidak Aktif' ? 'bg-red-100 text-red-800' :
                               tower.status_ijin === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -1446,36 +1455,39 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                               {getDisplayValue(tower.status_ijin, PERMIT_STATUS_OPTIONS)}
                             </span>
                           ) : (
-                            '-'
+                            <span className="ml-1">-</span>
                           )}
-                        </p>
-                        <p><span className="text-gray-600">PRS:</span> 
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-gray-600 font-medium">PRS:</span>
                           {hasValidValue(tower.prs) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 w-fit">
                               {tower.prs}
                             </span>
                           ) : (
-                            '-'
+                            <span className="ml-1">-</span>
                           )}
-                        </p>
-                        <p><span className="text-gray-600">PRS ID:</span> 
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-gray-600 font-medium">PRS ID:</span>
                           {hasValidValue(tower.prs_id) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
                               {tower.prs_id}
                             </span>
                           ) : (
-                            '-'
+                            <span className="ml-1">-</span>
                           )}
-                        </p>
-                        <p><span className="text-gray-600">No Ijin:</span> 
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-gray-600 font-medium">No Ijin:</span>
                           {hasValidValue(tower.no_ijin) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 w-fit">
                               {tower.no_ijin}
                             </span>
                           ) : (
-                            '-'
+                            <span className="ml-1">-</span>
                           )}
-                        </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1487,15 +1499,15 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       </div>
 
       {/* Data Display Controls */}
-      <div className="mt-6 bg-white rounded-lg shadow-lg p-4">
-        <div className="flex justify-end">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-lg p-3 sm:p-4">
+        <div className="flex justify-center sm:justify-end">
+          <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <span>
-                Menampilkan <span className="font-semibold text-gray-800">{towers.from || 1}</span> - <span className="font-semibold text-gray-800">{towers.to || towers.data.length}</span> dari{' '}
+              <span className="text-center sm:text-left">
+                <span className="hidden sm:inline">Menampilkan </span><span className="font-semibold text-gray-800">{towers.from || 1}</span> - <span className="font-semibold text-gray-800">{towers.to || towers.data.length}</span> dari{' '}
                 <span className="font-semibold text-gray-800">{total}</span> data
               </span>
             </div>
@@ -1504,48 +1516,50 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       </div>
 
       {/* Simplified Navigation */}
-      <div className="mt-4 bg-white rounded-lg shadow-lg p-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-700">
+      <div className="mt-4 bg-white rounded-lg shadow-lg p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
             <span className="font-medium">Halaman {page} dari {last}</span>
-            <span className="text-gray-500 ml-2">• {total} total tower</span>
+            <span className="text-gray-500 ml-1 sm:ml-2">• {total} total tower</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               disabled={page <= 1}
-              className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-xs sm:text-sm"
               onClick={() => changePage(page - 1)}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Sebelum
+              <span className="hidden xs:inline">Sebelum</span>
+              <span className="xs:hidden">‹</span>
             </button>
             
             {/* Page numbers - Simplified to show sequential numbers */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1">
               {/* First page button if not on first few pages */}
               {page > 2 && (
                 <>
                   <button
                     onClick={() => changePage(1)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                    className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
                   >
                     1
                   </button>
-                  {page > 3 && <span className="text-gray-500">...</span>}
+                  {page > 3 && <span className="text-gray-500 text-xs sm:text-sm">...</span>}
                 </>
               )}
               
-              {/* Show at most 5 sequential page numbers centered on current page */}
-              {Array.from({ length: Math.min(5, last) }, (_, i) => {
-                // Calculate start page to ensure we have at most 5 pages centered on current page
-                let startPage = Math.max(1, page - 2);
-                if (page > last - 2) {
-                  startPage = Math.max(1, last - 4);
+              {/* Show at most 3 sequential page numbers on mobile, 5 on desktop */}
+              {Array.from({ length: Math.min(window.innerWidth < 640 ? 3 : 5, last) }, (_, i) => {
+                // Calculate start page to ensure we have at most 3/5 pages centered on current page
+                const maxPages = window.innerWidth < 640 ? 3 : 5;
+                let startPage = Math.max(1, page - Math.floor(maxPages / 2));
+                if (page > last - Math.floor(maxPages / 2)) {
+                  startPage = Math.max(1, last - maxPages + 1);
                 }
-                if (startPage + 4 > last) {
-                  startPage = Math.max(1, last - 4);
+                if (startPage + maxPages - 1 > last) {
+                  startPage = Math.max(1, last - maxPages + 1);
                 }
                 const pageNum = startPage + i;
                 
@@ -1555,7 +1569,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                     <button
                       key={pageNum}
                       onClick={() => changePage(pageNum)}
-                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                      className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                         pageNum === page
                           ? 'bg-blue-50 border border-blue-200 text-blue-700 font-medium'
                           : 'border border-gray-300 hover:bg-gray-50'
@@ -1571,10 +1585,10 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               {/* Last page button if not on last few pages */}
               {page < last - 1 && (
                 <>
-                  {page < last - 2 && <span className="text-gray-500">...</span>}
+                  {page < last - 2 && <span className="text-gray-500 text-xs sm:text-sm">...</span>}
                   <button
                     onClick={() => changePage(last)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                    className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
                   >
                     {last}
                   </button>
@@ -1584,11 +1598,12 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
             
             <button
               disabled={page >= last}
-              className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-xs sm:text-sm"
               onClick={() => changePage(page + 1)}
             >
-              Berikut
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="hidden xs:inline">Berikut</span>
+              <span className="xs:hidden">›</span>
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
