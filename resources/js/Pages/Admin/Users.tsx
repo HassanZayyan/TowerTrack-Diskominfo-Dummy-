@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import BanUserConfirmDialog from '@/Components/BanUserConfirmDialog';
 
 interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; created_at?: string; banned?: boolean }
 
@@ -12,6 +13,14 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [emailError, setEmailError] = useState<string>('');
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [banDialogData, setBanDialogData] = useState<{
+    userName: string;
+    userEmail: string;
+    isBanning: boolean;
+    userId: number;
+  } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Validasi email saat nilai berubah
   useEffect(() => {
@@ -50,8 +59,16 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
       return;
     }
     
-    // Konfirmasi jika user akan dibanned
-    if (form.banned && form.id && !confirm(`Apakah Anda yakin ingin membanned user "${form.name}"?`)) {
+    // Konfirmasi jika user akan dibanned atau diunban
+    if (form.id && form.banned !== users.find(u => u.id === form.id)?.banned) {
+      const isBanning = form.banned || false;
+      setBanDialogData({
+        userName: form.name,
+        userEmail: form.email,
+        isBanning: isBanning,
+        userId: form.id
+      });
+      setShowBanDialog(true);
       return;
     }
     
@@ -87,6 +104,61 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     if (confirmed) {
       router.delete(route('admin.users.destroy', { user: user.id }));
     }
+  };
+
+  const handleBanConfirm = () => {
+    if (!banDialogData) return;
+    
+    setIsProcessing(true);
+    
+    // Update the form with the ban status and submit
+    const updatedForm = { ...form, banned: banDialogData.isBanning };
+    
+    if (updatedForm.id) {
+      // Jika editing complainant user atau tower_owner, hanya kirim role dan banned status
+      const originalUser = users.find(u => u.id === updatedForm.id);
+      if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner')) {
+        const updateData = {
+          role: updatedForm.role,
+          banned: updatedForm.banned
+        };
+        router.put(route('admin.users.update', { user: updatedForm.id }), updateData, {
+          onSuccess: () => {
+            setForm({ name: '', email: '', role: 'operator', banned: false });
+            setShowPassword(false);
+            setShowModal(false);
+            setEmailError('');
+            setShowBanDialog(false);
+            setBanDialogData(null);
+            setIsProcessing(false);
+          },
+          onError: () => {
+            setIsProcessing(false);
+          }
+        });
+      } else {
+        router.put(route('admin.users.update', { user: updatedForm.id }), updatedForm, {
+          onSuccess: () => {
+            setForm({ name: '', email: '', role: 'operator', banned: false });
+            setShowPassword(false);
+            setShowModal(false);
+            setEmailError('');
+            setShowBanDialog(false);
+            setBanDialogData(null);
+            setIsProcessing(false);
+          },
+          onError: () => {
+            setIsProcessing(false);
+          }
+        });
+      }
+    }
+  };
+
+  const handleBanCancel = () => {
+    setShowBanDialog(false);
+    setBanDialogData(null);
+    setIsProcessing(false);
   };
 
   return (
@@ -630,6 +702,19 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Ban User Confirmation Dialog */}
+      {banDialogData && (
+        <BanUserConfirmDialog
+          show={showBanDialog}
+          onClose={handleBanCancel}
+          onConfirm={handleBanConfirm}
+          userName={banDialogData.userName}
+          userEmail={banDialogData.userEmail}
+          isBanning={banDialogData.isBanning}
+          loading={isProcessing}
+        />
       )}
     </AdminLayout>
   );

@@ -370,8 +370,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
             </p>
           </div>
           <img 
-            src="/images/dprd-logo.png" 
-            alt="DPRD Kabupaten Semarang" 
+            src="/images/kab-smg-logo.png" 
+            alt="Kabupaten Semarang" 
             className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" 
           />
         </div>
