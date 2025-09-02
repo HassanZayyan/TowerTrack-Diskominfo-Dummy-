@@ -73,24 +73,42 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     }
     
     if (form.id) {
-      // Jika editing complainant user atau tower_owner, hanya kirim role dan banned status
+      // Untuk semua user, admin dapat mengubah semua field termasuk status banned
+      // Namun untuk complainant dan tower_owner, hanya kirim data yang relevan
       const originalUser = users.find(u => u.id === form.id);
       if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner')) {
         const updateData = {
           role: form.role,
-          banned: form.banned
+          banned: form.banned // Admin dapat membanned semua role
         };
-        router.put(route('admin.users.update', { user: form.id }), updateData);
+        router.put(route('admin.users.update', { user: form.id }), updateData, {
+          onSuccess: () => {
+            setForm({ name: '', email: '', role: 'operator', banned: false });
+            setShowPassword(false);
+            setShowModal(false);
+            setEmailError('');
+          }
+        });
       } else {
-        router.put(route('admin.users.update', { user: form.id }), form);
+        router.put(route('admin.users.update', { user: form.id }), form, {
+          onSuccess: () => {
+            setForm({ name: '', email: '', role: 'operator', banned: false });
+            setShowPassword(false);
+            setShowModal(false);
+            setEmailError('');
+          }
+        });
       }
     } else {
-      router.post(route('admin.users.store'), form);
+      router.post(route('admin.users.store'), form, {
+        onSuccess: () => {
+          setForm({ name: '', email: '', role: 'operator', banned: false });
+          setShowPassword(false);
+          setShowModal(false);
+          setEmailError('');
+        }
+      });
     }
-    setForm({ name: '', email: '', role: 'operator', banned: false });
-    setShowPassword(false);
-    setShowModal(false);
-    setEmailError('');
   };
 
   const handleDelete = (user: User) => {
@@ -111,18 +129,15 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     
     setIsProcessing(true);
     
-    // Update the form with the ban status and submit
-    const updatedForm = { ...form, banned: banDialogData.isBanning };
-    
-    if (updatedForm.id) {
-      // Jika editing complainant user atau tower_owner, hanya kirim role dan banned status
-      const originalUser = users.find(u => u.id === updatedForm.id);
+    if (banDialogData.userId) {
+      // Admin dapat membanned semua role termasuk complainant dan tower_owner
+      const originalUser = users.find(u => u.id === banDialogData.userId);
       if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner')) {
         const updateData = {
-          role: updatedForm.role,
-          banned: updatedForm.banned
+          role: originalUser.role,
+          banned: banDialogData.isBanning // Gunakan status banned dari dialog konfirmasi
         };
-        router.put(route('admin.users.update', { user: updatedForm.id }), updateData, {
+        router.put(route('admin.users.update', { user: banDialogData.userId }), updateData, {
           onSuccess: () => {
             setForm({ name: '', email: '', role: 'operator', banned: false });
             setShowPassword(false);
@@ -137,7 +152,9 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
           }
         });
       } else {
-        router.put(route('admin.users.update', { user: updatedForm.id }), updatedForm, {
+        // Untuk role lain, gunakan data lengkap dari form dengan status banned dari dialog
+        const updatedForm = { ...form, banned: banDialogData.isBanning };
+        router.put(route('admin.users.update', { user: banDialogData.userId }), updatedForm, {
           onSuccess: () => {
             setForm({ name: '', email: '', role: 'operator', banned: false });
             setShowPassword(false);
@@ -608,40 +625,42 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     )}
                   </div>
                   
-                  {/* Banned status checkbox - hanya muncul saat edit user */}
-                  {form.id && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Status Akun</label>
-                      <div className="flex items-center mt-3">
-                        <input
-                          type="checkbox"
-                          id="banned"
-                          checked={form.banned}
-                          onChange={(e) => setForm({ ...form, banned: e.target.checked })}
-                          className="h-5 w-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                          disabled={form.id === auth.user.id} // Disable jika user mencoba banned dirinya sendiri
-                        />
-                        <label htmlFor="banned" className="ml-2 block text-sm text-gray-900">
-                          <span className={`font-medium ${form.banned ? 'text-red-600' : 'text-gray-700'}`}>
-                            {form.banned ? 'Akun Dibanned' : 'Akun Aktif'}
-                          </span>
-                          {form.id === auth.user.id && (
-                            <span className="ml-2 text-xs text-gray-500">(Tidak dapat membanned akun sendiri)</span>
-                          )}
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {form.banned 
-                          ? 'User tidak akan dapat login ke sistem jika dibanned' 
-                          : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
-                        {form.id && (form.role === 'complainant' || form.role === 'tower_owner') && (
-                          <span className="block mt-1 text-blue-600">
-                            Status akun dapat diubah untuk user {form.role === 'complainant' ? 'complainant' : 'tower owner'}
-                          </span>
+                  {/* Banned status checkbox - muncul saat edit user dan tambah user baru */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Status Akun</label>
+                    <div className="flex items-center mt-3">
+                      <input
+                        type="checkbox"
+                        id="banned"
+                        checked={form.banned || false}
+                        onChange={(e) => setForm({ ...form, banned: e.target.checked })}
+                        className="h-5 w-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                        disabled={form.id === auth.user.id} // Disable jika user mencoba banned dirinya sendiri
+                      />
+                      <label htmlFor="banned" className="ml-2 block text-sm text-gray-900">
+                        <span className={`font-medium ${form.banned ? 'text-red-600' : 'text-gray-700'}`}>
+                          {form.banned ? 'Akun Dibanned' : 'Akun Aktif'}
+                        </span>
+                        {form.id === auth.user.id && (
+                          <span className="ml-2 text-xs text-gray-500">(Tidak dapat membanned akun sendiri)</span>
                         )}
-                      </p>
+                      </label>
                     </div>
-                  )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      {form.banned 
+                        ? 'User tidak akan dapat login ke sistem jika dibanned' 
+                        : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
+                      {form.id ? (
+                        <span className="block mt-1 text-blue-600">
+                          Admin dapat mengubah status banned untuk semua role termasuk {form.role}
+                        </span>
+                      ) : (
+                        <span className="block mt-1 text-green-600">
+                          Tentukan status awal akun (aktif/banned) untuk user baru
+                        </span>
+                      )}
+                    </p>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                       Password {form.id && '(kosongkan jika tidak diubah)'}

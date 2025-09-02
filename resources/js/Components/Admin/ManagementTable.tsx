@@ -377,17 +377,25 @@ const ManagementTable: React.FC<Props> = ({
               )}
             </div>
           </div>
-          <div className="flex-shrink-0">
-            <select
-              className="w-full sm:w-auto border border-gray-300 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">Semua Status</option>
-              <option value="pending">Baru</option>
-              <option value="in_progress">Progress</option>
-              <option value="closed">Selesai</option>
-            </select>
+          <div className="flex-shrink-0 relative">
+            <div className="relative">
+              <select
+                className="w-full sm:w-auto min-w-[140px] appearance-none bg-white border border-gray-300 rounded-lg pl-3 pr-10 py-2 sm:py-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent shadow-sm hover:border-gray-400 transition-colors cursor-pointer"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">🔍 Semua Status</option>
+                <option value="pending">🔴 Baru</option>
+                <option value="in_progress">🟡 Progress</option>
+                <option value="closed">🟢 Selesai</option>
+              </select>
+              {/* Custom dropdown arrow */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -825,18 +833,31 @@ const ManagementTable: React.FC<Props> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Ubah Status:
                       </label>
-                      <select 
-                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-transparent"
-                        value={replyModal.item ? (replyStatus[replyModal.item.id] ?? '') : ''}
-                        onChange={(e) => replyModal.item && setReplyStatus({ ...replyStatus, [replyModal.item.id]: Number(e.target.value) || '' })}
-                      >
-                        <option value="">Pilih Status</option>
-                        {availableStatuses.map((status) => (
-                          <option key={status.id} value={status.id}>
-                            {status.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <select 
+                          className="w-full appearance-none bg-white border border-gray-300 rounded-lg pl-3 pr-10 py-3 focus:ring-2 focus:ring-green-400 focus:border-transparent shadow-sm hover:border-gray-400 transition-colors cursor-pointer"
+                          value={replyModal.item ? (replyStatus[replyModal.item.id] ?? '') : ''}
+                          onChange={(e) => replyModal.item && setReplyStatus({ ...replyStatus, [replyModal.item.id]: Number(e.target.value) || '' })}
+                        >
+                          <option value="">📋 Pilih Status</option>
+                          {availableStatuses.map((status) => {
+                            const statusEmoji = status.slug === 'pending' ? '🔴' : 
+                                              status.slug === 'in_progress' ? '🟡' : 
+                                              status.slug === 'closed' ? '🟢' : '📌';
+                            return (
+                              <option key={status.id} value={status.id}>
+                                {statusEmoji} {status.name}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        {/* Custom dropdown arrow */}
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Message Input */}

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->boolean('banned')->default(false);
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
             
             // Add foreign key constraint for owner_id
             $table->foreign('owner_id')->references('id')->on('owners')->onDelete('set null');
