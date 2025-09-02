@@ -28,8 +28,8 @@ class UserController extends Controller
             'banned' => 'boolean',
         ]);
 
-        // Set default banned status to false for new users
-        $validated['banned'] = false;
+        // Set banned status from request or default to false for new users
+        $validated['banned'] = $validated['banned'] ?? false;
         $validated['password'] = Hash::make($validated['password']);
         User::create($validated);
         return back();
@@ -38,17 +38,17 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'email|unique:users,email,'.$user->id,
-            'role' => 'required|in:admin,operator,complainant,tower_owner',
+            // Gunakan "sometimes" agar field hanya divalidasi ketika ada di request,
+            // memungkinkan pembaruan parsial seperti hanya mengganti status banned.
+            'name' => 'sometimes|required|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,'.$user->id,
+            'role' => 'sometimes|required|in:admin,operator,complainant,tower_owner',
             'password' => 'nullable|string|min:8',
             'banned' => 'boolean',
         ]);
 
-        // Ensure only admin can ban users
-        if (!auth()->user()->isAdmin() && $request->has('banned')) {
-            return back()->with('error', 'Hanya admin yang dapat mengubah status banned pengguna.');
-        }
+        // Admin can ban all users including complainant and tower_owner
+        // This validation is removed to allow admin full control over user management
 
         // Prevent self-banning
         if ($user->id === auth()->id() && $request->input('banned', false)) {
