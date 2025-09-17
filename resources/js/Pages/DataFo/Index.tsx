@@ -26,42 +26,78 @@ const mapContainerStyle = {
   zIndex: 1
 };
 
-// Custom icons for different FO point types
-const createCustomIcon = (color: string, type: string) => {
+// Custom icons for different FO point types based on available images
+const createCustomIcon = (color: string, iconText: string) => {
   const iconHtml = `
     <div style="
       background-color: ${color};
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       border: 2px solid white;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 8px;
       color: white;
       font-weight: bold;
-    ">${type.charAt(0).toUpperCase()}</div>
+      font-family: Arial, sans-serif;
+    ">${iconText}</div>
   `;
   
   return L.divIcon({
     html: iconHtml,
     className: 'custom-fo-icon',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -10]
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12]
   });
 };
 
-const getIconByType = (type: string) => {
-  switch (type) {
-    case 'hub': return createCustomIcon('#8B5CF6', 'H'); // Purple for hub
-    case 'junction': return createCustomIcon('#10B981', 'J'); // Green for junction
-    case 'pole': return createCustomIcon('#3B82F6', 'P'); // Blue for pole
-    case 'endpoint': return createCustomIcon('#EF4444', 'E'); // Red for endpoint
-    default: return new L.Icon.Default();
+const getIconByImages = (images: { isp: string | null; pole: string | null; junction_box: string | null }) => {
+  // Cek apakah gambar benar-benar ada (bukan null, bukan "-", dan bukan string kosong)
+  const hasPole = !!images.pole && images.pole !== '-' && images.pole.trim() !== '';
+  const hasISP = !!images.isp && images.isp !== '-' && images.isp.trim() !== '';
+  const hasJunctionBox = !!images.junction_box && images.junction_box !== '-' && images.junction_box.trim() !== '';
+  
+  // 1. Ada tiang, ISP dan Joint Box -> pole ISP Joint Box (icon = PIJ) - Ungu
+  if (hasPole && hasISP && hasJunctionBox) {
+    return createCustomIcon('#8B5CF6', 'PIJ');
   }
+  
+  // 2. Ada tiang dan ISP -> pole and ISP (icon = PI) - Hijau
+  if (hasPole && hasISP && !hasJunctionBox) {
+    return createCustomIcon('#10B981', 'PI');
+  }
+  
+  // 3. Ada tiang dan Joint Box -> Joint Box (icon = JB) - Orange
+  if (hasPole && !hasISP && hasJunctionBox) {
+    return createCustomIcon('#F59E0B', 'JB');
+  }
+  
+  // 4. Hanya ada gambar tiang -> pole (icon = P) - Biru
+  if (hasPole && !hasISP && !hasJunctionBox) {
+    return createCustomIcon('#3B82F6', 'P');
+  }
+  
+  // 5. Hanya ada ISP tanpa tiang -> ISP saja (icon = I) - Cyan
+  if (!hasPole && hasISP && !hasJunctionBox) {
+    return createCustomIcon('#06B6D4', 'I');
+  }
+  
+  // 6. Hanya ada Joint Box tanpa tiang -> JB saja (icon = J) - Amber
+  if (!hasPole && !hasISP && hasJunctionBox) {
+    return createCustomIcon('#F59E0B', 'J');
+  }
+  
+  // 7. Ada ISP dan Joint Box tanpa tiang -> ISP + JB (icon = IJ) - Pink
+  if (!hasPole && hasISP && hasJunctionBox) {
+    return createCustomIcon('#EC4899', 'IJ');
+  }
+  
+  // Default untuk kasus lain - Abu-abu
+  return createCustomIcon('#6B7280', '?');
 };
 
 interface FoPoint {
@@ -258,27 +294,9 @@ export default function DataFoIndex({
       </div>
 
       <div className="p-4 sm:p-6">
-        {/* Area Selector */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <h3 className="text-lg font-medium mb-4">Pilih Area</h3>
-          <div className="flex gap-3">
-            {['ungaran', 'ambarawa'].map((area) => (
-              <button
-                key={area}
-                onClick={() => handleAreaChange(area)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedArea === area
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {area === 'ungaran' ? 'Ungaran' : 'Ambarawa'}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Statistics */}
+
+        {/* Statistics */}  
         <FoStats 
           filteredPoints={filteredPoints}
           filteredRoutes={filteredRoutes}
@@ -302,7 +320,7 @@ export default function DataFoIndex({
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
-              <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area {selectedArea === 'ungaran' ? 'Ungaran' : 'Ambarawa'}</p>
+              <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
             </div>
             <div className="flex items-center space-x-2">
               <button className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
@@ -412,7 +430,7 @@ export default function DataFoIndex({
                      <Marker
                        key={point.id}
                        position={[point.latitude, point.longitude]}
-                       icon={getIconByType(point.type || 'pole')}
+                       icon={getIconByImages(point.images)}
                        eventHandlers={{
                          click: () => {
                            console.log('Point clicked:', point.name);
@@ -486,26 +504,43 @@ export default function DataFoIndex({
             
           {/* Map Legend */}
           <div className="p-4 bg-gray-50 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Legenda:</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Legenda Titik FO:</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">H</div>
-                <span className="text-sm text-gray-700">Hub</span>
+                <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '7px' }}>PIJ</div>
+                <span className="text-xs text-gray-700">Pole + ISP + JB</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">J</div>
-                <span className="text-sm text-gray-700">Junction</span>
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>PI</div>
+                <span className="text-xs text-gray-700">Pole + ISP</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">P</div>
-                <span className="text-sm text-gray-700">Pole</span>
+                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>JB</div>
+                <span className="text-xs text-gray-700">Pole + Joint Box</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">E</div>
-                <span className="text-sm text-gray-700">Endpoint</span>
+                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">P</div>
+                <span className="text-xs text-gray-700">Pole Saja</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">I</div>
+                <span className="text-xs text-gray-700">ISP Saja</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">J</div>
+                <span className="text-xs text-gray-700">Joint Box Saja</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>IJ</div>
+                <span className="text-xs text-gray-700">ISP + Joint Box</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">?</div>
+                <span className="text-xs text-gray-700">Tidak Ada Gambar</span>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-gray-300">
+            <div className="pt-3 border-t border-gray-300">
+              <h5 className="text-sm font-medium text-gray-900 mb-2">Legenda Jalur:</h5>
               <div className="flex items-center gap-4 text-xs text-gray-600">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-1 bg-blue-500"></div>

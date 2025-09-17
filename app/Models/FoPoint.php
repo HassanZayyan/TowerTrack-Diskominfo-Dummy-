@@ -84,6 +84,12 @@ class FoPoint extends Model
         }
 
         $value = trim((string) $this->isp_image);
+        
+        // Handle "-" as non-existent image
+        if ($value === '-' || $value === '') {
+            return null;
+        }
+        
         if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
             return $value;
         }
@@ -101,6 +107,12 @@ class FoPoint extends Model
         }
 
         $value = trim((string) $this->pole_image);
+        
+        // Handle "-" as non-existent image
+        if ($value === '-' || $value === '') {
+            return null;
+        }
+        
         if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
             return $value;
         }
@@ -118,6 +130,12 @@ class FoPoint extends Model
         }
 
         $value = trim((string) $this->junction_box_image);
+        
+        // Handle "-" as non-existent image
+        if ($value === '-' || $value === '') {
+            return null;
+        }
+        
         if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
             return $value;
         }

@@ -11,74 +11,217 @@ use Illuminate\Support\Str;
 class FoRoutesFromPointsSeeder extends Seeder
 {
     /**
-     * Build FO routes by grouping existing points by route_name.
+     * Run the database seeds.
      */
     public function run(): void
     {
         $this->disableForeignKeys();
         DB::table('fo_routes')->truncate();
 
-        $points = FoPoint::query()
-            ->whereNotNull('route_name')
+        // Group FO points by route_name
+        $pointsByRoute = FoPoint::select('route_name', 'id', 'sequence_number', 'latitude', 'longitude', 'name')
             ->orderBy('route_name')
             ->orderBy('sequence_number')
             ->get()
             ->groupBy('route_name');
 
-        $created = 0;
-        foreach ($points as $routeName => $group) {
-            if ($group->isEmpty()) {
+        $totalRoutes = 0;
+        $totalPoints = 0;
+
+        // Define the expected route order based on the line mapping
+        $expectedRoutes = [
+            'Assalamah masuk Asmara',
+            'Terminal - Assalamah',
+            'Terminal - DPU',
+            'Dinkes - Diskominfo',
+            'Wujil - RSUD',
+            'Assalamah - Taman Unyil',
+            'Dishub - Bergas',
+            'Pasar Karangjati - Kelurahan Karangjati',
+            'Setelah terowongan TOL - Pertigaan',
+            'Polsek Bergas - Ngempon',
+            'Polsek Bergas - Wujil',
+            'Terowongan - Bangjo Asmara',
+            'Kelurahan Genuk',
+            'SMADA',
+            'Alun-Alun Lama - Ungaran Barat',
+            'RSUD - Terminal',
+            'Kalongan - Jembatan Longsor',
+        ];
+
+        // Process routes in the expected order
+        foreach ($expectedRoutes as $routeName) {
+            $points = $pointsByRoute->get($routeName);
+            
+            if (!$points || $points->isEmpty()) {
+                $this->command?->warn("No points found for route: {$routeName}");
                 continue;
             }
 
-            $area = $group->first()->area ?? 'ungaran';
+            // Calculate total distance for the route
+            $totalDistance = 0;
+            $coordinates = [];
+            $pointIds = [];
 
-            $pathCoordinates = $group->map(function ($p) {
-                return [
-                    'lat' => (float) $p->latitude,
-                    'lng' => (float) $p->longitude,
-                ];
-            })->values()->toArray();
+            $sortedPoints = $points->sortBy('sequence_number');
+            $previousPoint = null;
 
-            $pointIds = $group->pluck('id')->values()->toArray();
-            $totalPoints = count($pointIds);
-            $totalDistance = $this->calculateDistance($pathCoordinates);
+            foreach ($sortedPoints as $point) {
+                $coordinates[] = [$point->longitude, $point->latitude];
+                $pointIds[] = $point->id;
 
+                if ($previousPoint) {
+                    $distance = $this->calculateDistance(
+                        $previousPoint->latitude,
+                        $previousPoint->longitude,
+                        $point->latitude,
+                        $point->longitude
+                    );
+                    $totalDistance += $distance;
+                }
+
+                $previousPoint = $point;
+            }
+
+            // Generate route description based on start and end points
+            $startPointName = $sortedPoints->first()->name ?? 'Start Point';
+            $endPointName = $sortedPoints->last()->name ?? 'End Point';
+            $description = "Jalur FO dari {$startPointName} ke {$endPointName}";
+
+            // Create the route
             FoRoute::create([
                 'name' => $routeName,
-                'slug' => Str::slug($routeName),
-                'area' => $area,
-                'description' => "Jalur FO {$routeName} - {$totalPoints} titik",
-                'path_coordinates' => $pathCoordinates,
+                'description' => $description,
+                'total_distance' => round($totalDistance / 1000, 2), // Convert to kilometers
+                'total_points' => $points->count(),
                 'status' => 'active',
-                'color' => $this->getRandomColor(),
-                'total_distance' => $totalDistance,
-                'total_points' => $totalPoints,
+                'area' => 'ungaran',
+                'path_coordinates' => $coordinates,
                 'point_ids' => $pointIds,
+                'color' => $this->getRouteColor($routeName),
                 'properties' => [
-                    'source' => 'fo_points',
+                    'generated_from' => 'fo_points',
+                    'generation_date' => now()->toISOString(),
+                    'point_count' => $points->count(),
+                    'distance_unit' => 'meters',
+                    'route_type' => 'fiber_optic',
+                    'start_point_name' => $startPointName,
+                    'end_point_name' => $endPointName,
+                    'start_point_id' => $sortedPoints->first()->id,
+                    'end_point_id' => $sortedPoints->last()->id,
                 ],
             ]);
 
-            $created++;
+            $totalRoutes++;
+            $totalPoints += $points->count();
+
+            $this->command?->line("Created route: {$routeName} ({$points->count()} points, " . round($totalDistance, 2) . "m)");
+        }
+
+        // Handle any unexpected routes that weren't in our expected list
+        foreach ($pointsByRoute as $routeName => $points) {
+            if (!in_array($routeName, $expectedRoutes) && !$points->isEmpty()) {
+                $this->command?->warn("Found unexpected route: {$routeName} with {$points->count()} points");
+                
+                // Process unexpected route with same logic
+                $totalDistance = 0;
+                $coordinates = [];
+                $pointIds = [];
+
+                $sortedPoints = $points->sortBy('sequence_number');
+                $previousPoint = null;
+
+                foreach ($sortedPoints as $point) {
+                    $coordinates[] = [$point->longitude, $point->latitude];
+                    $pointIds[] = $point->id;
+
+                    if ($previousPoint) {
+                        $distance = $this->calculateDistance(
+                            $previousPoint->latitude,
+                            $previousPoint->longitude,
+                            $point->latitude,
+                            $point->longitude
+                        );
+                        $totalDistance += $distance;
+                    }
+
+                    $previousPoint = $point;
+                }
+
+                $startPointName = $sortedPoints->first()->name ?? 'Start Point';
+                $endPointName = $sortedPoints->last()->name ?? 'End Point';
+                $description = "Jalur FO dari {$startPointName} ke {$endPointName}";
+
+                FoRoute::create([
+                    'name' => $routeName,
+                    'description' => $description,
+                    'total_distance' => round($totalDistance / 1000, 2), // Convert to kilometers
+                    'total_points' => $points->count(),
+                    'status' => 'active',
+                    'area' => 'ungaran',
+                    'path_coordinates' => $coordinates,
+                    'point_ids' => $pointIds,
+                    'color' => '#FF6B6B', // Red color for unexpected routes
+                    'properties' => [
+                        'generated_from' => 'fo_points',
+                        'generation_date' => now()->toISOString(),
+                        'point_count' => $points->count(),
+                        'distance_unit' => 'meters',
+                        'route_type' => 'fiber_optic',
+                        'start_point_name' => $startPointName,
+                        'end_point_name' => $endPointName,
+                        'start_point_id' => $sortedPoints->first()->id,
+                        'end_point_id' => $sortedPoints->last()->id,
+                        'unexpected_route' => true,
+                    ],
+                ]);
+
+                $totalRoutes++;
+                $totalPoints += $points->count();
+            }
         }
 
         $this->enableForeignKeys();
-        $this->command?->info("FO Routes created: {$created}");
+
+        $this->command?->info("FO Routes created: {$totalRoutes} routes with {$totalPoints} total points");
     }
 
-    private function calculateDistance(array $coordinates): float
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2): float
     {
-        if (count($coordinates) < 2) {
-            return 0.0;
-        }
-        $total = 0.0;
-        for ($i = 0; $i < count($coordinates) - 1; $i++) {
-            $a = $coordinates[$i];
-            $b = $coordinates[$i + 1];
-            $total += $this->distanceBetweenPoints($a['lat'] ?? 0, $a['lng'] ?? 0, $b['lat'] ?? 0, $b['lng'] ?? 0);
-        }
-        return round($total, 2);
+        $earthRadius = 6371000; // meters
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Get a color for the route based on its name.
+     */
+    private function getRouteColor(string $routeName): string
+    {
+        $colors = [
+            'Assalamah masuk Asmara' => '#3B82F6',
+            'Terminal - Assalamah' => '#10B981',
+            'Terminal - DPU' => '#F59E0B',
+            'Dinkes - Diskominfo' => '#EF4444',
+            'Wujil - RSUD' => '#8B5CF6',
+            'Assalamah - Taman Unyil' => '#06B6D4',
+            'Dishub - Bergas' => '#84CC16',
+            'Pasar Karangjati - Kelurahan Karangjati' => '#F97316',
+            'Setelah terowongan TOL - Pertigaan' => '#EC4899',
+            'Polsek Bergas - Ngempon' => '#14B8A6',
+            'Polsek Bergas - Wujil' => '#F472B6',
+            'Terowongan - Bangjo Asmara' => '#A855F7',
+            'Kelurahan Genuk' => '#22D3EE',
+            'SMADA' => '#65A30D',
+            'Alun-Alun Lama - Ungaran Barat' => '#DC2626',
+            'RSUD - Terminal' => '#7C3AED',
+            'Kalongan - Jembatan Longsor' => '#059669',
+        ];
+
+        return $colors[$routeName] ?? '#6B7280'; // Default gray color
     }
 
     private function distanceBetweenPoints($lat1, $lon1, $lat2, $lon2): float

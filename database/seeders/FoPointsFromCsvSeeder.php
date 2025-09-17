@@ -34,91 +34,93 @@ class FoPointsFromCsvSeeder extends Seeder
             ? $this->buildImageIndexes($imagesRoot)
             : [[], [], []];
 
-        $segments = $this->parseCsvIntoSegments($csvPath);
-
+        // Parse CSV and process each row with line-based route assignment
         $totalCreated = 0;
         $routeCounts = [];
+        $currentLine = 1;
 
-        foreach ($segments as $segmentIndex => $rows) {
-            foreach ($rows as $row) {
-                $sequenceNumber = $this->toInt($row['nomor'] ?? null);
-                $name = $this->cleanText($row['nama_lokasi'] ?? '');
-                $coordsRaw = $row['koordinat'] ?? '';
-                $coords = $this->parseCoordinates($coordsRaw);
-                $ispRaw = $this->cleanText($row['gambar_isp'] ?? '');
-                $poleRaw = $this->cleanText($row['gambar_tiang'] ?? '');
-                $jbRaw = $this->cleanText($row['gambar_jb'] ?? '');
+        $file = new \SplFileObject($csvPath);
+        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
+        $file->setCsvControl(',');
 
-                // Prefer Google Drive links if present
-                $linkIsp = $this->cleanText($row['link_isp'] ?? '');
-                $linkPole = $this->cleanText($row['link_tiang'] ?? '');
-                $linkJb = $this->cleanText($row['link_jb'] ?? '');
-
-                // Skip rows with invalid core data
-                if ($sequenceNumber === null || $sequenceNumber <= 0) {
-                    $this->command?->warn("Skipping row with invalid sequence number: {$sequenceNumber}");
-                    continue;
-                }
-                if ($coords['latitude'] === null || $coords['longitude'] === null) {
-                    $this->command?->warn("Skipping row with invalid coordinates: {$coordsRaw} for point: {$name}");
-                    continue;
-                }
-
-                // Derive route name. Prefer folder inference if available, otherwise use segment index
-                $candidateFolders = [];
-                if ($imagesDirExists) {
-                    foreach ([$ispRaw, $poleRaw, $jbRaw] as $fileRaw) {
-                        if (!$this->isValidFilename($fileRaw)) {
-                            continue;
-                        }
-                        $rel = $this->resolveImageRelativePath($fileRaw, $byExact, $byStem);
-                        if ($rel) {
-                            $top = $topFolderByRel[$rel] ?? null;
-                            if ($top) {
-                                $candidateFolders[$top] = ($candidateFolders[$top] ?? 0) + 1;
-                            }
-                        }
-                    }
-                }
-
-                if (!empty($candidateFolders)) {
-                    arsort($candidateFolders);
-                    $routeName = array_key_first($candidateFolders) ?? ('Segment ' . ($segmentIndex + 1));
-                } else {
-                    $routeName = 'Segment ' . ($segmentIndex + 1);
-                }
-
-                $ispRel = $this->resolveImageRelativePath($ispRaw, $byExact, $byStem);
-                $poleRel = $this->resolveImageRelativePath($poleRaw, $byExact, $byStem);
-                $jbRel = $this->resolveImageRelativePath($jbRaw, $byExact, $byStem);
-
-                $type = ($linkJb !== '' || $jbRel) ? 'junction' : 'pole';
-
-                FoPoint::create([
-                    'sequence_number' => $sequenceNumber,
-                    'name' => $name ?: ('Titik #' . $sequenceNumber),
-                    'latitude' => $coords['latitude'],
-                    'longitude' => $coords['longitude'],
-                    'original_coordinates' => $coordsRaw,
-                    'route_name' => $routeName,
-                    'area' => 'ungaran',
-                    'description' => null,
-                    'type' => $type,
-                    'status' => 'active',
-                    // Store link if provided, otherwise fallback to relative path if resolved
-                    'isp_image' => ($linkIsp !== '' ? $linkIsp : $ispRel),
-                    'pole_image' => ($linkPole !== '' ? $linkPole : $poleRel),
-                    'junction_box_image' => ($linkJb !== '' ? $linkJb : $jbRel),
-                    'properties' => [
-                        'source' => 'csv',
-                        'segment_index' => $segmentIndex,
-                        'link_mode' => ($linkIsp !== '' || $linkPole !== '' || $linkJb !== ''),
-                    ],
-                ]);
-
-                $routeCounts[$routeName] = ($routeCounts[$routeName] ?? 0) + 1;
-                $totalCreated++;
+        foreach ($file as $row) {
+            if ($row === [null] || $row === false) {
+                $currentLine++;
+                continue;
             }
+
+            // Normalize row values
+            $row = array_map(function ($v) {
+                if ($v === null) return '';
+                $v = trim((string) $v);
+                return $v;
+            }, $row);
+
+            // Try to extract data from this row
+            $record = $this->extractDataFromRow($row);
+            if ($record === null) {
+                $currentLine++;
+                continue;
+            }
+
+            $sequenceNumber = $this->toInt($record['nomor'] ?? null);
+            $name = $this->cleanText($record['nama_lokasi'] ?? '');
+            $coordsRaw = $record['koordinat'] ?? '';
+            $coords = $this->parseCoordinates($coordsRaw);
+            $ispRaw = $this->cleanText($record['gambar_isp'] ?? '');
+            $poleRaw = $this->cleanText($record['gambar_tiang'] ?? '');
+            $jbRaw = $this->cleanText($record['gambar_jb'] ?? '');
+
+            // Prefer Google Drive links if present
+            $linkIsp = $this->cleanText($record['link_isp'] ?? '');
+            $linkPole = $this->cleanText($record['link_tiang'] ?? '');
+            $linkJb = $this->cleanText($record['link_jb'] ?? '');
+
+            // Skip rows with invalid core data
+            if ($sequenceNumber === null || $sequenceNumber <= 0) {
+                $currentLine++;
+                continue;
+            }
+            if ($coords['latitude'] === null || $coords['longitude'] === null) {
+                $this->command?->warn("Skipping row with invalid coordinates: {$coordsRaw} for point: {$name} at line {$currentLine}");
+                $currentLine++;
+                continue;
+            }
+
+            // Get route name based on current line number
+            $routeName = $this->getRouteNameByLine($currentLine);
+
+            $ispRel = $this->resolveImageRelativePath($ispRaw, $byExact, $byStem);
+            $poleRel = $this->resolveImageRelativePath($poleRaw, $byExact, $byStem);
+            $jbRel = $this->resolveImageRelativePath($jbRaw, $byExact, $byStem);
+
+            $type = ($linkJb !== '' || $jbRel) ? 'junction' : 'pole';
+
+            FoPoint::create([
+                'sequence_number' => $sequenceNumber,
+                'name' => $name ?: ('Titik #' . $sequenceNumber),
+                'latitude' => $coords['latitude'],
+                'longitude' => $coords['longitude'],
+                'original_coordinates' => $coordsRaw,
+                'route_name' => $routeName,
+                'area' => 'ungaran',
+                'description' => null,
+                'type' => $type,
+                'status' => 'active',
+                // Store link if provided, otherwise fallback to relative path if resolved
+                'isp_image' => ($linkIsp !== '' ? $linkIsp : $ispRel),
+                'pole_image' => ($linkPole !== '' ? $linkPole : $poleRel),
+                'junction_box_image' => ($linkJb !== '' ? $linkJb : $jbRel),
+                'properties' => [
+                    'source' => 'csv',
+                    'csv_line' => $currentLine,
+                    'link_mode' => ($linkIsp !== '' || $linkPole !== '' || $linkJb !== ''),
+                ],
+            ]);
+
+            $routeCounts[$routeName] = ($routeCounts[$routeName] ?? 0) + 1;
+            $totalCreated++;
+            $currentLine++;
         }
 
         $this->enableForeignKeys();
@@ -187,140 +189,72 @@ class FoPointsFromCsvSeeder extends Seeder
     }
 
     /**
-     * Parse the CSV file into logical segments, each containing rows with keys.
-     * A segment is defined by encountering a header anywhere in the row.
+     * Get route name based on CSV line number according to the provided mapping.
      */
-    private function parseCsvIntoSegments(string $csvPath): array
+    private function getRouteNameByLine(int $lineNumber): string
     {
-        $segments = [];
-        $activeOffsets = [];
-
-        $file = new \SplFileObject($csvPath);
-        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
-        $file->setCsvControl(',');
-
-        $rowIndex = 0;
-        foreach ($file as $row) {
-            if ($row === [null] || $row === false) {
-                $rowIndex++;
-                continue;
-            }
-
-            // Normalize row values
-            $row = array_map(function ($v) {
-                if ($v === null) return '';
-                $v = trim((string) $v);
-                return $v;
-            }, $row);
-
-            // Detect new headers in this row (could be multiple offsets per row)
-            $headerOffsets = $this->detectHeaderOffsets($row);
-            foreach ($headerOffsets as $offset) {
-                if (!array_key_exists($offset, $activeOffsets)) {
-                    $activeOffsets[$offset] = count($segments);
-                    $segments[] = [];
-                }
-            }
-
-            // For each active segment, try to read a data record at its offset
-            foreach ($activeOffsets as $offset => $segmentIndex) {
-                $record = $this->extractRecordAtOffset($row, $offset);
-                if ($record === null) {
-                    continue;
-                }
-                // Skip rows that are actually headers
-                if ($this->isHeaderRow($record)) {
-                    continue;
-                }
-                $segments[$segmentIndex][] = $record;
-            }
-
-            $rowIndex++;
-        }
-
-        return $segments;
-    }
-
-    /**
-     * Find offsets of headers within a row.
-     */
-    private function detectHeaderOffsets(array $row): array
-    {
-        $offsets = [];
-        $len = count($row);
-        for ($i = 0; $i <= $len - 6; $i++) {
-            $c0 = mb_strtolower(trim($row[$i] ?? ''));
-            $c1 = mb_strtolower(trim($row[$i + 1] ?? ''));
-            $c2 = mb_strtolower(trim($row[$i + 2] ?? ''));
-            $c3 = mb_strtolower(trim($row[$i + 3] ?? ''));
-            $c4 = mb_strtolower(trim($row[$i + 4] ?? ''));
-            $c5 = mb_strtolower(trim($row[$i + 5] ?? ''));
-
-            if ($c0 === 'nomor' &&
-                $c1 === 'nama lokasi' &&
-                $c2 === 'koordinat' &&
-                ($c3 === 'gambar isp' || $c3 === 'isp' || str_contains($c3, 'isp')) &&
-                ($c4 === 'gambar tiang penuh' || $c4 === 'tiang penuh' || str_contains($c4, 'tiang')) &&
-                ($c5 === 'gambar jb' || $c5 === 'joint box' || $c5 === 'jb' || str_contains($c5, 'joint'))
-            ) {
-                $offsets[] = $i;
-            }
-        }
-        return $offsets;
-    }
-
-    /**
-     * Extract a record at a given offset if present.
-     */
-    private function extractRecordAtOffset(array $row, int $offset): ?array
-    {
-        $slice = [];
-        // Read up to 10 columns to capture possible link columns after the image columns
-        $max = 10;
-        for ($k = 0; $k < $max; $k++) {
-            $slice[$k] = $row[$offset + $k] ?? '';
-        }
-
-        // If slice is completely empty, nothing to parse
-        $allEmpty = true;
-        foreach ($slice as $cell) {
-            if (trim((string) $cell) !== '') {
-                $allEmpty = false;
-                break;
-            }
-        }
-        if ($allEmpty) {
-            return null;
-        }
-
-        return [
-            'nomor' => $slice[0] ?? '',
-            'nama_lokasi' => $slice[1] ?? '',
-            'koordinat' => $slice[2] ?? '',
-            'gambar_isp' => $slice[3] ?? '',
-            'gambar_tiang' => $slice[4] ?? '',
-            'gambar_jb' => $slice[5] ?? '',
-            // Optional link columns (may be empty depending on the sheet)
-            'link_isp' => $slice[6] ?? '',
-            'link_tiang' => $slice[7] ?? '',
-            'link_jb' => $slice[8] ?? '',
+        $routeMapping = [
+            [3, 27, 'Assalamah masuk Asmara'],
+            [32, 42, 'Terminal - Assalamah'],
+            [47, 51, 'Terminal - DPU'],
+            [56, 69, 'Dinkes - Diskominfo'],
+            [74, 93, 'Wujil - RSUD'],
+            [98, 109, 'Assalamah - Taman Unyil'],
+            [114, 122, 'Dishub - Bergas'],
+            [127, 129, 'Pasar Karangjati - Kelurahan Karangjati'],
+            [134, 151, 'Setelah terowongan TOL - Pertigaan'],
+            [156, 171, 'Polsek Bergas - Ngempon'],
+            [176, 189, 'Polsek Bergas - Wujil'],
+            [194, 210, 'Terowongan - Bangjo Asmara'],
+            [215, 217, 'Kelurahan Genuk'],
+            [222, 224, 'SMADA'],
+            [229, 244, 'Alun-Alun Lama - Ungaran Barat'],
+            [249, 264, 'RSUD - Terminal'],
+            [269, 271, 'Kalongan - Jembatan Longsor'],
         ];
+
+        foreach ($routeMapping as [$startLine, $endLine, $routeName]) {
+            if ($lineNumber >= $startLine && $lineNumber <= $endLine) {
+                return $routeName;
+            }
+        }
+
+        return 'Unknown Route';
     }
 
     /**
-     * Check if a record is a header row.
+     * Extract data from a CSV row by detecting the data pattern.
      */
-    private function isHeaderRow(array $record): bool
+    private function extractDataFromRow(array $row): ?array
     {
-        $c0 = mb_strtolower(trim((string) ($record['nomor'] ?? '')));
-        $c1 = mb_strtolower(trim((string) ($record['nama_lokasi'] ?? '')));
-        $c2 = mb_strtolower(trim((string) ($record['koordinat'] ?? '')));
-        $c3 = mb_strtolower(trim((string) ($record['gambar_isp'] ?? '')));
-        $c4 = mb_strtolower(trim((string) ($record['gambar_tiang'] ?? '')));
-        $c5 = mb_strtolower(trim((string) ($record['gambar_jb'] ?? '')));
-
-        return $c0 === 'nomor' && $c1 === 'nama lokasi' && $c2 === 'koordinat';
+        $len = count($row);
+        
+        // Look for data patterns in the row
+        for ($i = 0; $i <= $len - 6; $i++) {
+            $nomor = trim($row[$i] ?? '');
+            $namaLokasi = trim($row[$i + 1] ?? '');
+            $koordinat = trim($row[$i + 2] ?? '');
+            
+            // Check if this looks like a data row (has sequence number and location)
+            if ($this->toInt($nomor) !== null && $namaLokasi !== '' && $koordinat !== '') {
+                return [
+                    'nomor' => $nomor,
+                    'nama_lokasi' => $namaLokasi,
+                    'koordinat' => $koordinat,
+                    'gambar_isp' => $row[$i + 3] ?? '',
+                    'gambar_tiang' => $row[$i + 4] ?? '',
+                    'gambar_jb' => $row[$i + 5] ?? '',
+                    'link_isp' => $row[$i + 6] ?? '',
+                    'link_tiang' => $row[$i + 7] ?? '',
+                    'link_jb' => $row[$i + 8] ?? '',
+                ];
+            }
+        }
+        
+        return null;
     }
+
+
 
     /**
      * Parse coordinates from CSV. Returns ['latitude' => ?float, 'longitude' => ?float].

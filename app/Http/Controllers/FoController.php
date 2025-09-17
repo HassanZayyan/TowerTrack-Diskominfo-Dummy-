@@ -333,13 +333,36 @@ class FoController extends Controller
             $start = $coordinates[$i];
             $end = $coordinates[$i + 1];
             
+            // Handle both coordinate formats:
+            // 1. Array format [longitude, latitude] from seeder
+            // 2. Object format {lat, lng} from model
+            if (is_array($start) && isset($start[0]) && isset($start[1])) {
+                // Array format: [longitude, latitude]
+                $startLat = (float) $start[1];
+                $startLng = (float) $start[0];
+            } else {
+                // Object format: {lat, lng}
+                $startLat = (float) ($start['lat'] ?? 0);
+                $startLng = (float) ($start['lng'] ?? 0);
+            }
+            
+            if (is_array($end) && isset($end[0]) && isset($end[1])) {
+                // Array format: [longitude, latitude]
+                $endLat = (float) $end[1];
+                $endLng = (float) $end[0];
+            } else {
+                // Object format: {lat, lng}
+                $endLat = (float) ($end['lat'] ?? 0);
+                $endLng = (float) ($end['lng'] ?? 0);
+            }
+            
             // Add start point
-            $polyline[] = [$start['lat'], $start['lng']];
+            $polyline[] = [$startLat, $startLng];
             
             // Generate intermediate points to create a more realistic path
             $intermediatePoints = $this->generateIntermediatePoints(
-                $start['lat'], $start['lng'],
-                $end['lat'], $end['lng']
+                $startLat, $startLng,
+                $endLat, $endLng
             );
             
             // Add intermediate points
@@ -350,7 +373,13 @@ class FoController extends Controller
         
         // Add the last point
         $lastPoint = end($coordinates);
-        $polyline[] = [$lastPoint['lat'], $lastPoint['lng']];
+        if (is_array($lastPoint) && isset($lastPoint[0]) && isset($lastPoint[1])) {
+            // Array format: [longitude, latitude]
+            $polyline[] = [(float) $lastPoint[1], (float) $lastPoint[0]];
+        } else {
+            // Object format: {lat, lng}
+            $polyline[] = [(float) ($lastPoint['lat'] ?? 0), (float) ($lastPoint['lng'] ?? 0)];
+        }
         
         return $polyline;
     }
