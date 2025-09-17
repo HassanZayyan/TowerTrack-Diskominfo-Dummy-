@@ -72,7 +72,7 @@ export default function FoStats({ filteredPoints, filteredRoutes, selectedArea }
           <div className="ml-4">
             <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Area Aktif</h3>
             <p className="text-3xl font-bold mt-1" style={{ color: '#2563eb' }}>
-              {selectedArea === 'ungaran' ? 'Ungaran' : 'Ambarawa'}
+              Ungaran
             </p>
           </div>
         </div>

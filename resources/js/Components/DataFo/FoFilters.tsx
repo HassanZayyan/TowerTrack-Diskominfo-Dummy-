@@ -36,7 +36,7 @@ export default function FoFilters({
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Area</label>
           <div className="flex gap-2">
-            {['ungaran', 'ambarawa'].map((area) => (
+            {['ungaran'].map((area) => (
               <button
                 key={area}
                 onClick={() => onAreaChange(area)}
@@ -47,7 +47,7 @@ export default function FoFilters({
                 }`}
                 style={selectedArea === area ? { backgroundColor: '#B71C1C' } : {}}
               >
-                {area === 'ungaran' ? 'Ungaran' : 'Ambarawa'}
+                Ungaran
               </button>
             ))}
           </div>

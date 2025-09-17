@@ -16,6 +16,7 @@ use App\Http\Middleware\NonStaffMiddleware;
 use App\Http\Middleware\TowerOwnerMiddleware;
 use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
+use App\Http\Controllers\Admin\FoRouteController as AdminFoRouteController;
 
 Route::get('/', function () {
     return redirect()->route('data.tower');
@@ -198,14 +199,23 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::post('/feedbacks/{feedback}/respond', [\App\Http\Controllers\Admin\FeedbackController::class, 'respond'])->name('feedbacks.respond');
     Route::put('/feedbacks/{feedback}/status', [\App\Http\Controllers\Admin\FeedbackController::class, 'updateStatus'])->name('feedbacks.updateStatus');
 
-    // FO management routes (for admin only)
-    Route::middleware(AdminMiddleware::class)->group(function () {
-        Route::post('/fo/points', [FoController::class, 'storePoint'])->name('fo.points.store');
-        Route::put('/fo/points/{foPoint}', [FoController::class, 'updatePoint'])->name('fo.points.update');
-        Route::delete('/fo/points/{foPoint}', [FoController::class, 'deletePoint'])->name('fo.points.delete');
-        Route::post('/fo/routes', [FoController::class, 'storeRoute'])->name('fo.routes.store');
-        Route::put('/fo/routes/{foRoute}', [FoController::class, 'updateRoute'])->name('fo.routes.update');
-        Route::delete('/fo/routes/{foRoute}', [FoController::class, 'deleteRoute'])->name('fo.routes.delete');
+    // FO management routes: admin and operator can CRUD
+    Route::middleware('admin_or_operator')->group(function () {
+        // Admin pages for managing FO routes - follow Inertia.js conventions
+        Route::get('/fo-routes', [AdminFoRouteController::class, 'index'])->name('fo-routes.index');
+        Route::get('/fo-routes/create', [AdminFoRouteController::class, 'create'])->name('fo-routes.create');
+        Route::post('/fo-routes', [AdminFoRouteController::class, 'store'])->name('fo-routes.store');
+        Route::get('/fo-routes/{foRoute}/edit', [AdminFoRouteController::class, 'edit'])->name('fo-routes.edit');
+        Route::put('/fo-routes/{foRoute}', [AdminFoRouteController::class, 'update'])->name('fo-routes.update');
+        Route::delete('/fo-routes/{foRoute}', [AdminFoRouteController::class, 'destroy'])->name('fo-routes.destroy');
+
+        // JSON endpoints to manage FO points and routes (if needed)
+        Route::post('/fo-points', [FoController::class, 'storePoint'])->name('fo-points.store');
+        Route::put('/fo-points/{foPoint}', [FoController::class, 'updatePoint'])->name('fo-points.update');
+        Route::delete('/fo-points/{foPoint}', [FoController::class, 'deletePoint'])->name('fo-points.destroy');
+        Route::post('/fo-routes-json', [FoController::class, 'storeRoute'])->name('fo-routes.json.store');
+        Route::put('/fo-routes-json/{foRoute}', [FoController::class, 'updateRoute'])->name('fo-routes.json.update');
+        Route::delete('/fo-routes-json/{foRoute}', [FoController::class, 'deleteRoute'])->name('fo-routes.json.destroy');
     });
 
     // Tower owner specific routes

@@ -6,6 +6,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 import { useLogoutConfirmation } from '@/Hooks/useLogoutConfirmation';
 import LogoutConfirmDialog from '@/Components/LogoutConfirmDialog';
+import { ToastContainer } from '@/Components/Toast';
 
 export default function Authenticated({
     header,
@@ -191,6 +192,9 @@ export default function Authenticated({
             )}
 
             <main>{children}</main>
+            
+            {/* Toast Notifications */}
+            <ToastContainer />
             
             {/* Logout Confirmation Dialog */}
             <LogoutConfirmDialog {...dialogProps} />
