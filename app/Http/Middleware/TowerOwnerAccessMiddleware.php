@@ -37,26 +37,3 @@ class TowerOwnerAccessMiddleware
         return $next($request);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

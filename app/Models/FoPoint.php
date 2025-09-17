@@ -79,7 +79,16 @@ class FoPoint extends Model
      */
     public function getIspImageUrlAttribute()
     {
-        return $this->isp_image ? asset('images/foto jalur FO/' . $this->isp_image) : null;
+        if (empty($this->isp_image)) {
+            return null;
+        }
+
+        $value = trim((string) $this->isp_image);
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+
+        return asset('images/foto jalur FO/' . ltrim($value, '/'));
     }
 
     /**
@@ -87,7 +96,16 @@ class FoPoint extends Model
      */
     public function getPoleImageUrlAttribute()
     {
-        return $this->pole_image ? asset('images/foto jalur FO/' . $this->pole_image) : null;
+        if (empty($this->pole_image)) {
+            return null;
+        }
+
+        $value = trim((string) $this->pole_image);
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+
+        return asset('images/foto jalur FO/' . ltrim($value, '/'));
     }
 
     /**
@@ -95,7 +113,16 @@ class FoPoint extends Model
      */
     public function getJunctionBoxImageUrlAttribute()
     {
-        return $this->junction_box_image ? asset('images/foto jalur FO/' . $this->junction_box_image) : null;
+        if (empty($this->junction_box_image)) {
+            return null;
+        }
+
+        $value = trim((string) $this->junction_box_image);
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+
+        return asset('images/foto jalur FO/' . ltrim($value, '/'));
     }
 
     /**

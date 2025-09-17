@@ -22,15 +22,17 @@ class FoPointsFromCsvSeeder extends Seeder
             return;
         }
 
-        if (!File::exists($imagesRoot)) {
-            $this->command?->warn('Images directory not found: ' . $imagesRoot);
-            return;
+        $imagesDirExists = File::exists($imagesRoot);
+        if (!$imagesDirExists) {
+            $this->command?->warn('Images directory not found (proceeding with link-only mode): ' . $imagesRoot);
         }
 
         $this->disableForeignKeys();
         DB::table('fo_points')->truncate();
 
-        [$byExact, $byStem, $topFolderByRel] = $this->buildImageIndexes($imagesRoot);
+        [$byExact, $byStem, $topFolderByRel] = $imagesDirExists
+            ? $this->buildImageIndexes($imagesRoot)
+            : [[], [], []];
 
         $segments = $this->parseCsvIntoSegments($csvPath);
 
@@ -47,6 +49,11 @@ class FoPointsFromCsvSeeder extends Seeder
                 $poleRaw = $this->cleanText($row['gambar_tiang'] ?? '');
                 $jbRaw = $this->cleanText($row['gambar_jb'] ?? '');
 
+                // Prefer Google Drive links if present
+                $linkIsp = $this->cleanText($row['link_isp'] ?? '');
+                $linkPole = $this->cleanText($row['link_tiang'] ?? '');
+                $linkJb = $this->cleanText($row['link_jb'] ?? '');
+
                 // Skip rows with invalid core data
                 if ($sequenceNumber === null || $sequenceNumber <= 0) {
                     $this->command?->warn("Skipping row with invalid sequence number: {$sequenceNumber}");
@@ -57,34 +64,35 @@ class FoPointsFromCsvSeeder extends Seeder
                     continue;
                 }
 
-                // Determine route folder by matching any image to indexed files
+                // Derive route name. Prefer folder inference if available, otherwise use segment index
                 $candidateFolders = [];
-                foreach ([$ispRaw, $poleRaw, $jbRaw] as $fileRaw) {
-                    if (!$this->isValidFilename($fileRaw)) {
-                        continue;
-                    }
-                    $rel = $this->resolveImageRelativePath($fileRaw, $byExact, $byStem);
-                    if ($rel) {
-                        $top = $topFolderByRel[$rel] ?? null;
-                        if ($top) {
-                            $candidateFolders[$top] = ($candidateFolders[$top] ?? 0) + 1;
+                if ($imagesDirExists) {
+                    foreach ([$ispRaw, $poleRaw, $jbRaw] as $fileRaw) {
+                        if (!$this->isValidFilename($fileRaw)) {
+                            continue;
+                        }
+                        $rel = $this->resolveImageRelativePath($fileRaw, $byExact, $byStem);
+                        if ($rel) {
+                            $top = $topFolderByRel[$rel] ?? null;
+                            if ($top) {
+                                $candidateFolders[$top] = ($candidateFolders[$top] ?? 0) + 1;
+                            }
                         }
                     }
                 }
 
-                // If we cannot map to any folder, skip to keep data accurate with provided images
-                if (empty($candidateFolders)) {
-                    continue;
+                if (!empty($candidateFolders)) {
+                    arsort($candidateFolders);
+                    $routeName = array_key_first($candidateFolders) ?? ('Segment ' . ($segmentIndex + 1));
+                } else {
+                    $routeName = 'Segment ' . ($segmentIndex + 1);
                 }
-
-                arsort($candidateFolders);
-                $routeName = array_key_first($candidateFolders) ?? ('Segment ' . ($segmentIndex + 1));
 
                 $ispRel = $this->resolveImageRelativePath($ispRaw, $byExact, $byStem);
                 $poleRel = $this->resolveImageRelativePath($poleRaw, $byExact, $byStem);
                 $jbRel = $this->resolveImageRelativePath($jbRaw, $byExact, $byStem);
 
-                $type = $jbRel ? 'junction' : 'pole';
+                $type = ($linkJb !== '' || $jbRel) ? 'junction' : 'pole';
 
                 FoPoint::create([
                     'sequence_number' => $sequenceNumber,
@@ -97,12 +105,14 @@ class FoPointsFromCsvSeeder extends Seeder
                     'description' => null,
                     'type' => $type,
                     'status' => 'active',
-                    'isp_image' => $ispRel,
-                    'pole_image' => $poleRel,
-                    'junction_box_image' => $jbRel,
+                    // Store link if provided, otherwise fallback to relative path if resolved
+                    'isp_image' => ($linkIsp !== '' ? $linkIsp : $ispRel),
+                    'pole_image' => ($linkPole !== '' ? $linkPole : $poleRel),
+                    'junction_box_image' => ($linkJb !== '' ? $linkJb : $jbRel),
                     'properties' => [
                         'source' => 'csv',
                         'segment_index' => $segmentIndex,
+                        'link_mode' => ($linkIsp !== '' || $linkPole !== '' || $linkJb !== ''),
                     ],
                 ]);
 
@@ -265,7 +275,9 @@ class FoPointsFromCsvSeeder extends Seeder
     private function extractRecordAtOffset(array $row, int $offset): ?array
     {
         $slice = [];
-        for ($k = 0; $k < 6; $k++) {
+        // Read up to 10 columns to capture possible link columns after the image columns
+        $max = 10;
+        for ($k = 0; $k < $max; $k++) {
             $slice[$k] = $row[$offset + $k] ?? '';
         }
 
@@ -288,6 +300,10 @@ class FoPointsFromCsvSeeder extends Seeder
             'gambar_isp' => $slice[3] ?? '',
             'gambar_tiang' => $slice[4] ?? '',
             'gambar_jb' => $slice[5] ?? '',
+            // Optional link columns (may be empty depending on the sheet)
+            'link_isp' => $slice[6] ?? '',
+            'link_tiang' => $slice[7] ?? '',
+            'link_jb' => $slice[8] ?? '',
         ];
     }
 
