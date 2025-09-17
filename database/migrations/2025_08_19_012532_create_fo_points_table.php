@@ -13,19 +13,29 @@ return new class extends Migration
     {
         Schema::create('fo_points', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Nama titik FO
-            $table->decimal('latitude', 10, 8); // Koordinat latitude
-            $table->decimal('longitude', 11, 8); // Koordinat longitude
+            $table->integer('sequence_number')->nullable(); // Nomor urut dari CSV
+            $table->string('name'); // Nama lokasi dari CSV
+            $table->decimal('latitude', 12, 8); // Koordinat latitude
+            $table->decimal('longitude', 12, 8); // Koordinat longitude
+            $table->string('original_coordinates')->nullable(); // Format asli koordinat dari CSV
+            $table->string('route_name')->nullable(); // Nama jalur/grup FO
             $table->string('area')->default('ungaran'); // Area: ungaran atau ambarawa
             $table->text('description')->nullable(); // Deskripsi titik
-            $table->string('type')->default('pole'); // Jenis: pole, junction, etc
+            $table->string('type')->default('pole'); // Jenis: pole, junction, hub, endpoint
             $table->string('status')->default('active'); // Status: active, inactive, maintenance
+            
+            // Kolom untuk menyimpan path gambar
+            $table->string('isp_image')->nullable(); // Path gambar ISP
+            $table->string('pole_image')->nullable(); // Path gambar tiang penuh
+            $table->string('junction_box_image')->nullable(); // Path gambar JB/joint box
+            
             $table->json('properties')->nullable(); // Data tambahan dalam format JSON
             $table->timestamps();
             
             // Index untuk performa
             $table->index(['area', 'status']);
             $table->index(['latitude', 'longitude']);
+            $table->index(['route_name', 'sequence_number']);
         });
     }
 

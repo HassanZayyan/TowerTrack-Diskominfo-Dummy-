@@ -28,12 +28,17 @@ class DatabaseSeeder extends Seeder
             TowerSeeder::class,
             TowerOwnerSeeder::class,
             StatusSeeder::class,
-            FoSeeder::class,
         ]);
         
         // Seed tower owner user accounts (must be after OwnerSeeder)
         $this->call([
             TowerOwnerUserSeeder::class,
+        ]);
+
+        // Seed FO points and routes from CSV/images
+        $this->call([
+            FoPointsFromCsvSeeder::class,
+            FoRoutesFromPointsSeeder::class,
         ]);
     }
 }

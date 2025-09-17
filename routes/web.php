@@ -37,6 +37,10 @@ Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower')
 Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
 Route::get('/tower/{tower}', [TowerController::class, 'show'])->name('tower.show');
 
+// FO Map API routes (public access)
+Route::get('/api/fo/map-data', [FoController::class, 'getMapData'])->name('fo.map.data');
+Route::get('/api/fo/routes/{foRoute}', [FoController::class, 'getRouteDetails'])->name('fo.route.details');
+
 // Public feedback and complaint forms (no authentication required)
 Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback');
 Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
