@@ -36,6 +36,9 @@ Route::get('/dashboard', function () {
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
 Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
+Route::get('/fo-details/{type}/{id}', [FoController::class, 'getDetails'])->name('fo.details');
+Route::put('/fo-points/{id}', [FoController::class, 'updatePoint'])->name('fo.points.update');
+Route::put('/fo-routes/{id}', [FoController::class, 'updateRoute'])->name('fo.routes.update');
 Route::get('/tower/{tower}', [TowerController::class, 'show'])->name('tower.show');
 
 // Public feedback and complaint forms (no authentication required)
