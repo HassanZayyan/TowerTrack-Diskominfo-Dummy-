@@ -36,7 +36,7 @@ class FoRoute extends Model
         'path_coordinates' => 'array',
         'point_ids' => 'array',
         'properties' => 'array',
-        'total_distance' => 'decimal:2',
+        'total_distance' => 'float',
         'total_points' => 'integer',
     ];
 
@@ -63,11 +63,15 @@ class FoRoute extends Model
     /**
      * Get the points that belong to this route.
      */
-    public function points(): BelongsToMany
+    public function points()
     {
-        return $this->belongsToMany(FoPoint::class, 'fo_route_points')
-                    ->withTimestamps()
-                    ->orderBy('sequence_number');
+        if (empty($this->point_ids)) {
+            return collect();
+        }
+        
+        return FoPoint::whereIn('id', $this->point_ids)
+                     ->orderBy('sequence_number')
+                     ->get();
     }
 
     /**
@@ -134,10 +138,15 @@ class FoRoute extends Model
      */
     public function updateTotalPoints()
     {
-        $points = $this->points;
-        $this->total_points = $points->count();
-        $this->point_ids = $points->pluck('id')->toArray();
+        // Count points by route_name and area instead of point_ids
+        $pointsCount = FoPoint::where('route_name', $this->name)
+                              ->where('area', $this->area)
+                              ->count();
+        
+        $this->total_points = $pointsCount;
         $this->save();
+        
+        return $this;
     }
 
     /**

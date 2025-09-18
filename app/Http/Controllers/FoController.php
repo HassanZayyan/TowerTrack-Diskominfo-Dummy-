@@ -138,23 +138,39 @@ class FoController extends Controller
      */
     public function updatePoint(Request $request, FoPoint $foPoint)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran,ambarawa',
-            'description' => 'nullable|string',
-            'type' => 'required|string|in:pole,junction,hub,endpoint',
-            'status' => 'required|string|in:active,inactive,maintenance',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'latitude' => 'required|numeric|between:-90,90',
+                'longitude' => 'required|numeric|between:-180,180',
+                'area' => 'required|in:ungaran,ambarawa',
+                'description' => 'nullable|string|max:1000',
+                'type' => 'required|string|in:pole,junction,hub,endpoint',
+                'status' => 'required|string|in:active,inactive,maintenance',
+                'route_name' => 'required|string|max:255',
+                'sequence_number' => 'required|integer|min:1',
+            ]);
 
-        $foPoint->update($validated);
+            $foPoint->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Titik FO berhasil diperbarui',
-            'data' => $foPoint
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Titik FO berhasil diperbarui',
+                'data' => $foPoint->fresh()
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui titik FO: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -162,27 +178,56 @@ class FoController extends Controller
      */
     public function updateRoute(Request $request, FoRoute $foRoute)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran,ambarawa',
-            'description' => 'nullable|string',
-            'path_coordinates' => 'required|array|min:2',
-            'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
-            'path_coordinates.*.lng' => 'required|numeric|between:-180,180',
-            'color' => 'nullable|string|max:7',
-            'status' => 'required|string|in:active,inactive,maintenance',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'area' => 'required|in:ungaran,ambarawa',
+                'description' => 'nullable|string|max:1000',
+                'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+                'status' => 'required|string|in:active,inactive,maintenance',
+            ]);
 
-        $foRoute->update($validated);
-        
-        // Recalculate total distance
-        $foRoute->update(['total_distance' => $foRoute->calculateDistance()]);
+            $foRoute->update($validated);
+            
+            // Recalculate total distance and points if needed
+            $points = FoPoint::where('route_name', $foRoute->name)
+                ->orderBy('sequence_number')
+                ->get();
+                
+            if ($points->count() > 1) {
+                $totalDistance = 0;
+                for ($i = 0; $i < $points->count() - 1; $i++) {
+                    $totalDistance += $this->calculateDistance(
+                        $points[$i]->latitude,
+                        $points[$i]->longitude,
+                        $points[$i + 1]->latitude,
+                        $points[$i + 1]->longitude
+                    );
+                }
+                $foRoute->update([
+                    'total_distance' => $totalDistance,
+                    'total_points' => $points->count()
+                ]);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Jalur FO berhasil diperbarui',
-            'data' => $foRoute
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Jalur FO berhasil diperbarui',
+                'data' => $foRoute->fresh()
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui jalur FO: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -275,13 +320,111 @@ class FoController extends Controller
     }
 
     /**
+     * Get details for FO point or route
+     */
+    public function getDetails(Request $request, $type, $id)
+    {
+        try {
+            if ($type === 'point') {
+                $point = FoPoint::findOrFail($id);
+                
+                // Get related routes for this point
+                $relatedRoutes = $point->routes()->map(function ($route) {
+                    return [
+                        'id' => $route->id,
+                        'name' => $route->name,
+                        'color' => $route->color,
+                        'total_distance' => (float) $route->total_distance,
+                        'total_points' => $route->total_points,
+                    ];
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'point',
+                    'data' => [
+                        'point' => [
+                            'id' => $point->id,
+                            'name' => $point->name,
+                            'latitude' => (float) $point->latitude,
+                            'longitude' => (float) $point->longitude,
+                            'type' => $point->type,
+                            'route_name' => $point->route_name,
+                            'sequence_number' => $point->sequence_number,
+                            'description' => $point->description,
+                            'area' => $point->area,
+                            'status' => $point->status,
+                            'images' => [
+                                'isp' => $point->isp_image_url,
+                                'pole' => $point->pole_image_url,
+                                'junction_box' => $point->junction_box_image_url,
+                            ],
+                            'has_images' => !empty($point->isp_image) || !empty($point->pole_image) || !empty($point->junction_box_image),
+                        ],
+                        'related_routes' => $relatedRoutes,
+                    ]
+                ]);
+            } elseif ($type === 'route') {
+                $route = FoRoute::findOrFail($id);
+                
+                $points = $route->points()
+                    ->map(function ($point) {
+                        return [
+                            'id' => $point->id,
+                            'name' => $point->name,
+                            'latitude' => (float) $point->latitude,
+                            'longitude' => (float) $point->longitude,
+                            'type' => $point->type,
+                            'sequence_number' => $point->sequence_number,
+                            'images' => [
+                                'isp' => $point->isp_image_url,
+                                'pole' => $point->pole_image_url,
+                                'junction_box' => $point->junction_box_image_url,
+                            ],
+                        ];
+                    });
+
+                $enhancedPolyline = $this->generateEnhancedRoutePolyline($route->path_coordinates);
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'route',
+                    'data' => [
+                        'route' => [
+                            'id' => $route->id,
+                            'name' => $route->name,
+                            'color' => $route->color,
+                            'total_distance' => (float) $route->total_distance,
+                            'total_points' => $route->total_points,
+                            'description' => $route->description,
+                            'area' => $route->area,
+                            'status' => $route->status,
+                        ],
+                        'points' => $points,
+                        'polyline' => $enhancedPolyline,
+                        'bounds' => $this->calculateMapBounds($points),
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid type. Must be "point" or "route"'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data not found or error occurred: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+
+    /**
      * Get detailed route data with enhanced polyline
      */
     public function getRouteDetails(FoRoute $foRoute)
     {
         $points = $foRoute->points()
-            ->orderBy('sequence_number')
-            ->get()
             ->map(function ($point) {
                 return [
                     'id' => $point->id,
@@ -399,10 +542,16 @@ class FoController extends Controller
             $start = $coordinates[$i];
             $end = $coordinates[$i + 1];
             
+            // Handle both array formats: [lng, lat] or ['lng' => x, 'lat' => y]
+            $startLng = is_array($start) ? (isset($start['lng']) ? $start['lng'] : $start[0]) : $start;
+            $startLat = is_array($start) ? (isset($start['lat']) ? $start['lat'] : $start[1]) : $start;
+            $endLng = is_array($end) ? (isset($end['lng']) ? $end['lng'] : $end[0]) : $end;
+            $endLat = is_array($end) ? (isset($end['lat']) ? $end['lat'] : $end[1]) : $end;
+            
             // Calculate distance to determine number of intermediate points
             $distance = $this->calculateDistance(
-                $start['lat'], $start['lng'],
-                $end['lat'], $end['lng']
+                $startLat, $startLng,
+                $endLat, $endLng
             );
             
             // More points for longer distances
@@ -410,8 +559,8 @@ class FoController extends Controller
             
             // Generate smooth curve between points
             $curvePoints = $this->generateCurvePoints(
-                $start['lat'], $start['lng'],
-                $end['lat'], $end['lng'],
+                $startLat, $startLng,
+                $endLat, $endLng,
                 $numPoints
             );
             

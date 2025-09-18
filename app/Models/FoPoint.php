@@ -44,10 +44,9 @@ class FoPoint extends Model
     /**
      * Get the routes that include this point.
      */
-    public function routes(): BelongsToMany
+    public function routes()
     {
-        return $this->belongsToMany(FoRoute::class, 'fo_route_points')
-                    ->withTimestamps();
+        return FoRoute::whereJsonContains('point_ids', $this->id)->get();
     }
 
     /**

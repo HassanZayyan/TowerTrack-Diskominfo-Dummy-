@@ -9,6 +9,7 @@ import AlertToast from '@/Components/AlertToast';
 import FoStats from '@/Components/DataFo/FoStats';
 import FoFilters from '@/Components/DataFo/FoFilters';
 import FoTable from '@/Components/DataFo/FoTable';
+import FoDetailModal from '@/Components/DataFo/FoDetailModal';
 
 // Fix Leaflet default icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -187,9 +188,14 @@ export default function DataFoIndex({
   const [showFilters, setShowFilters] = useState(true);
   const [selectedPoint, setSelectedPoint] = useState<any>(null);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
+  const [detailData, setDetailData] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'info' });
   const [loading, setLoading] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-7.1368, 110.4044]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Use data from Inertia props with fallback
   const currentMapData = mapData || {
@@ -214,7 +220,42 @@ export default function DataFoIndex({
     
     const matchesSearch = point.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          point.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'all' || point.type === selectedType;
+    
+    // Type filtering based on image combinations
+    let matchesType = true;
+    if (selectedType !== 'all') {
+      const images = point.images || { isp: null, pole: null, junction_box: null };
+      const hasIsp = Boolean(images.isp);
+      const hasPole = Boolean(images.pole);
+      const hasJunction = Boolean(images.junction_box);
+      
+      switch (selectedType) {
+        case 'pole_isp_junction':
+          matchesType = hasPole && hasIsp && hasJunction;
+          break;
+        case 'pole_isp':
+          matchesType = hasPole && hasIsp && !hasJunction;
+          break;
+        case 'pole_junction':
+          matchesType = hasPole && !hasIsp && hasJunction;
+          break;
+        case 'isp_junction':
+          matchesType = !hasPole && hasIsp && hasJunction;
+          break;
+        case 'pole_only':
+          matchesType = hasPole && !hasIsp && !hasJunction;
+          break;
+        case 'isp_only':
+          matchesType = !hasPole && hasIsp && !hasJunction;
+          break;
+        case 'junction_only':
+          matchesType = !hasPole && !hasIsp && hasJunction;
+          break;
+        default:
+          matchesType = true;
+      }
+    }
+    
     return matchesSearch && matchesType;
   }).map(point => ({
     ...point,
@@ -257,6 +298,171 @@ export default function DataFoIndex({
     setSelectedArea(area);
     router.get('/data-fo', { area }, { preserveState: true });
   };
+
+  // Export functionality
+  const handleExport = () => {
+    try {
+      // Create CSV content
+      const csvHeaders = [
+        'ID', 'Nama', 'Latitude', 'Longitude', 'Tipe', 'Jalur', 
+        'Urutan', 'Deskripsi', 'Area', 'Status', 'Ada Gambar ISP', 
+        'Ada Gambar Tiang', 'Ada Gambar JB'
+      ];
+      
+      const csvRows = filteredPoints.map(point => [
+        point.id,
+        `"${point.name}"`,
+        point.latitude,
+        point.longitude,
+        point.type,
+        `"${point.route_name}"`,
+        point.sequence_number,
+        `"${point.description || ''}"`,
+        point.area || selectedArea,
+        point.status || 'active',
+        point.images.isp ? 'Ya' : 'Tidak',
+        point.images.pole ? 'Ya' : 'Tidak',
+        point.images.junction_box ? 'Ya' : 'Tidak'
+      ]);
+      
+      const csvContent = [csvHeaders.join(','), ...csvRows.map(row => row.join(','))].join('\n');
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `data-fo-${selectedArea}-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Show success toast
+      setToast({
+        show: true,
+        type: 'success',
+        title: 'Export Berhasil',
+        message: `Data ${filteredPoints.length} titik FO berhasil diekspor ke CSV`
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      setToast({
+        show: true,
+        type: 'error',
+        title: 'Export Gagal',
+        message: 'Terjadi kesalahan saat mengekspor data'
+      });
+    }
+  };
+
+  // Fullscreen functionality
+  const handleFullscreen = () => {
+    if (!mapContainerRef.current) return;
+    
+    try {
+      if (!isFullscreen) {
+        // Enter fullscreen
+        if (mapContainerRef.current.requestFullscreen) {
+          mapContainerRef.current.requestFullscreen();
+        } else if ((mapContainerRef.current as any).webkitRequestFullscreen) {
+          (mapContainerRef.current as any).webkitRequestFullscreen();
+        } else if ((mapContainerRef.current as any).msRequestFullscreen) {
+          (mapContainerRef.current as any).msRequestFullscreen();
+        }
+        setIsFullscreen(true);
+        
+        setToast({
+          show: true,
+          type: 'info',
+          title: 'Mode Fullscreen',
+          message: 'Tekan ESC untuk keluar dari mode fullscreen'
+        });
+      } else {
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        } else if ((document as any).msExitFullscreen) {
+          (document as any).msExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+      setToast({
+        show: true,
+        type: 'error',
+        title: 'Fullscreen Gagal',
+        message: 'Browser tidak mendukung mode fullscreen'
+      });
+    }
+  };
+
+  // Handle detail functionality
+  const handleShowDetail = async (type: 'point' | 'route', item: any) => {
+    setDetailLoading(true);
+    setShowDetailModal(true);
+    
+    try {
+      const response = await fetch(`/fo-details/${type}/${item.id}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setDetailData(result);
+      } else {
+        setToast({
+          show: true,
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal memuat detail data'
+        });
+        setDetailData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching detail:', error);
+      setToast({
+        show: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Terjadi kesalahan saat memuat detail'
+      });
+      setDetailData(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setDetailData(null);
+    setDetailLoading(false);
+  };
+  
+
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Set map center based on bounds
   useEffect(() => {
@@ -323,11 +529,30 @@ export default function DataFoIndex({
               <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+              <button 
+                onClick={handleExport}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
+                title="Export data ke CSV"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 Export
               </button>
-              <button className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors" style={{ backgroundColor: '#B71C1C' }}>
-                Fullscreen
+              <button 
+                onClick={handleFullscreen}
+                className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center gap-2" 
+                style={{ backgroundColor: '#B71C1C' }}
+                title={isFullscreen ? "Keluar dari fullscreen" : "Masuk ke mode fullscreen"}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isFullscreen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  )}
+                </svg>
+                {isFullscreen ? 'Exit' : 'Fullscreen'}
               </button>
             </div>
           </div>
@@ -342,7 +567,11 @@ export default function DataFoIndex({
               </div>
             )}
             
-            <div className="w-full" style={mapContainerStyle}>
+            <div 
+              ref={mapContainerRef}
+              className={`w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`} 
+              style={isFullscreen ? { height: '100vh', width: '100vw' } : mapContainerStyle}
+            >
               <MapContainer
                 center={mapCenter}
                 zoom={13}
@@ -560,24 +789,29 @@ export default function DataFoIndex({
           filteredPoints={filteredPoints}
           filteredRoutes={filteredRoutes}
           viewMode={viewMode}
-          onPointClick={(point) => setSelectedPoint(point)}
-          onRouteClick={(route) => setSelectedRoute(route)}
+          onPointClick={(point) => handleShowDetail('point', point)}
+          onRouteClick={(route) => handleShowDetail('route', route)}
         />
 
 
       </div>
       
-      {/* Toast */}
+      {/* Detail Modal */}
+      <FoDetailModal
+         isOpen={showDetailModal}
+         detailData={detailData}
+         loading={detailLoading}
+         onClose={handleCloseDetailModal}
+       />
+
+      {/* Toast Notification */}
       <AlertToast
         show={toast.show}
         type={toast.type}
         title={toast.title}
         message={toast.message}
-        durationMs={3500}
         onClose={() => setToast({ ...toast, show: false })}
       />
-
-
     </MainLayout>
   );
 }
