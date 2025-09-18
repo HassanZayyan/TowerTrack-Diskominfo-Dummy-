@@ -91,10 +91,13 @@ export default function FoFilters({
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
             >
               <option value="all">Semua Tipe</option>
-              <option value="hub">Hub</option>
-              <option value="junction">Junction</option>
-              <option value="pole">Pole</option>
-              <option value="endpoint">Endpoint</option>
+              <option value="pole_isp_junction">Pole + ISP + Junction Box</option>
+              <option value="pole_isp">Pole + ISP</option>
+              <option value="pole_junction">Pole + Junction Box</option>
+              <option value="isp_junction">ISP + Junction Box</option>
+              <option value="pole_only">Pole</option>
+              <option value="isp_only">ISP</option>
+              <option value="junction_only">Junction Box</option>
             </select>
           </div>
         )}

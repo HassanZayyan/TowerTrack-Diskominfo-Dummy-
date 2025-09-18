@@ -244,7 +244,11 @@ export default function FoTable({
                   </td>
                   <td className="px-4 py-4">
                     <button
-                      onClick={() => onPointClick?.(point)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onPointClick?.(point);
+                      }}
                       className="text-white px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#B71C1C' }}
                     >
@@ -317,7 +321,11 @@ export default function FoTable({
                   </td>
                   <td className="px-4 py-4">
                     <button
-                      onClick={() => onRouteClick?.(route)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRouteClick?.(route);
+                      }}
                       className="text-white px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#B71C1C' }}
                     >
