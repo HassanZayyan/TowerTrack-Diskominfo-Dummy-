@@ -101,6 +101,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
     if (routeName === '/admin/feedbacks') {
       return currentRoute?.startsWith('Admin/Feedback') || currentUrl.startsWith('/admin/feedbacks');
     }
+    if (routeName === '/admin/fo-management') {
+      return currentRoute?.startsWith('Admin/FoManagement') || 
+             currentRoute?.startsWith('Admin/FoRoute') || 
+             currentUrl.startsWith('/admin/fo-management') ||
+             currentUrl.startsWith('/admin/fo-routes');
+    }
     
     return currentUrl.startsWith(routeName);
   };
@@ -310,6 +316,28 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
                 Towers
               </Link>
             </li>
+            {(user?.role === 'admin' || user?.role === 'operator') && (
+              <li>
+                <Link 
+                  href={route('admin.fo-management.routes.list')} 
+                  onClick={handleNavClick}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    isActive('/admin/fo-management') 
+                      ? 'font-semibold shadow-md' 
+                      : 'hover:bg-white/10'
+                  }`}
+                  style={{ 
+                    backgroundColor: isActive('/admin/fo-management') ? '#FFD700' : 'transparent',
+                    color: isActive('/admin/fo-management') ? '#B71C1C' : '#FFFFFF'
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Fiber Optic
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

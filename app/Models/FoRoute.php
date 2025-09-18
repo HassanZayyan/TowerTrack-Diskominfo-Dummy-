@@ -138,10 +138,15 @@ class FoRoute extends Model
      */
     public function updateTotalPoints()
     {
-        $points = $this->points();
-        $this->total_points = $points->count();
-        $this->point_ids = $points->pluck('id')->toArray();
+        // Count points by route_name and area instead of point_ids
+        $pointsCount = FoPoint::where('route_name', $this->name)
+                              ->where('area', $this->area)
+                              ->count();
+        
+        $this->total_points = $pointsCount;
         $this->save();
+        
+        return $this;
     }
 
     /**

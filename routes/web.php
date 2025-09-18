@@ -16,7 +16,7 @@ use App\Http\Middleware\NonStaffMiddleware;
 use App\Http\Middleware\TowerOwnerMiddleware;
 use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
-use App\Http\Controllers\Admin\FoRouteController as AdminFoRouteController;
+use App\Http\Controllers\Admin\FoManagementController;
 
 Route::get('/', function () {
     return redirect()->route('data.tower');
@@ -204,15 +204,30 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
 
     // FO management routes: admin and operator can CRUD
     Route::middleware('admin_or_operator')->group(function () {
-        // Admin pages for managing FO routes - follow Inertia.js conventions
-        Route::get('/fo-routes', [AdminFoRouteController::class, 'index'])->name('fo-routes.index');
-        Route::get('/fo-routes/create', [AdminFoRouteController::class, 'create'])->name('fo-routes.create');
-        Route::post('/fo-routes', [AdminFoRouteController::class, 'store'])->name('fo-routes.store');
-        Route::get('/fo-routes/{foRoute}/edit', [AdminFoRouteController::class, 'edit'])->name('fo-routes.edit');
-        Route::put('/fo-routes/{foRoute}', [AdminFoRouteController::class, 'update'])->name('fo-routes.update');
-        Route::delete('/fo-routes/{foRoute}', [AdminFoRouteController::class, 'destroy'])->name('fo-routes.destroy');
+        // Main FO Management Routes (Route-first flow)
+        Route::get('/fo-management', [FoManagementController::class, 'routesList'])->name('fo-management.routes.list');
+        Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
+        
+        // Legacy comprehensive FO Management (for backward compatibility)
+        Route::get('/fo-management/overview', [FoManagementController::class, 'index'])->name('fo-management.index');
+        
+        // FO Routes Management
+        Route::get('/fo-management/routes/create', [FoManagementController::class, 'createRoute'])->name('fo-management.routes.create');
+        Route::post('/fo-management/routes', [FoManagementController::class, 'storeRoute'])->name('fo-management.routes.store');
+        Route::get('/fo-management/routes/{foRoute}/edit', [FoManagementController::class, 'editRoute'])->name('fo-management.routes.edit');
+        Route::put('/fo-management/routes/{foRoute}', [FoManagementController::class, 'updateRoute'])->name('fo-management.routes.update');
+        Route::delete('/fo-management/routes/{foRoute}', [FoManagementController::class, 'destroyRoute'])->name('fo-management.routes.destroy');
+        Route::post('/fo-management/routes/bulk-action', [FoManagementController::class, 'bulkRoutesAction'])->name('fo-management.routes.bulk-action');
+        
+        // FO Points Management
+        Route::get('/fo-management/points/create', [FoManagementController::class, 'createPoint'])->name('fo-management.points.create');
+        Route::post('/fo-management/points', [FoManagementController::class, 'storePoint'])->name('fo-management.points.store');
+        Route::get('/fo-management/points/{foPoint}/edit', [FoManagementController::class, 'editPoint'])->name('fo-management.points.edit');
+        Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
+        Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
+        Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
 
-        // JSON endpoints to manage FO points and routes (if needed)
+        // JSON endpoints to manage FO points and routes (API style for AJAX calls)
         Route::post('/fo-points', [FoController::class, 'storePoint'])->name('fo-points.store');
         Route::put('/fo-points/{foPoint}', [FoController::class, 'updatePoint'])->name('fo-points.update');
         Route::delete('/fo-points/{foPoint}', [FoController::class, 'deletePoint'])->name('fo-points.destroy');
