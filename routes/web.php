@@ -206,13 +206,13 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::middleware('admin_or_operator')->group(function () {
         // Main FO Management Routes (Route-first flow)
         Route::get('/fo-management', [FoManagementController::class, 'routesList'])->name('fo-management.routes.list');
-        Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
         
         // Legacy comprehensive FO Management (for backward compatibility)
         Route::get('/fo-management/overview', [FoManagementController::class, 'index'])->name('fo-management.index');
         
-        // FO Routes Management
+        // FO Routes Management - specific routes must come before parameterized routes
         Route::get('/fo-management/routes/create', [FoManagementController::class, 'createRoute'])->name('fo-management.routes.create');
+        Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
         Route::post('/fo-management/routes', [FoManagementController::class, 'storeRoute'])->name('fo-management.routes.store');
         Route::get('/fo-management/routes/{foRoute}/edit', [FoManagementController::class, 'editRoute'])->name('fo-management.routes.edit');
         Route::put('/fo-management/routes/{foRoute}', [FoManagementController::class, 'updateRoute'])->name('fo-management.routes.update');

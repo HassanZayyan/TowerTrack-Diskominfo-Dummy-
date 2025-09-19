@@ -20,7 +20,7 @@ class FoManagementController extends Controller
         // Get FO Routes with pagination
         $foRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
             ->orderBy('name')
-            ->paginate(15)
+            ->paginate(50)
             ->through(function ($route) {
                 return [
                     'id' => $route->id,

@@ -117,28 +117,67 @@ const TabNavigation = memo(({ activeTab, onTabChange }: {
   onTabChange: (tab: string) => void; 
 }) => {
   const tabs = [
-    { key: 'overview', label: 'Overview', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z' },
-    { key: 'points', label: 'Titik FO', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
-    { key: 'routes', label: 'Jalur FO', icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' }
+    { 
+      key: 'overview', 
+      label: 'Dashboard', 
+      icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z',
+      description: 'Ringkasan & Statistik'
+    },
+    { 
+      key: 'points', 
+      label: 'Titik FO', 
+      icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z',
+      description: 'Kelola Titik Fiber Optic'
+    },
+    { 
+      key: 'routes', 
+      label: 'Jalur FO', 
+      icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
+      description: 'Kelola Jalur Fiber Optic'
+    }
   ];
 
   return (
-    <div className="border-b border-gray-200">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+    <div className="px-6 pt-6">
+      <nav className="flex flex-col sm:flex-row gap-2" aria-label="Tabs">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => onTabChange(tab.key)}
-            className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`group relative flex flex-col sm:flex-row items-start sm:items-center p-4 rounded-xl transition-all duration-300 text-left ${
               activeTab === tab.key
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg transform scale-105'
+                : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 hover:shadow-md'
             }`}
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-            </svg>
-            {tab.label}
+            <div className={`flex items-center gap-3 ${
+              activeTab === tab.key ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
+            }`}>
+              <div className={`p-2 rounded-lg transition-all duration-200 ${
+                activeTab === tab.key 
+                  ? 'bg-white/20' 
+                  : 'bg-gray-100 group-hover:bg-blue-100'
+              }`}>
+                <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                </svg>
+              </div>
+              <div>
+                <div className={`font-semibold text-sm ${
+                  activeTab === tab.key ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {tab.label}
+                </div>
+                <div className={`text-xs mt-0.5 ${
+                  activeTab === tab.key ? 'text-blue-100' : 'text-gray-500'
+                }`}>
+                  {tab.description}
+                </div>
+              </div>
+            </div>
+            {activeTab === tab.key && (
+              <div className="absolute inset-0 rounded-xl ring-2 ring-blue-300 ring-opacity-50"></div>
+            )}
           </button>
         ))}
       </nav>
@@ -517,42 +556,125 @@ export default function FoManagementIndex() {
       case 'overview':
         return (
           <div className="space-y-8">
+            {/* Welcome Section */}
+            <div className="text-center py-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Fiber Optic</h2>
+              <p className="text-gray-600">Monitoring dan kontrol infrastruktur fiber optic secara real-time</p>
+            </div>
+            
             <StatsCards stats={stats} />
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+              <div className="xl:col-span-3 space-y-8">
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <PointTypesChart pointTypes={pointTypes} />
                   <RouteStatusChart routeStatus={routeStatus} />
                 </div>
                 
-                {/* Quick Actions */}
-                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Enhanced Quick Actions */}
+                <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl border border-gray-100 rounded-2xl p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Aksi Cepat</h3>
+                      <p className="text-gray-600 text-sm">Tambah infrastruktur baru dengan mudah</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Link
                       href={route('admin.fo-management.points.create')}
-                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-sm"
+                      className="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl p-6 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                     >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Titik FO
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="p-2 bg-white/20 rounded-lg">
+                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            </svg>
+                          </div>
+                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                        <h4 className="font-semibold text-lg mb-1">Titik FO</h4>
+                        <p className="text-blue-100 text-sm">Tambah titik baru</p>
+                      </div>
                     </Link>
+                    
                     <Link
                       href={route('admin.fo-management.routes.create')}
-                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-sm"
+                      className="group relative overflow-hidden bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl p-6 hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                     >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Jalur FO
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="p-2 bg-white/20 rounded-lg">
+                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                          </div>
+                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                        <h4 className="font-semibold text-lg mb-1">Jalur FO</h4>
+                        <p className="text-green-100 text-sm">Tambah jalur baru</p>
+                      </div>
+                    </Link>
+                    
+                    <Link
+                      href={route('admin.fo-management.points.list')}
+                      className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-2xl p-6 hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="p-2 bg-white/20 rounded-lg">
+                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                          </div>
+                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                        <h4 className="font-semibold text-lg mb-1">Kelola Titik</h4>
+                        <p className="text-purple-100 text-sm">Lihat semua titik</p>
+                      </div>
+                    </Link>
+                    
+                    <Link
+                      href={route('admin.fo-management.routes.list')}
+                      className="group relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-2xl p-6 hover:from-orange-700 hover:to-orange-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="p-2 bg-white/20 rounded-lg">
+                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                            </svg>
+                          </div>
+                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                        <h4 className="font-semibold text-lg mb-1">Kelola Jalur</h4>
+                        <p className="text-orange-100 text-sm">Lihat semua jalur</p>
+                      </div>
                     </Link>
                   </div>
                 </div>
               </div>
               
-              <div className="lg:col-span-1">
+              <div className="xl:col-span-1">
                 <RecentActivity recentPoints={recentPoints} recentRoutes={recentRoutes} />
               </div>
             </div>
@@ -561,49 +683,179 @@ export default function FoManagementIndex() {
       
       case 'points':
         return (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h3 className="text-lg font-semibold text-gray-900">Manajemen Titik FO</h3>
-              <Link
-                href={route('admin.fo-management.points.create')}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Tambah Titik
-              </Link>
+          <div className="space-y-8">
+            {/* Points Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-600 rounded-xl">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Manajemen Titik FO</h3>
+                    <p className="text-gray-600 mt-1">Kelola dan monitor semua titik fiber optic</p>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        {stats.active_points} Aktif
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        {stats.inactive_points} Non-aktif
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                        {stats.maintenance_points} Maintenance
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href={route('admin.fo-management.points.create')}
+                    className="group inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Tambah Titik Baru
+                  </Link>
+                  <Link
+                    href={route('admin.fo-management.points.export')}
+                    className="group inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export Data
+                  </Link>
+                </div>
+              </div>
             </div>
-            <FoTable
-              filteredPoints={filteredPoints}
-              filteredRoutes={[]}
-              viewMode="table"
-              activeTab="points"
-            />
+            
+            {/* Points Table */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Daftar Titik FO</h4>
+                      <p className="text-sm text-gray-600">Total {stats.total_points} titik terdaftar</p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Menampilkan {filteredPoints.length} dari {stats.total_points} titik
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <FoTable
+                  filteredPoints={filteredPoints}
+                  filteredRoutes={[]}
+                  viewMode="table"
+                  activeTab="points"
+                />
+              </div>
+            </div>
           </div>
         );
       
       case 'routes':
         return (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h3 className="text-lg font-semibold text-gray-900">Manajemen Jalur FO</h3>
-              <Link
-                href={route('admin.fo-management.routes.create')}
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Tambah Jalur
-              </Link>
+          <div className="space-y-8">
+            {/* Routes Header */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-600 rounded-xl">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Manajemen Jalur FO</h3>
+                    <p className="text-gray-600 mt-1">Kelola dan monitor semua jalur fiber optic</p>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        {stats.active_routes} Aktif
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        {stats.inactive_routes} Non-aktif
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                        {stats.maintenance_routes} Maintenance
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        {safeToFixed(stats.total_distance)} km Total
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href={route('admin.fo-management.routes.create')}
+                    className="group inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Tambah Jalur Baru
+                  </Link>
+                  <Link
+                    href={route('admin.fo-management.routes.export')}
+                    className="group inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Laporan Jalur
+                  </Link>
+                </div>
+              </div>
             </div>
-            <FoTable
-              filteredPoints={[]}
-              filteredRoutes={filteredRoutes}
-              viewMode="table"
-              activeTab="routes"
-            />
+            
+            {/* Routes Table */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Daftar Jalur FO</h4>
+                      <p className="text-sm text-gray-600">Total {stats.total_routes} jalur terdaftar</p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Menampilkan {filteredRoutes.length} dari {stats.total_routes} jalur
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <FoTable
+                  filteredPoints={[]}
+                  filteredRoutes={filteredRoutes}
+                  viewMode="table"
+                  activeTab="routes"
+                />
+              </div>
+            </div>
           </div>
         );
       
@@ -618,93 +870,160 @@ export default function FoManagementIndex() {
       
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manajemen Fiber Optic</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Kelola titik dan jalur fiber optic untuk area {currentArea}
-            </p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white shadow rounded-lg p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div>
-              <label htmlFor="search" className="block text-sm font-medium text-gray-700">
-                Pencarian
-              </label>
-              <input
-                type="text"
-                id="search"
-                value={filters.search}
-                onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
-                placeholder="Cari nama..."
-              />
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 text-white shadow-xl">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-2">
+              <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
+                Manajemen Fiber Optic
+              </h1>
+              <p className="text-blue-100 text-lg">
+                Kelola titik dan jalur fiber optic untuk area <span className="font-semibold text-white">{currentArea}</span>
+              </p>
+              <div className="flex items-center gap-2 text-blue-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                </svg>
+                <span className="text-sm">Dashboard Monitoring & Kontrol</span>
+              </div>
             </div>
-            
-            <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
-                Status
-              </label>
-              <select
-                id="status-filter"
-                value={filters.status}
-                onChange={(e) => handleFilterChange({ ...filters, status: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href={route('admin.fo-management.points.create')}
+                className="group inline-flex items-center justify-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                <option value="all">Semua Status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Non-aktif</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700">
-                Tipe
-              </label>
-              <select
-                id="type-filter"
-                value={filters.type}
-                onChange={(e) => handleFilterChange({ ...filters, type: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Tambah Titik FO
+              </Link>
+              <Link
+                href={route('admin.fo-management.routes.create')}
+                className="group inline-flex items-center justify-center px-6 py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                <option value="all">Semua Tipe</option>
-                <option value="pole">Pole</option>
-                <option value="junction">Junction</option>
-                <option value="hub">Hub</option>
-                <option value="endpoint">Endpoint</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="area-filter" className="block text-sm font-medium text-gray-700">
-                Area
-              </label>
-              <select
-                id="area-filter"
-                value={filters.area}
-                onChange={(e) => handleFilterChange({ ...filters, area: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
-              >
-                {availableAreas.map((area: string) => (
-                  <option key={area} value={area}>
-                    {area.charAt(0).toUpperCase() + area.slice(1)}
-                  </option>
-                ))}
-              </select>
+                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Tambah Jalur FO
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-white shadow rounded-lg">
-          <TabNavigation activeTab={selectedTab} onTabChange={handleTabChange} />
+        {/* Enhanced Filters */}
+        <div className="bg-white shadow-lg rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Filter & Pencarian</h3>
+                <p className="text-sm text-gray-600">Gunakan filter untuk mempersempit hasil pencarian</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <label htmlFor="search" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Pencarian
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="search"
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
+                    className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm"
+                    placeholder="Cari nama titik atau jalur..."
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="status-filter" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Status
+                </label>
+                <select
+                  id="status-filter"
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange({ ...filters, status: e.target.value })}
+                  className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm bg-white"
+                >
+                  <option value="all">🔄 Semua Status</option>
+                  <option value="active">✅ Aktif</option>
+                  <option value="inactive">❌ Non-aktif</option>
+                  <option value="maintenance">🔧 Maintenance</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="type-filter" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  Tipe
+                </label>
+                <select
+                  id="type-filter"
+                  value={filters.type}
+                  onChange={(e) => handleFilterChange({ ...filters, type: e.target.value })}
+                  className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm bg-white"
+                >
+                  <option value="all">📋 Semua Tipe</option>
+                  <option value="pole">🏗️ Pole</option>
+                  <option value="junction">🔗 Junction</option>
+                  <option value="hub">🌐 Hub</option>
+                  <option value="endpoint">📍 Endpoint</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="area-filter" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  </svg>
+                  Area
+                </label>
+                <select
+                  id="area-filter"
+                  value={filters.area}
+                  onChange={(e) => handleFilterChange({ ...filters, area: e.target.value })}
+                  className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm bg-white"
+                >
+                  {availableAreas.map((area: string) => (
+                    <option key={area} value={area}>
+                      📍 {area.charAt(0).toUpperCase() + area.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Tab Navigation */}
+        <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+            <TabNavigation activeTab={selectedTab} onTabChange={handleTabChange} />
+          </div>
           
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-8">
             {renderTabContent()}
           </div>
         </div>
