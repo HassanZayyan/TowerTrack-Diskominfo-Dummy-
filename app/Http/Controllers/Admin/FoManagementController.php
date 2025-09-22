@@ -7,6 +7,7 @@ use App\Models\FoRoute;
 use App\Models\FoPoint;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FoManagementController extends Controller
 {
@@ -132,141 +133,7 @@ class FoManagementController extends Controller
         ]);
     }
 
-    /**
-     * Display a listing of FO management data (legacy method for backward compatibility)
-     */
-    public function index(Request $request)
-    {
-        $area = $request->get('area', 'ungaran');
-        $activeTab = $request->get('tab', 'overview'); // overview, points, routes
-
-        // Get FO Points with pagination
-        $foPoints = FoPoint::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('route_name')
-            ->orderBy('sequence_number')
-            ->paginate(15, ['*'], 'points_page')
-            ->through(function ($point) {
-                return [
-                    'id' => $point->id,
-                    'name' => $point->name,
-                    'latitude' => (float) $point->latitude,
-                    'longitude' => (float) $point->longitude,
-                    'area' => $point->area,
-                    'type' => $point->type,
-                    'status' => $point->status,
-                    'route_name' => $point->route_name,
-                    'sequence_number' => $point->sequence_number,
-                    'description' => $point->description,
-                    'created_at' => $point->created_at->format('d M Y H:i'),
-                    'updated_at' => $point->updated_at->format('d M Y H:i'),
-                ];
-            });
-
-        // Get FO Routes with pagination
-        $foRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('name')
-            ->paginate(15, ['*'], 'routes_page')
-            ->through(function ($route) {
-                return [
-                    'id' => $route->id,
-                    'name' => $route->name,
-                    'area' => $route->area,
-                    'status' => $route->status,
-                    'color' => $route->color,
-                    'total_distance' => (float) ($route->total_distance ?? 0),
-                    'total_points' => (int) ($route->total_points ?? 0),
-                    'description' => $route->description,
-                    'created_at' => $route->created_at->format('d M Y H:i'),
-                    'updated_at' => $route->updated_at->format('d M Y H:i'),
-                ];
-            });
-
-        // Get comprehensive statistics with safe number handling
-        $totalDistance = FoRoute::when($area, fn($q) => $q->where('area', $area))->sum('total_distance');
-        $avgPointsPerRoute = FoRoute::when($area, fn($q) => $q->where('area', $area))->avg('total_points');
-        
-        $stats = [
-            // Overall totals
-            'total_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->count(),
-            'total_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->count(),
-            
-            // Points by status
-            'active_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            
-            // Routes by status
-            'active_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            
-            // Coverage metrics with safe number handling
-            'total_distance' => is_numeric($totalDistance) ? (float) $totalDistance : 0.0,
-            'avg_points_per_route' => is_numeric($avgPointsPerRoute) ? (float) $avgPointsPerRoute : 0.0,
-            'coverage_percentage' => $this->calculateCoveragePercentage($area),
-            
-            // Health status
-            'health_score' => $this->calculateHealthScore($area),
-        ];
-
-        // Get detailed analytics data
-        $pointTypes = FoPoint::when($area, fn($q) => $q->where('area', $area))
-            ->selectRaw('type, COUNT(*) as count')
-            ->groupBy('type')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'type' => $item->type,
-                    'count' => $item->count,
-                    'label' => $this->getTypeLabel($item->type),
-                    'percentage' => 0, // Will be calculated later
-                ];
-            });
-            
-        // Calculate percentages for point types
-        $totalPoints = $pointTypes->sum('count');
-        $pointTypes = $pointTypes->map(function ($item) use ($totalPoints) {
-            $item['percentage'] = $totalPoints > 0 ? round(($item['count'] / $totalPoints) * 100, 1) : 0;
-            return $item;
-        });
-
-        // Get route status distribution
-        $routeStatus = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'status' => $item->status,
-                    'count' => $item->count,
-                    'label' => $this->getStatusLabel($item->status),
-                ];
-            });
-
-        // Get recent activity
-        $recentPoints = FoPoint::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get(['id', 'name', 'type', 'status', 'created_at']);
-
-        $recentRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get(['id', 'name', 'status', 'total_distance', 'created_at']);
-
-        return Inertia::render('Admin/FoManagement/Index', [
-            'foPoints' => $foPoints,
-            'foRoutes' => $foRoutes,
-            'stats' => $stats,
-            'pointTypes' => $pointTypes,
-            'routeStatus' => $routeStatus,
-            'recentPoints' => $recentPoints,
-            'recentRoutes' => $recentRoutes,
-            'currentArea' => $area,
-            'availableAreas' => ['ungaran', 'ambarawa'],
-            'activeTab' => $activeTab,
-        ]);
-    }
+    // The legacy 'index' method has been removed. Overview is deprecated in favor of route-first flow.
 
     /**
      * Show the form for creating a new FO point
@@ -381,6 +248,9 @@ class FoManagementController extends Controller
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'availableRoutes' => $availableRoutes,
             'fromRouteDetail' => $request->get('from_route'),
+            'parentRouteId' => optional(FoRoute::where('name', $foPoint->route_name)
+                ->where('area', $foPoint->area)
+                ->first())->id,
         ]);
     }
 
@@ -623,6 +493,111 @@ class FoManagementController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Export FO points as CSV
+     */
+    public function exportPoints(Request $request): StreamedResponse
+    {
+        $fileName = 'fo_points_' . date('Ymd_His') . '.csv';
+
+        $query = FoPoint::query();
+        if ($area = $request->get('area')) {
+            $query->where('area', $area);
+        }
+        if (($status = $request->get('status')) && $status !== 'all') {
+            $query->where('status', $status);
+        }
+        if (($type = $request->get('type')) && $type !== 'all') {
+            $query->where('type', $type);
+        }
+        if ($search = $request->get('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $columns = [
+            'ID', 'Name', 'Latitude', 'Longitude', 'Area', 'Type', 'Status',
+            'Route Name', 'Sequence Number', 'Description', 'Created At', 'Updated At'
+        ];
+
+        return response()->streamDownload(function () use ($query, $columns) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, $columns);
+
+            foreach ($query->orderBy('id')->cursor() as $point) {
+                fputcsv($handle, [
+                    $point->id,
+                    $point->name,
+                    (float) $point->latitude,
+                    (float) $point->longitude,
+                    $point->area,
+                    $point->type,
+                    $point->status,
+                    $point->route_name,
+                    (int) $point->sequence_number,
+                    (string) ($point->description ?? ''),
+                    optional($point->created_at)->format('Y-m-d H:i:s'),
+                    optional($point->updated_at)->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Export FO routes as CSV
+     */
+    public function exportRoutes(Request $request): StreamedResponse
+    {
+        $fileName = 'fo_routes_' . date('Ymd_His') . '.csv';
+
+        $query = FoRoute::query();
+        if ($area = $request->get('area')) {
+            $query->where('area', $area);
+        }
+        if (($status = $request->get('status')) && $status !== 'all') {
+            $query->where('status', $status);
+        }
+        if ($search = $request->get('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $columns = [
+            'ID', 'Name', 'Area', 'Status', 'Color', 'Total Distance (km)',
+            'Total Points', 'Description', 'Created At', 'Updated At'
+        ];
+
+        return response()->streamDownload(function () use ($query, $columns) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, $columns);
+
+            foreach ($query->orderBy('id')->cursor() as $route) {
+                fputcsv($handle, [
+                    $route->id,
+                    $route->name,
+                    $route->area,
+                    $route->status,
+                    (string) ($route->color ?? ''),
+                    (float) ($route->total_distance ?? 0),
+                    (int) ($route->total_points ?? 0),
+                    (string) ($route->description ?? ''),
+                    optional($route->created_at)->format('Y-m-d H:i:s'),
+                    optional($route->updated_at)->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**

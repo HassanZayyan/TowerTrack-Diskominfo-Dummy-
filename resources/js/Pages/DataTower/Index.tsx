@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import HeroSection from '@/Components/HeroSection';
 import TowerDetailModal from '@/Components/TowerDetailModal';
 import AlertToast from '@/Components/AlertToast';
 
@@ -195,14 +196,39 @@ export default function DataTowerIndex({
     <MainLayout title="Data Tower" currentPage="/data-tower">
       <Head title="Data Tower" />
 
-      {/* Welcome Bar */}
-      <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
-        <div className="flex-1">
-          <h2 className="text-xl sm:text-2xl font-bold leading-snug mb-2" style={{ color: '#212121' }}>Selamat datang di TowerTrack!</h2>
-          <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
-            Sistem monitoring tower telekomunikasi di Kabupaten Semarang.
-          </p>
-        </div>
+      {/* Hero Section */}
+      <div className="px-4 sm:px-6 mb-6">
+        <HeroSection
+          title={<>
+            Selamat datang di TowerTrack
+            <span className="block">Monitoring Tower Kabupaten Semarang</span>
+          </>}
+          subtitle="Pantau persebaran tower, jangkauan, dan data penting lainnya dalam satu tempat."
+          variant="brand"
+          align="center"
+          actions={
+            <>
+              <button
+                onClick={() => {
+                  const mapElement = document.getElementById('map-section');
+                  if (mapElement) mapElement.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center justify-center px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-lg border border-white/20 transition-colors"
+              >
+                Lihat Peta
+              </button>
+              <button
+                onClick={() => {
+                  const tableTop = document.querySelector('#data-table-top');
+                  if (tableTop) (tableTop as HTMLElement).scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center justify-center px-5 py-2.5 bg-white text-red-700 hover:text-red-800 rounded-lg shadow-sm"
+              >
+                Lihat Tabel
+              </button>
+            </>
+          }
+        />
       </div>
 
       <div className="p-4 sm:p-6">
@@ -231,7 +257,7 @@ export default function DataTowerIndex({
         />
 
         {/* Table Section */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow" id="data-table-top">
           <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
             <div className="flex items-center gap-3">
               <button

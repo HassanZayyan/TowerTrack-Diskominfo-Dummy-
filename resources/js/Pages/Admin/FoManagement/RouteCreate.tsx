@@ -62,27 +62,9 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
       <Head title="Tambah Jalur FO" />
       
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Tambah Jalur Fiber Optic</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Buat jalur baru dalam jaringan fiber optic
-            </p>
-          </div>
-          <Link
-            href={route('admin.fo-management.index', { tab: 'routes' })}
-            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Kembali
-          </Link>
-        </div>
 
         {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-2xl mb-8 overflow-hidden">
+        <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl shadow-2xl mb-8 overflow-hidden">
           <div className="px-8 py-8 text-white relative">
             <div className="absolute inset-0 bg-black opacity-10"></div>
             <div className="relative z-10">
@@ -94,12 +76,12 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold mb-2">Tambah Jalur FO Baru</h1>
-                  <p className="text-green-100 text-lg">
+                  <p className="text-red-100 text-lg">
                     Buat jalur fiber optic baru dengan menentukan koordinat dan informasi jalur
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-6 text-sm text-green-100">
+              <div className="flex items-center gap-6 text-sm text-red-100">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                   <span>Langkah 1: Informasi Dasar</span>
@@ -123,9 +105,9 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
               {/* Basic Information */}
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-100">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-blue-600 rounded-lg">
+                    <div className="p-2 bg-green-600 rounded-lg">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -138,7 +120,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                 <div className="space-y-6">
                   <div>
                     <label htmlFor="name" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                       </svg>
                       Nama Jalur <span className="text-red-500">*</span>
@@ -151,8 +133,8 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         onChange={(e) => setData('name', e.target.value)}
                         className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
                           errors.name 
-                            ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100 bg-red-50' 
-                            : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-red-50' 
+                            : 'border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-gray-300'
                         }`}
                         placeholder="Contoh: Jalur Utama Ungaran - Semarang"
                       />
@@ -163,7 +145,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                       </div>
                     </div>
                     {errors.name && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -174,7 +156,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
                   <div>
                     <label htmlFor="area" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
                       Area <span className="text-red-500">*</span>
@@ -186,8 +168,8 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         onChange={(e) => setData('area', e.target.value)}
                         className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none appearance-none bg-white ${
                           errors.area 
-                            ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100 bg-red-50' 
-                            : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-red-50' 
+                            : 'border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-gray-300'
                         }`}
                       >
                         <option value="">Pilih Area</option>
@@ -204,7 +186,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                       </div>
                     </div>
                     {errors.area && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -215,7 +197,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
                   <div>
                     <label htmlFor="status" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       Status <span className="text-red-500">*</span>
@@ -227,8 +209,8 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         onChange={(e) => setData('status', e.target.value)}
                         className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none appearance-none bg-white ${
                           errors.status 
-                            ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100 bg-red-50' 
-                            : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-red-50' 
+                            : 'border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-gray-300'
                         }`}
                       >
                         <option value="">Pilih Status</option>
@@ -245,7 +227,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                       </div>
                     </div>
                     {errors.status && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -256,7 +238,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
                   <div>
                     <label htmlFor="color" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 3H5a2 2 0 00-2 2v12a4 4 0 004 4h2a2 2 0 002-2V5a2 2 0 00-2-2z" />
                       </svg>
                       Warna Jalur
@@ -268,7 +250,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                           id="color"
                           value={data.color}
                           onChange={(e) => setData('color', e.target.value)}
-                          className="h-12 w-20 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-blue-300 transition-colors"
+                          className="h-12 w-20 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-red-300 transition-colors"
                         />
                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
                           <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -281,13 +263,13 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                           type="text"
                           value={data.color}
                           onChange={(e) => setData('color', e.target.value)}
-                          className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
+                          className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
                           placeholder="#3B82F6"
                         />
                       </div>
                     </div>
                     {errors.color && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -300,9 +282,9 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
               {/* Description */}
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl p-6 border border-yellow-100">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-purple-600 rounded-lg">
+                    <div className="p-2 bg-yellow-600 rounded-lg">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                       </svg>
@@ -314,7 +296,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                 
                 <div>
                   <label htmlFor="description" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Deskripsi Jalur
@@ -327,8 +309,8 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                       onChange={(e) => setData('description', e.target.value)}
                       className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none resize-none ${
                         errors.description 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100 bg-red-50' 
-                          : 'border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 hover:border-gray-300'
+                          ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-red-50' 
+                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
                       }`}
                       placeholder="Masukkan deskripsi detail jalur fiber optic, termasuk informasi teknis, lokasi penting, atau catatan khusus..."
                     />
@@ -337,7 +319,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                     </div>
                   </div>
                   {errors.description && (
-                    <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                    <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -350,38 +332,38 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
             {/* Path Coordinates */}
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-100">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-600 rounded-lg">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-100">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-600 rounded-lg">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">Koordinat Jalur</h3>
+                        <p className="text-gray-600 text-sm">Tentukan titik-titik koordinat untuk jalur fiber optic</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addCoordinate}
+                      className="group inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">Koordinat Jalur</h3>
-                      <p className="text-gray-600 text-sm">Tentukan titik-titik koordinat untuk jalur fiber optic</p>
-                    </div>
+                      Tambah Koordinat
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={addCoordinate}
-                    className="group inline-flex items-center px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Koordinat
-                  </button>
                 </div>
-              </div>
 
               <div className="space-y-4">
                 {coordinates.map((coord, index) => (
-                  <div key={index} className="group relative bg-white border-2 border-gray-100 rounded-2xl p-6 hover:border-emerald-200 hover:shadow-lg transition-all duration-200">
+                  <div key={index} className="group relative bg-white border-2 border-gray-100 rounded-2xl p-6 hover:border-green-200 hover:shadow-lg transition-all duration-200">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
                           {index + 1}
                         </div>
                       </div>
@@ -389,7 +371,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                              <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               </svg>
                               Latitude
@@ -399,13 +381,13 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                               step="any"
                               value={coord.lat}
                               onChange={(e) => updateCoordinate(index, 'lat', e.target.value)}
-                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
+                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
                               placeholder="-7.123456"
                             />
                           </div>
                           <div>
                             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                              <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               </svg>
                               Longitude
@@ -415,14 +397,14 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                               step="any"
                               value={coord.lng}
                               onChange={(e) => updateCoordinate(index, 'lng', e.target.value)}
-                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
+                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
                               placeholder="110.123456"
                             />
                           </div>
                         </div>
                         <div className="flex items-center justify-between text-sm text-gray-500">
                           <span>Titik koordinat #{index + 1}</span>
-                          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
                             {coord.lat && coord.lng ? 'Valid' : 'Belum lengkap'}
                           </span>
                         </div>
@@ -445,25 +427,25 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
               </div>
 
               {errors.path_coordinates && (
-                <p className="mt-2 text-sm text-red-600">{errors.path_coordinates}</p>
+                <p className="mt-2 text-sm text-green-600">{errors.path_coordinates}</p>
               )}
 
-              <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+              <div className="mt-8 bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-lg font-bold text-blue-900">Panduan Koordinat</h4>
-                    <p className="text-sm text-blue-700">Petunjuk pengisian koordinat jalur</p>
+                    <h4 className="text-lg font-bold text-yellow-900">Panduan Koordinat</h4>
+                    <p className="text-sm text-yellow-700">Petunjuk pengisian koordinat jalur</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                         <span className="text-white text-xs font-bold">1</span>
                       </div>
                       <div>
@@ -472,7 +454,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                         <span className="text-white text-xs font-bold">2</span>
                       </div>
                       <div>
@@ -483,7 +465,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                         <span className="text-white text-xs font-bold">3</span>
                       </div>
                       <div>
@@ -492,7 +474,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                         <span className="text-white text-xs font-bold">4</span>
                       </div>
                       <div>
@@ -529,7 +511,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                   <button
                     type="submit"
                     disabled={processing}
-                    className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-emerald-200 transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed"
+                    className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-red-200 transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-2">
                       {processing ? (

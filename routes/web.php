@@ -207,8 +207,10 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         // Main FO Management Routes (Route-first flow)
         Route::get('/fo-management', [FoManagementController::class, 'routesList'])->name('fo-management.routes.list');
         
-        // Legacy comprehensive FO Management (for backward compatibility)
-        Route::get('/fo-management/overview', [FoManagementController::class, 'index'])->name('fo-management.index');
+        // Legacy overview removed; keep redirect for backward compatibility
+        Route::get('/fo-management/overview', function () {
+            return redirect()->route('admin.fo-management.routes.list');
+        });
         
         // FO Routes Management - specific routes must come before parameterized routes
         Route::get('/fo-management/routes/create', [FoManagementController::class, 'createRoute'])->name('fo-management.routes.create');
@@ -226,6 +228,10 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
         Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
         Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
+
+        // FO Export (CSV downloads)
+        Route::get('/fo-management/points/export', [FoManagementController::class, 'exportPoints'])->name('fo-management.points.export');
+        Route::get('/fo-management/routes/export', [FoManagementController::class, 'exportRoutes'])->name('fo-management.routes.export');
 
     });
 

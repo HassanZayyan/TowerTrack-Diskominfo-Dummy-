@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import HeroSection from '@/Components/HeroSection';
 import FilterPanel from '@/Components/Admin/FilterPanel';
 
 interface Owner {
@@ -605,10 +606,24 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
     <AdminLayout title="Towers">
       <Head title="Towers" />
       
-      {/* Header Section */}
+      {/* Hero Section */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola Data Tower</h1>
-        <p className="text-gray-600">Kelola informasi lengkap tower telekomunikasi dan perbarui data sesuai kebutuhan</p>
+        <HeroSection
+          title="Kelola Data Tower"
+          subtitle="Kelola informasi lengkap tower telekomunikasi dan perbarui data sesuai kebutuhan"
+          variant="neutral"
+          align="left"
+          actions={
+            <>
+              <button
+                onClick={() => router.get(route('admin.towers.create'))}
+                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Tambah Tower
+              </button>
+            </>
+          }
+        />
       </div>
 
       {/* Statistics and Search */}

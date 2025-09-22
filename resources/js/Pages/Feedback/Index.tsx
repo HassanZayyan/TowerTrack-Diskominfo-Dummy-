@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import HeroSection from '@/Components/HeroSection';
 
 
 interface Feedback {
@@ -73,30 +74,26 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
       
       <div className="min-h-screen bg-gray-50">
         <div className="p-4 sm:p-6">
-          {/* Welcome Bar */}
-          <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
-            <div className="mb-3 sm:mb-0">
-              <h1 className="text-xl sm:text-2xl font-bold leading-snug" style={{ color: '#212121' }}>
-                <svg className="w-8 h-8 mr-3 inline-block" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm2 2a1 1 0 000 2h8a1 1 0 100-2H5z" clipRule="evenodd" />
-                </svg>
-                Masukan Saya
-              </h1>
-              <p className="mt-1 text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
-                Riwayat masukan yang telah Anda kirimkan
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/feedback"
-                className="px-4 py-2 rounded-lg font-medium text-white hover:opacity-90 transition-all duration-200"
-                style={{ backgroundColor: '#B71C1C' }}
-              >
-                Kirim Masukan Baru
-              </Link>
-              <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
-            </div>
-          </div>
+          {/* Hero Section */}
+          <HeroSection
+            title={<>
+              Masukan Saya
+            </>}
+            subtitle="Riwayat masukan yang telah Anda kirimkan dan status penanganannya."
+            variant="neutral"
+            align="left"
+            actions={
+              <>
+                <Link
+                  href="/feedback"
+                  className="inline-flex items-center px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Kirim Masukan Baru
+                </Link>
+              </>
+            }
+            className="mb-6"
+          />
 
           <div className="max-w-4xl mx-auto">
 

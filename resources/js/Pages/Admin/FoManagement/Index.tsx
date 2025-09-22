@@ -630,7 +630,7 @@ export default function FoManagementIndex() {
                     </Link>
                     
                     <Link
-                      href={route('admin.fo-management.points.list')}
+                      href={route('admin.fo-management.index', { tab: 'points', area: currentArea })}
                       className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-2xl p-6 hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
@@ -651,7 +651,7 @@ export default function FoManagementIndex() {
                     </Link>
                     
                     <Link
-                      href={route('admin.fo-management.routes.list')}
+                      href={route('admin.fo-management.index', { tab: 'routes', area: currentArea })}
                       className="group relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-2xl p-6 hover:from-orange-700 hover:to-orange-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
@@ -722,15 +722,15 @@ export default function FoManagementIndex() {
                     </svg>
                     Tambah Titik Baru
                   </Link>
-                  <Link
-                    href={route('admin.fo-management.points.export')}
+                  <a
+                    href={route('admin.fo-management.points.export', { ...filters, tab: 'points' })}
                     className="group inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
                     <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Export Data
-                  </Link>
+                  </a>
                 </div>
               </div>
             </div>
@@ -814,15 +814,15 @@ export default function FoManagementIndex() {
                     </svg>
                     Tambah Jalur Baru
                   </Link>
-                  <Link
-                    href={route('admin.fo-management.routes.export')}
+                  <a
+                    href={route('admin.fo-management.routes.export', { ...filters, tab: 'routes' })}
                     className="group inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
                     <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     Laporan Jalur
-                  </Link>
+                  </a>
                 </div>
               </div>
             </div>

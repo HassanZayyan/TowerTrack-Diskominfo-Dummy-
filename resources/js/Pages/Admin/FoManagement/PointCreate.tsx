@@ -46,14 +46,7 @@ export default function PointCreate({
     e.preventDefault();
     
     try {
-      // Add route_id to data before posting
-      const submitData = {
-        ...data,
-        route_id: preSelectedRoute?.id || null,
-      };
-      
       post(route('admin.fo-management.points.store'), {
-        data: submitData,
         onSuccess: () => {
           // Success handled by Inertia redirect
         },
@@ -84,14 +77,10 @@ export default function PointCreate({
     <AdminLayout title="Tambah Titik FO">
       <Head title="Tambah Titik FO" />
       
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-gray-100 py-8">
         {/* Header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 bg-black/10">
-              <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent"></div>
-            </div>
+          <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
             
             <div className="relative z-10 flex items-center justify-between">
               <div className="flex items-center space-x-6">
@@ -112,7 +101,7 @@ export default function PointCreate({
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                         Buat titik baru dalam jaringan fiber optic
                         <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                      </div>
+          </div>
                     </div>
                   </div>
                   
@@ -138,7 +127,7 @@ export default function PointCreate({
               <Link
                 href={preSelectedRoute 
                   ? route('admin.fo-management.routes.detail', preSelectedRoute.id)
-            : route('admin.fo-management.routes.list')
+                  : route('admin.fo-management.index', { tab: 'points', area: data.area })
                 }
                 className="group bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent flex items-center space-x-2"
               >
@@ -158,7 +147,7 @@ export default function PointCreate({
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Basic Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl p-2">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +163,7 @@ export default function PointCreate({
                 
                 <div>
                   <label htmlFor="name" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     Nama Titik
@@ -198,7 +187,7 @@ export default function PointCreate({
                       className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
                         errors.name 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                       placeholder="Contoh: Tower FO-001"
                     />
@@ -587,7 +576,7 @@ export default function PointCreate({
             {/* Submit Buttons */}
             <div className="col-span-1 xl:col-span-2 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-8 border-t border-gray-100">
               <Link
-                href={route('admin.fo-management.points.list')}
+                href={route('admin.fo-management.index', { tab: 'points', area: data.area })}
                 className="group inline-flex items-center justify-center px-6 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white/80 backdrop-blur-sm hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 transition-all duration-200 transform hover:scale-105 active:scale-95"
               >
                 <svg className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -620,6 +609,7 @@ export default function PointCreate({
             </div>
           </form>
         </div>
+      </div>
       </div>
     </AdminLayout>
   );

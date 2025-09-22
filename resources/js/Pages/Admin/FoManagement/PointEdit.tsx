@@ -28,6 +28,7 @@ interface PageProps {
   availableStatuses: string[];
   availableRoutes: AvailableRoute[];
   fromRouteDetail?: boolean;
+  parentRouteId?: number | null;
 }
 
 export default function PointEdit({ 
@@ -36,7 +37,8 @@ export default function PointEdit({
   availableTypes, 
   availableStatuses, 
   availableRoutes, 
-  fromRouteDetail 
+  fromRouteDetail,
+  parentRouteId
 }: PageProps) {
   const { data, setData, put, processing, errors } = useForm({
     name: foPoint.name,
@@ -48,23 +50,15 @@ export default function PointEdit({
     route_name: foPoint.route_name,
     sequence_number: foPoint.sequence_number.toString(),
     description: foPoint.description || '',
+    from_route: fromRouteDetail ? 'detail' : null,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      // Add from_route parameter to data before putting
-      const submitData = {
-        ...data,
-        from_route: fromRouteDetail ? 'detail' : null,
-      };
-      
       put(route('admin.fo-management.points.update', foPoint.id), {
-        data: submitData,
-        onSuccess: () => {
-          // Success handled by Inertia redirect
-        },
+        onSuccess: () => {},
         onError: (errors) => {
           console.error('Error updating point:', errors);
         },
@@ -92,14 +86,12 @@ export default function PointEdit({
     <AdminLayout title={`Edit Titik FO: ${foPoint.name}`}>
       <Head title={`Edit Titik FO: ${foPoint.name}`} />
       
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23f1f5f9" fill-opacity="0.4"%3E%3Ccircle cx="7" cy="7" r="1"/%3E%3Ccircle cx="53" cy="7" r="1"/%3E%3Ccircle cx="7" cy="53" r="1"/%3E%3Ccircle cx="53" cy="53" r="1"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-gray-100 relative overflow-hidden">
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="py-8">
           {/* Header */}
           <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl p-8 shadow-2xl border border-white/20 backdrop-blur-sm">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-3xl p-8 shadow-2xl border border-white/20 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3">
@@ -109,7 +101,7 @@ export default function PointEdit({
                   </div>
                   <div>
                     <h1 className="text-3xl font-bold text-white mb-2">Edit Titik Fiber Optic</h1>
-                    <p className="text-blue-100 text-lg">
+                    <p className="text-white/90 text-lg">
                       Edit informasi titik: {foPoint.name}
                     </p>
                   </div>
@@ -131,37 +123,24 @@ export default function PointEdit({
               <div className="mt-6 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
                     <span className="text-white/90 text-sm font-medium">Siap untuk diperbarui</span>
                   </div>
                 </div>
-                
-                <Link
-                  href={fromRouteDetail 
-                    ? route('admin.fo-management.routes.detail', { foRoute: 'back' }) 
-                    : route('admin.fo-management.routes.list')
-                  }
-                  className="group inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/25 transition-all duration-200 transform hover:scale-105 active:scale-95"
-                >
-                  <svg className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Kembali
-                </Link>
               </div>
             </div>
           </div>
 
         {/* Form */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div>
           <div className="bg-white/80 backdrop-blur-sm shadow-2xl rounded-3xl border border-gray-100 overflow-hidden">
             <form onSubmit={handleSubmit} className="p-8">
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Basic Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100 mb-6">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 mb-6">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-2">
+                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -175,7 +154,7 @@ export default function PointEdit({
                 
                 <div>
                   <label htmlFor="name" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     Nama Titik
@@ -190,7 +169,7 @@ export default function PointEdit({
                       className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
                         errors.name 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                       placeholder="Contoh: Tower FO-001"
                     />
@@ -212,7 +191,7 @@ export default function PointEdit({
 
                 <div>
                   <label htmlFor="area" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
@@ -227,7 +206,7 @@ export default function PointEdit({
                       className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
                         errors.area 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                     >
                       {availableAreas.map((area) => (
@@ -254,7 +233,7 @@ export default function PointEdit({
 
                 <div>
                   <label htmlFor="type" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                     Tipe
@@ -268,7 +247,7 @@ export default function PointEdit({
                       className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
                         errors.type 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                     >
                       {availableTypes.map((type) => (
@@ -295,7 +274,7 @@ export default function PointEdit({
 
                 <div>
                   <label htmlFor="status" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Status
@@ -309,7 +288,7 @@ export default function PointEdit({
                       className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
                         errors.status 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                     >
                       {availableStatuses.map((status) => (
@@ -337,9 +316,9 @@ export default function PointEdit({
 
                 {/* Location and Route Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100 mb-6">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 mb-6">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl p-2">
+                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -355,7 +334,7 @@ export default function PointEdit({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div>
                      <label htmlFor="latitude" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                       <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                        </svg>
@@ -372,7 +351,7 @@ export default function PointEdit({
                          className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
                            errors.latitude 
                              ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                             : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                             : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                          } focus:outline-none`}
                          placeholder="-7.123456"
                        />
@@ -394,7 +373,7 @@ export default function PointEdit({
                    
                    <div>
                      <label htmlFor="longitude" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                       <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
                        </svg>
                        Longitude
@@ -410,7 +389,7 @@ export default function PointEdit({
                          className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
                            errors.longitude 
                              ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                             : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                             : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                          } focus:outline-none`}
                          placeholder="110.123456"
                        />
@@ -433,7 +412,7 @@ export default function PointEdit({
 
                 <div>
                   <label htmlFor="route_name" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                     Nama Jalur
@@ -447,7 +426,7 @@ export default function PointEdit({
                       className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
                         errors.route_name 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                     >
                       <option value="">🗺️ Pilih Jalur...</option>
@@ -491,7 +470,7 @@ export default function PointEdit({
                       className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
                         errors.sequence_number 
                           ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                       } focus:outline-none`}
                       placeholder="1"
                     />
@@ -515,9 +494,9 @@ export default function PointEdit({
 
               {/* Description */}
               <div className="xl:col-span-2">
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100 mb-6">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 mb-6">
                   <div className="flex items-center space-x-3 mb-4">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-2">
+                    <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                       </svg>
@@ -530,7 +509,7 @@ export default function PointEdit({
                   
                   <div>
                     <label htmlFor="description" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                      <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Deskripsi
@@ -544,7 +523,7 @@ export default function PointEdit({
                         className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none ${
                           errors.description 
                             ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                            : 'border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 hover:border-gray-300'
+                            : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                         } focus:outline-none`}
                         placeholder="Contoh: Titik ini berada di dekat tower seluler, akses jalan mudah, perlu koordinasi dengan pihak ketiga..."
                       />
@@ -584,10 +563,7 @@ export default function PointEdit({
                     
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
                       <Link
-                        href={fromRouteDetail 
-                          ? route('admin.fo-management.routes.detail', { foRoute: 'back' }) 
-                          : route('admin.fo-management.routes.list')
-                        }
+                        href={route('admin.fo-management.routes.detail', parentRouteId || 15)}
                         className="group relative px-8 py-4 bg-white border-2 border-gray-200 rounded-xl shadow-lg text-gray-700 font-semibold transition-all duration-300 hover:border-gray-300 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-gray-100 active:transform active:scale-95 text-center"
                       >
                         <div className="flex items-center justify-center">
@@ -601,7 +577,7 @@ export default function PointEdit({
                       <button
                         type="submit"
                         disabled={processing}
-                        className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl shadow-lg transition-all duration-300 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-200 active:transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        className="group relative px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white font-bold rounded-xl shadow-lg transition-all duration-300 hover:from-red-700 hover:to-red-800 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-red-200 active:transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                       >
                         <div className="flex items-center justify-center">
                           {processing ? (
@@ -629,6 +605,7 @@ export default function PointEdit({
             </form>
           </div>
         </div>
+      </div>
       </div>
     </AdminLayout>
   );

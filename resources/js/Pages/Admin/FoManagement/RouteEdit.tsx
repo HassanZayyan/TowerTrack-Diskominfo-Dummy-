@@ -37,26 +37,10 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      // Update coordinates in form data before submitting
-      const submitData = {
-        ...data,
-        path_coordinates: coordinates,
-      };
-      
-      put(route('admin.fo-management.routes.update', foRoute.id), {
-        data: submitData,
-        onSuccess: () => {
-          // Success handled by Inertia redirect
-        },
-        onError: (errors) => {
-          console.error('Error updating route:', errors);
-        },
-        preserveScroll: true,
-      });
-    } catch (error) {
-      console.error('Unexpected error:', error);
-    }
+    // Update form data with current coordinates
+    setData('path_coordinates', coordinates);
+    
+    put(route('admin.fo-management.routes.update', foRoute.id));
   };
 
   const statusLabels: { [key: string]: string } = {
@@ -95,7 +79,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
       
       <div className="space-y-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-3xl shadow-2xl overflow-hidden">
           <div className="px-8 py-12 relative">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative z-10">
@@ -121,30 +105,20 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                   </div>
                   <div className="flex flex-wrap gap-4 text-white/90">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
                       <span className="text-sm">Langkah 1: Edit Informasi Dasar</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       <span className="text-sm">Langkah 2: Perbarui Koordinat</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-red-400 rounded-full"></div>
                       <span className="text-sm">Langkah 3: Simpan Perubahan</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href={route('admin.fo-management.routes.list')}
-                    className="group px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/30 transition-all duration-200 flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Kembali ke Daftar
-                  </Link>
-                </div>
+                <div className="hidden" />
               </div>
             </div>
           </div>
@@ -157,22 +131,22 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Basic Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6">
+                  <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-emerald-900">Informasi Dasar</h3>
-                        <p className="text-sm text-emerald-700">Edit data utama jalur fiber optik</p>
+                        <h3 className="text-xl font-bold text-red-900">Informasi Dasar</h3>
+                        <p className="text-sm text-red-700">Edit data utama jalur fiber optik</p>
                       </div>
                     </div>
                 
                     <div>
                       <label htmlFor="name" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         Nama Jalur
@@ -195,7 +169,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                           className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
                             errors.name 
                               ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                              : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                           } focus:outline-none`}
                           placeholder="Contoh: Jalur Utama Ungaran"
                         />
@@ -217,7 +191,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
 
                     <div>
                       <label htmlFor="area" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -232,7 +206,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                           className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 appearance-none bg-white ${
                             errors.area 
                               ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                              : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                           } focus:outline-none`}
                         >
                           {availableAreas.map((area) => (
@@ -259,7 +233,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
 
                     <div>
                       <label htmlFor="status" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Status
@@ -273,7 +247,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                           className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 appearance-none bg-white ${
                             errors.status 
                               ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 hover:border-gray-300'
+                              : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
                           } focus:outline-none`}
                         >
                           {availableStatuses.map((status) => (
@@ -303,7 +277,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
 
                     <div>
                       <label htmlFor="color" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 3H5a2 2 0 00-2 2v12a4 4 0 004 4h2M9 3h6a2 2 0 012 2v12a4 4 0 01-4 4H9" />
                         </svg>
                         Warna Jalur
@@ -322,7 +296,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                           type="text"
                           value={data.color}
                           onChange={(e) => setData('color', e.target.value)}
-                          className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
+                          className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
                           placeholder="#3B82F6"
                         />
                       </div>
@@ -372,21 +346,21 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
 
                 {/* Description */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-purple-900">Deskripsi Jalur</h3>
-                        <p className="text-sm text-purple-700">Informasi tambahan tentang jalur</p>
-                      </div>
-                    </div>
+                    <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
+                     <div className="flex items-center gap-3 mb-6">
+                       <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
+                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                         </svg>
+                       </div>
+                       <div>
+                         <h3 className="text-xl font-bold text-yellow-900">Deskripsi Jalur</h3>
+                         <p className="text-sm text-yellow-700">Informasi tambahan tentang jalur</p>
+                       </div>
+                     </div>
                     <div>
                       <label htmlFor="description" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         Deskripsi
@@ -400,7 +374,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                           className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 resize-none ${
                             errors.description 
                               ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 hover:border-gray-300'
+                              : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
                           } focus:outline-none`}
                           placeholder="Deskripsi tambahan untuk jalur ini..."
                         />
@@ -424,10 +398,10 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
 
             {/* Path Coordinates */}
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
+                <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
@@ -440,7 +414,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                   <button
                     type="button"
                     onClick={addCoordinate}
-                    className="group relative inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-200"
+                    className="group relative inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-200"
                     title="Tambah koordinat baru"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -453,15 +427,15 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
 
                 <div className="space-y-4">
                   {coordinates.map((coord, index) => (
-                    <div key={index} className="bg-white/80 backdrop-blur-sm border border-green-200 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                    <div key={index} className="bg-white/80 backdrop-blur-sm border border-indigo-200 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                       <div className="flex items-center gap-4">
-                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-400 to-green-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                           {index + 1}
                         </div>
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-2">
-                              <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3 h-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               </svg>
                               Latitude
@@ -471,13 +445,13 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                               step="any"
                               value={coord.lat}
                               onChange={(e) => updateCoordinate(index, 'lat', e.target.value)}
-                              className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300 text-sm font-mono"
+                              className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 text-sm font-mono"
                               placeholder="-7.123456"
                             />
                           </div>
                           <div>
                             <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-2">
-                              <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3 h-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               </svg>
                               Longitude
@@ -487,7 +461,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                               step="any"
                               value={coord.lng}
                               onChange={(e) => updateCoordinate(index, 'lng', e.target.value)}
-                              className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300 text-sm font-mono"
+                              className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 text-sm font-mono"
                               placeholder="110.123456"
                             />
                           </div>
@@ -510,15 +484,15 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                 </div>
 
                 {coordinates.length === 0 && (
-                  <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-xl border-2 border-dashed border-green-300">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
-                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-xl border-2 border-dashed border-indigo-300">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center">
+                      <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
                     </div>
-                    <h4 className="text-lg font-semibold text-green-900 mb-2">Belum ada koordinat</h4>
-                    <p className="text-green-700 mb-1">Klik "Tambah Koordinat" untuk menambahkan titik jalur</p>
-                    <p className="text-sm text-green-600">Minimal 2 koordinat diperlukan untuk membuat jalur</p>
+                    <h4 className="text-lg font-semibold text-indigo-900 mb-2">Belum ada koordinat</h4>
+                    <p className="text-indigo-700 mb-1">Klik "Tambah Koordinat" untuk menambahkan titik jalur</p>
+                    <p className="text-sm text-red-600">Minimal 2 koordinat diperlukan untuk membuat jalur</p>
                   </div>
                 )}
 

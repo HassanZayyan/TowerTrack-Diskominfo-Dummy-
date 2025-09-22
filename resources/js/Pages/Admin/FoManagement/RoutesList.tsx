@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import HeroSection from '@/Components/HeroSection';
 
 interface FoRoute {
   id: number;
@@ -59,15 +60,15 @@ const StatsCards = ({ stats }: { stats: Stats }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* Total Routes */}
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm">
+      <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-medium text-blue-700 mb-2">Total Jalur</h3>
-            <div className="text-3xl font-bold text-blue-900">{stats.total_routes}</div>
-            <div className="text-xs text-blue-600 mt-1">Jalur FO</div>
+            <h3 className="text-sm font-medium text-red-700 mb-2">Total Jalur</h3>
+            <div className="text-3xl font-bold text-red-900">{stats.total_routes}</div>
+            <div className="text-xs text-red-600 mt-1">Jalur FO</div>
           </div>
-          <div className="p-3 bg-blue-200 rounded-full">
-            <svg className="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="p-3 bg-red-200 rounded-full">
+            <svg className="w-8 h-8 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
           </div>
@@ -169,7 +170,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
             {/* View Details Button */}
             <Link
               href={route('admin.fo-management.routes.detail', foRoute.id)}
-              className="group inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md flex-1 sm:flex-none"
+              className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md flex-1 sm:flex-none"
               title="Lihat detail jalur FO"
             >
               <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,208 +291,215 @@ export default function RoutesList() {
     <AdminLayout title="Manajemen Jalur Fiber Optic">
       <Head title="Manajemen Jalur FO" />
       
-      <div className="py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white overflow-hidden shadow-xl rounded-xl">
-            <div className="p-6 lg:p-8">
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div className="flex-1">
-                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Manajemen Jalur FO</h1>
-                    <p className="text-gray-600 mt-2">
-                      Kelola jalur fiber optic untuk area {currentArea.charAt(0).toUpperCase() + currentArea.slice(1)}
-                    </p>
+      {/* Hero Section */}
+      <div className="mb-8">
+        <HeroSection
+          title="Manajemen Jalur FO"
+          subtitle={`Kelola jalur fiber optic untuk area ${currentArea.charAt(0).toUpperCase() + currentArea.slice(1)}`}
+          variant="neutral"
+          align="left"
+          actions={
+            canEdit ? (
+              <Link
+                href={route('admin.fo-management.routes.create')}
+                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Tambah Jalur Baru
+              </Link>
+            ) : null
+          }
+        />
+      </div>
+
+      <div className="bg-white overflow-hidden shadow-xl rounded-xl">
+        <div className="p-6 lg:p-8">
+          <div className="space-y-6">
+                {/* Add New Route Button */}
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Link
+                      href={route('admin.fo-management.routes.create')}
+                      className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 border border-transparent rounded-xl font-semibold text-sm text-white tracking-wide hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Tambah Jalur Baru
+                    </Link>
                   </div>
-                  
-                  {canEdit && (
-                    <div className="flex-shrink-0">
-                      <Link
-                        href={route('admin.fo-management.routes.create')}
-                        className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 border border-transparent rounded-xl font-semibold text-sm text-white tracking-wide hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 w-full lg:w-auto"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Tambah Jalur Baru
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* Stats Cards */}
                 <StatsCards stats={stats} />
 
                 {/* Filters */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-                Cari Jalur
-              </label>
-              <input
-                type="text"
-                id="search"
-                value={filters.search}
-                onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
-                placeholder="Masukkan nama jalur..."
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                Status Jalur
-              </label>
-              <select
-                id="status-filter"
-                value={filters.status}
-                onChange={(e) => handleFilterChange({ ...filters, status: e.target.value })}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
-              >
-                <option value="all">Semua Status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Non-aktif</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
-            </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+                        Cari Jalur
+                      </label>
+                      <input
+                        type="text"
+                        id="search"
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                        placeholder="Masukkan nama jalur..."
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                        Status Jalur
+                      </label>
+                      <select
+                        id="status-filter"
+                        value={filters.status}
+                        onChange={(e) => handleFilterChange({ ...filters, status: e.target.value })}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                      >
+                        <option value="all">Semua Status</option>
+                        <option value="active">Aktif</option>
+                        <option value="inactive">Non-aktif</option>
+                        <option value="maintenance">Maintenance</option>
+                      </select>
+                    </div>
 
-            <div>
-              <label htmlFor="area-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                Area
-              </label>
-              <select
-                id="area-filter"
-                value={filters.area}
-                onChange={(e) => handleFilterChange({ ...filters, area: e.target.value })}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
-              >
-                {availableAreas.map((area: string) => (
-                  <option key={area} value={area}>
-                    {area.charAt(0).toUpperCase() + area.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+                    <div>
+                      <label htmlFor="area-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                        Area
+                      </label>
+                      <select
+                        id="area-filter"
+                        value={filters.area}
+                        onChange={(e) => handleFilterChange({ ...filters, area: e.target.value })}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                      >
+                        {availableAreas.map((area: string) => (
+                          <option key={area} value={area}>
+                            {area.charAt(0).toUpperCase() + area.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Routes Grid */}
                 <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Daftar Jalur FO ({filteredRoutes.length})
-            </h2>
-          </div>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Daftar Jalur FO ({filteredRoutes.length})
+                    </h2>
+                  </div>
           
-          {filteredRoutes.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-              {filteredRoutes.map((foRoute) => (
-                <RouteCard
-                  key={foRoute.id}
-                  foRoute={foRoute}
-                  canEdit={canEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Tidak ada jalur FO yang ditemukan
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {filters.search || filters.status !== 'all' 
-                  ? 'Coba ubah filter pencarian Anda.' 
-                  : 'Belum ada jalur FO yang tersedia. Mulai dengan menambahkan jalur baru.'
-                }
-              </p>
-              {canEdit && !filters.search && filters.status === 'all' && (
-                <Link
-                  href={route('admin.fo-management.routes.create')}
-                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Tambah Jalur Pertama
-                </Link>
-              )}
-            </div>
-          )}
+                  {filteredRoutes.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                      {filteredRoutes.map((foRoute) => (
+                        <RouteCard
+                          key={foRoute.id}
+                          foRoute={foRoute}
+                          canEdit={canEdit}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Tidak ada jalur FO yang ditemukan
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {filters.search || filters.status !== 'all' 
+                          ? 'Coba ubah filter pencarian Anda.' 
+                          : 'Belum ada jalur FO yang tersedia. Mulai dengan menambahkan jalur baru.'
+                        }
+                      </p>
+                      {canEdit && !filters.search && filters.status === 'all' && (
+                        <Link
+                          href={route('admin.fo-management.routes.create')}
+                          className="inline-flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Tambah Jalur Pertama
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Pagination */}
                 {routes.total > routes.per_page && (
                   <div className="bg-gray-50 px-4 py-3 border border-gray-200 rounded-lg sm:px-6">
-            <div className="flex items-center justify-between">
-              <div className="flex justify-between flex-1 sm:hidden">
-                {routes.links[0].url && (
-                  <Link
-                    href={routes.links[0].url}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Previous
-                  </Link>
-                )}
-                {routes.links[routes.links.length - 1].url && (
-                  <Link
-                    href={routes.links[routes.links.length - 1].url}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Next
-                  </Link>
-                )}
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Menampilkan{' '}
-                    <span className="font-medium">
-                      {(routes.current_page - 1) * routes.per_page + 1}
-                    </span>{' '}
-                    hingga{' '}
-                    <span className="font-medium">
-                      {Math.min(routes.current_page * routes.per_page, routes.total)}
-                    </span>{' '}
-                    dari{' '}
-                    <span className="font-medium">{routes.total}</span> hasil
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    {routes.links.map((link, index) => (
-                      <Link
-                        key={index}
-                        href={link.url || '#'}
-                        className={`relative inline-flex items-center px-2 py-2 border text-sm font-medium ${
-                          link.active
-                            ? 'z-10 bg-red-50 border-red-500 text-red-600'
-                            : link.url
-                            ? 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            : 'bg-gray-100 border-gray-300 text-gray-300 cursor-not-allowed'
-                        } ${
-                          index === 0 ? 'rounded-l-md' : ''
-                        } ${
-                          index === routes.links.length - 1 ? 'rounded-r-md' : ''
-                        }`}
-                        dangerouslySetInnerHTML={{ __html: link.label }}
-                      />
-                    ))}
-                  </nav>
-                </div>
-              </div>
-            </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex justify-between flex-1 sm:hidden">
+                        {routes.links[0].url && (
+                          <Link
+                            href={routes.links[0].url}
+                            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                          >
+                            Previous
+                          </Link>
+                        )}
+                        {routes.links[routes.links.length - 1].url && (
+                          <Link
+                            href={routes.links[routes.links.length - 1].url}
+                            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                          >
+                            Next
+                          </Link>
+                        )}
+                      </div>
+                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            Menampilkan{' '}
+                            <span className="font-medium">
+                              {(routes.current_page - 1) * routes.per_page + 1}
+                            </span>{' '}
+                            hingga{' '}
+                            <span className="font-medium">
+                              {Math.min(routes.current_page * routes.per_page, routes.total)}
+                            </span>{' '}
+                            dari{' '}
+                            <span className="font-medium">{routes.total}</span> hasil
+                          </p>
+                        </div>
+                        <div>
+                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            {routes.links.map((link, index) => (
+                              <Link
+                                key={index}
+                                href={link.url || '#'}
+                                className={`relative inline-flex items-center px-2 py-2 border text-sm font-medium ${
+                                  link.active
+                                    ? 'z-10 bg-red-50 border-red-500 text-red-600'
+                                    : link.url
+                                    ? 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                    : 'bg-gray-100 border-gray-300 text-gray-300 cursor-not-allowed'
+                                } ${
+                                  index === 0 ? 'rounded-l-md' : ''
+                                } ${
+                                  index === routes.links.length - 1 ? 'rounded-r-md' : ''
+                                }`}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                              />
+                            ))}
+                          </nav>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        </div>
-      </div>
     </AdminLayout>
   );
 }

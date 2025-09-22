@@ -201,13 +201,13 @@ const PointsStats = ({ stats }: { stats: PageProps['routeStats'] }) => {
       </div>
 
       {/* Point Types Distribution */}
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
-        <div className="text-sm font-medium text-blue-700 mb-2">Distribusi Tipe</div>
+      <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+        <div className="text-sm font-medium text-red-700 mb-2">Distribusi Tipe</div>
         <div className="space-y-1">
           {stats.points_by_type.slice(0, 2).map((item) => (
             <div key={item.type} className="flex justify-between text-xs">
               <span className="text-blue-600">{item.label}</span>
-              <span className="font-medium text-blue-900">{item.count}</span>
+              <span className="font-medium text-red-900">{item.count}</span>
             </div>
           ))}
           {stats.points_by_type.length > 2 && (
@@ -272,7 +272,7 @@ const PointsTable = ({
             <div className="flex flex-wrap gap-3">
               <Link
                 href={route('admin.fo-management.points.create')}
-                className="group inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
+                className="group inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
                 title="Tambah titik FO baru"
               >
                 <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,7 +359,7 @@ const PointsTable = ({
                 const isSelected = selectedPoints.includes(point.id);
                 
                 return (
-                  <tr key={point.id} className={isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                  <tr key={point.id} className={isSelected ? 'bg-red-50' : 'hover:bg-gray-50'}>
                     {canEdit && (
                       <td className="w-4 px-6 py-4 whitespace-nowrap">
                         <input
@@ -446,7 +446,7 @@ const PointsTable = ({
           {canEdit && (
             <Link
               href={route('admin.fo-management.points.create')}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
