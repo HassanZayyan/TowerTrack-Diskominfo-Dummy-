@@ -227,13 +227,6 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
         Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
 
-        // JSON endpoints to manage FO points and routes (API style for AJAX calls)
-        Route::post('/fo-points', [FoController::class, 'storePoint'])->name('fo-points.store');
-        Route::put('/fo-points/{foPoint}', [FoController::class, 'updatePoint'])->name('fo-points.update');
-        Route::delete('/fo-points/{foPoint}', [FoController::class, 'deletePoint'])->name('fo-points.destroy');
-        Route::post('/fo-routes-json', [FoController::class, 'storeRoute'])->name('fo-routes.json.store');
-        Route::put('/fo-routes-json/{foRoute}', [FoController::class, 'updateRoute'])->name('fo-routes.json.update');
-        Route::delete('/fo-routes-json/{foRoute}', [FoController::class, 'deleteRoute'])->name('fo-routes.json.destroy');
     });
 
     // Tower owner specific routes

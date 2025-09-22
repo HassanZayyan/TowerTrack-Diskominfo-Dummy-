@@ -490,7 +490,7 @@ class FoManagementController extends Controller
         }
 
         return redirect()
-            ->route('admin.fo-management.index', ['tab' => 'routes'])
+            ->route('admin.fo-management.routes.list')
             ->with('success', 'Jalur FO berhasil ditambahkan');
     }
 
@@ -541,7 +541,7 @@ class FoManagementController extends Controller
         }
 
         return redirect()
-            ->route('admin.fo-management.index', ['tab' => 'routes'])
+            ->route('admin.fo-management.routes.list')
             ->with('success', 'Jalur FO berhasil diperbarui');
     }
 

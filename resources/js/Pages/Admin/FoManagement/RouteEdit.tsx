@@ -419,6 +419,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                     </div>
                   </div>
                 </div>
+              </div>
             </div>
 
             {/* Path Coordinates */}
