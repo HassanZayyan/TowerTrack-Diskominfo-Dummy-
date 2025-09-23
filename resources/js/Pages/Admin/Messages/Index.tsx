@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import ManagementTable from '@/Components/Admin/ManagementTable';
+import HeroSection from '@/Components/HeroSection';
 
 interface MediaItem {
   id: number;
@@ -104,22 +105,38 @@ const MessagesIndexPage: React.FC = () => {
     <AdminLayout title="Messages">
       <Head title="Messages" />
 
-      {/* Tabs */}
-      <div className="mb-6">
-        <div className="inline-flex rounded-lg bg-white p-1 border border-gray-200 shadow-sm">
-          <button
-            className={`px-4 py-2 text-sm rounded-md ${activeTab === 'complaints' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-            onClick={() => setActiveTab('complaints')}
-          >
-            Keluhan
-          </button>
-          <button
-            className={`px-4 py-2 text-sm rounded-md ${activeTab === 'feedbacks' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-            onClick={() => setActiveTab('feedbacks')}
-          >
-            Masukan
-          </button>
-        </div>
+      {/* Hero Section */}
+      <div className="mb-8">
+        <HeroSection
+          title="Kelola Pesan"
+          subtitle="Kelola keluhan dan masukan dari pengguna sistem dengan respon yang tepat dan cepat"
+          variant="neutral"
+          align="left"
+          actions={
+            <>
+              <div className="inline-flex rounded-lg bg-white p-1 border border-gray-200 shadow-sm">
+                <button
+                  className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'complaints' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                  onClick={() => setActiveTab('complaints')}
+                >
+                  <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  Keluhan
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'feedbacks' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                  onClick={() => setActiveTab('feedbacks')}
+                >
+                  <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                  </svg>
+                  Masukan
+                </button>
+              </div>
+            </>
+          }
+        />
       </div>
 
       {activeTab === 'complaints' ? (
