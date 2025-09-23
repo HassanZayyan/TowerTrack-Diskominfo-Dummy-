@@ -140,9 +140,22 @@ class FoManagementController extends Controller
      */
     public function createPoint(Request $request)
     {
-        $routeId = $request->get('route_id');
-        $routeName = $request->get('route_name');
+        $routeId = $request->get('route');
         $area = $request->get('area', 'ungaran');
+
+        // Get preselected route if route ID is provided
+        $preSelectedRoute = null;
+        if ($routeId) {
+            $route = FoRoute::find($routeId);
+            if ($route) {
+                $preSelectedRoute = [
+                    'id' => $route->id,
+                    'name' => $route->name,
+                    'area' => $route->area
+                ];
+                $area = $route->area; // Use route's area
+            }
+        }
 
         // Get available routes for dropdown
         $availableRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
@@ -162,11 +175,7 @@ class FoManagementController extends Controller
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'availableRoutes' => $availableRoutes,
-            'preSelectedRoute' => $routeId ? [
-                'id' => $routeId,
-                'name' => $routeName,
-                'area' => $area
-            ] : null,
+            'preSelectedRoute' => $preSelectedRoute,
         ]);
     }
 

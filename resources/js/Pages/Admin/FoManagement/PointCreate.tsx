@@ -127,7 +127,7 @@ export default function PointCreate({
               <Link
                 href={preSelectedRoute 
                   ? route('admin.fo-management.routes.detail', preSelectedRoute.id)
-                  : route('admin.fo-management.index', { tab: 'points', area: data.area })
+                  : route('admin.fo-management.routes.list', { tab: 'points', area: data.area })
                 }
                 className="group bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent flex items-center space-x-2"
               >
@@ -576,7 +576,7 @@ export default function PointCreate({
             {/* Submit Buttons */}
             <div className="col-span-1 xl:col-span-2 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-8 border-t border-gray-100">
               <Link
-                href={route('admin.fo-management.index', { tab: 'points', area: data.area })}
+                href={route('admin.fo-management.routes.list', { tab: 'points', area: data.area })}
                 className="group inline-flex items-center justify-center px-6 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white/80 backdrop-blur-sm hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 transition-all duration-200 transform hover:scale-105 active:scale-95"
               >
                 <svg className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
