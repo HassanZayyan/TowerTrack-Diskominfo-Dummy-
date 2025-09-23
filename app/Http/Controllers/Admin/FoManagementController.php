@@ -135,8 +135,6 @@ class FoManagementController extends Controller
 
     // The legacy 'index' method has been removed. Overview is deprecated in favor of route-first flow.
 
-    // Removed standalone createPoint page in favor of adding coordinates directly on route edit page
-
     /**
      * Show form to create a new point for a specific route
      */
@@ -263,7 +261,7 @@ class FoManagementController extends Controller
         if ($oldRouteName !== $validated['route_name'] || $oldArea !== $validated['area']) {
             $oldRoute = FoRoute::where('name', $oldRouteName)->where('area', $oldArea)->first();
             if ($oldRoute) {
-                $oldRoute->updateTotalPoints();
+                $this->updateRouteStatistics($oldRoute->id);
             }
         }
 
@@ -272,7 +270,7 @@ class FoManagementController extends Controller
             ->where('area', $validated['area'])
             ->first();
         if ($newRoute) {
-            $newRoute->updateTotalPoints();
+            $this->updateRouteStatistics($newRoute->id);
             
             // Redirect to route detail if we came from there
             if ($request->get('from_route') === 'detail') {
@@ -298,10 +296,10 @@ class FoManagementController extends Controller
         
         $foPoint->delete();
 
-        // Update associated route's total_points
+        // Update associated route's statistics
         $route = FoRoute::where('name', $routeName)->where('area', $area)->first();
         if ($route) {
-            $route->updateTotalPoints();
+            $this->updateRouteStatistics($route->id);
         }
 
         return back()->with('success', 'Titik FO berhasil dihapus');
@@ -432,8 +430,8 @@ class FoManagementController extends Controller
                         'area' => $validated['area']
                     ]);
 
-                // Update total points count
-                $foRoute->updateTotalPoints();
+                // Update route statistics
+                $this->updateRouteStatistics($foRoute->id);
             }
 
             \Log::info('FO Route updated successfully', [

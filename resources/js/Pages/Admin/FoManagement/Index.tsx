@@ -515,7 +515,7 @@ export default function FoManagementIndex() {
   // Handle tab change with URL update
   const handleTabChange = useCallback((tab: string) => {
     setSelectedTab(tab);
-    router.get(route('admin.fo-management.index'), 
+    router.get(route('admin.fo-management.routes.list'), 
       { tab, area: filters.area } as any, 
       { preserveState: true, replace: true }
     );
@@ -524,7 +524,7 @@ export default function FoManagementIndex() {
   // Handle filter changes
   const handleFilterChange = useCallback((newFilters: typeof filters) => {
     setFilters(newFilters);
-    router.get(route('admin.fo-management.index'), 
+    router.get(route('admin.fo-management.routes.list'), 
       { ...newFilters, tab: selectedTab } as any, 
       { preserveState: true, replace: true }
     );
@@ -630,7 +630,7 @@ export default function FoManagementIndex() {
                     </Link>
                     
                     <Link
-                      href={route('admin.fo-management.index', { tab: 'points', area: currentArea })}
+                      href={route('admin.fo-management.routes.list', { tab: 'points', area: currentArea })}
                       className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-2xl p-6 hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
@@ -651,7 +651,7 @@ export default function FoManagementIndex() {
                     </Link>
                     
                     <Link
-                      href={route('admin.fo-management.index', { tab: 'routes', area: currentArea })}
+                      href={route('admin.fo-management.routes.list', { tab: 'routes', area: currentArea })}
                       className="group relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-2xl p-6 hover:from-orange-700 hover:to-orange-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>

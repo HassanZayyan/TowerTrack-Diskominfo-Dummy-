@@ -511,10 +511,10 @@ export default function RouteDetail() {
           canEdit={canEdit}
           onDelete={handleDeletePoint}
           selectedPoints={selectedPoints}
-          onSelectPoint={handleSelectPoint}
-          onSelectAll={handleSelectAll}
-          routeId={foRoute.id}
-        />
+            onSelectPoint={handleSelectPoint}
+            onSelectAll={handleSelectAll}
+            routeId={foRoute.id}
+          />
 
         {/* Pagination */}
         {points.total > points.per_page && (
