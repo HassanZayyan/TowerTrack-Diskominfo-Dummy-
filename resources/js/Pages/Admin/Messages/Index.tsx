@@ -110,7 +110,7 @@ const MessagesIndexPage: React.FC = () => {
         <HeroSection
           title="Kelola Pesan"
           subtitle="Kelola keluhan dan masukan dari pengguna sistem dengan respon yang tepat dan cepat"
-          variant="neutral"
+          variant="brand"
           align="left"
           actions={
             <>

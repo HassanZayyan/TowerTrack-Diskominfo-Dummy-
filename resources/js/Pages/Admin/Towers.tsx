@@ -611,7 +611,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
         <HeroSection
           title="Kelola Data Tower"
           subtitle="Kelola informasi lengkap tower telekomunikasi dan perbarui data sesuai kebutuhan"
-          variant="neutral"
+          variant="brand"
           align="left"
           actions={
             <>

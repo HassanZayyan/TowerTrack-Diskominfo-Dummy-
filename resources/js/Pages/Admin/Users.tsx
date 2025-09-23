@@ -188,7 +188,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
         <HeroSection
           title="Kelola Pengguna"
           subtitle="Kelola informasi pengguna sistem dan atur hak akses sesuai kebutuhan"
-          variant="neutral"
+          variant="brand"
           align="left"
           actions={
             <>

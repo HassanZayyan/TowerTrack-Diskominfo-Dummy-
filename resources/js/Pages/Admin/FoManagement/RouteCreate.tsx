@@ -38,18 +38,29 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
           <div className="px-8 py-8 text-white relative">
             <div className="absolute inset-0 bg-black opacity-10"></div>
             <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm">
-                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm">
+                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">Tambah Jalur FO Baru</h1>
+                    <p className="text-red-100 text-lg">
+                      Buat jalur fiber optic baru dengan menentukan koordinat dan informasi jalur
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={route('admin.fo-management.routes.list')}
+                  className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">Tambah Jalur FO Baru</h1>
-                  <p className="text-red-100 text-lg">
-                    Buat jalur fiber optic baru dengan menentukan koordinat dan informasi jalur
-                  </p>
-                </div>
+                  Kembali
+                </Link>
               </div>
               <div className="flex items-center gap-6 text-sm text-red-100">
                 <div className="flex items-center gap-2">
