@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import FoTable from '@/Components/DataFo/FoTable';
@@ -465,7 +465,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
             <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
             Jalur Terbaru
           </h4>
@@ -474,7 +474,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
               <div key={route.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
                   <div>
                     <div className="text-sm font-medium text-gray-900">{route.name || 'Unnamed Route'}</div>
@@ -511,13 +511,17 @@ export default function FoManagementIndex() {
     type: 'all',
     search: ''
   });
+  
+  // Debounced search state
+  const [searchValue, setSearchValue] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle tab change with URL update
   const handleTabChange = useCallback((tab: string) => {
     setSelectedTab(tab);
     router.get(route('admin.fo-management.routes.list'), 
       { tab, area: filters.area } as any, 
-      { preserveState: true, replace: true }
+      { preserveState: true, preserveScroll: true, replace: true }
     );
   }, [filters.area]);
 
@@ -526,9 +530,28 @@ export default function FoManagementIndex() {
     setFilters(newFilters);
     router.get(route('admin.fo-management.routes.list'), 
       { ...newFilters, tab: selectedTab } as any, 
-      { preserveState: true, replace: true }
+      { preserveState: true, preserveScroll: true, replace: true }
     );
   }, [selectedTab]);
+
+  // Debounced search effect
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      if (searchValue !== filters.search) {
+        handleFilterChange({ ...filters, search: searchValue });
+      }
+    }, 500); // 500ms delay
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchValue, filters, handleFilterChange]);
 
   // Filter data based on current filters  
   const filteredPoints = foPoints.data.map(point => ({
@@ -925,8 +948,9 @@ export default function FoManagementIndex() {
             </div>
           </div>
           
-          <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <form onSubmit={(e) => e.preventDefault()}>
+            <div className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <label htmlFor="search" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -938,8 +962,14 @@ export default function FoManagementIndex() {
                   <input
                     type="text"
                     id="search"
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleFilterChange({ ...filters, search: searchValue });
+                      }
+                    }}
                     className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm"
                     placeholder="Cari nama titik atau jalur..."
                   />
@@ -1013,7 +1043,8 @@ export default function FoManagementIndex() {
                 </select>
               </div>
             </div>
-          </div>
+            </div>
+          </form>
         </div>
 
         {/* Enhanced Tab Navigation */}

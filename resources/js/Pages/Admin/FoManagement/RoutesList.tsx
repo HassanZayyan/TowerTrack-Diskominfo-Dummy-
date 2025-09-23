@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
@@ -254,6 +254,10 @@ export default function RoutesList() {
     status: 'all',
     search: ''
   });
+  
+  // Debounced search state
+  const [searchValue, setSearchValue] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const canEdit = ['admin', 'operator'].includes(auth.user.role);
 
@@ -262,9 +266,28 @@ export default function RoutesList() {
     setFilters(newFilters);
     router.get(route('admin.fo-management.routes.list'), 
       newFilters as any, 
-      { preserveState: true, replace: true }
+      { preserveState: true, preserveScroll: true, replace: true }
     );
   }, []);
+
+  // Debounced search effect
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      if (searchValue !== filters.search) {
+        handleFilterChange({ ...filters, search: searchValue });
+      }
+    }, 500); // 500ms delay
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchValue, filters, handleFilterChange]);
 
   // Handle route deletion
   const handleDelete = (routeToDelete: FoRoute) => {
@@ -334,7 +357,8 @@ export default function RoutesList() {
 
                 {/* Filters */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <form onSubmit={(e) => e.preventDefault()}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
                         Cari Jalur
@@ -342,8 +366,14 @@ export default function RoutesList() {
                       <input
                         type="text"
                         id="search"
-                        value={filters.search}
-                        onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleFilterChange({ ...filters, search: searchValue });
+                          }
+                        }}
                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
                         placeholder="Masukkan nama jalur..."
                       />
@@ -383,7 +413,8 @@ export default function RoutesList() {
                         ))}
                       </select>
                     </div>
-                  </div>
+                    </div>
+                  </form>
                 </div>
 
                 {/* Routes Grid */}
@@ -408,7 +439,7 @@ export default function RoutesList() {
                   ) : (
                     <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                       <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                       </svg>
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
                         Tidak ada jalur FO yang ditemukan
