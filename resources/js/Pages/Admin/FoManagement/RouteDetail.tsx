@@ -226,7 +226,8 @@ const PointsTable = ({
   onDelete, 
   selectedPoints, 
   onSelectPoint, 
-  onSelectAll 
+  onSelectAll,
+  routeId,
 }: { 
   points: FoPoint[]; 
   canEdit: boolean; 
@@ -234,6 +235,7 @@ const PointsTable = ({
   selectedPoints: number[];
   onSelectPoint: (pointId: number) => void;
   onSelectAll: (selected: boolean) => void;
+  routeId: number;
 }) => {
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -271,9 +273,9 @@ const PointsTable = ({
           {canEdit && (
             <div className="flex flex-wrap gap-3">
               <Link
-                href={route('admin.fo-management.points.create')}
+                href={route('admin.fo-management.points.create', routeId)}
                 className="group inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
-                title="Tambah titik FO baru"
+                title="Tambah titik/koordinat pada jalur ini"
               >
                 <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -445,7 +447,7 @@ const PointsTable = ({
           </p>
           {canEdit && (
             <Link
-              href={route('admin.fo-management.points.create')}
+              href={route('admin.fo-management.points.create', routeId)}
               className="inline-flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -511,6 +513,7 @@ export default function RouteDetail() {
           selectedPoints={selectedPoints}
           onSelectPoint={handleSelectPoint}
           onSelectAll={handleSelectAll}
+          routeId={foRoute.id}
         />
 
         {/* Pagination */}

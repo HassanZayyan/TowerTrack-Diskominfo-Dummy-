@@ -135,38 +135,31 @@ class FoManagementController extends Controller
 
     // The legacy 'index' method has been removed. Overview is deprecated in favor of route-first flow.
 
-    /**
-     * Show the form for creating a new FO point
-     */
-    public function createPoint(Request $request)
-    {
-        $routeId = $request->get('route_id');
-        $routeName = $request->get('route_name');
-        $area = $request->get('area', 'ungaran');
+    // Removed standalone createPoint page in favor of adding coordinates directly on route edit page
 
-        // Get available routes for dropdown
-        $availableRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->select('id', 'name', 'area')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($route) {
-                return [
-                    'id' => $route->id,
-                    'name' => $route->name,
-                    'area' => $route->area,
-                ];
-            });
+    /**
+     * Show form to create a new point for a specific route
+     */
+    public function createPoint(FoRoute $foRoute)
+    {
+        // Get the next sequence number for this route
+        $nextSequence = FoPoint::where('route_name', $foRoute->name)
+            ->max('sequence_number') + 1;
 
         return Inertia::render('Admin/FoManagement/PointCreate', [
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'foRoute' => [
+                'id' => $foRoute->id,
+                'name' => $foRoute->name,
+                'area' => $foRoute->area,
+                'status' => $foRoute->status,
+                'color' => $foRoute->color,
+                'total_distance' => (float) ($foRoute->total_distance ?? 0),
+                'total_points' => (int) ($foRoute->total_points ?? 0),
+                'description' => $foRoute->description,
+            ],
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
-            'availableRoutes' => $availableRoutes,
-            'preSelectedRoute' => $routeId ? [
-                'id' => $routeId,
-                'name' => $routeName,
-                'area' => $area
-            ] : null,
+            'nextSequence' => $nextSequence ?: 1,
         ]);
     }
 
@@ -183,32 +176,22 @@ class FoManagementController extends Controller
             'type' => 'required|in:pole,junction,hub,endpoint',
             'status' => 'required|in:active,inactive,maintenance',
             'route_name' => 'required|string|max:255',
+            'route_id' => 'required|exists:fo_routes,id',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
         ]);
 
+        // Remove route_id from validated data as it's not in the database
+        $routeId = $validated['route_id'];
+        unset($validated['route_id']);
+        
         $point = FoPoint::create($validated);
 
-        // Update associated route's total_points and recalculate distance if needed
-        $route = FoRoute::where('name', $validated['route_name'])
-            ->where('area', $validated['area'])
-            ->first();
-        
-        if ($route) {
-            $route->updateTotalPoints();
-            
-            // Redirect to route detail if we came from there
-            $routeId = $request->get('route_id');
-            if ($routeId) {
-                return redirect()
-                    ->route('admin.fo-management.routes.detail', $route->id)
-                    ->with('success', 'Titik FO berhasil ditambahkan');
-            }
-        }
+        // Update route's total_points and path coordinates
+        $this->updateRouteStatistics($routeId);
 
-        // Default redirect
         return redirect()
-            ->route('admin.fo-management.routes.list')
+            ->route('admin.fo-management.routes.detail', $routeId)
             ->with('success', 'Titik FO berhasil ditambahkan');
     }
 
@@ -340,28 +323,54 @@ class FoManagementController extends Controller
      */
     public function storeRoute(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran,ambarawa',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'required|in:active,inactive,maintenance',
-            'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
-            'path_coordinates' => 'required|array|min:2',
-            'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
-            'path_coordinates.*.lng' => 'required|numeric|between:-180,180',
-        ]);
+        try {
+            // Validate incoming data
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'area' => 'required|in:ungaran,ambarawa',
+                'description' => 'nullable|string|max:1000',
+                'status' => 'required|in:active,inactive,maintenance',
+                'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
+            ]);
 
-        $route = FoRoute::create($validated);
-        
-        // Calculate and save total distance
-        if (method_exists($route, 'calculateDistance')) {
-            $route->total_distance = $route->calculateDistance();
-            $route->save();
+            \Log::info('Creating new FO Route', [
+                'validated_data' => $validated
+            ]);
+
+            // Initialize with empty coordinates
+            $validated['path_coordinates'] = [];
+            $validated['total_points'] = 0;
+            $validated['total_distance'] = 0;
+
+            // Create the route
+            $route = FoRoute::create($validated);
+
+            \Log::info('FO Route created successfully', [
+                'route_id' => $route->id,
+                'name' => $route->name,
+                'total_distance' => 0,
+                'total_points' => 0
+            ]);
+
+            return redirect()
+                ->route('admin.fo-management.routes.detail', $route->id)
+                ->with('success', 'Jalur FO berhasil dibuat. Silakan tambahkan titik-titik FO untuk membentuk jalur.');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed for FO Route creation', [
+                'errors' => $e->errors()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error creating FO Route', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menambahkan jalur FO: ' . $e->getMessage());
         }
-
-        return redirect()
-            ->route('admin.fo-management.routes.list')
-            ->with('success', 'Jalur FO berhasil ditambahkan');
     }
 
     /**
@@ -391,28 +400,69 @@ class FoManagementController extends Controller
      */
     public function updateRoute(Request $request, FoRoute $foRoute)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran,ambarawa',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'required|in:active,inactive,maintenance',
-            'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
-            'path_coordinates' => 'required|array|min:2',
-            'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
-            'path_coordinates.*.lng' => 'required|numeric|between:-180,180',
-        ]);
+        try {
+            // Validate incoming data
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'area' => 'required|in:ungaran,ambarawa',
+                'description' => 'nullable|string|max:1000',
+                'status' => 'required|in:active,inactive,maintenance',
+                'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
+            ]);
 
-        $foRoute->update($validated);
-        
-        // Recalculate total distance
-        if (method_exists($foRoute, 'calculateDistance')) {
-            $foRoute->total_distance = $foRoute->calculateDistance();
-            $foRoute->save();
+            \Log::info('Updating FO Route', [
+                'route_id' => $foRoute->id,
+                'validated_data' => $validated
+            ]);
+
+            // Store old route name and area for later comparison
+            $oldRouteName = $foRoute->name;
+            $oldArea = $foRoute->area;
+
+            // Update the route (without modifying coordinates)
+            $foRoute->update($validated);
+
+            // Update total points if route name or area changed
+            if ($oldRouteName !== $validated['name'] || $oldArea !== $validated['area']) {
+                // Update points associated with old route name
+                FoPoint::where('route_name', $oldRouteName)
+                    ->where('area', $oldArea)
+                    ->update([
+                        'route_name' => $validated['name'],
+                        'area' => $validated['area']
+                    ]);
+
+                // Update total points count
+                $foRoute->updateTotalPoints();
+            }
+
+            \Log::info('FO Route updated successfully', [
+                'route_id' => $foRoute->id,
+                'total_distance' => $foRoute->total_distance,
+                'total_points' => $foRoute->total_points
+            ]);
+
+            return redirect()
+                ->route('admin.fo-management.routes.detail', $foRoute->id)
+                ->with('success', 'Jalur FO berhasil diperbarui');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed for FO Route update', [
+                'route_id' => $foRoute->id,
+                'errors' => $e->errors()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error updating FO Route', [
+                'route_id' => $foRoute->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui jalur FO: ' . $e->getMessage());
         }
-
-        return redirect()
-            ->route('admin.fo-management.routes.list')
-            ->with('success', 'Jalur FO berhasil diperbarui');
     }
 
     /**
@@ -655,5 +705,40 @@ class FoManagementController extends Controller
             \Log::warning('Error calculating health score: ' . $e->getMessage());
             return 0.0;
         }
+    }
+
+    /**
+     * Update route statistics based on its points
+     */
+    private function updateRouteStatistics($routeId)
+    {
+        $route = FoRoute::findOrFail($routeId);
+        
+        // Get all points for this route ordered by sequence
+        $points = FoPoint::where('route_name', $route->name)
+            ->orderBy('sequence_number')
+            ->get();
+        
+        // Build coordinates array from points
+        $coordinates = $points->map(function ($point) {
+            return [
+                'lat' => (float) $point->latitude,
+                'lng' => (float) $point->longitude
+            ];
+        })->toArray();
+        
+        // Calculate total distance if we have points
+        $totalDistance = 0;
+        if (count($coordinates) > 1 && method_exists($route, 'calculateDistance')) {
+            $route->path_coordinates = $coordinates;
+            $totalDistance = $route->calculateDistance();
+        }
+        
+        // Update route with new statistics
+        $route->update([
+            'total_points' => $points->count(),
+            'path_coordinates' => $coordinates,
+            'total_distance' => $totalDistance
+        ]);
     }
 }

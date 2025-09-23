@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
@@ -8,18 +8,12 @@ interface PageProps {
 }
 
 export default function RouteCreate({ availableAreas, availableStatuses }: PageProps) {
-  const [coordinates, setCoordinates] = useState<Array<{lat: number; lng: number}>>([
-    { lat: -7.1, lng: 110.4 },
-    { lat: -7.2, lng: 110.5 }
-  ]);
-
   const { data, setData, post, processing, errors } = useForm({
     name: '',
     area: 'ungaran',
     description: '',
     status: 'active',
     color: '#3B82F6',
-    path_coordinates: coordinates,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -31,30 +25,6 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
     active: 'Aktif',
     inactive: 'Non-aktif',
     maintenance: 'Maintenance'
-  };
-
-  const addCoordinate = () => {
-    const newCoords = [...coordinates, { lat: 0, lng: 0 }];
-    setCoordinates(newCoords);
-    setData('path_coordinates', newCoords);
-  };
-
-  const removeCoordinate = (index: number) => {
-    if (coordinates.length <= 2) return; // Minimum 2 coordinates
-    const newCoords = coordinates.filter((_, i) => i !== index);
-    setCoordinates(newCoords);
-    setData('path_coordinates', newCoords);
-  };
-
-  const updateCoordinate = (index: number, field: 'lat' | 'lng', value: string) => {
-    const newCoords = coordinates.map((coord, i) => {
-      if (i === index) {
-        return { ...coord, [field]: parseFloat(value) || 0 };
-      }
-      return coord;
-    });
-    setCoordinates(newCoords);
-    setData('path_coordinates', newCoords);
   };
 
   return (
@@ -330,159 +300,46 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
               </div>
             </div>
 
-            {/* Path Coordinates */}
-            <div className="space-y-6">
-                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-100">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-green-600 rounded-lg">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900">Koordinat Jalur</h3>
-                        <p className="text-gray-600 text-sm">Tentukan titik-titik koordinat untuk jalur fiber optic</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={addCoordinate}
-                      className="group inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    >
-                      <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Koordinat
-                    </button>
-                  </div>
-                </div>
-
-              <div className="space-y-4">
-                {coordinates.map((coord, index) => (
-                  <div key={index} className="group relative bg-white border-2 border-gray-100 rounded-2xl p-6 hover:border-green-200 hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-                          {index + 1}
-                        </div>
-                      </div>
-                      <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              </svg>
-                              Latitude
-                            </label>
-                            <input
-                              type="number"
-                              step="any"
-                              value={coord.lat}
-                              onChange={(e) => updateCoordinate(index, 'lat', e.target.value)}
-                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
-                              placeholder="-7.123456"
-                            />
-                          </div>
-                          <div>
-                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              </svg>
-                              Longitude
-                            </label>
-                            <input
-                              type="number"
-                              step="any"
-                              value={coord.lng}
-                              onChange={(e) => updateCoordinate(index, 'lng', e.target.value)}
-                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all duration-200 hover:border-gray-300"
-                              placeholder="110.123456"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <span>Titik koordinat #{index + 1}</span>
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                            {coord.lat && coord.lng ? 'Valid' : 'Belum lengkap'}
-                          </span>
-                        </div>
-                      </div>
-                      {coordinates.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => removeCoordinate(index)}
-                          className="flex-shrink-0 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 group-hover:opacity-100 opacity-70"
-                          title="Hapus koordinat"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {errors.path_coordinates && (
-                <p className="mt-2 text-sm text-green-600">{errors.path_coordinates}</p>
-              )}
-
-              <div className="mt-8 bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
+            {/* Point Management Info */}
+            <div className="xl:col-span-2 space-y-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
+                  <div className="p-2 bg-blue-600 rounded-lg">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-lg font-bold text-yellow-900">Panduan Koordinat</h4>
-                    <p className="text-sm text-yellow-700">Petunjuk pengisian koordinat jalur</p>
+                    <h3 className="text-xl font-bold text-gray-900">Manajemen Titik FO</h3>
+                    <p className="text-gray-600 text-sm">Tambahkan titik-titik FO setelah jalur dibuat</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-white text-xs font-bold">1</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">Minimal 2 Titik</p>
-                        <p className="text-xs text-gray-600">Diperlukan untuk membuat jalur</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-white text-xs font-bold">2</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">Format Desimal</p>
-                        <p className="text-xs text-gray-600">Contoh: -7.123456, 110.123456</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-white text-xs font-bold">3</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">Urutan Penting</p>
-                        <p className="text-xs text-gray-600">Menentukan arah jalur fiber optik</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-white text-xs font-bold">4</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">Lokasi Akurat</p>
-                        <p className="text-xs text-gray-600">Sesuai dengan lokasi sebenarnya</p>
-                      </div>
-                    </div>
-                  </div>
+                <div className="bg-white/50 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">📍 Cara Menambahkan Titik FO:</h4>
+                  <ol className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold text-blue-600">1.</span>
+                      <span>Buat jalur FO terlebih dahulu dengan mengisi form ini</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold text-blue-600">2.</span>
+                      <span>Setelah jalur berhasil dibuat, Anda akan diarahkan ke halaman detail jalur</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold text-blue-600">3.</span>
+                      <span>Di halaman detail, klik tombol "Tambah Titik" untuk menambahkan titik-titik FO</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold text-blue-600">4.</span>
+                      <span>Jalur akan otomatis terbentuk berdasarkan urutan titik yang ditambahkan</span>
+                    </li>
+                  </ol>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Minimal 2 titik diperlukan untuk membentuk jalur FO</span>
                 </div>
               </div>
             </div>

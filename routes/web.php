@@ -222,7 +222,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/routes/bulk-action', [FoManagementController::class, 'bulkRoutesAction'])->name('fo-management.routes.bulk-action');
         
         // FO Points Management
-        Route::get('/fo-management/points/create', [FoManagementController::class, 'createPoint'])->name('fo-management.points.create');
+        Route::get('/fo-management/routes/{foRoute}/points/create', [FoManagementController::class, 'createPoint'])->name('fo-management.points.create');
         Route::post('/fo-management/points', [FoManagementController::class, 'storePoint'])->name('fo-management.points.store');
         Route::get('/fo-management/points/{foPoint}/edit', [FoManagementController::class, 'editPoint'])->name('fo-management.points.edit');
         Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
