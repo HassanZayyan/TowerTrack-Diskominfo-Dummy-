@@ -94,7 +94,9 @@ class FoPointsFromCsvSeeder extends Seeder
             $poleRel = $this->resolveImageRelativePath($poleRaw, $byExact, $byStem);
             $jbRel = $this->resolveImageRelativePath($jbRaw, $byExact, $byStem);
 
-            $type = ($linkJb !== '' || $jbRel) ? 'junction' : 'pole';
+            $hasJbImage = !empty($jbRel);
+            $hasJbLink = $this->isValidUrl($linkJb);
+            $type = ($hasJbImage || $hasJbLink) ? 'junction' : 'pole';
 
             FoPoint::create([
                 'sequence_number' => $sequenceNumber,
@@ -299,7 +301,10 @@ class FoPointsFromCsvSeeder extends Seeder
     {
         if ($name === null) return false;
         $v = trim(mb_strtolower($name));
-        if ($v === '' || $v === '-' || $v === 'null') return false;
+        if (
+            $v === '' ||
+            in_array($v, ['-', 'null', 'n/a', 'na', 'none', 'kosong', 'tidak ada', '0'], true)
+        ) return false;
         if ($v === '[url]' || str_contains($v, 'http://') || str_contains($v, 'https://')) return false;
         return true;
     }
@@ -335,6 +340,19 @@ class FoPointsFromCsvSeeder extends Seeder
         if ($value === null) return '';
         $v = trim($value);
         return $v;
+    }
+
+    /**
+     * Determine if a CSV link cell contains a valid URL.
+     */
+    private function isValidUrl(?string $url): bool
+    {
+        if ($url === null) return false;
+        $u = trim($url);
+        if ($u === '' || in_array(mb_strtolower($u), ['-', 'null', 'n/a', 'na', 'none', 'kosong', 'tidak ada', '0'], true)) {
+            return false;
+        }
+        return filter_var($u, FILTER_VALIDATE_URL) !== false;
     }
 
     private function disableForeignKeys(): void

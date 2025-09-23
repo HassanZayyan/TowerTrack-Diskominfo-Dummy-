@@ -88,6 +88,12 @@ class FoRoutesFromPointsSeeder extends Seeder
             $endPointName = $sortedPoints->last()->name ?? 'End Point';
             $description = "Jalur FO dari {$startPointName} ke {$endPointName}";
 
+            // Mark last point as endpoint
+            $lastPoint = $sortedPoints->last();
+            if ($lastPoint) {
+                FoPoint::where('id', $lastPoint->id)->update(['type' => 'endpoint']);
+            }
+
             // Create the route
             FoRoute::create([
                 'name' => $routeName,
@@ -151,6 +157,12 @@ class FoRoutesFromPointsSeeder extends Seeder
                 $startPointName = $sortedPoints->first()->name ?? 'Start Point';
                 $endPointName = $sortedPoints->last()->name ?? 'End Point';
                 $description = "Jalur FO dari {$startPointName} ke {$endPointName}";
+
+                // Mark last point as endpoint for unexpected route
+                $lastPoint = $sortedPoints->last();
+                if ($lastPoint) {
+                    FoPoint::where('id', $lastPoint->id)->update(['type' => 'endpoint']);
+                }
 
                 FoRoute::create([
                     'name' => $routeName,
