@@ -57,12 +57,15 @@ export default function PointEdit({
     e.preventDefault();
     
     try {
-      put(route('admin.fo-management.points.update', foPoint.id), {
-        onSuccess: () => {},
+      put(route('admin.fo-management.points.update', { foPoint: foPoint.id }), {
+        onSuccess: () => {
+          // Redirect akan ditangani oleh backend controller
+          // Tidak perlu melakukan redirect manual di sini
+        },
         onError: (errors) => {
           console.error('Error updating point:', errors);
         },
-        preserveScroll: true,
+        preserveScroll: false, // Allow redirect to work properly
       });
     } catch (error) {
       console.error('Unexpected error:', error);

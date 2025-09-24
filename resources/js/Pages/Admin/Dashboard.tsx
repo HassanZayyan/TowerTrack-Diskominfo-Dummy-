@@ -90,16 +90,7 @@ const AdminDashboard: React.FC = () => {
           subtitle={`Kelola sistem tagging tower dan pantau aktivitas. Halo, ${user?.name || 'Admin'}.`}
           variant="brand"
           align="left"
-          actions={
-            <>
-              <Link href="/admin/messages?tab=complaints" className="inline-flex items-center px-4 py-2 bg-white text-red-700 rounded-lg hover:text-red-800 shadow-sm">
-                Lihat Keluhan
-              </Link>
-              <Link href="/admin/messages?tab=feedbacks" className="inline-flex items-center px-4 py-2 bg-white/10 border border-white/30 text-white rounded-lg hover:bg-white/15">
-                Lihat Masukan
-              </Link>
-            </>
-          }
+
         />
       </div>
 

@@ -615,12 +615,14 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
           align="left"
           actions={
             <>
-              <button
-                onClick={() => router.get(route('admin.towers.create'))}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Tambah Tower
-              </button>
+              <div className="bg-white rounded-lg shadow-md p-1">
+                <button
+                  onClick={() => router.get(route('admin.towers.create'))}
+                  className="inline-flex items-center px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors shadow-sm"
+                >
+                  Tambah Tower
+                </button>
+              </div>
             </>
           }
         />

@@ -273,7 +273,7 @@ const PointsTable = ({
           {canEdit && (
             <div className="flex flex-wrap gap-3">
               <Link
-                href={route('admin.fo-management.points.create', routeId)}
+                href={route('admin.fo-management.points.create', { foRoute: routeId })}
                 className="group inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
                 title="Tambah titik/koordinat pada jalur ini"
               >
@@ -406,7 +406,7 @@ const PointsTable = ({
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-3">
                           <Link
-                            href={route('admin.fo-management.points.edit', point.id)}
+                            href={route('admin.fo-management.points.edit', { foPoint: point.id, from_route: 'detail' })}
                             className="group inline-flex items-center px-3 py-1.5 bg-amber-500 text-white text-xs font-medium rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 transition-all duration-200 shadow-sm hover:shadow-md"
                             title="Edit titik FO"
                           >
@@ -447,7 +447,7 @@ const PointsTable = ({
           </p>
           {canEdit && (
             <Link
-              href={route('admin.fo-management.points.create', routeId)}
+              href={route('admin.fo-management.points.create', { foRoute: routeId })}
               className="inline-flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,7 +483,7 @@ export default function RouteDetail() {
 
   const handleDeletePoint = (point: FoPoint) => {
     if (confirm(`Apakah Anda yakin ingin menghapus titik "${point.name}"?`)) {
-      router.delete(route('admin.fo-management.points.destroy', point.id), {
+      router.delete(route('admin.fo-management.points.destroy', { foPoint: point.id }), {
         onSuccess: () => {
           setSelectedPoints(prev => prev.filter(id => id !== point.id));
         },

@@ -323,12 +323,14 @@ export default function RoutesList() {
           align="left"
           actions={
             canEdit ? (
-              <Link
-                href={route('admin.fo-management.routes.create')}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Tambah Jalur Baru
-              </Link>
+              <div className="bg-white rounded-lg shadow-md p-1">
+                <Link
+                  href={route('admin.fo-management.routes.create')}
+                  className="inline-flex items-center px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors shadow-sm"
+                >
+                  Tambah Jalur Baru
+                </Link>
+              </div>
             ) : null
           }
         />
