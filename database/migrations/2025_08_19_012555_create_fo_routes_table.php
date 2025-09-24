@@ -18,17 +18,35 @@ return new class extends Migration
             $table->string('area')->default('ungaran'); // Area: ungaran atau ambarawa
             $table->text('description')->nullable(); // Deskripsi jalur
             $table->json('path_coordinates'); // Array koordinat jalur dalam format JSON
+            
+            // GeoJSON untuk jalur yang mengikuti jalan
+            $table->json('geojson')->nullable();
+            
+            // Metadata routing
+            $table->string('routing_profile')->default('driving'); // driving, walking, cycling
+            $table->boolean('avoid_highways')->default(false);
+            $table->boolean('avoid_tolls')->default(false);
+            $table->json('waypoints')->nullable(); // Titik-titik intermediate
+            
+            // Route generation metadata
+            $table->timestamp('geojson_generated_at')->nullable();
+            $table->string('routing_service')->nullable(); // openrouteservice, mapbox, etc
+            $table->decimal('actual_distance', 10, 2)->nullable(); // Jarak aktual dari routing service
+            $table->integer('estimated_duration')->nullable(); // Durasi estimasi dalam detik
+            
             $table->string('status')->default('active'); // Status: active, inactive, maintenance
             $table->string('color')->default('#3B82F6'); // Warna jalur untuk display di peta
             $table->decimal('total_distance', 8, 2)->nullable(); // Total jarak dalam kilometer
             $table->integer('total_points')->default(0); // Total titik FO dalam jalur
             $table->json('point_ids')->nullable(); // Array ID points yang terhubung dalam jalur
             $table->json('properties')->nullable(); // Data tambahan dalam format JSON
+            
             $table->timestamps();
             
             // Index untuk performa
             $table->index(['area', 'status']);
             $table->index(['slug']);
+            $table->index(['routing_profile', 'routing_service']);
         });
     }
 

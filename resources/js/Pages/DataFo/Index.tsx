@@ -770,13 +770,24 @@ export default function DataFoIndex({
             </div>
             <div className="pt-3 border-t border-gray-300">
               <h5 className="text-sm font-medium text-gray-900 mb-2">Legenda Jalur:</h5>
-              <div className="flex items-center gap-4 text-xs text-gray-600">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-blue-500"></div>
+                  <div className="w-4 h-1 bg-blue-500" style={{ height: '3px' }}></div>
+                  <span>Jalur Mengikuti Jalan (GeoJSON)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-1 bg-blue-500" style={{ 
+                    height: '2px', 
+                    backgroundImage: 'repeating-linear-gradient(to right, #3B82F6 0, #3B82F6 3px, transparent 3px, transparent 8px)' 
+                  }}></div>
+                  <span>Jalur Langsung (Point-to-Point)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-1 bg-green-500"></div>
                   <span>Jalur Aktif</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-yellow-500" style={{ borderTop: '1px dashed' }}></div>
+                  <div className="w-4 h-1 bg-yellow-500"></div>
                   <span>Maintenance</span>
                 </div>
               </div>

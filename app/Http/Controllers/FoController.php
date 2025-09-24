@@ -48,18 +48,27 @@ class FoController extends Controller
             ->where('status', 'active')
             ->get()
             ->map(function ($route) {
+                // Use GeoJSON coordinates if available, otherwise fallback to path_coordinates
+                $polyline = $route->hasValidGeoJSON() 
+                    ? $route->getGeoJSONCoordinates()
+                    : $this->generateRoutePolyline($route->path_coordinates);
+                
                 return [
                     'id' => $route->id,
                     'name' => $route->name,
                     'color' => $route->color,
-                    'total_distance' => is_numeric($route->total_distance) ? (float) $route->total_distance : 0.0,
+                    'total_distance' => is_numeric($route->actual_distance) ? (float) $route->actual_distance : 
+                                        (is_numeric($route->total_distance) ? (float) $route->total_distance : 0.0),
                     'total_points' => (int) $route->total_points,
                     'description' => $route->description,
                     'path_coordinates' => $route->path_coordinates,
-                    'polyline' => $this->generateRoutePolyline($route->path_coordinates),
+                    'geojson' => $route->geojson,
+                    'has_geojson' => $route->hasValidGeoJSON(),
+                    'routing_service' => $route->routing_service,
+                    'polyline' => $polyline,
                     'area' => $route->area,
                     'status' => $route->status,
-                    'coordinates' => $this->generateRoutePolyline($route->path_coordinates),
+                    'coordinates' => $polyline, // For backwards compatibility
                 ];
             });
 
@@ -293,15 +302,24 @@ class FoController extends Controller
             ->where('status', 'active')
             ->get()
             ->map(function ($route) {
+                // Use GeoJSON coordinates if available, otherwise fallback to path_coordinates
+                $polyline = $route->hasValidGeoJSON() 
+                    ? $route->getGeoJSONCoordinates()
+                    : $this->generateRoutePolyline($route->path_coordinates);
+                
                 return [
                     'id' => $route->id,
                     'name' => $route->name,
                     'color' => $route->color,
-                    'total_distance' => is_numeric($route->total_distance) ? (float) $route->total_distance : 0.0,
+                    'total_distance' => is_numeric($route->actual_distance) ? (float) $route->actual_distance : 
+                                        (is_numeric($route->total_distance) ? (float) $route->total_distance : 0.0),
                     'total_points' => $route->total_points,
                     'description' => $route->description,
                     'path_coordinates' => $route->path_coordinates,
-                    'polyline' => $this->generateRoutePolyline($route->path_coordinates),
+                    'geojson' => $route->geojson,
+                    'has_geojson' => $route->hasValidGeoJSON(),
+                    'routing_service' => $route->routing_service,
+                    'polyline' => $polyline,
                 ];
             });
 
@@ -441,7 +459,10 @@ class FoController extends Controller
                 ];
             });
 
-        $enhancedPolyline = $this->generateEnhancedRoutePolyline($foRoute->path_coordinates);
+        // Use GeoJSON coordinates if available, otherwise enhanced polyline
+        $polyline = $foRoute->hasValidGeoJSON() 
+            ? $foRoute->getGeoJSONCoordinates()
+            : $this->generateEnhancedRoutePolyline($foRoute->path_coordinates);
 
         return response()->json([
             'success' => true,
@@ -450,15 +471,87 @@ class FoController extends Controller
                     'id' => $foRoute->id,
                     'name' => $foRoute->name,
                     'color' => $foRoute->color,
-                    'total_distance' => $foRoute->total_distance,
+                    'total_distance' => $foRoute->actual_distance ?? $foRoute->total_distance,
                     'total_points' => $foRoute->total_points,
                     'description' => $foRoute->description,
+                    'has_geojson' => $foRoute->hasValidGeoJSON(),
+                    'routing_service' => $foRoute->routing_service,
                 ],
                 'points' => $points,
-                'polyline' => $enhancedPolyline,
+                'polyline' => $polyline,
                 'bounds' => $this->calculateMapBounds($points),
             ]
         ]);
+    }
+
+    /**
+     * Generate GeoJSON route from points
+     */
+    public function generateGeoJSONRoute(Request $request, FoRoute $foRoute)
+    {
+        try {
+            $validated = $request->validate([
+                'routing_profile' => 'nullable|string|in:driving,walking,cycling',
+                'avoid_highways' => 'nullable|boolean',
+                'avoid_tolls' => 'nullable|boolean',
+            ]);
+
+            // Update route with new parameters if provided
+            if (!empty($validated)) {
+                $foRoute->update($validated);
+            }
+
+            $routeService = app(\App\Services\FoRouteGenerationService::class);
+            $success = $routeService->generateRouteFromPoints($foRoute);
+
+            if ($success) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'GeoJSON route berhasil di-generate',
+                    'data' => [
+                        'route' => $foRoute->fresh(),
+                        'has_geojson' => $foRoute->hasValidGeoJSON(),
+                        'polyline' => $foRoute->getGeoJSONCoordinates(),
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal generate GeoJSON route. Periksa log untuk detail.',
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate GeoJSON routes for all routes in area
+     */
+    public function generateAllGeoJSONRoutes(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'area' => 'nullable|string|in:ungaran,ambarawa',
+            ]);
+
+            $routeService = app(\App\Services\FoRouteGenerationService::class);
+            $results = $routeService->regenerateAllRoutes($validated['area'] ?? null);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil generate {$results['success']} jalur dari {$results['total']} total jalur",
+                ...$results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

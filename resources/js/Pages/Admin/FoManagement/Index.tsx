@@ -500,6 +500,67 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
 
 RecentActivity.displayName = 'RecentActivity';
 
+// Generate Routes Button Component
+function GenerateRoutesButton({ currentArea }: { currentArea: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  const handleGenerateRoutes = useCallback(async () => {
+    if (isGenerating) return;
+    
+    setIsGenerating(true);
+    
+    try {
+      const response = await fetch('/api/fo-routes/generate-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ area: currentArea }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Berhasil generate ${data.success} jalur GeoJSON!${data.failed > 0 ? ` ${data.failed} gagal.` : ''}`);
+        router.reload();
+      } else {
+        throw new Error('Network response was not ok');
+      }
+    } catch (error) {
+      console.error('Error generating routes:', error);
+      alert('Gagal generate jalur GeoJSON. Silakan coba lagi.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [isGenerating, currentArea]);
+  
+  return (
+    <button
+      onClick={handleGenerateRoutes}
+      disabled={isGenerating}
+      className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200 ${
+        isGenerating
+          ? 'bg-gray-400 cursor-not-allowed'
+          : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transform hover:-translate-y-0.5'
+      }`}
+    >
+      {isGenerating ? (
+        <>
+          <div className="animate-spin -ml-1 mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+          Generating...
+        </>
+      ) : (
+        <>
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Generate Semua Jalur
+        </>
+      )}
+    </button>
+  );
+}
+
 export default function FoManagementIndex() {
   const { props } = usePage<PageProps>();
   const { foPoints, foRoutes, stats, pointTypes, routeStatus, recentPoints, recentRoutes, currentArea, availableAreas, activeTab } = props;
@@ -693,6 +754,35 @@ export default function FoManagementIndex() {
                         <p className="text-orange-100 text-sm">Lihat semua jalur</p>
                       </div>
                     </Link>
+                  </div>
+                  
+                  {/* Route Generation Action */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Optimisasi Jalur</h4>
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-emerald-100 rounded-lg">
+                            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-gray-900 mb-1">Generate Jalur GeoJSON</h5>
+                            <p className="text-sm text-gray-600 mb-3">
+                              Buat jalur yang mengikuti jalan nyata menggunakan routing service. Jalur akan lebih akurat dan realistis.
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-emerald-700">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span>Otomatis mengikuti jalan</span>
+                            </div>
+                          </div>
+                        </div>
+                        <GenerateRoutesButton currentArea={currentArea} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

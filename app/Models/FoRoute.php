@@ -19,6 +19,15 @@ class FoRoute extends Model
         'area',
         'description',
         'path_coordinates',
+        'geojson',
+        'routing_profile',
+        'avoid_highways',
+        'avoid_tolls',
+        'waypoints',
+        'geojson_generated_at',
+        'routing_service',
+        'actual_distance',
+        'estimated_duration',
         'status',
         'color',
         'total_distance',
@@ -34,10 +43,17 @@ class FoRoute extends Model
      */
     protected $casts = [
         'path_coordinates' => 'array',
+        'geojson' => 'array',
+        'waypoints' => 'array',
         'point_ids' => 'array',
         'properties' => 'array',
         'total_distance' => 'float',
+        'actual_distance' => 'float',
+        'estimated_duration' => 'integer',
         'total_points' => 'integer',
+        'avoid_highways' => 'boolean',
+        'avoid_tolls' => 'boolean',
+        'geojson_generated_at' => 'datetime',
     ];
 
     /**
@@ -214,5 +230,115 @@ class FoRoute extends Model
     {
         $colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
         return $colors[array_rand($colors)];
+    }
+
+    /**
+     * Check apakah route memiliki GeoJSON yang valid.
+     */
+    public function hasValidGeoJSON(): bool
+    {
+        return !empty($this->geojson) && 
+               isset($this->geojson['type']) && 
+               $this->geojson['type'] === 'LineString' &&
+               isset($this->geojson['coordinates']) &&
+               is_array($this->geojson['coordinates']) &&
+               count($this->geojson['coordinates']) >= 2;
+    }
+
+    /**
+     * Get koordinat dari GeoJSON untuk rendering map.
+     */
+    public function getGeoJSONCoordinates(): array
+    {
+        if (!$this->hasValidGeoJSON()) {
+            return [];
+        }
+
+        // GeoJSON format: [longitude, latitude]
+        // Leaflet format: [latitude, longitude]
+        return array_map(function ($coord) {
+            return [$coord[1], $coord[0]]; // Swap lng,lat to lat,lng
+        }, $this->geojson['coordinates']);
+    }
+
+    /**
+     * Get simplified coordinates untuk preview atau performance.
+     */
+    public function getSimplifiedCoordinates(int $maxPoints = 100): array
+    {
+        $coordinates = $this->getGeoJSONCoordinates();
+        
+        if (count($coordinates) <= $maxPoints) {
+            return $coordinates;
+        }
+
+        // Simple decimation algorithm
+        $step = ceil(count($coordinates) / $maxPoints);
+        $simplified = [];
+        
+        for ($i = 0; $i < count($coordinates); $i += $step) {
+            $simplified[] = $coordinates[$i];
+        }
+        
+        // Always include the last point
+        if (end($simplified) !== end($coordinates)) {
+            $simplified[] = end($coordinates);
+        }
+        
+        return $simplified;
+    }
+
+    /**
+     * Calculate distance dari GeoJSON coordinates.
+     */
+    public function calculateGeoJSONDistance(): float
+    {
+        if (!$this->hasValidGeoJSON()) {
+            return 0;
+        }
+
+        $coordinates = $this->geojson['coordinates'];
+        $totalDistance = 0;
+
+        for ($i = 0; $i < count($coordinates) - 1; $i++) {
+            $totalDistance += $this->distanceBetweenPoints(
+                $coordinates[$i][1], // latitude
+                $coordinates[$i][0], // longitude
+                $coordinates[$i + 1][1], // latitude
+                $coordinates[$i + 1][0]  // longitude
+            );
+        }
+
+        return round($totalDistance, 2);
+    }
+
+    /**
+     * Check apakah GeoJSON perlu di-generate ulang.
+     */
+    public function needsGeoJSONRegeneration(): bool
+    {
+        if (!$this->hasValidGeoJSON()) {
+            return true;
+        }
+
+        // Check if points have been updated since GeoJSON generation
+        if ($this->geojson_generated_at && $this->updated_at > $this->geojson_generated_at) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get routing parameters untuk API calls.
+     */
+    public function getRoutingParameters(): array
+    {
+        return [
+            'profile' => $this->routing_profile ?? 'driving',
+            'avoid_highways' => $this->avoid_highways ?? false,
+            'avoid_tolls' => $this->avoid_tolls ?? false,
+            'waypoints' => $this->waypoints ?? [],
+        ];
     }
 }

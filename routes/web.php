@@ -36,6 +36,8 @@ Route::get('/dashboard', function () {
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
 Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
+Route::post('/fo-route/{foRoute}/generate-geojson', [FoController::class, 'generateGeoJSONRoute'])->name('fo.route.generate-geojson');
+Route::post('/api/fo-routes/generate-all', [FoController::class, 'generateAllGeoJSONRoutes'])->name('api.fo.routes.generate-all');
 Route::get('/fo-details/{type}/{id}', [FoController::class, 'getDetails'])->name('fo.details');
 Route::put('/fo-points/{id}', [FoController::class, 'updatePoint'])->name('fo.points.update');
 Route::put('/fo-routes/{id}', [FoController::class, 'updateRoute'])->name('fo.routes.update');
