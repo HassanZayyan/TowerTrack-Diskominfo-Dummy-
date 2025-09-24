@@ -337,8 +337,9 @@ class FoRoute extends Model
     {
         return [
             'profile' => $this->routing_profile ?? 'fiber_optic',
-            'avoid_highways' => $this->avoid_highways ?? true, // Avoid highways by default for FO routes
-            'avoid_tolls' => $this->avoid_tolls ?? true, // Avoid tolls by default for FO routes
+            // Prefer not to avoid highways/tolls by default so routes are more direct.
+            'avoid_highways' => $this->avoid_highways ?? false,
+            'avoid_tolls' => $this->avoid_tolls ?? false,
             'waypoints' => $this->waypoints ?? [],
         ];
     }

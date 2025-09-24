@@ -32,6 +32,9 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     route_id: foRoute.id,
     sequence_number: nextSequence.toString(),
     description: '',
+    isp_image: '',
+    pole_image: '',
+    junction_box_image: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -403,6 +406,92 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                         {errors.description}
                       </div>
                     )}
+                  </div>
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="isp_image" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                        <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v10.764a1 1 0 01-1.447.894L15 18M4 6h16M4 12h8m-8 6h8" />
+                        </svg>
+                        Link Foto ISP (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        id="isp_image"
+                        value={data.isp_image}
+                        onChange={(e) => setData('isp_image', e.target.value)}
+                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                          errors.isp_image 
+                            ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
+                            : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
+                        } focus:outline-none`}
+                        placeholder="https://drive.google.com/..."
+                      />
+                      {errors.isp_image && (
+                        <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {errors.isp_image}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="pole_image" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                        <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 2v20m12-12v12" />
+                        </svg>
+                        Link Foto Tiang (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        id="pole_image"
+                        value={data.pole_image}
+                        onChange={(e) => setData('pole_image', e.target.value)}
+                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                          errors.pole_image 
+                            ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
+                            : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
+                        } focus:outline-none`}
+                        placeholder="https://drive.google.com/..."
+                      />
+                      {errors.pole_image && (
+                        <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {errors.pole_image}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="junction_box_image" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                        <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                        Link Foto Joint Box (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        id="junction_box_image"
+                        value={data.junction_box_image}
+                        onChange={(e) => setData('junction_box_image', e.target.value)}
+                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                          errors.junction_box_image 
+                            ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
+                            : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
+                        } focus:outline-none`}
+                        placeholder="https://drive.google.com/..."
+                      />
+                      {errors.junction_box_image && (
+                        <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {errors.junction_box_image}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -12,7 +12,7 @@ class GenerateFoRoutes extends Command
      *
      * @var string
      */
-    protected $signature = 'fo:generate-routes {--area= : Generate routes for specific area only}';
+    protected $signature = 'fo:generate-routes {--area= : Generate routes for specific area only} {--force : Force regenerate even if up-to-date}';
 
     /**
      * The console command description.
@@ -27,6 +27,7 @@ class GenerateFoRoutes extends Command
     public function handle(FoRouteGenerationService $routeService)
     {
         $area = $this->option('area');
+        $force = (bool) $this->option('force');
         
         $this->info('Starting FO route generation...');
         
@@ -43,7 +44,7 @@ class GenerateFoRoutes extends Command
             $this->comment('Using OpenRouteService API for accurate routing.');
         }
         
-        $results = $routeService->regenerateAllRoutes($area);
+        $results = $routeService->regenerateAllRoutes($area, $force);
         
         $this->newLine();
         $this->info('Route generation completed!');

@@ -210,15 +210,13 @@ class FoRouteGenerationService
         
         try {
             $profile = $this->mapProfileToORS($parameters['profile'] ?? 'driving');
-            
+
+            // Build a clean ORS request. Use 'preference' => 'fastest' to bias for fastest/straight routes.
             $requestData = [
                 'coordinates' => $coordinates,
                 'format' => 'geojson',
                 'instructions' => false,
-                'geometry_simplify' => false, // Disable simplification for more detailed routes
-                'continue_straight' => false,
-                'radiuses' => array_fill(0, count($coordinates), 1000), // Allow 1km radius for snapping to roads
-                'bearings' => array_fill(0, count($coordinates), [-1, -1]), // No bearing restrictions
+                'preference' => 'fastest',
             ];
             
             // Add avoid options jika diperlukan
@@ -326,14 +324,15 @@ class FoRouteGenerationService
      */
     private function mapProfileToORS(string $profile): string
     {
+        // Use driving-car for FO planning so routes follow main roads and avoid zig-zagging through footpaths.
         $mapping = [
-            'driving' => 'foot-walking', // Changed from driving-car to foot-walking for better road following
+            'driving' => 'driving-car',
             'walking' => 'foot-walking',
             'cycling' => 'cycling-regular',
-            'fiber_optic' => 'foot-walking', // Dedicated profile for fiber optic routes
+            'fiber_optic' => 'driving-car',
         ];
         
-        return $mapping[$profile] ?? 'foot-walking'; // Default to foot-walking instead of driving-car
+        return $mapping[$profile] ?? 'driving-car';
     }
     
     /**
@@ -397,7 +396,7 @@ class FoRouteGenerationService
     /**
      * Batch generate routes untuk semua routes yang memerlukan regeneration
      */
-    public function regenerateAllRoutes(?string $area = null): array
+    public function regenerateAllRoutes(?string $area = null, bool $force = false): array
     {
         $query = FoRoute::query();
         
@@ -414,7 +413,7 @@ class FoRouteGenerationService
         ];
         
         foreach ($routes as $route) {
-            if (!$route->needsGeoJSONRegeneration()) {
+            if (!$force && !$route->needsGeoJSONRegeneration()) {
                 $results['skipped']++;
                 continue;
             }

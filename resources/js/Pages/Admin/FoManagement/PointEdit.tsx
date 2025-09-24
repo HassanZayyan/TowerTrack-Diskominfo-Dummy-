@@ -13,6 +13,9 @@ interface FoPoint {
   route_name: string;
   sequence_number: number;
   description?: string;
+  isp_image?: string | null;
+  pole_image?: string | null;
+  junction_box_image?: string | null;
 }
 
 interface AvailableRoute {
@@ -50,6 +53,9 @@ export default function PointEdit({
     route_name: foPoint.route_name,
     sequence_number: foPoint.sequence_number.toString(),
     description: foPoint.description || '',
+    isp_image: foPoint.isp_image || '',
+    pole_image: foPoint.pole_image || '',
+    junction_box_image: foPoint.junction_box_image || '',
     from_route: fromRouteDetail ? 'detail' : null,
   });
 
@@ -455,6 +461,94 @@ export default function PointEdit({
                   )}
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label htmlFor="isp_image" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v10.764a1 1 0 01-1.447.894L15 18M4 6h16M4 12h8m-8 6h8" />
+                      </svg>
+                      Link Foto ISP (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      id="isp_image"
+                      value={data.isp_image}
+                      onChange={(e) => setData('isp_image', e.target.value)}
+                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
+                        errors.isp_image 
+                          ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
+                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
+                      } focus:outline-none`}
+                      placeholder="https://drive.google.com/..."
+                    />
+                    {errors.isp_image && (
+                      <div className="flex items-center mt-2 text-red-600">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm font-medium">{errors.isp_image}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="pole_image" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 2v20m12-12v12" />
+                      </svg>
+                      Link Foto Tiang (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      id="pole_image"
+                      value={data.pole_image}
+                      onChange={(e) => setData('pole_image', e.target.value)}
+                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
+                        errors.pole_image 
+                          ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
+                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
+                      } focus:outline-none`}
+                      placeholder="https://drive.google.com/..."
+                    />
+                    {errors.pole_image && (
+                      <div className="flex items-center mt-2 text-red-600">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm font-medium">{errors.pole_image}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="junction_box_image" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                      </svg>
+                      Link Foto Joint Box (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      id="junction_box_image"
+                      value={data.junction_box_image}
+                      onChange={(e) => setData('junction_box_image', e.target.value)}
+                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
+                        errors.junction_box_image 
+                          ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
+                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
+                      } focus:outline-none`}
+                      placeholder="https://drive.google.com/..."
+                    />
+                    {errors.junction_box_image && (
+                      <div className="flex items-center mt-2 text-red-600">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm font-medium">{errors.junction_box_image}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div>
                   <label htmlFor="sequence_number" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
                     <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

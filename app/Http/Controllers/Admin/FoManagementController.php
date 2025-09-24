@@ -8,6 +8,7 @@ use App\Models\FoPoint;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\DB;
 
 class FoManagementController extends Controller
 {
@@ -177,6 +178,10 @@ class FoManagementController extends Controller
             'route_id' => 'required|exists:fo_routes,id',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
+            // Optional Google Drive links for images
+            'isp_image' => 'nullable|string|max:2048|url',
+            'pole_image' => 'nullable|string|max:2048|url',
+            'junction_box_image' => 'nullable|string|max:2048|url',
         ]);
 
         // Remove route_id from validated data as it's not in the database
@@ -241,6 +246,9 @@ class FoManagementController extends Controller
                 'route_name' => $foPoint->route_name,
                 'sequence_number' => $foPoint->sequence_number,
                 'description' => $foPoint->description,
+                'isp_image' => $foPoint->isp_image,
+                'pole_image' => $foPoint->pole_image,
+                'junction_box_image' => $foPoint->junction_box_image,
             ],
             'availableAreas' => ['ungaran'],
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
@@ -268,6 +276,10 @@ class FoManagementController extends Controller
             'route_name' => 'required|string|max:255',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
+            // Optional Google Drive links for images
+            'isp_image' => 'nullable|string|max:2048|url',
+            'pole_image' => 'nullable|string|max:2048|url',
+            'junction_box_image' => 'nullable|string|max:2048|url',
         ]);
 
         $oldRouteName = $foPoint->route_name;
@@ -486,9 +498,17 @@ class FoManagementController extends Controller
      */
     public function destroyRoute(FoRoute $foRoute)
     {
-        $foRoute->delete();
+        DB::transaction(function () use ($foRoute) {
+            // Delete related FO points by route name and area
+            FoPoint::where('route_name', $foRoute->name)
+                ->where('area', $foRoute->area)
+                ->delete();
 
-        return back()->with('success', 'Jalur FO berhasil dihapus');
+            // Delete the route itself
+            $foRoute->delete();
+        });
+
+        return back()->with('success', 'Jalur FO dan titik-titik terkait berhasil dihapus');
     }
 
     /**
@@ -553,8 +573,21 @@ class FoManagementController extends Controller
                 $message = 'Jalur FO berhasil diatur ke status maintenance';
                 break;
             case 'delete':
-                $routes->delete();
-                $message = 'Jalur FO berhasil dihapus';
+                DB::transaction(function () use ($routes) {
+                    // Get routes to delete first (id, name, area)
+                    $routesToDelete = $routes->get(['id', 'name', 'area']);
+
+                    // Delete all related FO points for each route
+                    foreach ($routesToDelete as $route) {
+                        FoPoint::where('route_name', $route->name)
+                            ->where('area', $route->area)
+                            ->delete();
+                    }
+
+                    // Delete the routes themselves
+                    \App\Models\FoRoute::whereIn('id', $routesToDelete->pluck('id'))->delete();
+                });
+                $message = 'Jalur FO beserta titik-titik terkait berhasil dihapus';
                 break;
         }
 
@@ -584,7 +617,7 @@ class FoManagementController extends Controller
 
         $columns = [
             'ID', 'Name', 'Latitude', 'Longitude', 'Area', 'Type', 'Status',
-            'Route Name', 'Sequence Number', 'Description', 'Created At', 'Updated At'
+            'Route Name', 'Sequence Number', 'Description', 'ISP Image', 'Pole Image', 'Junction Box Image', 'Created At', 'Updated At'
         ];
 
         return response()->streamDownload(function () use ($query, $columns) {
@@ -605,6 +638,9 @@ class FoManagementController extends Controller
                     $point->route_name,
                     (int) $point->sequence_number,
                     (string) ($point->description ?? ''),
+                    (string) ($point->isp_image ?? ''),
+                    (string) ($point->pole_image ?? ''),
+                    (string) ($point->junction_box_image ?? ''),
                     optional($point->created_at)->format('Y-m-d H:i:s'),
                     optional($point->updated_at)->format('Y-m-d H:i:s'),
                 ]);
@@ -732,6 +768,7 @@ class FoManagementController extends Controller
         
         // Get all points for this route ordered by sequence
         $points = FoPoint::where('route_name', $route->name)
+            ->where('area', $route->area)
             ->orderBy('sequence_number')
             ->get();
         
