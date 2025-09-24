@@ -215,8 +215,10 @@ class FoRouteGenerationService
                 'coordinates' => $coordinates,
                 'format' => 'geojson',
                 'instructions' => false,
-                'geometry_simplify' => true,
+                'geometry_simplify' => false, // Disable simplification for more detailed routes
                 'continue_straight' => false,
+                'radiuses' => array_fill(0, count($coordinates), 1000), // Allow 1km radius for snapping to roads
+                'bearings' => array_fill(0, count($coordinates), [-1, -1]), // No bearing restrictions
             ];
             
             // Add avoid options jika diperlukan
@@ -319,16 +321,19 @@ class FoRouteGenerationService
     
     /**
      * Map internal profile names to OpenRouteService profiles
+     * For fiber optic routes, we use foot-walking as it follows roads more closely
+     * and allows access to areas where cars cannot go
      */
     private function mapProfileToORS(string $profile): string
     {
         $mapping = [
-            'driving' => 'driving-car',
+            'driving' => 'foot-walking', // Changed from driving-car to foot-walking for better road following
             'walking' => 'foot-walking',
             'cycling' => 'cycling-regular',
+            'fiber_optic' => 'foot-walking', // Dedicated profile for fiber optic routes
         ];
         
-        return $mapping[$profile] ?? 'driving-car';
+        return $mapping[$profile] ?? 'foot-walking'; // Default to foot-walking instead of driving-car
     }
     
     /**

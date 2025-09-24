@@ -79,7 +79,7 @@ class FoController extends Controller
             'foPoints' => $foPoints,
             'foRoutes' => $foRoutes,
             'currentArea' => $area,
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'mapData' => [
                 'points' => $foPoints,
                 'routes' => $foRoutes,
@@ -98,7 +98,7 @@ class FoController extends Controller
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran,ambarawa',
+            'area' => 'required|in:ungaran',
             'description' => 'nullable|string',
             'type' => 'required|string|in:pole,junction,hub,endpoint',
             'status' => 'required|string|in:active,inactive,maintenance',
@@ -120,7 +120,7 @@ class FoController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran,ambarawa',
+            'area' => 'required|in:ungaran',
             'description' => 'nullable|string',
             'path_coordinates' => 'required|array|min:2',
             'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
@@ -152,7 +152,7 @@ class FoController extends Controller
                 'name' => 'required|string|max:255',
                 'latitude' => 'required|numeric|between:-90,90',
                 'longitude' => 'required|numeric|between:-180,180',
-                'area' => 'required|in:ungaran,ambarawa',
+                'area' => 'required|in:ungaran',
                 'description' => 'nullable|string|max:1000',
                 'type' => 'required|string|in:pole,junction,hub,endpoint',
                 'status' => 'required|string|in:active,inactive,maintenance',
@@ -190,7 +190,7 @@ class FoController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'area' => 'required|in:ungaran,ambarawa',
+                'area' => 'required|in:ungaran',
                 'description' => 'nullable|string|max:1000',
                 'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
                 'status' => 'required|string|in:active,inactive,maintenance',
@@ -535,7 +535,7 @@ class FoController extends Controller
     {
         try {
             $validated = $request->validate([
-                'area' => 'nullable|string|in:ungaran,ambarawa',
+                'area' => 'nullable|string|in:ungaran',
             ]);
 
             $routeService = app(\App\Services\FoRouteGenerationService::class);

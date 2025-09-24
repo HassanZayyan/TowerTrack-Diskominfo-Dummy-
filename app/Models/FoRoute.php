@@ -331,13 +331,14 @@ class FoRoute extends Model
 
     /**
      * Get routing parameters untuk API calls.
+     * Default to fiber_optic profile for better road following
      */
     public function getRoutingParameters(): array
     {
         return [
-            'profile' => $this->routing_profile ?? 'driving',
-            'avoid_highways' => $this->avoid_highways ?? false,
-            'avoid_tolls' => $this->avoid_tolls ?? false,
+            'profile' => $this->routing_profile ?? 'fiber_optic',
+            'avoid_highways' => $this->avoid_highways ?? true, // Avoid highways by default for FO routes
+            'avoid_tolls' => $this->avoid_tolls ?? true, // Avoid tolls by default for FO routes
             'waypoints' => $this->waypoints ?? [],
         ];
     }

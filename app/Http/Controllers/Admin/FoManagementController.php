@@ -52,7 +52,7 @@ class FoManagementController extends Controller
             'routes' => $foRoutes,
             'stats' => $stats,
             'currentArea' => $area,
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
         ]);
     }
 
@@ -170,7 +170,7 @@ class FoManagementController extends Controller
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran,ambarawa',
+            'area' => 'required|in:ungaran',
             'type' => 'required|in:pole,junction,hub,endpoint',
             'status' => 'required|in:active,inactive,maintenance',
             'route_name' => 'required|string|max:255',
@@ -188,9 +188,27 @@ class FoManagementController extends Controller
         // Update route's total_points and path coordinates
         $this->updateRouteStatistics($routeId);
 
+        // Automatically generate routes after adding new point
+        try {
+            \Illuminate\Support\Facades\Artisan::call('fo:generate-routes', [
+                '--area' => $validated['area']
+            ]);
+            \Log::info('Auto-generated routes after adding new FO point', [
+                'point_id' => $point->id,
+                'route_id' => $routeId,
+                'area' => $validated['area']
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to auto-generate routes after adding FO point: ' . $e->getMessage(), [
+                'point_id' => $point->id,
+                'route_id' => $routeId,
+                'exception' => $e
+            ]);
+        }
+
         return redirect()
             ->route('admin.fo-management.routes.detail', $routeId)
-            ->with('success', 'Titik FO berhasil ditambahkan');
+            ->with('success', 'Titik FO berhasil ditambahkan dan rute otomatis diperbarui');
     }
 
     /**
@@ -224,7 +242,7 @@ class FoManagementController extends Controller
                 'sequence_number' => $foPoint->sequence_number,
                 'description' => $foPoint->description,
             ],
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'availableRoutes' => $availableRoutes,
@@ -244,7 +262,7 @@ class FoManagementController extends Controller
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran,ambarawa',
+            'area' => 'required|in:ungaran',
             'type' => 'required|in:pole,junction,hub,endpoint',
             'status' => 'required|in:active,inactive,maintenance',
             'route_name' => 'required|string|max:255',
@@ -311,7 +329,7 @@ class FoManagementController extends Controller
     public function createRoute()
     {
         return Inertia::render('Admin/FoManagement/RouteCreate', [
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
         ]);
     }
@@ -325,7 +343,7 @@ class FoManagementController extends Controller
             // Validate incoming data
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'area' => 'required|in:ungaran,ambarawa',
+                'area' => 'required|in:ungaran',
                 'description' => 'nullable|string|max:1000',
                 'status' => 'required|in:active,inactive,maintenance',
                 'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
@@ -388,7 +406,7 @@ class FoManagementController extends Controller
                 'total_distance' => (float) ($foRoute->total_distance ?? 0),
                 'total_points' => (int) ($foRoute->total_points ?? 0),
             ],
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
         ]);
     }
@@ -402,7 +420,7 @@ class FoManagementController extends Controller
             // Validate incoming data
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'area' => 'required|in:ungaran,ambarawa',
+                'area' => 'required|in:ungaran',
                 'description' => 'nullable|string|max:1000',
                 'status' => 'required|in:active,inactive,maintenance',
                 'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',

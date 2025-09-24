@@ -153,7 +153,6 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                             : 'border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-gray-300'
                         }`}
                       >
-                        <option value="">Pilih Area</option>
                         {availableAreas.map((area) => (
                           <option key={area} value={area}>
                             {area.charAt(0).toUpperCase() + area.slice(1)}
