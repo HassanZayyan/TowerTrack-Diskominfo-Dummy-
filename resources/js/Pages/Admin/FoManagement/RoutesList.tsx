@@ -319,7 +319,7 @@ export default function RoutesList() {
         <HeroSection
           title="Manajemen Jalur FO"
           subtitle={`Kelola jalur fiber optic untuk area ${currentArea.charAt(0).toUpperCase() + currentArea.slice(1)}`}
-          variant="neutral"
+          variant="brand"
           align="left"
           actions={
             canEdit ? (

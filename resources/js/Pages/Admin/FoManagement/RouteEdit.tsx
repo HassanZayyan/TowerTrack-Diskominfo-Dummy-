@@ -91,6 +91,15 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                 </div>
                 <div className="flex gap-3">
                   <Link
+                    href={route('admin.fo-management.routes.list')}
+                    className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Kembali
+                  </Link>
+                  <Link
                     href={route('admin.fo-management.routes.detail', foRoute.id)}
                     className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
                   >
