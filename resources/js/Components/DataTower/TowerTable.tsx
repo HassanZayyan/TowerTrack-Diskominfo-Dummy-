@@ -61,7 +61,7 @@ export default function TowerTable({
               <th className="px-4 py-3 border-b">Tinggi</th>
               <th className="px-4 py-3 border-b">Owner</th>
               <th className="px-4 py-3 border-b">Alamat</th>
-              <th className="px-4 py-3 border-b">Status</th>
+              <th className="px-4 py-3 border-b text-center">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -79,7 +79,7 @@ export default function TowerTable({
                 <td className="px-4 py-3 border-b">{tower.tinggi_menara ? `${tower.tinggi_menara}m` : 'Belum Terdata'}</td>
                 <td className="px-4 py-3 border-b">{tower.owner || 'Belum Terdata'}</td>
                 <td className="px-4 py-3 border-b">{tower.alamat_menara || 'Belum Terdata'}</td>
-                <td className="px-4 py-3 border-b">
+                <td className="px-4 py-3 border-b text-center">
                   <span 
                     className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                     style={{ 
