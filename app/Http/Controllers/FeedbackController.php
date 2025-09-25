@@ -52,7 +52,7 @@ class FeedbackController extends Controller
             'sender_name' => 'required|string|max:100',
             'email' => auth()->check() && auth()->user()->isComplainant() 
                 ? 'prohibited' // Email not allowed for authenticated complainant users
-                : 'nullable|email|max:255', // Email required for anonymous users
+                : 'nullable|email|max:255', // Email allowed for anonymous users (optional)
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -70,8 +70,8 @@ class FeedbackController extends Controller
                 $email = auth()->user()->email;
             }
         } else {
-            // For anonymous users, email is required
-            $email = $validated['email'];
+            // For anonymous users, email is optional
+            $email = $validated['email'] ?? null;
         }
 
         $feedback = Feedback::create([

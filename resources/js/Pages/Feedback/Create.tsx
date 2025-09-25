@@ -249,9 +249,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     formData.append('tower_id', form.tower_id);
     formData.append('message', form.pesan.trim());
     
-    // Only append email if provided and user is not authenticated
-    if (!isAuthenticatedUser && form.email.trim()) {
-      formData.append('email', form.email.trim());
+    // Only append email if provided and user is not authenticated (skip empty)
+    if (!isAuthenticatedUser) {
+      const trimmedEmail = form.email.trim();
+      if (trimmedEmail) {
+        formData.append('email', trimmedEmail);
+      }
     }
     // For authenticated users, don't send email field - backend will use user's email automatically
     
