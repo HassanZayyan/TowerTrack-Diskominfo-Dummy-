@@ -215,8 +215,17 @@ export default function MyMessagesIndex({
             />
           </div>
           
-          <PrimaryButton type="submit" className="w-full">
-            Lihat Pesan
+          <PrimaryButton
+                      type="submit"
+                      className="w-full px-6 py-3 font-semibold rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 justify-center text-lg"
+                      style={{ backgroundColor: '#FFD700', color: '#212121' }}
+                    >
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Lihat Pesan
+            </span>
           </PrimaryButton>
         </form>
       </div>
@@ -239,23 +248,33 @@ export default function MyMessagesIndex({
   return (
     <MainLayout title="Pesan Saya" currentPage="/my-messages">
       <Head title="Pesan Saya" />
-      <div className="w-full">
-        {/* Header Card */}
-        <div className="rounded-xl shadow-sm mb-4 sm:mb-6 px-4 sm:px-6 py-4 sm:py-5 mx-3 sm:mx-4 md:mx-6" style={{ backgroundColor: '#FFF8E1' }}>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: '#212121' }}>
-            {isAnonymous ? 'Pesan Anonymous' : 'Keluhan/Masukan'}
-          </h1>
-          <p className="text-xs sm:text-sm mt-2 text-gray-700">
-            {isAnonymous 
-              ? 'Lihat status penanganan keluhan atau masukan yang Anda kirim secara anonymous'
-              : 'Lihat status penanganan, balasan, atau penutupan laporan Anda'
-            }
-          </p>
+      
+      <div className="p-4 sm:p-6">
+        <div 
+          className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" 
+          style={{ backgroundColor: '#FFF8E1' }}
+        >
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
+              {isAnonymous ? 'Pesan Anonymous' : 'Keluhan/Masukan'}
+            </h1>
+            <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
+              {isAnonymous 
+                ? 'Lihat status penanganan keluhan atau masukan yang Anda kirim secara anonymous'
+                : 'Lihat status penanganan, balasan, atau penutupan laporan Anda'
+              }
+            </p>
+          </div>
+          <img 
+            src="/images/kab-smg-logo.png" 
+            alt="Kabupaten Semarang" 
+            className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" 
+          />
         </div>
 
         {/* Show email input form for anonymous users */}
         {showEmailInput && (
-          <div className="mx-3 sm:mx-4 md:mx-6 mb-6">
+          <div className="mb-6">
             <EmailInputForm />
           </div>
         )}
@@ -264,12 +283,12 @@ export default function MyMessagesIndex({
         {(!showEmailInput && items.length > 0) && (
           <>
             {/* Summary Stats */}
-            <div className="mx-3 sm:mx-4 md:mx-6 mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-6">
               <MessageStats items={items} />
             </div>
 
             {/* Desktop Table View */}
-            <div className="mx-3 sm:mx-4 md:mx-6">
+            <div>
               <MessageTable 
                 items={items}
                 getStatusColor={getStatusColor}
@@ -279,7 +298,7 @@ export default function MyMessagesIndex({
             </div>
 
             {/* Mobile/Tablet Card View */}
-            <div className="lg:hidden space-y-3 mx-3 sm:mx-4 md:mx-6">
+            <div className="lg:hidden space-y-3">
               {items.map((item) => (
                 <MessageCard
                   key={item.id}
@@ -295,7 +314,7 @@ export default function MyMessagesIndex({
 
         {/* Show empty state if not showing email input and no items */}
         {!showEmailInput && items.length === 0 && (
-          <div className="mx-3 sm:mx-4 md:mx-6">
+          <div>
             <EmptyState />
           </div>
         )}
@@ -463,7 +482,6 @@ export default function MyMessagesIndex({
             </div>
           </div>
         )}
-      </div>
       
       {/* Asset Preview Modal */}
       {previewAsset && (
@@ -495,6 +513,7 @@ export default function MyMessagesIndex({
           </div>
         </div>
       )}
+      </div>
     </MainLayout>
   );
 }

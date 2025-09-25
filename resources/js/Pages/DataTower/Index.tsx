@@ -144,7 +144,15 @@ export default function DataTowerIndex({
 
   const onPageChange = (page: number) => {
     const params = buildFilterParams({ page });
-    router.get('/data-tower', params, { preserveState: true });
+    router.get('/data-tower', params, { 
+      preserveState: true, 
+      preserveScroll: true,
+      onSuccess: () => {
+        // Scroll to table section after pagination (same as "Lihat Tabel" button)
+        const tableTop = document.querySelector('#data-table-top');
+        if (tableTop) (tableTop as HTMLElement).scrollIntoView({ behavior: 'smooth' });
+      }
+    });
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -313,15 +321,17 @@ export default function DataTowerIndex({
                   />
                 </div>
 
-                <TowerTable
-                  towers={towers}
-                  currentPage={currentPage}
-                  perPage={perPage}
-                  total={total}
-                  lastPage={lastPage}
-                  onTowerClick={handleTowerClick}
-                  onPageChange={onPageChange}
-                />
+                <div id="tower-table-section">
+                  <TowerTable
+                    towers={towers}
+                    currentPage={currentPage}
+                    perPage={perPage}
+                    total={total}
+                    lastPage={lastPage}
+                    onTowerClick={handleTowerClick}
+                    onPageChange={onPageChange}
+                  />
+                </div>
                 </div>
               </StaggeredContainer>
             </div>
