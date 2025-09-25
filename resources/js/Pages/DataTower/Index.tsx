@@ -62,9 +62,9 @@ export default function DataTowerIndex({
   });
   const [resetLinesCounter, setResetLinesCounter] = useState<number>(0);
   
-  // Mode state
-  type Mode = 'none' | 'coverage';
-  const [mode, setMode] = useState<Mode>('coverage'); // Default to coverage mode
+  // Map toggles
+  const [measureEnabled, setMeasureEnabled] = useState<boolean>(false);
+  const [showCoverage, setShowCoverage] = useState<boolean>(true);
   
   // For tower detail modal
   const [selectedTower, setSelectedTower] = useState<Tower | null>(null);
@@ -268,8 +268,10 @@ export default function DataTowerIndex({
               <StaggeredContainer delay={400} animationType="fadeInUp" duration={600}>
                 <TowerMap
                   markers={markers}
-                  mode={mode}
-                  setMode={setMode}
+                  measureEnabled={measureEnabled}
+                  setMeasureEnabled={setMeasureEnabled}
+                  showCoverage={showCoverage}
+                  setShowCoverage={setShowCoverage}
                   distance={distance}
                   resetLinesCounter={resetLinesCounter}
                   setResetLinesCounter={setResetLinesCounter}
