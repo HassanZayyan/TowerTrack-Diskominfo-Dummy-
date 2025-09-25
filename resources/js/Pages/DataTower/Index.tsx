@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppBar from '@/Components/AppBar';
 import Footer from '@/Components/Footer';
@@ -70,6 +70,9 @@ export default function DataTowerIndex({
   const [selectedTower, setSelectedTower] = useState<Tower | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
   const mapRef = useRef<any>(null);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const initialSearchMountRef = useRef<boolean>(true);
+  const lastAppliedSearchRef = useRef<string>(searchTerm);
 
   // Pretty toast alert for UX
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'warning' });
@@ -157,12 +160,45 @@ export default function DataTowerIndex({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
     // Trigger map measurement reset when searching
     setResetLinesCounter(c => c + 1);
     
     const params = buildFilterParams({ search: searchTerm, page: 1 });
-    router.get('/data-tower', params, { preserveState: true });
+    lastAppliedSearchRef.current = searchTerm;
+    router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
   };
+
+  // Debounced real-time search (similar to FO page)
+  useEffect(() => {
+    // Skip running on initial mount to avoid duplicate initial fetch
+    if (initialSearchMountRef.current) {
+      initialSearchMountRef.current = false;
+      return;
+    }
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      // Avoid re-applying the same search
+      if (lastAppliedSearchRef.current === searchTerm) return;
+
+      setResetLinesCounter(c => c + 1);
+      const params = buildFilterParams({ search: searchTerm, page: 1 });
+      lastAppliedSearchRef.current = searchTerm;
+      router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
+    }, 500);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchTerm]);
 
   const handleTowerClick = (tower: Tower) => {
     setSelectedTower(tower);

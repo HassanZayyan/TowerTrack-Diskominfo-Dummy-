@@ -59,7 +59,7 @@ export default function TowerFilters({
             setCoordFilter(v);
             
             const params = buildFilterParams({ coord: v, page: 1 });
-            router.get('/data-tower', params, { preserveState: true });
+            router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
           }}
           className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
         >
@@ -77,7 +77,7 @@ export default function TowerFilters({
             setOwnerFilter(v);
             
             const params = buildFilterParams({ owner: v, page: 1 });
-            router.get('/data-tower', params, { preserveState: true });
+            router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
           }}
           className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
           title="Filter berdasarkan pemilik tower"

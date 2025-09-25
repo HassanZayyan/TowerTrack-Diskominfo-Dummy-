@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
@@ -168,11 +168,13 @@ const PERMIT_STATUS_OPTIONS: OptionType[] = [
 const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) => {
   const [editing, setEditing] = useState<Record<number, Partial<Tower>>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [currentPerPage] = useState(towers.per_page || 5); // Use server's per_page value or default to 5
   const [activeTab, setActiveTab] = useState<Record<number, string>>({});
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
   const [selectedOwners, setSelectedOwners] = useState<Record<number, { id: string; name: string; alamat: string }>>({});
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Advanced Filter State
   const [showFilters, setShowFilters] = useState(false);
@@ -477,12 +479,13 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   // Handle pagination
   const changePage = (newPage: number) => {
     const params = buildFilterParams({ page: newPage, per_page: 5 });
-    router.get(route('admin.towers.index'), params, { preserveState: true });
+    router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true });
   };
 
   const handleSearch = () => {
     const params = buildFilterParams({ page: 1 });
-    router.get(route('admin.towers.index'), params, { preserveState: true });
+    setAppliedSearch(searchTerm);
+    router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
   };
 
   // Filter helper functions
@@ -512,6 +515,27 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
     return params;
   };
+
+  // Debounced realtime search similar to FO RoutesList
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchTerm === appliedSearch) return;
+
+    searchTimeoutRef.current = setTimeout(() => {
+      const params = buildFilterParams({ page: 1 });
+      setAppliedSearch(searchTerm);
+      router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
+    }, 500);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm, appliedSearch]);
 
   const updateFilter = (key: string, value: any) => {
     setFilters(prev => ({
@@ -543,16 +567,17 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       selected_tower_id: null
     });
     setSearchTerm('');
+    setAppliedSearch('');
     
     router.get(route('admin.towers.index'), { 
       page: 1, 
       per_page: currentPerPage 
-    }, { preserveState: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
   };
 
   const applyFilters = () => {
     const params = buildFilterParams({ page: 1 });
-    router.get(route('admin.towers.index'), params, { preserveState: true });
+    router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
   };
 
   const hasActiveFilters = () => {
@@ -717,10 +742,6 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                 <button
                   onClick={() => {
                     setSearchTerm('');
-                    router.get(route('admin.towers.index'), { 
-                      page: 1, 
-                      per_page: currentPerPage 
-                    }, { preserveState: true });
                   }}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600"
                 >
@@ -822,7 +843,6 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                     <button
                       onClick={() => {
                         setSearchTerm('');
-                        handleSearch();
                       }}
                       className="ml-1 hover:bg-red-200 rounded-full p-0.5"
                     >

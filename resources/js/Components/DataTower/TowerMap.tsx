@@ -124,7 +124,7 @@ export default function TowerMap({
                     setOwnerFilter('all');
                     
                     const params = buildFilterParams({ owner: 'all', page: 1 });
-                    router.get('/data-tower', params, { preserveState: true });
+                    router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
                   }}
                   className="ml-2 text-xs text-red-600 hover:underline"
                 >

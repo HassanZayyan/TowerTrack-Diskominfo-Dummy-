@@ -238,6 +238,13 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         if (key === 'email' && isAuthenticatedUser) {
           return;
         }
+        // For guests, do not append empty email to avoid array/empty issues
+        if (key === 'email' && !isAuthenticatedUser) {
+          const trimmed = (value as string).trim();
+          if (!trimmed) return;
+          formData.append('email', trimmed);
+          return;
+        }
         formData.append(key, typeof value === 'string' ? value.trim() : value);
       });
       
