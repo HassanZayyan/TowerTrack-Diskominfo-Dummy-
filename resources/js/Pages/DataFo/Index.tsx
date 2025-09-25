@@ -556,7 +556,7 @@ export default function DataFoIndex({
         />
 
         {/* Interactive Filters */}
-        <StaggeredContainer delay={400} animationType="fadeInUp" duration={600}>
+        <StaggeredContainer delay={200} animationType="fadeInUp" duration={300}>
           <FoFilters
             selectedArea={selectedArea}
             onAreaChange={handleAreaChange}
@@ -570,7 +570,7 @@ export default function DataFoIndex({
         </StaggeredContainer>
 
         {/* Map Section */}
-        <StaggeredContainer delay={500} animationType="fadeInUp" duration={600}>
+        <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
           <div className="bg-white rounded-lg shadow mb-6 overflow-hidden" data-section="map">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <div>
@@ -817,36 +817,12 @@ export default function DataFoIndex({
                 <span className="text-xs text-gray-700">Tidak Ada Gambar</span>
               </div>
             </div>
-            <div className="pt-3 border-t border-gray-300">
-              <h5 className="text-sm font-medium text-gray-900 mb-2">Legenda Jalur:</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-blue-500" style={{ height: '3px' }}></div>
-                  <span>Jalur Mengikuti Jalan (GeoJSON)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-blue-500" style={{ 
-                    height: '2px', 
-                    backgroundImage: 'repeating-linear-gradient(to right, #3B82F6 0, #3B82F6 3px, transparent 3px, transparent 8px)' 
-                  }}></div>
-                  <span>Jalur Langsung (Point-to-Point)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-green-500"></div>
-                  <span>Jalur Aktif</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-yellow-500"></div>
-                  <span>Maintenance</span>
-                </div>
-              </div>
-            </div>
           </div>
           </div>
         </StaggeredContainer>
 
         {/* Data Tables */}
-        <StaggeredContainer delay={600} animationType="fadeInUp" duration={600}>
+        <StaggeredContainer delay={300} animationType="fadeInUp" duration={300}>
           <div data-section="table">
             <FoTable
                filteredPoints={filteredPoints}

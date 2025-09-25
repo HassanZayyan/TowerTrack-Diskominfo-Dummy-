@@ -12,7 +12,7 @@ interface StaggeredContainerProps {
 const StaggeredContainer: React.FC<StaggeredContainerProps> = ({
   children,
   delay = 0,
-  duration = 600,
+  duration = 300,
   className = '',
   animationType = 'fadeInUp',
   hoverEffect = false

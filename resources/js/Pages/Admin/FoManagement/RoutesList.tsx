@@ -148,7 +148,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
   const statusConfig = getStatusConfig(foRoute.status);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-100">
       <div className="p-6">
         {/* Header */}
         <div className="mb-4">
@@ -170,7 +170,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
             {/* View Details Button */}
             <Link
               href={route('admin.fo-management.routes.detail', foRoute.id)}
-              className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md flex-1 sm:flex-none"
+              className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-100 shadow-sm hover:shadow-md flex-1 sm:flex-none"
               title="Lihat detail jalur FO"
             >
               <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +185,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
                 {/* Edit Button */}
                 <Link
                   href={route('admin.fo-management.routes.edit', foRoute.id)}
-                  className="group inline-flex items-center justify-center px-3 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md flex-1 sm:flex-none"
+                  className="group inline-flex items-center justify-center px-3 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 transition-all duration-100 shadow-sm hover:shadow-md flex-1 sm:flex-none"
                   title="Edit jalur FO"
                 >
                   <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +197,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
                 {/* Delete Button */}
                 <button
                   onClick={() => onDelete(foRoute)}
-                  className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md flex-1 sm:flex-none"
+                  className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-100 shadow-sm hover:shadow-md flex-1 sm:flex-none"
                   title="Hapus jalur FO"
                 >
                   <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,14 +323,22 @@ export default function RoutesList() {
           align="left"
           actions={
             canEdit ? (
-              <div className="bg-white rounded-lg shadow-md p-1">
-                <Link
-                  href={route('admin.fo-management.routes.create')}
-                  className="inline-flex items-center px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors shadow-sm"
-                >
-                  Tambah Jalur Baru
-                </Link>
-              </div>
+              <Link
+                href={route('admin.fo-management.routes.create')}
+                className="inline-flex items-center px-4 py-2 rounded-lg transition-colors shadow-sm"
+                style={{ 
+                  backgroundColor: '#FFD700', 
+                  color: '#B71C1C'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFC107';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFD700';
+                }}
+              >
+                + Tambah Jalur Baru
+              </Link>
             ) : null
           }
         />
@@ -339,20 +347,6 @@ export default function RoutesList() {
       <div className="bg-white overflow-hidden shadow-xl rounded-xl">
         <div className="p-6 lg:p-8">
           <div className="space-y-6">
-                {/* Add New Route Button */}
-                {canEdit && (
-                  <div className="flex justify-end">
-                    <Link
-                      href={route('admin.fo-management.routes.create')}
-                      className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 border border-transparent rounded-xl font-semibold text-sm text-white tracking-wide hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Jalur Baru
-                    </Link>
-                  </div>
-                )}
 
                 {/* Stats Cards */}
                 <StatsCards stats={stats} />
@@ -452,17 +446,6 @@ export default function RoutesList() {
                           : 'Belum ada jalur FO yang tersedia. Mulai dengan menambahkan jalur baru.'
                         }
                       </p>
-                      {canEdit && !filters.search && filters.status === 'all' && (
-                        <Link
-                          href={route('admin.fo-management.routes.create')}
-                          className="inline-flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          Tambah Jalur Pertama
-                        </Link>
-                      )}
                     </div>
                   )}
                 </div>
