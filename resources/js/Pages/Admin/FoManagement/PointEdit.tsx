@@ -116,15 +116,28 @@ export default function PointEdit({
                   </div>
                 </div>
                 
-                <div className="hidden lg:flex items-center space-x-6">
-                  <div className="text-right">
-                    <div className="text-white/80 text-sm font-medium">Langkah</div>
-                    <div className="text-white text-2xl font-bold">2/2</div>
-                  </div>
-                  <div className="w-px h-12 bg-white/20"></div>
-                  <div className="text-right">
-                    <div className="text-white/80 text-sm font-medium">Status</div>
-                    <div className="text-yellow-300 text-sm font-semibold">Edit Mode</div>
+                <div className="flex items-center space-x-4">
+                  <Link
+                    href={route('admin.fo-management.routes.detail', parentRouteId || 15)}
+                    className="group inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-red-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                    title="Kembali ke detail jalur"
+                  >
+                    <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Kembali
+                  </Link>
+                  
+                  <div className="hidden lg:flex items-center space-x-6">
+                    <div className="text-right">
+                      <div className="text-white/80 text-sm font-medium">Langkah</div>
+                      <div className="text-white text-2xl font-bold">2/2</div>
+                    </div>
+                    <div className="w-px h-12 bg-white/20"></div>
+                    <div className="text-right">
+                      <div className="text-white/80 text-sm font-medium">Status</div>
+                      <div className="text-yellow-300 text-sm font-semibold">Edit Mode</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -659,18 +672,6 @@ export default function PointEdit({
                     </div>
                     
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
-                      <Link
-                        href={route('admin.fo-management.routes.detail', parentRouteId || 15)}
-                        className="group relative px-8 py-4 bg-white border-2 border-gray-200 rounded-xl shadow-lg text-gray-700 font-semibold transition-all duration-300 hover:border-gray-300 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-gray-100 active:transform active:scale-95 text-center"
-                      >
-                        <div className="flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                          </svg>
-                          Kembali
-                        </div>
-                      </Link>
-                      
                       <button
                         type="submit"
                         disabled={processing}
