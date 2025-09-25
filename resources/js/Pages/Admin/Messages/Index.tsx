@@ -108,8 +108,8 @@ const MessagesIndexPage: React.FC = () => {
       {/* Hero Section */}
       <div className="mb-8">
         <HeroSection
-          title="Kelola Pesan"
-          subtitle="Kelola keluhan dan masukan dari pengguna sistem dengan respon yang tepat dan cepat"
+          title={activeTab === 'complaints' ? 'Kelola Keluhan' : 'Kelola Masukan'}
+          subtitle={activeTab === 'complaints' ? 'Pantau dan tanggapi keluhan dari masyarakat terkait tower telekomunikasi' : 'Pantau dan tanggapi masukan dari masyarakat terkait tower telekomunikasi'}
           variant="brand"
           align="left"
           actions={

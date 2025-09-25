@@ -291,13 +291,7 @@ const ManagementTable: React.FC<Props> = ({
 
   return (
     <>
-      {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola {title}</h1>
-        <p className="text-gray-600">
-          Pantau dan tanggapi {title.toLowerCase()} dari masyarakat terkait tower telekomunikasi
-        </p>
-      </div>
+
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
