@@ -43,9 +43,9 @@ const HeroSection: React.FC<HeroSectionProps> = React.memo<HeroSectionProps>((
   // Memoized variant classes for better performance and type safety
   const variantClasses: Record<HeroVariant, VariantClasses> = useMemo(() => ({
     brand: {
-      wrapper: 'bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white relative overflow-hidden',
+      wrapper: 'bg-gradient-to-br from-red-700 via-red-600 to-red-800 text-white relative overflow-hidden',
       title: 'text-white',
-      subtitle: 'text-blue-100/90'
+      subtitle: 'text-red-100/90'
     } as const,
     neutral: {
       wrapper: 'bg-gradient-to-br from-gray-50  via-white to-gray-100 text-gray-900',

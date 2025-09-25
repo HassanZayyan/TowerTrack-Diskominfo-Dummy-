@@ -116,7 +116,11 @@ const MessagesIndexPage: React.FC = () => {
             <>
               <div className="inline-flex rounded-lg bg-white p-1 border border-gray-200 shadow-sm">
                 <button
-                  className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'complaints' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                  className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'complaints' ? '' : 'text-gray-700 hover:bg-gray-50'}`}
+                  style={activeTab === 'complaints' ? { 
+                    backgroundColor: '#FFD700', 
+                    color: '#B71C1C'
+                  } : {}}
                   onClick={() => setActiveTab('complaints')}
                 >
                   <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +129,11 @@ const MessagesIndexPage: React.FC = () => {
                   Keluhan
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'feedbacks' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                  className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'feedbacks' ? '' : 'text-gray-700 hover:bg-gray-50'}`}
+                  style={activeTab === 'feedbacks' ? { 
+                    backgroundColor: '#FFD700', 
+                    color: '#B71C1C'
+                  } : {}}
                   onClick={() => setActiveTab('feedbacks')}
                 >
                   <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">

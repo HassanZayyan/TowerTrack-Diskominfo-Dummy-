@@ -47,10 +47,6 @@ export default function TowerTable({
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-        <h2 className="text-lg sm:text-xl font-medium">Data Tower</h2>
-      </div>
-
       <div className="overflow-x-auto">
         {/* Table for md+ */}
         <table className="w-full text-left hidden md:table">

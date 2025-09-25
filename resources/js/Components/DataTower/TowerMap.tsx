@@ -136,6 +136,16 @@ export default function TowerMap({
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Distance Display - moved to left */}
+          {measureEnabled && (
+            <span className="text-sm text-gray-700">
+              Jarak:
+              <span className="font-semibold ml-1" style={{ color: '#B71C1C' }}>
+                {distance > 0 ? `${distance.toFixed(1)} m${distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}` : '-'}
+              </span>
+            </span>
+          )}
+          
           {/* Toggles: Measure distance & Coverage radius */}
           <div className="flex items-center gap-2">
             <button
@@ -166,24 +176,16 @@ export default function TowerMap({
             </button>
           </div>
           
-          {/* Distance and Reset Panel */}
+          {/* Reset Button */}
           {measureEnabled && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-700">
-                Jarak:
-                <span className="font-semibold ml-1" style={{ color: '#B71C1C' }}>
-                  {distance > 0 ? `${distance.toFixed(1)} m${distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}` : '-'}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setResetLinesCounter(c => c + 1)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium border hover:opacity-90 shrink-0"
-                style={{ backgroundColor: '#FFFFFF', color: '#212121', borderColor: '#212121' }}
-              >
-                Reset
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setResetLinesCounter(c => c + 1)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium border hover:opacity-90 shrink-0"
+              style={{ backgroundColor: '#FFFFFF', color: '#212121', borderColor: '#212121' }}
+            >
+              Reset
+            </button>
           )}
           
           {/* Fullscreen Button */}

@@ -86,7 +86,7 @@ const FormInput: React.FC<{
   className?: string;
   rows?: number;
 }> = ({ value, onChange, error, type = 'text', placeholder, disabled = false, options, className = '', rows }) => {
-  const baseClass = `w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-colors ${
+  const baseClass = `w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-colors ${
     error ? 'border-red-500 bg-red-50' : 'border-gray-300'
   } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`;
 
@@ -615,14 +615,22 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
           align="left"
           actions={
             <>
-              <div className="bg-white rounded-lg shadow-md p-1">
-                <button
-                  onClick={() => router.get(route('admin.towers.create'))}
-                  className="inline-flex items-center px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors shadow-sm"
-                >
-                  Tambah Tower
-                </button>
-              </div>
+              <button
+                onClick={() => router.get(route('admin.towers.create'))}
+                className="inline-flex items-center px-4 py-2 rounded-lg transition-colors shadow-sm"
+                style={{ 
+                  backgroundColor: '#FFD700', 
+                  color: '#B71C1C'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFC107';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFD700';
+                }}
+              >
+                + Tambah Tower
+              </button>
             </>
           }
         />
@@ -630,14 +638,14 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
       {/* Statistics and Search */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-blue-500">
+        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Total Towers</h3>
-              <p className="text-3xl font-bold text-blue-600">{statistics.total}</p>
+              <p className="text-3xl font-bold text-red-600">{statistics.total}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-red-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
@@ -697,7 +705,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               <input
                 type="text"
                 placeholder="Cari nama site, site ID, atau owner..."
-                className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
+                className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm sm:text-base"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -730,7 +738,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               onClick={() => setShowFilters(!showFilters)}
               className={`flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${
                 showFilters || hasActiveFilters()
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -746,7 +754,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
             </button>
             <button
               onClick={handleSearch}
-              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -795,7 +803,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               <span>
                 Menampilkan <strong>{towers.from || 0}-{towers.to || 0}</strong> dari <strong>{towers.total || 0}</strong> tower
                 {(searchTerm || hasActiveFilters()) && (
-                  <span className="text-blue-600 ml-1">(hasil pencarian/filter)</span>
+                  <span className="text-red-600 ml-1">(hasil pencarian/filter)</span>
                 )}
               </span>
             </div>
@@ -806,7 +814,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                 <span className="text-xs text-gray-500 font-medium">Filter aktif:</span>
                 
                 {searchTerm && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -816,7 +824,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                         setSearchTerm('');
                         handleSearch();
                       }}
-                      className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                      className="ml-1 hover:bg-red-200 rounded-full p-0.5"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1022,8 +1030,8 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                 <div className="flex items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
-                    <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-red-100 p-2 rounded-lg flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
                     </div>
@@ -1094,7 +1102,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             onClick={() => setTowerTab(tower.id, tab.id)}
                             className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
                               getActiveTab(tower.id) === tab.id
-                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                                ? 'bg-red-100 text-red-700 border border-red-300'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
                             }`}
                           >
@@ -1447,7 +1455,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                         <div className="flex flex-col space-y-1">
                           <span className="text-gray-600 font-medium">Site Type:</span>
                           {hasValidValue(tower.site_type) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
                               {getDisplayValue(tower.site_type, SITE_TYPE_OPTIONS)}
                             </span>
                           ) : (
@@ -1588,7 +1596,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                       onClick={() => changePage(pageNum)}
                       className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                         pageNum === page
-                          ? 'bg-blue-50 border border-blue-200 text-blue-700 font-medium'
+                          ? 'bg-red-50 border border-red-200 text-red-700 font-medium'
                           : 'border border-gray-300 hover:bg-gray-50'
                       }`}
                     >
