@@ -184,10 +184,17 @@ export default function DataFoIndex({
   availableAreas = [],
   mapData
 }: DataFoProps) {
-  const [selectedArea, setSelectedArea] = useState(currentArea);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  // Initialize from URL for shareable state
+  const initParams = new URLSearchParams(window.location.search);
+  const initArea = initParams.get('area') || currentArea;
+  const initSearch = initParams.get('search') || '';
+  const initType = initParams.get('type') || 'all';
+  const initStatus = initParams.get('status') || 'all';
+
+  const [selectedArea, setSelectedArea] = useState(initArea);
+  const [searchTerm, setSearchTerm] = useState(initSearch);
+  const [selectedType, setSelectedType] = useState(initType);
+  const [selectedStatus, setSelectedStatus] = useState(initStatus);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedPoint, setSelectedPoint] = useState<any>(null);
@@ -300,8 +307,26 @@ export default function DataFoIndex({
 
   const handleAreaChange = (area: string) => {
     setSelectedArea(area);
-    router.get('/data-fo', { area }, { preserveState: true });
+    // Keep other filters in URL while performing a server request for area change
+    router.get('/data-fo', { 
+      area,
+      ...(searchTerm && { search: searchTerm }),
+      ...(selectedType !== 'all' && { type: selectedType }),
+      ...(selectedStatus !== 'all' && { status: selectedStatus })
+    }, { preserveState: true, preserveScroll: true, replace: true });
   };
+
+  // Sync client-side filters to URL without triggering request
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedArea) params.set('area', selectedArea);
+    if (searchTerm) params.set('search', searchTerm);
+    if (selectedType !== 'all') params.set('type', selectedType);
+    if (selectedStatus !== 'all') params.set('status', selectedStatus);
+    const query = params.toString();
+    const newUrl = query ? `/data-fo?${query}` : '/data-fo';
+    window.history.replaceState({}, '', newUrl);
+  }, [selectedArea, searchTerm, selectedType, selectedStatus]);
 
   // Export functionality
   const handleExport = () => {
