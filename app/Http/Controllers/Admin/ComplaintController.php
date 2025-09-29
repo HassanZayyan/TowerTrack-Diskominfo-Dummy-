@@ -17,23 +17,13 @@ class ComplaintController extends Controller
                 'tower:id,site_name,alamat_menara', 
                 'images:id,report_id,file_path,file_type', 
                 'user:id,name,email',
-                // Do not eager load 'status' relation here to avoid name collision with 'status' slug below
-                'responses.user:id,name',
-                'responses.assets:id,report_response_id,file_path,file_type'
+                'status:id,name,slug,color,icon',
+                'responses' => function($query) {
+                    $query->with(['statuses:id,name,slug,color,icon']);
+                }
             ])
             ->orderByDesc('created_at')
-            ->get()
-            ->map(function ($report) {
-                // Map status_id to status slug for frontend compatibility
-                $statusMap = [
-                    1 => 'pending',
-                    2 => 'in_progress',
-                    3 => 'closed'
-                ];
-                // Ensure the 'status' field is a slug string, not a relation object
-                $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-                return $report;
-            });
+            ->get();
 
         // Get statuses if the table exists, otherwise use default statuses
         try {
@@ -134,10 +124,15 @@ class ComplaintController extends Controller
         $validated = $request->validate([
             'status_id' => 'required',
         ]);
-        
+
+        // Ubah slug ke id status
+        $statusSlug = $validated['status_id'];
+        $statusModel = \App\Models\Status::where('slug', $statusSlug)->first();
+        $statusId = $statusModel ? $statusModel->id : $validated['status_id'];
+
         try {
-            $report->update(['status_id' => $validated['status_id']]);
-            
+            $report->update(['status_id' => $statusId]);
+
             // Create a response if there's a message
             if ($request->has('message') && !empty($request->message)) {
                 $response = ReportResponse::create([
@@ -145,16 +140,16 @@ class ComplaintController extends Controller
                     'user_id' => $request->user()->id,
                     'message' => $request->message,
                 ]);
-                
+
                 // Set the status for this response if the method exists
                 if (method_exists($response, 'setStatus')) {
-                    $response->setStatus($validated['status_id']);
+                    $response->setStatus($statusId);
                 }
             }
         } catch (\Exception $e) {
             // Log the error
             \Log::error('Error updating status: ' . $e->getMessage());
-            
+
             // Still create the response if there's a message
             if ($request->has('message') && !empty($request->message)) {
                 ReportResponse::create([
@@ -164,7 +159,7 @@ class ComplaintController extends Controller
                 ]);
             }
         }
-        
+
         return back();
     }
 }
