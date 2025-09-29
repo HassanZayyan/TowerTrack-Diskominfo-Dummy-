@@ -137,7 +137,7 @@ const HeroSection: React.FC<HeroSectionProps> = React.memo<HeroSectionProps>((
           
           {subtitle && (
             <p 
-              className={`relative z-10 mt-4 sm:mt-6 text-lg sm:text-xl lg:text-2xl ${current.subtitle} animate-fade-in-up leading-relaxed max-w-4xl mx-auto`}
+              className={`relative z-10 mt-4 sm:mt-6 text-lg sm:text-xl lg:text-2xl ${current.subtitle} animate-fade-in-up leading-relaxed max-w-4xl ${isCenter ? 'mx-auto' : ''}`}
               style={{ 
                 animation: 'fadeInUp 1s ease-out 0.3s both',
                 textShadow: '0 2px 4px rgba(0,0,0,0.3), 0 1px 2px rgba(99, 102, 241, 0.2)',
