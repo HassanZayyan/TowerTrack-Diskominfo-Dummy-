@@ -21,6 +21,7 @@ interface FoRoute {
   status: string;
   color: string;
   total_distance?: number;
+  total_points?: number;
   properties?: any;
 }
 
@@ -318,8 +319,8 @@ export default function FoTable({
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="text-sm text-gray-900">{route.coordinates.length}</span>
-                    <div className="text-xs text-gray-500">koordinat</div>
+                    <span className="text-sm text-gray-900">{route.total_points || 0}</span>
+                    <div className="text-xs text-gray-500">titik</div>
                   </td>
                   <td className="px-4 py-4">
                     {getStatusBadge(route.status)}
@@ -472,8 +473,8 @@ export default function FoTable({
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="text-sm text-gray-900">{route.coordinates.length}</span>
-                    <div className="text-xs text-gray-500">koordinat</div>
+                    <span className="text-sm text-gray-900">{route.total_points || 0}</span>
+                    <div className="text-xs text-gray-500">titik</div>
                   </td>
                   <td className="px-4 py-4">
                     {getStatusBadge(route.status)}
