@@ -47,10 +47,6 @@ export default function TowerTable({
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-        <h2 className="text-lg sm:text-xl font-medium">Data Tower</h2>
-      </div>
-
       <div className="overflow-x-auto">
         {/* Table for md+ */}
         <table className="w-full text-left hidden md:table">
@@ -61,7 +57,7 @@ export default function TowerTable({
               <th className="px-4 py-3 border-b">Tinggi</th>
               <th className="px-4 py-3 border-b">Owner</th>
               <th className="px-4 py-3 border-b">Alamat</th>
-              <th className="px-4 py-3 border-b">Status</th>
+              <th className="px-4 py-3 border-b text-center">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -79,7 +75,7 @@ export default function TowerTable({
                 <td className="px-4 py-3 border-b">{tower.tinggi_menara ? `${tower.tinggi_menara}m` : 'Belum Terdata'}</td>
                 <td className="px-4 py-3 border-b">{tower.owner || 'Belum Terdata'}</td>
                 <td className="px-4 py-3 border-b">{tower.alamat_menara || 'Belum Terdata'}</td>
-                <td className="px-4 py-3 border-b">
+                <td className="px-4 py-3 border-b text-center">
                   <span 
                     className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                     style={{ 

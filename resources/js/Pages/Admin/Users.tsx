@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import BanUserConfirmDialog from '@/Components/BanUserConfirmDialog';
+import HeroSection from '@/Components/HeroSection';
 
 interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; created_at?: string; banned?: boolean }
 
@@ -182,33 +183,51 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     <AdminLayout title="Kelola Pengguna">
       <Head title="Kelola Pengguna" />
       
-      {/* Header Section */}
+      {/* Hero Section */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola Pengguna</h1>
-        <p className="text-gray-600">Kelola informasi pengguna sistem dan atur hak akses sesuai kebutuhan</p>
+        <HeroSection
+          title="Kelola Pengguna"
+          subtitle="Kelola informasi pengguna sistem dan atur hak akses sesuai kebutuhan"
+          variant="brand"
+          align="left"
+          actions={
+            <>
+              <button
+                onClick={() => {
+                  setForm({ name: '', email: '', role: 'operator' });
+                  setShowPassword(false);
+                  setShowModal(true);
+                }}
+                className="inline-flex items-center px-4 py-2 rounded-lg transition-colors"
+                style={{ 
+                  backgroundColor: '#FFD700', 
+                  color: '#B71C1C'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFC107';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFD700';
+                }}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Tambah User
+              </button>
+            </>
+          }
+        />
       </div>
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
             <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
             </svg>
             Daftar Pengguna ({users.length})
           </h3>
-          <button 
-            onClick={() => {
-              setForm({ name: '', email: '', role: 'operator' });
-              setShowPassword(false);
-              setShowModal(true);
-            }}
-            className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg font-medium flex items-center justify-center text-sm"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Tambah User
-          </button>
         </div>
         
         {/* Desktop Table View */}
@@ -265,7 +284,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                 users.map((u, index) => (
                   <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${
                     u.id === auth.user.id 
-                      ? 'bg-blue-50 border-l-4 border-blue-500' 
+                      ? 'bg-red-50 border-l-4 border-red-500' 
                       : index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
                   }`}>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -285,7 +304,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                           <div className="flex items-center space-x-2">
                             <div className="text-sm font-medium text-gray-900">{u.name}</div>
                             {u.id === auth.user.id && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
@@ -304,7 +323,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                           u.role === 'admin' 
                             ? 'bg-red-100 text-red-800 border border-red-200' 
-                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
                         }`}>
                           {u.role === 'admin' ? (
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -400,7 +419,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
               {users.map((u, index) => (
                 <div key={u.id} className={`p-4 ${
                   u.id === auth.user.id 
-                    ? 'bg-blue-50 border-l-4 border-blue-500' 
+                    ? 'bg-red-50 border-l-4 border-red-500' 
                     : index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
                 }`}>
                   {/* User Header */}
@@ -421,7 +440,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                         <div className="flex items-center space-x-2">
                           <div className="text-sm font-medium text-gray-900">{u.name}</div>
                           {u.id === auth.user.id && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
@@ -446,7 +465,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                         u.role === 'admin' 
                           ? 'bg-red-100 text-red-800 border border-red-200' 
-                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'bg-red-100 text-red-800 border border-red-200'
                       }`}>
                         {u.role === 'admin' ? (
                           <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -651,7 +670,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                         ? 'User tidak akan dapat login ke sistem jika dibanned' 
                         : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
                       {form.id ? (
-                        <span className="block mt-1 text-blue-600">
+                        <span className="block mt-1 text-red-600">
                           Admin dapat mengubah status banned untuk semua role termasuk {form.role}
                         </span>
                       ) : (

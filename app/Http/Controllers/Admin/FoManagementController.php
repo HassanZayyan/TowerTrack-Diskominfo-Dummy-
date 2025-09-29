@@ -7,6 +7,8 @@ use App\Models\FoRoute;
 use App\Models\FoPoint;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\DB;
 
 class FoManagementController extends Controller
 {
@@ -20,7 +22,7 @@ class FoManagementController extends Controller
         // Get FO Routes with pagination
         $foRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
             ->orderBy('name')
-            ->paginate(15)
+            ->paginate(50)
             ->through(function ($route) {
                 return [
                     'id' => $route->id,
@@ -51,7 +53,7 @@ class FoManagementController extends Controller
             'routes' => $foRoutes,
             'stats' => $stats,
             'currentArea' => $area,
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
         ]);
     }
 
@@ -132,174 +134,31 @@ class FoManagementController extends Controller
         ]);
     }
 
-    /**
-     * Display a listing of FO management data (legacy method for backward compatibility)
-     */
-    public function index(Request $request)
-    {
-        $area = $request->get('area', 'ungaran');
-        $activeTab = $request->get('tab', 'overview'); // overview, points, routes
-
-        // Get FO Points with pagination
-        $foPoints = FoPoint::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('route_name')
-            ->orderBy('sequence_number')
-            ->paginate(15, ['*'], 'points_page')
-            ->through(function ($point) {
-                return [
-                    'id' => $point->id,
-                    'name' => $point->name,
-                    'latitude' => (float) $point->latitude,
-                    'longitude' => (float) $point->longitude,
-                    'area' => $point->area,
-                    'type' => $point->type,
-                    'status' => $point->status,
-                    'route_name' => $point->route_name,
-                    'sequence_number' => $point->sequence_number,
-                    'description' => $point->description,
-                    'created_at' => $point->created_at->format('d M Y H:i'),
-                    'updated_at' => $point->updated_at->format('d M Y H:i'),
-                ];
-            });
-
-        // Get FO Routes with pagination
-        $foRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('name')
-            ->paginate(15, ['*'], 'routes_page')
-            ->through(function ($route) {
-                return [
-                    'id' => $route->id,
-                    'name' => $route->name,
-                    'area' => $route->area,
-                    'status' => $route->status,
-                    'color' => $route->color,
-                    'total_distance' => (float) ($route->total_distance ?? 0),
-                    'total_points' => (int) ($route->total_points ?? 0),
-                    'description' => $route->description,
-                    'created_at' => $route->created_at->format('d M Y H:i'),
-                    'updated_at' => $route->updated_at->format('d M Y H:i'),
-                ];
-            });
-
-        // Get comprehensive statistics with safe number handling
-        $totalDistance = FoRoute::when($area, fn($q) => $q->where('area', $area))->sum('total_distance');
-        $avgPointsPerRoute = FoRoute::when($area, fn($q) => $q->where('area', $area))->avg('total_points');
-        
-        $stats = [
-            // Overall totals
-            'total_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->count(),
-            'total_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->count(),
-            
-            // Points by status
-            'active_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_points' => FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            
-            // Routes by status
-            'active_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            
-            // Coverage metrics with safe number handling
-            'total_distance' => is_numeric($totalDistance) ? (float) $totalDistance : 0.0,
-            'avg_points_per_route' => is_numeric($avgPointsPerRoute) ? (float) $avgPointsPerRoute : 0.0,
-            'coverage_percentage' => $this->calculateCoveragePercentage($area),
-            
-            // Health status
-            'health_score' => $this->calculateHealthScore($area),
-        ];
-
-        // Get detailed analytics data
-        $pointTypes = FoPoint::when($area, fn($q) => $q->where('area', $area))
-            ->selectRaw('type, COUNT(*) as count')
-            ->groupBy('type')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'type' => $item->type,
-                    'count' => $item->count,
-                    'label' => $this->getTypeLabel($item->type),
-                    'percentage' => 0, // Will be calculated later
-                ];
-            });
-            
-        // Calculate percentages for point types
-        $totalPoints = $pointTypes->sum('count');
-        $pointTypes = $pointTypes->map(function ($item) use ($totalPoints) {
-            $item['percentage'] = $totalPoints > 0 ? round(($item['count'] / $totalPoints) * 100, 1) : 0;
-            return $item;
-        });
-
-        // Get route status distribution
-        $routeStatus = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'status' => $item->status,
-                    'count' => $item->count,
-                    'label' => $this->getStatusLabel($item->status),
-                ];
-            });
-
-        // Get recent activity
-        $recentPoints = FoPoint::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get(['id', 'name', 'type', 'status', 'created_at']);
-
-        $recentRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get(['id', 'name', 'status', 'total_distance', 'created_at']);
-
-        return Inertia::render('Admin/FoManagement/Index', [
-            'foPoints' => $foPoints,
-            'foRoutes' => $foRoutes,
-            'stats' => $stats,
-            'pointTypes' => $pointTypes,
-            'routeStatus' => $routeStatus,
-            'recentPoints' => $recentPoints,
-            'recentRoutes' => $recentRoutes,
-            'currentArea' => $area,
-            'availableAreas' => ['ungaran', 'ambarawa'],
-            'activeTab' => $activeTab,
-        ]);
-    }
+    // The legacy 'index' method has been removed. Overview is deprecated in favor of route-first flow.
 
     /**
-     * Show the form for creating a new FO point
+     * Show form to create a new point for a specific route
      */
-    public function createPoint(Request $request)
+    public function createPoint(FoRoute $foRoute)
     {
-        $routeId = $request->get('route_id');
-        $routeName = $request->get('route_name');
-        $area = $request->get('area', 'ungaran');
-
-        // Get available routes for dropdown
-        $availableRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
-            ->select('id', 'name', 'area')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($route) {
-                return [
-                    'id' => $route->id,
-                    'name' => $route->name,
-                    'area' => $route->area,
-                ];
-            });
+        // Get the next sequence number for this route
+        $nextSequence = FoPoint::where('route_name', $foRoute->name)
+            ->max('sequence_number') + 1;
 
         return Inertia::render('Admin/FoManagement/PointCreate', [
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'foRoute' => [
+                'id' => $foRoute->id,
+                'name' => $foRoute->name,
+                'area' => $foRoute->area,
+                'status' => $foRoute->status,
+                'color' => $foRoute->color,
+                'total_distance' => (float) ($foRoute->total_distance ?? 0),
+                'total_points' => (int) ($foRoute->total_points ?? 0),
+                'description' => $foRoute->description,
+            ],
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
-            'availableRoutes' => $availableRoutes,
-            'preSelectedRoute' => $routeId ? [
-                'id' => $routeId,
-                'name' => $routeName,
-                'area' => $area
-            ] : null,
+            'nextSequence' => $nextSequence ?: 1,
         ]);
     }
 
@@ -312,37 +171,49 @@ class FoManagementController extends Controller
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran,ambarawa',
+            'area' => 'required|in:ungaran',
             'type' => 'required|in:pole,junction,hub,endpoint',
             'status' => 'required|in:active,inactive,maintenance',
             'route_name' => 'required|string|max:255',
+            'route_id' => 'required|exists:fo_routes,id',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
+            // Optional Google Drive links for images
+            'isp_image' => 'nullable|string|max:2048|url',
+            'pole_image' => 'nullable|string|max:2048|url',
+            'junction_box_image' => 'nullable|string|max:2048|url',
         ]);
 
+        // Remove route_id from validated data as it's not in the database
+        $routeId = $validated['route_id'];
+        unset($validated['route_id']);
+        
         $point = FoPoint::create($validated);
 
-        // Update associated route's total_points and recalculate distance if needed
-        $route = FoRoute::where('name', $validated['route_name'])
-            ->where('area', $validated['area'])
-            ->first();
-        
-        if ($route) {
-            $route->updateTotalPoints();
-            
-            // Redirect to route detail if we came from there
-            $routeId = $request->get('route_id');
-            if ($routeId) {
-                return redirect()
-                    ->route('admin.fo-management.routes.detail', $route->id)
-                    ->with('success', 'Titik FO berhasil ditambahkan');
-            }
+        // Update route's total_points and path coordinates
+        $this->updateRouteStatistics($routeId);
+
+        // Automatically generate routes after adding new point
+        try {
+            \Illuminate\Support\Facades\Artisan::call('fo:generate-routes', [
+                '--area' => $validated['area']
+            ]);
+            \Log::info('Auto-generated routes after adding new FO point', [
+                'point_id' => $point->id,
+                'route_id' => $routeId,
+                'area' => $validated['area']
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to auto-generate routes after adding FO point: ' . $e->getMessage(), [
+                'point_id' => $point->id,
+                'route_id' => $routeId,
+                'exception' => $e
+            ]);
         }
 
-        // Default redirect
         return redirect()
-            ->route('admin.fo-management.routes.list')
-            ->with('success', 'Titik FO berhasil ditambahkan');
+            ->route('admin.fo-management.routes.detail', $routeId)
+            ->with('success', 'Titik FO berhasil ditambahkan dan rute otomatis diperbarui');
     }
 
     /**
@@ -375,12 +246,18 @@ class FoManagementController extends Controller
                 'route_name' => $foPoint->route_name,
                 'sequence_number' => $foPoint->sequence_number,
                 'description' => $foPoint->description,
+                'isp_image' => $foPoint->isp_image,
+                'pole_image' => $foPoint->pole_image,
+                'junction_box_image' => $foPoint->junction_box_image,
             ],
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'availableRoutes' => $availableRoutes,
             'fromRouteDetail' => $request->get('from_route'),
+            'parentRouteId' => optional(FoRoute::where('name', $foPoint->route_name)
+                ->where('area', $foPoint->area)
+                ->first())->id,
         ]);
     }
 
@@ -393,12 +270,16 @@ class FoManagementController extends Controller
             'name' => 'required|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran,ambarawa',
+            'area' => 'required|in:ungaran',
             'type' => 'required|in:pole,junction,hub,endpoint',
             'status' => 'required|in:active,inactive,maintenance',
             'route_name' => 'required|string|max:255',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
+            // Optional Google Drive links for images
+            'isp_image' => 'nullable|string|max:2048|url',
+            'pole_image' => 'nullable|string|max:2048|url',
+            'junction_box_image' => 'nullable|string|max:2048|url',
         ]);
 
         $oldRouteName = $foPoint->route_name;
@@ -410,7 +291,7 @@ class FoManagementController extends Controller
         if ($oldRouteName !== $validated['route_name'] || $oldArea !== $validated['area']) {
             $oldRoute = FoRoute::where('name', $oldRouteName)->where('area', $oldArea)->first();
             if ($oldRoute) {
-                $oldRoute->updateTotalPoints();
+                $this->updateRouteStatistics($oldRoute->id);
             }
         }
 
@@ -419,7 +300,7 @@ class FoManagementController extends Controller
             ->where('area', $validated['area'])
             ->first();
         if ($newRoute) {
-            $newRoute->updateTotalPoints();
+            $this->updateRouteStatistics($newRoute->id);
             
             // Redirect to route detail if we came from there
             if ($request->get('from_route') === 'detail') {
@@ -445,10 +326,10 @@ class FoManagementController extends Controller
         
         $foPoint->delete();
 
-        // Update associated route's total_points
+        // Update associated route's statistics
         $route = FoRoute::where('name', $routeName)->where('area', $area)->first();
         if ($route) {
-            $route->updateTotalPoints();
+            $this->updateRouteStatistics($route->id);
         }
 
         return back()->with('success', 'Titik FO berhasil dihapus');
@@ -460,7 +341,7 @@ class FoManagementController extends Controller
     public function createRoute()
     {
         return Inertia::render('Admin/FoManagement/RouteCreate', [
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
         ]);
     }
@@ -470,28 +351,54 @@ class FoManagementController extends Controller
      */
     public function storeRoute(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran,ambarawa',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'required|in:active,inactive,maintenance',
-            'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
-            'path_coordinates' => 'required|array|min:2',
-            'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
-            'path_coordinates.*.lng' => 'required|numeric|between:-180,180',
-        ]);
+        try {
+            // Validate incoming data
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'area' => 'required|in:ungaran',
+                'description' => 'nullable|string|max:1000',
+                'status' => 'required|in:active,inactive,maintenance',
+                'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
+            ]);
 
-        $route = FoRoute::create($validated);
-        
-        // Calculate and save total distance
-        if (method_exists($route, 'calculateDistance')) {
-            $route->total_distance = $route->calculateDistance();
-            $route->save();
+            \Log::info('Creating new FO Route', [
+                'validated_data' => $validated
+            ]);
+
+            // Initialize with empty coordinates
+            $validated['path_coordinates'] = [];
+            $validated['total_points'] = 0;
+            $validated['total_distance'] = 0;
+
+            // Create the route
+            $route = FoRoute::create($validated);
+
+            \Log::info('FO Route created successfully', [
+                'route_id' => $route->id,
+                'name' => $route->name,
+                'total_distance' => 0,
+                'total_points' => 0
+            ]);
+
+            return redirect()
+                ->route('admin.fo-management.routes.detail', $route->id)
+                ->with('success', 'Jalur FO berhasil dibuat. Silakan tambahkan titik-titik FO untuk membentuk jalur.');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed for FO Route creation', [
+                'errors' => $e->errors()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error creating FO Route', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menambahkan jalur FO: ' . $e->getMessage());
         }
-
-        return redirect()
-            ->route('admin.fo-management.index', ['tab' => 'routes'])
-            ->with('success', 'Jalur FO berhasil ditambahkan');
     }
 
     /**
@@ -511,7 +418,7 @@ class FoManagementController extends Controller
                 'total_distance' => (float) ($foRoute->total_distance ?? 0),
                 'total_points' => (int) ($foRoute->total_points ?? 0),
             ],
-            'availableAreas' => ['ungaran', 'ambarawa'],
+            'availableAreas' => ['ungaran'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
         ]);
     }
@@ -521,28 +428,69 @@ class FoManagementController extends Controller
      */
     public function updateRoute(Request $request, FoRoute $foRoute)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran,ambarawa',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'required|in:active,inactive,maintenance',
-            'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
-            'path_coordinates' => 'required|array|min:2',
-            'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
-            'path_coordinates.*.lng' => 'required|numeric|between:-180,180',
-        ]);
+        try {
+            // Validate incoming data
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'area' => 'required|in:ungaran',
+                'description' => 'nullable|string|max:1000',
+                'status' => 'required|in:active,inactive,maintenance',
+                'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
+            ]);
 
-        $foRoute->update($validated);
-        
-        // Recalculate total distance
-        if (method_exists($foRoute, 'calculateDistance')) {
-            $foRoute->total_distance = $foRoute->calculateDistance();
-            $foRoute->save();
+            \Log::info('Updating FO Route', [
+                'route_id' => $foRoute->id,
+                'validated_data' => $validated
+            ]);
+
+            // Store old route name and area for later comparison
+            $oldRouteName = $foRoute->name;
+            $oldArea = $foRoute->area;
+
+            // Update the route (without modifying coordinates)
+            $foRoute->update($validated);
+
+            // Update total points if route name or area changed
+            if ($oldRouteName !== $validated['name'] || $oldArea !== $validated['area']) {
+                // Update points associated with old route name
+                FoPoint::where('route_name', $oldRouteName)
+                    ->where('area', $oldArea)
+                    ->update([
+                        'route_name' => $validated['name'],
+                        'area' => $validated['area']
+                    ]);
+
+                // Update route statistics
+                $this->updateRouteStatistics($foRoute->id);
+            }
+
+            \Log::info('FO Route updated successfully', [
+                'route_id' => $foRoute->id,
+                'total_distance' => $foRoute->total_distance,
+                'total_points' => $foRoute->total_points
+            ]);
+
+            return redirect()
+                ->route('admin.fo-management.routes.detail', $foRoute->id)
+                ->with('success', 'Jalur FO berhasil diperbarui');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed for FO Route update', [
+                'route_id' => $foRoute->id,
+                'errors' => $e->errors()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error updating FO Route', [
+                'route_id' => $foRoute->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui jalur FO: ' . $e->getMessage());
         }
-
-        return redirect()
-            ->route('admin.fo-management.index', ['tab' => 'routes'])
-            ->with('success', 'Jalur FO berhasil diperbarui');
     }
 
     /**
@@ -550,9 +498,17 @@ class FoManagementController extends Controller
      */
     public function destroyRoute(FoRoute $foRoute)
     {
-        $foRoute->delete();
+        DB::transaction(function () use ($foRoute) {
+            // Delete related FO points by route name and area
+            FoPoint::where('route_name', $foRoute->name)
+                ->where('area', $foRoute->area)
+                ->delete();
 
-        return back()->with('success', 'Jalur FO berhasil dihapus');
+            // Delete the route itself
+            $foRoute->delete();
+        });
+
+        return back()->with('success', 'Jalur FO dan titik-titik terkait berhasil dihapus');
     }
 
     /**
@@ -617,12 +573,133 @@ class FoManagementController extends Controller
                 $message = 'Jalur FO berhasil diatur ke status maintenance';
                 break;
             case 'delete':
-                $routes->delete();
-                $message = 'Jalur FO berhasil dihapus';
+                DB::transaction(function () use ($routes) {
+                    // Get routes to delete first (id, name, area)
+                    $routesToDelete = $routes->get(['id', 'name', 'area']);
+
+                    // Delete all related FO points for each route
+                    foreach ($routesToDelete as $route) {
+                        FoPoint::where('route_name', $route->name)
+                            ->where('area', $route->area)
+                            ->delete();
+                    }
+
+                    // Delete the routes themselves
+                    \App\Models\FoRoute::whereIn('id', $routesToDelete->pluck('id'))->delete();
+                });
+                $message = 'Jalur FO beserta titik-titik terkait berhasil dihapus';
                 break;
         }
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Export FO points as CSV
+     */
+    public function exportPoints(Request $request): StreamedResponse
+    {
+        $fileName = 'fo_points_' . date('Ymd_His') . '.csv';
+
+        $query = FoPoint::query();
+        if ($area = $request->get('area')) {
+            $query->where('area', $area);
+        }
+        if (($status = $request->get('status')) && $status !== 'all') {
+            $query->where('status', $status);
+        }
+        if (($type = $request->get('type')) && $type !== 'all') {
+            $query->where('type', $type);
+        }
+        if ($search = $request->get('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $columns = [
+            'ID', 'Name', 'Latitude', 'Longitude', 'Area', 'Type', 'Status',
+            'Route Name', 'Sequence Number', 'Description', 'ISP Image', 'Pole Image', 'Junction Box Image', 'Created At', 'Updated At'
+        ];
+
+        return response()->streamDownload(function () use ($query, $columns) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, $columns);
+
+            foreach ($query->orderBy('id')->cursor() as $point) {
+                fputcsv($handle, [
+                    $point->id,
+                    $point->name,
+                    (float) $point->latitude,
+                    (float) $point->longitude,
+                    $point->area,
+                    $point->type,
+                    $point->status,
+                    $point->route_name,
+                    (int) $point->sequence_number,
+                    (string) ($point->description ?? ''),
+                    (string) ($point->isp_image ?? ''),
+                    (string) ($point->pole_image ?? ''),
+                    (string) ($point->junction_box_image ?? ''),
+                    optional($point->created_at)->format('Y-m-d H:i:s'),
+                    optional($point->updated_at)->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Export FO routes as CSV
+     */
+    public function exportRoutes(Request $request): StreamedResponse
+    {
+        $fileName = 'fo_routes_' . date('Ymd_His') . '.csv';
+
+        $query = FoRoute::query();
+        if ($area = $request->get('area')) {
+            $query->where('area', $area);
+        }
+        if (($status = $request->get('status')) && $status !== 'all') {
+            $query->where('status', $status);
+        }
+        if ($search = $request->get('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $columns = [
+            'ID', 'Name', 'Area', 'Status', 'Color', 'Total Distance (km)',
+            'Total Points', 'Description', 'Created At', 'Updated At'
+        ];
+
+        return response()->streamDownload(function () use ($query, $columns) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, $columns);
+
+            foreach ($query->orderBy('id')->cursor() as $route) {
+                fputcsv($handle, [
+                    $route->id,
+                    $route->name,
+                    $route->area,
+                    $route->status,
+                    (string) ($route->color ?? ''),
+                    (float) ($route->total_distance ?? 0),
+                    (int) ($route->total_points ?? 0),
+                    (string) ($route->description ?? ''),
+                    optional($route->created_at)->format('Y-m-d H:i:s'),
+                    optional($route->updated_at)->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**
@@ -680,5 +757,41 @@ class FoManagementController extends Controller
             \Log::warning('Error calculating health score: ' . $e->getMessage());
             return 0.0;
         }
+    }
+
+    /**
+     * Update route statistics based on its points
+     */
+    private function updateRouteStatistics($routeId)
+    {
+        $route = FoRoute::findOrFail($routeId);
+        
+        // Get all points for this route ordered by sequence
+        $points = FoPoint::where('route_name', $route->name)
+            ->where('area', $route->area)
+            ->orderBy('sequence_number')
+            ->get();
+        
+        // Build coordinates array from points
+        $coordinates = $points->map(function ($point) {
+            return [
+                'lat' => (float) $point->latitude,
+                'lng' => (float) $point->longitude
+            ];
+        })->toArray();
+        
+        // Calculate total distance if we have points
+        $totalDistance = 0;
+        if (count($coordinates) > 1 && method_exists($route, 'calculateDistance')) {
+            $route->path_coordinates = $coordinates;
+            $totalDistance = $route->calculateDistance();
+        }
+        
+        // Update route with new statistics
+        $route->update([
+            'total_points' => $points->count(),
+            'path_coordinates' => $coordinates,
+            'total_distance' => $totalDistance
+        ]);
     }
 }

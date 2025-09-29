@@ -36,6 +36,8 @@ Route::get('/dashboard', function () {
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
 Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
+Route::post('/fo-route/{foRoute}/generate-geojson', [FoController::class, 'generateGeoJSONRoute'])->name('fo.route.generate-geojson');
+Route::post('/api/fo-routes/generate-all', [FoController::class, 'generateAllGeoJSONRoutes'])->name('api.fo.routes.generate-all');
 Route::get('/fo-details/{type}/{id}', [FoController::class, 'getDetails'])->name('fo.details');
 Route::put('/fo-points/{id}', [FoController::class, 'updatePoint'])->name('fo.points.update');
 Route::put('/fo-routes/{id}', [FoController::class, 'updateRoute'])->name('fo.routes.update');
@@ -206,13 +208,15 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::middleware('admin_or_operator')->group(function () {
         // Main FO Management Routes (Route-first flow)
         Route::get('/fo-management', [FoManagementController::class, 'routesList'])->name('fo-management.routes.list');
-        Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
         
-        // Legacy comprehensive FO Management (for backward compatibility)
-        Route::get('/fo-management/overview', [FoManagementController::class, 'index'])->name('fo-management.index');
+        // Legacy overview removed; keep redirect for backward compatibility
+        Route::get('/fo-management/overview', function () {
+            return redirect()->route('admin.fo-management.routes.list');
+        });
         
-        // FO Routes Management
+        // FO Routes Management - specific routes must come before parameterized routes
         Route::get('/fo-management/routes/create', [FoManagementController::class, 'createRoute'])->name('fo-management.routes.create');
+        Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
         Route::post('/fo-management/routes', [FoManagementController::class, 'storeRoute'])->name('fo-management.routes.store');
         Route::get('/fo-management/routes/{foRoute}/edit', [FoManagementController::class, 'editRoute'])->name('fo-management.routes.edit');
         Route::put('/fo-management/routes/{foRoute}', [FoManagementController::class, 'updateRoute'])->name('fo-management.routes.update');
@@ -220,20 +224,17 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/routes/bulk-action', [FoManagementController::class, 'bulkRoutesAction'])->name('fo-management.routes.bulk-action');
         
         // FO Points Management
-        Route::get('/fo-management/points/create', [FoManagementController::class, 'createPoint'])->name('fo-management.points.create');
+        Route::get('/fo-management/routes/{foRoute}/points/create', [FoManagementController::class, 'createPoint'])->name('fo-management.points.create');
         Route::post('/fo-management/points', [FoManagementController::class, 'storePoint'])->name('fo-management.points.store');
         Route::get('/fo-management/points/{foPoint}/edit', [FoManagementController::class, 'editPoint'])->name('fo-management.points.edit');
         Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
         Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
         Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
 
-        // JSON endpoints to manage FO points and routes (API style for AJAX calls)
-        Route::post('/fo-points', [FoController::class, 'storePoint'])->name('fo-points.store');
-        Route::put('/fo-points/{foPoint}', [FoController::class, 'updatePoint'])->name('fo-points.update');
-        Route::delete('/fo-points/{foPoint}', [FoController::class, 'deletePoint'])->name('fo-points.destroy');
-        Route::post('/fo-routes-json', [FoController::class, 'storeRoute'])->name('fo-routes.json.store');
-        Route::put('/fo-routes-json/{foRoute}', [FoController::class, 'updateRoute'])->name('fo-routes.json.update');
-        Route::delete('/fo-routes-json/{foRoute}', [FoController::class, 'deleteRoute'])->name('fo-routes.json.destroy');
+        // FO Export (CSV downloads)
+        Route::get('/fo-management/points/export', [FoManagementController::class, 'exportPoints'])->name('fo-management.points.export');
+        Route::get('/fo-management/routes/export', [FoManagementController::class, 'exportRoutes'])->name('fo-management.routes.export');
+
     });
 
     // Tower owner specific routes

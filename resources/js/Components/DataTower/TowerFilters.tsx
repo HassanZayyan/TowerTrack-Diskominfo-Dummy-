@@ -25,7 +25,9 @@ export default function TowerFilters({
   buildFilterParams
 }: TowerFiltersProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 justify-end md:justify-self-end w-full md:w-auto">
+    <div className="flex flex-col gap-4">
+      <h2 className="text-lg sm:text-xl font-medium">Data Tower</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 justify-end md:justify-self-end w-full md:w-auto">
       <form onSubmit={onSearch} className="w-full">
         <div className="flex items-stretch rounded-full overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-[#B71C1C]">
           <input 
@@ -57,7 +59,7 @@ export default function TowerFilters({
             setCoordFilter(v);
             
             const params = buildFilterParams({ coord: v, page: 1 });
-            router.get('/data-tower', params, { preserveState: true });
+            router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
           }}
           className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
         >
@@ -75,7 +77,7 @@ export default function TowerFilters({
             setOwnerFilter(v);
             
             const params = buildFilterParams({ owner: v, page: 1 });
-            router.get('/data-tower', params, { preserveState: true });
+            router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
           }}
           className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
           title="Filter berdasarkan pemilik tower"
@@ -85,6 +87,7 @@ export default function TowerFilters({
             <option key={owner} value={owner}>{owner}</option>
           ))}
         </select>
+      </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -69,10 +69,13 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     nama: isAuthenticatedUser ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama,
     email: isAuthenticatedUser ? (auth?.user?.email || '') : INITIAL_FORM_STATE.email
   });
+
+
   const [validation, setValidation] = useState(INITIAL_VALIDATION_STATE);
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
   
   // Dialog states
   const [showDialog, setShowDialog] = useState(false);
@@ -126,6 +129,34 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       tower_id: '' 
     }));
   }, []);
+
+  // Auto-fill tower data from URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const towerId = urlParams.get('tower_id');
+    const towerName = urlParams.get('tower_name');
+    
+    if (towerId && towerName) {
+      // Find the tower in the towers array to get complete data
+      const selectedTower = towers.find(tower => tower.id.toString() === towerId);
+      
+      if (selectedTower) {
+        // Use the handleTowerSelection function to properly set the form data
+        handleTowerSelection(selectedTower);
+        setIsAutoFilled(true);
+      } else {
+        // If tower not found in array, still set basic info from URL params
+        const decodedTowerName = decodeURIComponent(towerName);
+        setForm(prev => ({
+          ...prev,
+          tower_id: towerId,
+          lokasi_tower: decodedTowerName,
+          lokasi_tower_display: decodedTowerName,
+        }));
+        setIsAutoFilled(true);
+      }
+    }
+  }, [towers, handleTowerSelection]); // Include dependencies
 
   const sanitizePhoneNumber = useCallback((value: string): string => {
     // Only allow numbers, + and - at the beginning
@@ -218,9 +249,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     formData.append('tower_id', form.tower_id);
     formData.append('message', form.pesan.trim());
     
-    // Only append email if provided and user is not authenticated
-    if (!isAuthenticatedUser && form.email.trim()) {
-      formData.append('email', form.email.trim());
+    // Only append email if provided and user is not authenticated (skip empty)
+    if (!isAuthenticatedUser) {
+      const trimmedEmail = form.email.trim();
+      if (trimmedEmail) {
+        formData.append('email', trimmedEmail);
+      }
     }
     // For authenticated users, don't send email field - backend will use user's email automatically
     
@@ -385,6 +419,17 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 <p className="text-yellow-800 text-sm">
                   <strong>Info:</strong> Nama dan email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field tersebut.
                 </p>
+              </div>
+            )}
+            
+            {isAutoFilled && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <span className="material-icons-outlined text-green-600 mr-2">check_circle</span>
+                  <p className="text-green-800 text-sm">
+                    <strong>Tower Dipilih Otomatis:</strong> Data lokasi tower <strong>{form.lokasi_tower}</strong> telah diisi otomatis berdasarkan pilihan Anda sebelumnya.
+                  </p>
+                </div>
               </div>
             )}
             

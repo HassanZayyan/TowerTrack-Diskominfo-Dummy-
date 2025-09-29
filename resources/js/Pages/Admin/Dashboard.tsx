@@ -1,6 +1,7 @@
 import React from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, usePage, Link } from '@inertiajs/react';
+import HeroSection from '@/Components/HeroSection';
 
 type Stats = {
   totalTowers: number;
@@ -44,7 +45,7 @@ const HorizontalBars: React.FC<{ title?: string; data: { label: string; value: n
           </div>
           <div className="h-3 bg-gray-100 rounded">
             <div
-              className="h-3 rounded bg-blue-500"
+              className="h-3 rounded bg-red-500"
               style={{ width: `${(d.value / maxValue) * 100}%` }}
             />
           </div>
@@ -80,23 +81,30 @@ const AdminDashboard: React.FC = () => {
     <AdminLayout title="Admin Dashboard">
       <Head title="Admin Dashboard" />
       
-      {/* Welcome Section */}
+      {/* Hero Section */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Selamat Datang di Dashboard Admin</h1>
-        <p className="text-gray-600">Kelola sistem tagging tower dan pantau aktivitas secara real-time</p>
+        <HeroSection
+          title={<>
+            Dashboard Admin
+          </>}
+          subtitle={`Kelola sistem tagging tower dan pantau aktivitas. Halo, ${user?.name || 'Admin'}.`}
+          variant="brand"
+          align="left"
+
+        />
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        <div className="col-span-2 bg-white rounded-lg p-6 shadow-lg border-l-4 border-blue-500">
+        <div className="col-span-2 bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Total Towers</h3>
-              <p className="text-3xl font-bold text-blue-600">{stats.totalTowers.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-red-600">{stats.totalTowers.toLocaleString()}</p>
               <p className="text-sm text-gray-500">Menara telekomunikasi terdaftar</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-red-100 p-3 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
@@ -146,8 +154,8 @@ const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-blue-600 font-medium">In Progress</span>
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+              <span className="text-red-600 font-medium">In Progress</span>
+              <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">
                 {stats.inProgressCount}
               </span>
             </div>
@@ -170,8 +178,8 @@ const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-blue-600 font-medium">In Progress</span>
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+              <span className="text-red-600 font-medium">In Progress</span>
+              <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">
                 {stats.feedbackInProgressCount}
               </span>
             </div>
@@ -189,7 +197,7 @@ const AdminDashboard: React.FC = () => {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">Keluhan Baru</span>
-              <span className="font-semibold text-blue-600">{(page.props as any)?.activityToday?.newReports ?? 0}</span>
+              <span className="font-semibold text-red-600">{(page.props as any)?.activityToday?.newReports ?? 0}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Keluhan Ditanggapi</span>
@@ -244,7 +252,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex-shrink-0">
                     <div className={`w-3 h-3 rounded-full ${
                       complaint.status === 'pending' ? 'bg-yellow-400' :
-                      complaint.status === 'in_progress' ? 'bg-blue-400' : 'bg-green-400'
+                      complaint.status === 'in_progress' ? 'bg-red-400' : 'bg-green-400'
                     }`}></div>
                   </div>
                   <div className="flex-1">
@@ -254,7 +262,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     complaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    complaint.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                    complaint.status === 'in_progress' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                   }`}>
                     {complaint.status === 'pending' ? 'Pending' :
                      complaint.status === 'in_progress' ? 'Progress' : 'Selesai'}
@@ -263,7 +271,7 @@ const AdminDashboard: React.FC = () => {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <Link href="/admin/messages?tab=complaints" className="text-blue-600 hover:text-blue-800 font-medium text-sm">Lihat Semua Keluhan →</Link>
+              <Link href="/admin/messages?tab=complaints" className="text-red-600 hover:text-red-800 font-medium text-sm">Lihat Semua Keluhan →</Link>
             </div>
           </div>
         </div>
@@ -280,7 +288,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex-shrink-0">
                     <div className={`w-3 h-3 rounded-full ${
                       fb.status === 'pending' ? 'bg-yellow-400' :
-                      fb.status === 'in_progress' ? 'bg-blue-400' : 'bg-green-400'
+                      fb.status === 'in_progress' ? 'bg-red-400' : 'bg-green-400'
                     }`}></div>
                   </div>
                   <div className="flex-1">
@@ -290,7 +298,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     fb.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    fb.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                    fb.status === 'in_progress' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                   }`}>
                     {fb.status === 'pending' ? 'Pending' :
                      fb.status === 'in_progress' ? 'Progress' : 'Selesai'}
@@ -299,7 +307,7 @@ const AdminDashboard: React.FC = () => {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <Link href="/admin/messages?tab=feedbacks" className="text-blue-600 hover:text-blue-800 font-medium text-sm">Lihat Semua Masukan →</Link>
+              <Link href="/admin/messages?tab=feedbacks" className="text-red-600 hover:text-red-800 font-medium text-sm">Lihat Semua Masukan →</Link>
             </div>
           </div>
         </div>

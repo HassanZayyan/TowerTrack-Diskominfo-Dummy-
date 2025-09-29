@@ -52,7 +52,6 @@ interface BaseItem {
   reporter_phone?: string;
   category?: string;
   // For feedbacks
-  sender_name?: string;
   sender_phone?: string;
 }
 
@@ -87,13 +86,6 @@ const ManagementTable: React.FC<Props> = ({
   const [replyStatus, setReplyStatus] = useState<Record<number, string | number>>({});
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-
-  // Count items by status
-  const statusCounts = {
-    pending: items.filter(item => item.status === 'pending').length,
-    in_progress: items.filter(item => item.status === 'in_progress').length,
-    closed: items.filter(item => item.status === 'closed').length
-  };
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: string } | null>(null);
   const [replyModal, setReplyModal] = useState<{ isOpen: boolean; item: BaseItem | null }>({
     isOpen: false,
@@ -268,7 +260,7 @@ const ManagementTable: React.FC<Props> = ({
     if (type === 'complaints') {
       return item.reporter_name || item.user?.name || 'Anonim';
     }
-    return item.sender_name || item.user?.name || 'Anonim';
+    return item.user?.name || 'Anonim';
   };
 
   const getItemPhone = (item: BaseItem) => {
@@ -306,7 +298,7 @@ const ManagementTable: React.FC<Props> = ({
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Baru</h3>
               <p className="text-3xl font-bold text-red-600">
-                {statusCounts.pending}
+                {items.filter(r => r.status === 'pending').length}
               </p>
             </div>
             <div className="bg-red-100 p-3 rounded-full">
@@ -322,7 +314,7 @@ const ManagementTable: React.FC<Props> = ({
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Progress</h3>
               <p className="text-3xl font-bold text-orange-600">
-                {statusCounts.in_progress}
+                {items.filter(r => r.status === 'in_progress').length}
               </p>
             </div>
             <div className="bg-orange-100 p-3 rounded-full">
@@ -338,7 +330,7 @@ const ManagementTable: React.FC<Props> = ({
             <div>
               <h3 className="text-lg font-semibold text-gray-800">Selesai</h3>
               <p className="text-3xl font-bold text-green-600">
-                {statusCounts.closed}
+                {items.filter(r => r.status === 'closed').length}
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
@@ -377,25 +369,17 @@ const ManagementTable: React.FC<Props> = ({
               )}
             </div>
           </div>
-          <div className="flex-shrink-0 relative">
-            <div className="relative">
-              <select
-                className="w-full sm:w-auto min-w-[140px] appearance-none bg-white border border-gray-300 rounded-lg pl-3 pr-10 py-2 sm:py-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent shadow-sm hover:border-gray-400 transition-colors cursor-pointer"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">🔍 Semua Status</option>
-                <option value="pending">🔴 Baru</option>
-                <option value="in_progress">🟡 Progress</option>
-                <option value="closed">🟢 Selesai</option>
-              </select>
-              {/* Custom dropdown arrow */}
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+          <div className="flex-shrink-0">
+            <select
+              className="w-full sm:w-auto border border-gray-300 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="pending">Baru</option>
+              <option value="in_progress">Progress</option>
+              <option value="closed">Selesai</option>
+            </select>
           </div>
         </div>
       </div>
@@ -497,18 +481,10 @@ const ManagementTable: React.FC<Props> = ({
                                   className="relative w-12 h-12 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-red-400 transition-colors"
                                 >
                                   {asset.file_type === 'video' ? (
-                                    <div className="relative w-full h-full bg-black">
-                                      <video 
-                                        className="w-full h-full object-cover"
-                                        preload="metadata"
-                                      >
-                                        <source src={`/storage/${asset.file_path}#t=0.1`} type="video/mp4" />
-                                      </video>
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path d="M8 5v10l8-5-8-5z"/>
-                                        </svg>
-                                      </div>
+                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                      <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M8 5v10l8-5-8-5z"/>
+                                      </svg>
                                     </div>
                                   ) : (
                                     <img 
@@ -660,7 +636,7 @@ const ManagementTable: React.FC<Props> = ({
                   <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
-                  Balas {title}
+                  Balas {title.charAt(0).toUpperCase() + title.slice(1, -1)}
                 </h3>
                 <button
                   onClick={closeReplyModal}
@@ -683,7 +659,7 @@ const ManagementTable: React.FC<Props> = ({
                       <svg className="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Detail {title.charAt(0).toUpperCase() + title.slice(1)}
+                      Detail {title.charAt(0).toUpperCase() + title.slice(1, -1)}
                     </h4>
                     <div className="space-y-3">
                       <div>
@@ -733,23 +709,15 @@ const ManagementTable: React.FC<Props> = ({
                               className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-red-400 transition-colors"
                             >
                               {asset.file_type === 'video' ? (
-                                <div className="relative w-full h-full bg-black">
-                                  <video 
-                                    className="w-full h-full object-cover"
-                                    preload="metadata"
-                                  >
-                                    <source src={`/storage/${asset.file_path}#t=0.1`} type="video/mp4" />
-                                  </video>
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-                                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path d="M8 5v10l8-5-8-5z"/>
-                                    </svg>
-                                  </div>
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M8 5v10l8-5-8-5z"/>
+                                  </svg>
                                 </div>
                               ) : (
                                 <img 
                                   src={`/storage/${asset.file_path}`} 
-                                  alt="Media terlampir"
+                                  alt="Media keluhan"
                                   className="w-full h-full object-cover"
                                 />
                               )}
@@ -833,31 +801,18 @@ const ManagementTable: React.FC<Props> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Ubah Status:
                       </label>
-                      <div className="relative">
-                        <select 
-                          className="w-full appearance-none bg-white border border-gray-300 rounded-lg pl-3 pr-10 py-3 focus:ring-2 focus:ring-green-400 focus:border-transparent shadow-sm hover:border-gray-400 transition-colors cursor-pointer"
-                          value={replyModal.item ? (replyStatus[replyModal.item.id] ?? '') : ''}
-                          onChange={(e) => replyModal.item && setReplyStatus({ ...replyStatus, [replyModal.item.id]: Number(e.target.value) || '' })}
-                        >
-                          <option value="">📋 Pilih Status</option>
-                          {availableStatuses.map((status) => {
-                            const statusEmoji = status.slug === 'pending' ? '🔴' : 
-                                              status.slug === 'in_progress' ? '🟡' : 
-                                              status.slug === 'closed' ? '🟢' : '📌';
-                            return (
-                              <option key={status.id} value={status.id}>
-                                {statusEmoji} {status.name}
-                              </option>
-                            );
-                          })}
-                        </select>
-                        {/* Custom dropdown arrow */}
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
+                      <select 
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                        value={replyModal.item ? (replyStatus[replyModal.item.id] ?? '') : ''}
+                        onChange={(e) => replyModal.item && setReplyStatus({ ...replyStatus, [replyModal.item.id]: Number(e.target.value) || '' })}
+                      >
+                        <option value="">Pilih Status</option>
+                        {availableStatuses.map((status) => (
+                          <option key={status.id} value={status.id}>
+                            {status.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Message Input */}
@@ -868,7 +823,6 @@ const ManagementTable: React.FC<Props> = ({
                       <textarea 
                         className="w-full border border-gray-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-green-400 focus:border-transparent resize-none"
                         placeholder="Tulis respon Anda di sini..."
-                        maxLength={1000}
                         value={replyModal.item ? (replyText[replyModal.item.id] || '') : ''}
                         onChange={(e) => replyModal.item && setReplyText({ ...replyText, [replyModal.item.id]: e.target.value })}
                       />

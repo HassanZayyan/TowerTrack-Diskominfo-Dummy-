@@ -40,5 +40,10 @@ class DatabaseSeeder extends Seeder
             FoPointsFromCsvSeeder::class,
             FoRoutesFromPointsSeeder::class,
         ]);
+        
+        // Generate GeoJSON routes after basic routes are created
+        $this->call([
+            GenerateGeoJsonRoutesSeeder::class,
+        ]);
     }
 }

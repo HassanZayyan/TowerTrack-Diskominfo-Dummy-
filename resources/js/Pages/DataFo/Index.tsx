@@ -3,8 +3,12 @@ import { Head, router } from '@inertiajs/react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import MainLayout from '@/Layouts/MainLayout';
+import AppBar from '@/Components/AppBar';
+import Footer from '@/Components/Footer';
 import AlertToast from '@/Components/AlertToast';
+import HeroSection from '@/Components/HeroSection';
+import AnimatedButton from '@/Components/AnimatedButton';
+import StaggeredContainer from '@/Components/StaggeredContainer';
 
 import FoStats from '@/Components/DataFo/FoStats';
 import FoFilters from '@/Components/DataFo/FoFilters';
@@ -180,10 +184,17 @@ export default function DataFoIndex({
   availableAreas = [],
   mapData
 }: DataFoProps) {
-  const [selectedArea, setSelectedArea] = useState(currentArea);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  // Initialize from URL for shareable state
+  const initParams = new URLSearchParams(window.location.search);
+  const initArea = initParams.get('area') || currentArea;
+  const initSearch = initParams.get('search') || '';
+  const initType = initParams.get('type') || 'all';
+  const initStatus = initParams.get('status') || 'all';
+
+  const [selectedArea, setSelectedArea] = useState(initArea);
+  const [searchTerm, setSearchTerm] = useState(initSearch);
+  const [selectedType, setSelectedType] = useState(initType);
+  const [selectedStatus, setSelectedStatus] = useState(initStatus);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedPoint, setSelectedPoint] = useState<any>(null);
@@ -296,8 +307,26 @@ export default function DataFoIndex({
 
   const handleAreaChange = (area: string) => {
     setSelectedArea(area);
-    router.get('/data-fo', { area }, { preserveState: true });
+    // Keep other filters in URL while performing a server request for area change
+    router.get('/data-fo', { 
+      area,
+      ...(searchTerm && { search: searchTerm }),
+      ...(selectedType !== 'all' && { type: selectedType }),
+      ...(selectedStatus !== 'all' && { status: selectedStatus })
+    }, { preserveState: true, preserveScroll: true, replace: true });
   };
+
+  // Sync client-side filters to URL without triggering request
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedArea) params.set('area', selectedArea);
+    if (searchTerm) params.set('search', searchTerm);
+    if (selectedType !== 'all') params.set('type', selectedType);
+    if (selectedStatus !== 'all') params.set('status', selectedStatus);
+    const query = params.toString();
+    const newUrl = query ? `/data-fo?${query}` : '/data-fo';
+    window.history.replaceState({}, '', newUrl);
+  }, [selectedArea, searchTerm, selectedType, selectedStatus]);
 
   // Export functionality
   const handleExport = () => {
@@ -485,21 +514,63 @@ export default function DataFoIndex({
   }, [selectedArea]);
 
   return (
-    <MainLayout title="Data Fiber Optic" currentPage="/data-fo">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Head title="Data Fiber Optic" />
+      
+      {/* App Bar */}
+      <AppBar currentPage="/data-fo" />
+      
+      {/* Full Screen Hero Section - Outside MainLayout */}
+      <HeroSection
+        title="Data Fiber Optic Kabupaten Semarang"
+        subtitle="Kelola dan pantau infrastruktur jaringan fiber optic untuk konektivitas digital yang optimal di seluruh wilayah Kabupaten Semarang."
+        variant="brand"
+        align="center"
+        backgroundImage="/images/fo-hero-section.png"
+        fullScreen={true}
+        actions={
+          <>
+            <AnimatedButton
+              variant="glass"
+              size="lg"
+              animation="scale"
+              onClick={() => {
+                const mapSection = document.querySelector('[data-section="map"]');
+                mapSection?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              }
+            >
+              Lihat Peta FO
+            </AnimatedButton>
+            <AnimatedButton
+              variant="primary"
+              size="lg"
+              animation="glow"
+              onClick={() => {
+                const tableSection = document.querySelector('[data-section="table"]');
+                tableSection?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              }
+            >
+              Lihat Data Tabel
+            </AnimatedButton>
+          </>
+        }
+      />
 
-      {/* Welcome Bar */}
-      <div className="px-4 sm:px-6 py-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between rounded" style={{ backgroundColor: '#FFF8E1' }}>
-        <div className="mb-3 sm:mb-0">
-          <h2 className="text-xl sm:text-2xl font-bold leading-snug" style={{ color: '#212121' }}>Data Fiber Optic</h2>
-          <p className="mt-1 text-sm sm:text-base" style={{ color: '#212121', opacity: 0.8 }}>
-            Kelola dan pantau infrastruktur fiber optic di Kabupaten Semarang.
-          </p>
-        </div>
-        <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
-      </div>
-
-      <div className="p-4 sm:p-6">
+      {/* Content Section */}
+      <div className="flex-1">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+          <main className="py-6">
+            <div className="p-4 sm:p-6">
 
 
         {/* Statistics */}  
@@ -510,19 +581,22 @@ export default function DataFoIndex({
         />
 
         {/* Interactive Filters */}
-        <FoFilters
-          selectedArea={selectedArea}
-          onAreaChange={handleAreaChange}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedType={selectedType}
-          onTypeChange={setSelectedType}
-          selectedStatus={selectedStatus}
-          onStatusChange={setSelectedStatus}
-        />
+        <StaggeredContainer delay={200} animationType="fadeInUp" duration={300}>
+          <FoFilters
+            selectedArea={selectedArea}
+            onAreaChange={handleAreaChange}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedType={selectedType}
+            onTypeChange={setSelectedType}
+            selectedStatus={selectedStatus}
+            onStatusChange={setSelectedStatus}
+          />
+        </StaggeredContainer>
 
         {/* Map Section */}
-        <div className="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
+          <div className="bg-white rounded-lg shadow mb-6 overflow-hidden" data-section="map">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
@@ -768,35 +842,28 @@ export default function DataFoIndex({
                 <span className="text-xs text-gray-700">Tidak Ada Gambar</span>
               </div>
             </div>
-            <div className="pt-3 border-t border-gray-300">
-              <h5 className="text-sm font-medium text-gray-900 mb-2">Legenda Jalur:</h5>
-              <div className="flex items-center gap-4 text-xs text-gray-600">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-blue-500"></div>
-                  <span>Jalur Aktif</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-yellow-500" style={{ borderTop: '1px dashed' }}></div>
-                  <span>Maintenance</span>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
+          </div>
+        </StaggeredContainer>
 
         {/* Data Tables */}
-        <FoTable
-          filteredPoints={filteredPoints}
-          filteredRoutes={filteredRoutes}
-          viewMode={viewMode}
-          onPointClick={(point) => handleShowDetail('point', point)}
-          onRouteClick={(route) => handleShowDetail('route', route)}
-        />
+        <StaggeredContainer delay={300} animationType="fadeInUp" duration={300}>
+          <div data-section="table">
+            <FoTable
+               filteredPoints={filteredPoints}
+               filteredRoutes={filteredRoutes}
+               viewMode={viewMode}
+               onPointClick={(point) => handleShowDetail('point', point)}
+               onRouteClick={(route) => handleShowDetail('route', route)}
+             />
+           </div>
+         </StaggeredContainer>
 
-
+            </div>
+          </main>
+        </div>
       </div>
       
-      {/* Detail Modal */}
       <FoDetailModal
          isOpen={showDetailModal}
          detailData={detailData}
@@ -812,6 +879,9 @@ export default function DataFoIndex({
         message={toast.message}
         onClose={() => setToast({ ...toast, show: false })}
       />
-    </MainLayout>
+      
+      {/* Footer */}
+      <Footer />
+    </div>
   );
 }
