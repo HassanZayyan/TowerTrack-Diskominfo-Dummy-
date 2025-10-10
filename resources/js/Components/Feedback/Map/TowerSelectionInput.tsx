@@ -25,6 +25,8 @@ interface TowerSelectionInputProps {
   className?: string;
 }
 
+type MapFilterType = 'all' | 'with_coordinates' | 'without_coordinates';
+
 export default function TowerSelectionInput({
   towers,
   selectedTowerId,
@@ -39,15 +41,48 @@ export default function TowerSelectionInput({
 }: TowerSelectionInputProps) {
   const [selectionMode, setSelectionMode] = useState<'search' | 'map'>('search');
   const [searchTerm, setSearchTerm] = useState('');
+  const [mapFilter, setMapFilter] = useState<MapFilterType>('all');
 
-  // Jika ada kata kunci pencarian, sempitkan daftar tower untuk peta juga
-  const towersForMap = useMemo(() => {
-    if (!searchTerm.trim()) return towers;
-    return filterTowers(towers as BaseTower[], searchTerm) as Tower[];
-  }, [towers, searchTerm]);
+  // Helper function to check if tower has valid coordinates
+  const hasValidCoordinates = (tower: Tower): boolean => {
+    const lat = Number(tower.latitude);
+    const lon = Number(tower.longitude);
+    return (
+      Number.isFinite(lat) && Number.isFinite(lon) &&
+      lat !== 0 && lon !== 0 &&
+      Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+    );
+  };
+
+  // Calculate tower statistics
+  const towerStats = useMemo(() => {
+    const total = towers.length;
+    const withCoordinates = towers.filter(hasValidCoordinates).length;
+    const withoutCoordinates = total - withCoordinates;
+    return { total, withCoordinates, withoutCoordinates };
+  }, [towers]);
+
+  // Apply map filter first, then search term
+  const filteredTowers = useMemo(() => {
+    let filtered = towers;
+    
+    // Apply coordinate filter
+    if (mapFilter === 'with_coordinates') {
+      filtered = towers.filter(hasValidCoordinates);
+    } else if (mapFilter === 'without_coordinates') {
+      filtered = towers.filter(tower => !hasValidCoordinates(tower));
+    }
+    
+    // Apply search term filter
+    if (searchTerm.trim()) {
+      filtered = filterTowers(filtered as BaseTower[], searchTerm) as Tower[];
+    }
+    
+    return filtered;
+  }, [towers, mapFilter, searchTerm]);
 
   // Prepare markers for map display (similar to DataTower Index)
-  const markers = useMemo(() => towersForMap
+  const markers = useMemo(() => filteredTowers
     .map(t => {
       const lat = Number(t.latitude);
       const lon = Number(t.longitude);
@@ -85,7 +120,7 @@ export default function TowerSelectionInput({
         radiusMeters,
         towerData: t, // Pass the complete tower data
       });
-    }), [towersForMap]);
+    }), [filteredTowers]);
 
   const handleMapMarkerClick = (towerData: Tower) => {
     onTowerSelect(towerData);
@@ -136,10 +171,94 @@ export default function TowerSelectionInput({
         </button>
       </div>
 
+      {/* Coordinate Filter */}
+      <div className="mb-3">
+        <div className="bg-gray-50 border border-gray-300 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">
+              Filter Tower:
+            </label>
+            <div className="flex gap-1 text-xs">
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                {towerStats.withCoordinates} di peta
+              </span>
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                {towerStats.withoutCoordinates} tanpa koordinat
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setMapFilter('all')}
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                mapFilter === 'all'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <span className="text-xs">Semua</span>
+                <span className="text-xs font-semibold">{towerStats.total}</span>
+              </div>
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => setMapFilter('with_coordinates')}
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                mapFilter === 'with_coordinates'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                <span className="text-xs">Di Peta</span>
+                <span className="text-xs font-semibold">{towerStats.withCoordinates}</span>
+              </div>
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => setMapFilter('without_coordinates')}
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                mapFilter === 'without_coordinates'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="text-xs">Tanpa Koordinat</span>
+                <span className="text-xs font-semibold">{towerStats.withoutCoordinates}</span>
+              </div>
+            </button>
+          </div>
+          
+          {mapFilter === 'without_coordinates' && selectionMode === 'map' && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+              <svg className="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Tower tanpa koordinat tidak akan muncul di peta. Gunakan mode "Cari Teks" untuk memilih.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Selection Interface */}
       {selectionMode === 'search' ? (
         <TowerSearchInput
-          towers={towers as BaseTower[]}
+          towers={filteredTowers as BaseTower[]}
           selectedTowerId={selectedTowerId}
           selectedTowerDisplay={selectedTowerDisplay}
           onTowerSelect={(tower: BaseTower) => onTowerSelect(tower as Tower)}
@@ -181,21 +300,37 @@ export default function TowerSelectionInput({
                 Klik marker pada peta untuk memilih tower
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                {markers.length} tower dengan koordinat valid dari {towersForMap.length} {searchTerm.trim() ? 'hasil pencarian' : 'total tower'}
+                {markers.length} tower dengan koordinat valid dari {filteredTowers.length} {mapFilter !== 'all' || searchTerm.trim() ? 'hasil filter' : 'total tower'}
               </p>
             </div>
             
             <div className="relative">
-              <LeafletMap
-                center={[-7.197, 110.426]}
-                zoom={10}
-                style={{ height: '400px', width: '100%' }}
-                markers={markers}
-                showLines={false}
-                showCoverage={true}
-                defaultRadiusMeters={500}
-                onMarkerClick={handleMapMarkerClick}
-              />
+              {markers.length > 0 ? (
+                <LeafletMap
+                  center={[-7.197, 110.426]}
+                  zoom={10}
+                  style={{ height: '400px', width: '100%' }}
+                  markers={markers}
+                  showLines={false}
+                  showCoverage={true}
+                  defaultRadiusMeters={500}
+                  onMarkerClick={handleMapMarkerClick}
+                />
+              ) : (
+                <div className="h-[400px] flex items-center justify-center bg-gray-100">
+                  <div className="text-center p-6">
+                    <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    <p className="text-gray-600 font-medium mb-2">Tidak ada tower untuk ditampilkan</p>
+                    <p className="text-sm text-gray-500">
+                      {mapFilter === 'without_coordinates' 
+                        ? 'Tower tanpa koordinat tidak dapat ditampilkan di peta'
+                        : 'Tidak ada tower yang sesuai dengan filter'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
