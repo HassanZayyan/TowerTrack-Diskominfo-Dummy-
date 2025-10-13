@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Report extends Model
 {
@@ -25,6 +26,8 @@ class Report extends Model
         'is_public',
     ];
     
+    protected $appends = ['status'];
+    
     public function tower()
     {
         return $this->belongsTo(Tower::class);
@@ -45,13 +48,30 @@ class Report extends Model
         return $this->belongsTo(User::class);
     }
     
-    public function status()
+    public function statusRelation()
     {
-        return $this->belongsTo(Status::class);
+        return $this->belongsTo(Status::class, 'status_id');
     }
     
     public function images()
     {
         return $this->hasMany(ReportAsset::class);
+    }
+    
+    /**
+     * Get the status slug attribute from status_id
+     */
+    protected function status(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $statusMap = [
+                    1 => 'pending',
+                    2 => 'in_progress',
+                    3 => 'closed',
+                ];
+                return $statusMap[$this->status_id] ?? 'pending';
+            }
+        );
     }
 }

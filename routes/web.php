@@ -70,12 +70,7 @@ Route::get('/my-messages', function () {
         ])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')
-        ->get()
-        ->map(function ($report) {
-            $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
-            $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-            return $report;
-        });
+        ->get();
         
         // Get public reports from others
         $publicReports = \App\Models\Report::with([
@@ -90,12 +85,7 @@ Route::get('/my-messages', function () {
         ->where('is_public', true)
         ->where('user_id', '!=', auth()->id())
         ->orderByDesc('created_at')
-        ->get()
-        ->map(function ($report) {
-            $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
-            $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-            return $report;
-        });
+        ->get();
         
         $reports = $ownReports->merge($publicReports)->sortByDesc('created_at')->values();
 
@@ -158,12 +148,7 @@ Route::get('/my-messages', function () {
         ])
         ->where('is_public', true)
         ->orderByDesc('created_at')
-        ->get()
-        ->map(function ($report) {
-            $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
-            $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-            return $report;
-        });
+        ->get();
         
         $feedbacks = collect();
         try {
@@ -223,12 +208,7 @@ Route::get('/my-messages/private', function () {
     ->where('is_public', false) // Only private reports
     ->whereNull('user_id')
     ->orderByDesc('created_at')
-    ->get()
-    ->map(function ($report) {
-        $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
-        $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-        return $report;
-    });
+    ->get();
     
     // Get private feedbacks for this email AND phone combination
     $feedbacks = collect();

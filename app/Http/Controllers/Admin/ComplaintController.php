@@ -17,10 +17,8 @@ class ComplaintController extends Controller
                 'tower:id,site_name,alamat_menara', 
                 'images:id,report_id,file_path,file_type', 
                 'user:id,name,email',
-                'status:id,name,slug,color,icon',
-                'responses' => function($query) {
-                    $query->with(['statuses:id,name,slug,color,icon']);
-                }
+                'responses.user:id,name',
+                'responses.assets:id,report_response_id,file_path,file_type'
             ])
             ->orderByDesc('created_at')
             ->get();

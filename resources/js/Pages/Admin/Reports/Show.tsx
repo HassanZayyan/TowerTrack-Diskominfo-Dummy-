@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 interface ReportAsset {
@@ -59,7 +59,10 @@ interface Props {
   report: Report;
 }
 
-const ReportShow: React.FC<Props> = ({ report }) => {
+const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
+  const { props } = usePage<Props>();
+  const report = props.report;
+  
   const [replyMessage, setReplyMessage] = useState('');
   const [replyStatus, setReplyStatus] = useState(report.status);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -67,6 +70,11 @@ const ReportShow: React.FC<Props> = ({ report }) => {
   const [lightboxSrc, setLightboxSrc] = useState('');
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Sync replyStatus with report status from server
+  useEffect(() => {
+    setReplyStatus(report.status);
+  }, [report.status]);
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
