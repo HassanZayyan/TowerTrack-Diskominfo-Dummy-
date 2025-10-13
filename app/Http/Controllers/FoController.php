@@ -11,6 +11,7 @@ class FoController extends Controller
 {
     /**
      * Display the FO data page
+     * Optimized: Route polylines excluded from initial load for better performance
      */
     public function index(Request $request)
     {
@@ -43,16 +44,13 @@ class FoController extends Controller
                 ];
             });
 
-        // Get FO routes by area with proper data formatting
+        // Get FO routes by area - WITHOUT heavy polyline data for initial load
+        // Users can load specific route polylines via dropdown on-demand
         $foRoutes = FoRoute::where('area', $area)
             ->where('status', 'active')
+            ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service')
             ->get()
             ->map(function ($route) {
-                // Use GeoJSON coordinates if available, otherwise fallback to path_coordinates
-                $polyline = $route->hasValidGeoJSON() 
-                    ? $route->getGeoJSONCoordinates()
-                    : $this->generateRoutePolyline($route->path_coordinates);
-                
                 return [
                     'id' => $route->id,
                     'name' => $route->name,
@@ -61,14 +59,10 @@ class FoController extends Controller
                                         (is_numeric($route->total_distance) ? (float) $route->total_distance : 0.0),
                     'total_points' => (int) $route->total_points,
                     'description' => $route->description,
-                    'path_coordinates' => $route->path_coordinates,
-                    'geojson' => $route->geojson,
-                    'has_geojson' => $route->hasValidGeoJSON(),
-                    'routing_service' => $route->routing_service,
-                    'polyline' => $polyline,
+                    // Polyline data excluded - load via API when route is selected
                     'area' => $route->area,
                     'status' => $route->status,
-                    'coordinates' => $polyline, // For backwards compatibility
+                    'routing_service' => $route->routing_service,
                 ];
             });
 
@@ -82,7 +76,7 @@ class FoController extends Controller
             'availableAreas' => ['ungaran'],
             'mapData' => [
                 'points' => $foPoints,
-                'routes' => $foRoutes,
+                'routes' => $foRoutes, // Now without polylines
                 'bounds' => $bounds,
                 'area' => $area,
             ]
@@ -434,6 +428,86 @@ class FoController extends Controller
                 'success' => false,
                 'message' => 'Data not found or error occurred: ' . $e->getMessage()
             ], 404);
+        }
+    }
+
+    /**
+     * Get route polyline on-demand (for lazy loading)
+     * This endpoint is called when user selects a route from dropdown
+     * 
+     * NEW: Auto-generates GeoJSON if not exists (on-demand generation)
+     */
+    public function getRoutePolyline($routeId)
+    {
+        try {
+            $foRoute = FoRoute::findOrFail($routeId);
+            
+            // Check if GeoJSON needs to be generated
+            $needsGeneration = !$foRoute->hasValidGeoJSON();
+            
+            if ($needsGeneration) {
+                \Log::info("Route GeoJSON not found, generating on-demand", [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                    'endpoint' => 'public'
+                ]);
+                
+                // Generate GeoJSON on-demand
+                $routeService = app(\App\Services\FoRouteGenerationService::class);
+                $generated = $routeService->generateRouteFromPoints($foRoute);
+                
+                if (!$generated) {
+                    \Log::warning("Failed to generate GeoJSON for route, using fallback polyline", [
+                        'route_id' => $foRoute->id
+                    ]);
+                }
+                
+                // Refresh the route model
+                $foRoute = $foRoute->fresh();
+            }
+            
+            // Use GeoJSON coordinates if available, otherwise enhanced polyline
+            $polyline = $foRoute->hasValidGeoJSON() 
+                ? $foRoute->getGeoJSONCoordinates()
+                : $this->generateEnhancedRoutePolyline($foRoute->path_coordinates);
+
+            \Log::info("Serving route polyline", [
+                'route_id' => $foRoute->id,
+                'has_geojson' => $foRoute->hasValidGeoJSON(),
+                'was_generated' => $needsGeneration,
+                'polyline_points' => count($polyline)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $foRoute->id,
+                    'name' => $foRoute->name,
+                    'color' => $foRoute->color,
+                    'total_distance' => is_numeric($foRoute->actual_distance) ? (float) $foRoute->actual_distance : 
+                                        (is_numeric($foRoute->total_distance) ? (float) $foRoute->total_distance : 0.0),
+                    'total_points' => (int) $foRoute->total_points,
+                    'description' => $foRoute->description,
+                    'polyline' => $polyline,
+                    'coordinates' => $polyline, // For backwards compatibility
+                    'has_geojson' => $foRoute->hasValidGeoJSON(),
+                    'routing_service' => $foRoute->routing_service,
+                    'area' => $foRoute->area,
+                    'status' => $foRoute->status,
+                    'was_generated_on_demand' => $needsGeneration,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error fetching route polyline", [
+                'route_id' => $routeId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data jalur: ' . $e->getMessage()
+            ], 500);
         }
     }
 

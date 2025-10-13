@@ -11,17 +11,48 @@ class GenerateGeoJsonRoutesSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * 
+     * Note: GeoJSON routes are now generated ON-DEMAND when users select them.
+     * This seeder is optional and can be used to pre-generate popular routes.
      */
     public function run(): void
     {
-        $this->command->info('🔄 Generating GeoJSON routes...');
+        $this->command->info('📋 GeoJSON Route Generation - On-Demand Mode');
+        $this->command->newLine();
         
         // Check if API key is configured
         if (empty(config('services.openrouteservice.api_key'))) {
-            $this->command->warn('⚠️  OpenRouteService API key not configured. Using fallback route generation.');
+            $this->command->warn('⚠️  OpenRouteService API key not configured.');
+            $this->command->line('   Routes will use fallback polyline generation.');
         } else {
-            $this->command->line('✅ Using OpenRouteService API for accurate routing.');
+            $this->command->line('✅ OpenRouteService API configured and ready.');
         }
+        
+        $this->command->newLine();
+        $this->command->info('ℹ️  GeoJSON Generation Strategy:');
+        $this->command->line('   • Routes are generated ON-DEMAND when users select them');
+        $this->command->line('   • This saves OpenRouteService API credits');
+        $this->command->line('   • Only requested routes consume API calls');
+        $this->command->line('   • Generated routes are cached for 24 hours');
+        
+        $this->command->newLine();
+        
+        // Check if force flag is provided to pre-generate
+        // Usage: php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force
+        $forceGenerate = $this->command->option('force') ?? false;
+        
+        if (!$forceGenerate) {
+            $this->command->info('✅ Skipping pre-generation (default behavior).');
+            $this->command->line('   Routes will be generated on-demand when users select them.');
+            $this->command->newLine();
+            $this->command->line('   To pre-generate all routes, run with --force flag:');
+            $this->command->line('   php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force');
+            return;
+        }
+        
+        // Only pre-generate if explicitly confirmed or forced
+        $this->command->warn('⚠️  Pre-generating all routes...');
+        $this->command->line('   This will consume OpenRouteService API credits.');
         
         try {
             $routeService = app(FoRouteGenerationService::class);
@@ -64,7 +95,7 @@ class GenerateGeoJsonRoutesSeeder extends Seeder
                 $this->command->warn("⚠️  {$totalFailed} routes failed to generate. Check logs for details.");
                 Log::warning("Route generation seeder completed with {$totalFailed} failures");
             } else {
-                $this->command->line('✅ All routes generated successfully!');
+                $this->command->line('✅ All routes pre-generated successfully!');
                 Log::info("Route generation seeder completed successfully. Generated {$totalSuccess} routes.");
             }
             

@@ -36,6 +36,7 @@ Route::get('/dashboard', function () {
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
 Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
+Route::get('/api/fo-routes/{routeId}/polyline', [FoController::class, 'getRoutePolyline'])->name('api.fo.route.polyline');
 Route::post('/fo-route/{foRoute}/generate-geojson', [FoController::class, 'generateGeoJSONRoute'])->name('fo.route.generate-geojson');
 Route::post('/api/fo-routes/generate-all', [FoController::class, 'generateAllGeoJSONRoutes'])->name('api.fo.routes.generate-all');
 Route::get('/fo-details/{type}/{id}', [FoController::class, 'getDetails'])->name('fo.details');
@@ -217,6 +218,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         // FO Routes Management - specific routes must come before parameterized routes
         Route::get('/fo-management/routes/create', [FoManagementController::class, 'createRoute'])->name('fo-management.routes.create');
         Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
+        Route::get('/fo-management/routes/{foRoute}/geojson', [FoManagementController::class, 'getRouteGeoJson'])->name('fo-management.routes.geojson');
         Route::post('/fo-management/routes', [FoManagementController::class, 'storeRoute'])->name('fo-management.routes.store');
         Route::get('/fo-management/routes/{foRoute}/edit', [FoManagementController::class, 'editRoute'])->name('fo-management.routes.edit');
         Route::put('/fo-management/routes/{foRoute}', [FoManagementController::class, 'updateRoute'])->name('fo-management.routes.update');
