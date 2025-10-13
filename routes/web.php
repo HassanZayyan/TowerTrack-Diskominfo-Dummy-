@@ -296,6 +296,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     })->name('feedbacks.index');
 
     // Complaints actions
+    Route::get('/complaints/{report}', [\App\Http\Controllers\Admin\ComplaintController::class, 'show'])->name('complaints.show');
     Route::post('/complaints/{report}/respond', [\App\Http\Controllers\Admin\ComplaintController::class, 'respond'])->name('complaints.respond');
     Route::put('/complaints/{report}', [\App\Http\Controllers\Admin\ComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
 

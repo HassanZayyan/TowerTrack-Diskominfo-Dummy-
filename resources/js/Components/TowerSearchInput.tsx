@@ -49,6 +49,8 @@ interface TowerSearchInputProps {
   className?: string;
   // NEW: notify parent about search term changes to sync other UIs (e.g., map)
   onSearchTermChange?: (query: string) => void;
+  // NEW: controlled search term from parent to persist across mode switches
+  searchTerm?: string;
 }
 
 export default function TowerSearchInput({
@@ -64,12 +66,16 @@ export default function TowerSearchInput({
   errorMessage,
   className = "",
   onSearchTermChange,
+  searchTerm: externalSearchTerm,
 }: TowerSearchInputProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [internalSearchTerm, setInternalSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Use external searchTerm if provided (controlled), otherwise use internal state (uncontrolled)
+  const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm;
 
   // Filter towers menggunakan utility function
   const filteredTowers = useMemo(() => {
@@ -79,7 +85,11 @@ export default function TowerSearchInput({
   // Handle input change dengan intelligent search
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setSearchTerm(value);
+    // Update internal state only if not controlled by parent
+    if (externalSearchTerm === undefined) {
+      setInternalSearchTerm(value);
+    }
+    // Always notify parent about changes
     onSearchTermChange?.(value);
     
     // Show dropdown segera saat ada input, bahkan 1 karakter
@@ -93,12 +103,15 @@ export default function TowerSearchInput({
       setShowDropdown(false);
       setActiveIndex(-1);
     }
-  }, [onSearchTermChange]);
+  }, [onSearchTermChange, externalSearchTerm]);
 
   // Select tower function
   const selectTower = useCallback((tower: Tower) => {
     onTowerSelect(tower);
-    setSearchTerm('');
+    // Clear search term in both internal state and notify parent
+    if (externalSearchTerm === undefined) {
+      setInternalSearchTerm('');
+    }
     onSearchTermChange?.('');
     setShowDropdown(false);
     setActiveIndex(-1);
@@ -107,14 +120,17 @@ export default function TowerSearchInput({
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
-  }, [onTowerSelect, onSearchTermChange]);
+  }, [onTowerSelect, onSearchTermChange, externalSearchTerm]);
 
   // Clear selection function
   const clearSelection = useCallback(() => {
     if (onClear) {
       onClear();
     }
-    setSearchTerm('');
+    // Clear search term in both internal state and notify parent
+    if (externalSearchTerm === undefined) {
+      setInternalSearchTerm('');
+    }
     onSearchTermChange?.('');
     setShowDropdown(false);
     setActiveIndex(-1);
@@ -123,7 +139,7 @@ export default function TowerSearchInput({
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
-  }, [onClear, onSearchTermChange]);
+  }, [onClear, onSearchTermChange, externalSearchTerm]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -300,7 +316,7 @@ export default function TowerSearchInput({
       )}
       
       {searchTerm && !showDropdown && !hasSelection && (
-        <p className="text-blue-600 text-sm mt-1">Klik pada field untuk melihat hasil pencarian</p>
+        <p className="text-yellow-600 text-sm mt-1">Klik pada field untuk melihat hasil pencarian</p>
       )}
     </div>
   );

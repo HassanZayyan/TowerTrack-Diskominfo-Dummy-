@@ -43,6 +43,21 @@ class ComplaintController extends Controller
         ]);
     }
 
+    public function show(Report $report)
+    {
+        $report->load([
+            'tower:id,site_name,alamat_menara',
+            'user:id,name,email',
+            'images',
+            'responses.user:id,name',
+            'responses.assets'
+        ]);
+
+        return Inertia::render('Admin/Reports/Show', [
+            'report' => $report
+        ]);
+    }
+
     public function respond(Request $request, Report $report)
     {
         $validated = $request->validate([
@@ -127,7 +142,7 @@ class ComplaintController extends Controller
 
         // Ubah slug ke id status
         $statusSlug = $validated['status_id'];
-        $statusModel = \App\Models\Status::where('slug', $statusSlug)->first();
+        $statusModel = Status::where('slug', $statusSlug)->first();
         $statusId = $statusModel ? $statusModel->id : $validated['status_id'];
 
         try {

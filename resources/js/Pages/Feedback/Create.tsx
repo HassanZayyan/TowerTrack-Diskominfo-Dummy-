@@ -323,8 +323,44 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       let userLocationCaptured = false;
       let userLocationResult: Awaited<ReturnType<typeof requestUserLocationForReporting>> | undefined;
       
+      // Always request user location for documentation and validation
+      userLocationResult = await requestUserLocationForReporting();
+      
+      if (!userLocationResult.success) {
+        let locationTitle = 'Lokasi Diperlukan';
+        let locationMessage = userLocationResult.message;
+        
+        if (userLocationResult.message.includes('Izin lokasi ditolak')) {
+          locationTitle = 'Izin Lokasi Diperlukan';
+          locationMessage = 'Untuk mengirim masukan, Anda perlu mengizinkan akses lokasi. Silakan aktifkan izin lokasi di browser dan coba lagi.';
+        } else if (userLocationResult.message.includes('Waktu permintaan lokasi habis')) {
+          locationTitle = 'Timeout Lokasi';
+          locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
+        } else if (userLocationResult.message.includes('tidak tersedia')) {
+          locationTitle = 'Lokasi Tidak Tersedia';
+          locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+        }
+        
+        showWarningDialog(locationTitle, locationMessage);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Store user location for documentation
+      if (userLocationResult.coordinates) {
+        const updatedForm = {
+          ...form,
+          reporter_latitude: userLocationResult.coordinates.latitude.toString(),
+          reporter_longitude: userLocationResult.coordinates.longitude.toString(),
+          reporter_accuracy: userLocationResult.accuracy?.toString() || ''
+        };
+        setForm(updatedForm);
+      }
+      
+      userLocationCaptured = true;
+      
       if (towerHasCoordinates) {
-        // Standard location validation against tower coordinates
+        // Additional validation against tower coordinates for distance check
         locationValidation = await requestLocationAndValidate({
           latitude: Number(selectedTower.latitude),
           longitude: Number(selectedTower.longitude)
@@ -335,18 +371,11 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           let locationTitle = 'Validasi Lokasi Gagal';
           let locationMessage = locationValidation.message;
           
-          if (locationValidation.message.includes('Izin lokasi ditolak')) {
-            locationTitle = 'Izin Lokasi Diperlukan';
-            locationMessage = 'Untuk mengirim masukan, Anda perlu mengizinkan akses lokasi. Silakan aktifkan izin lokasi di browser dan coba lagi.';
-          } else if (locationValidation.message.includes('terlalu jauh')) {
+          if (locationValidation.message.includes('terlalu jauh')) {
             locationTitle = 'Jarak Terlalu Jauh';
             locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
-          } else if (locationValidation.message.includes('Waktu permintaan lokasi habis')) {
-            locationTitle = 'Timeout Lokasi';
-            locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
-          } else if (locationValidation.message.includes('tidak tersedia')) {
-            locationTitle = 'Lokasi Tidak Tersedia';
-            locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+          } else {
+            locationMessage = 'Gagal memvalidasi jarak ke tower. Silakan coba lagi.';
           }
           
           showWarningDialog(locationTitle, locationMessage);
@@ -354,41 +383,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           return;
         }
       } else {
-        // Tower has no coordinates, request user location for documentation
-        userLocationResult = await requestUserLocationForReporting();
-        
-        if (!userLocationResult.success) {
-          let locationTitle = 'Lokasi Diperlukan';
-          let locationMessage = userLocationResult.message;
-          
-          if (userLocationResult.message.includes('Izin lokasi ditolak')) {
-            locationTitle = 'Izin Lokasi Diperlukan';
-            locationMessage = 'Karena tower ini tidak memiliki koordinat, kami memerlukan lokasi Anda untuk mendokumentasikan masukan. Silakan aktifkan izin lokasi di browser dan coba lagi.';
-          } else if (userLocationResult.message.includes('Waktu permintaan lokasi habis')) {
-            locationTitle = 'Timeout Lokasi';
-            locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
-          } else if (userLocationResult.message.includes('tidak tersedia')) {
-            locationTitle = 'Lokasi Tidak Tersedia';
-            locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
-          }
-          
-          showWarningDialog(locationTitle, locationMessage);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Store user location for documentation
-        if (userLocationResult.coordinates) {
-          const updatedForm = {
-            ...form,
-            reporter_latitude: userLocationResult.coordinates.latitude.toString(),
-            reporter_longitude: userLocationResult.coordinates.longitude.toString(),
-            reporter_accuracy: userLocationResult.accuracy?.toString() || ''
-          };
-          setForm(updatedForm);
-        }
-        
-        userLocationCaptured = true;
+        // Tower has no coordinates, just log for documentation
         locationValidation = { success: true, message: 'Lokasi berhasil diperoleh untuk dokumentasi' };
       }
       

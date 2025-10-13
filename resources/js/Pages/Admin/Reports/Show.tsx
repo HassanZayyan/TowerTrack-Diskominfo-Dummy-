@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-interface FeedbackAsset {
+interface ReportAsset {
   id: number;
   file_path: string;
   file_type: string;
@@ -21,29 +21,29 @@ interface Tower {
   alamat_menara?: string;
 }
 
-interface FeedbackResponseAsset {
+interface ReportResponseAsset {
   id: number;
   file_path: string;
   file_type: string;
   mime_type?: string;
 }
 
-interface FeedbackResponse {
+interface ReportResponse {
   id: number;
-  feedback_id: number;
+  report_id: number;
   user_id: number;
   message: string;
   created_at: string;
   user?: User;
-  assets?: FeedbackResponseAsset[];
+  assets?: ReportResponseAsset[];
 }
 
-interface Feedback {
+interface Report {
   id: number;
   tower_id: number | null;
   user_id: number;
-  sender_phone: string;
-  sender_name?: string;
+  reporter_phone: string;
+  reporter_name?: string;
   category: string;
   message: string;
   status: string;
@@ -51,29 +51,17 @@ interface Feedback {
   updated_at: string;
   user?: User;
   tower?: Tower;
-  assets?: FeedbackAsset[];
-  responses?: FeedbackResponse[];
+  images?: ReportAsset[];
+  responses?: ReportResponse[];
 }
 
 interface Props {
-  feedback: Feedback;
+  report: Report;
 }
 
-const FeedbackShow: React.FC<Props> = ({ feedback }) => {
-  // Fungsi untuk mengekstrak nama pengirim dari kategori
-  const extractSenderName = (category: string): { name: string; category: string } => {
-    const match = category.match(/\[Dari:\s(.+?)\]$/);
-    if (match && match[1]) {
-      return {
-        name: match[1],
-        category: category.replace(/\s*\[Dari:\s(.+?)\]$/, '')
-      };
-    }
-    return { name: '', category };
-  };
-
+const ReportShow: React.FC<Props> = ({ report }) => {
   const [replyMessage, setReplyMessage] = useState('');
-  const [replyStatus, setReplyStatus] = useState(feedback.status);
+  const [replyStatus, setReplyStatus] = useState(report.status);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState('');
@@ -122,7 +110,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       }
     });
     
-    router.post(route('admin.feedbacks.respond', feedback.id), formData, {
+    router.post(route('admin.complaints.respond', report.id), formData, {
       forceFormData: true,
       onSuccess: () => {
         setReplyMessage('');
@@ -187,32 +175,32 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
   };
 
   return (
-    <AdminLayout title="Detail Masukan">
-      <Head title="Detail Masukan" />
+    <AdminLayout title="Detail Keluhan">
+      <Head title="Detail Keluhan" />
       
       {/* Back button */}
       <div className="mb-6">
         <a
-          href={route('admin.messages.index', { tab: 'feedbacks' })}
+          href={route('admin.messages.index', { tab: 'complaints' })}
           className="inline-flex items-center text-red-600 hover:text-red-800"
         >
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
           </svg>
-          <span>Kembali ke daftar masukan</span>
+          <span>Kembali ke daftar keluhan</span>
         </a>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Detail Masukan #{feedback.id}</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Detail Keluhan #{report.id}</h1>
         <div className="flex items-center gap-3">
-          <p className="text-gray-600">Status: {getStatusBadge(feedback.status)}</p>
-          <p className="text-gray-600">Dikirim: {formatDate(feedback.created_at)}</p>
+          <p className="text-gray-600">Status: {getStatusBadge(report.status)}</p>
+          <p className="text-gray-600">Dikirim: {formatDate(report.created_at)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Feedback details */}
+        {/* Left column - Report details */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-gray-50">
@@ -220,43 +208,43 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                 <div className="flex items-center">
                   <div className="h-12 w-12 rounded-full bg-red-500 flex items-center justify-center">
                     <span className="text-white font-semibold text-lg">
-                      {(feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || '?').charAt(0).toUpperCase()}
+                      {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="ml-4">
                     <h2 className="text-lg font-medium text-gray-800">
-                      {feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || 'Pengguna'}
+                      {report.reporter_name || report.user?.name || 'Anonim'}
                     </h2>
                     <p className="text-sm text-gray-600">
-                      {feedback.sender_phone || feedback.user?.email || '-'}
+                      {report.reporter_phone || report.user?.email || '-'}
                     </p>
                   </div>
                 </div>
                 <div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {extractSenderName(feedback.category).category}
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    {report.category}
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-4">Pesan</h3>
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Pesan Keluhan</h3>
               <div className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200">
-                {feedback.message}
+                {report.message}
               </div>
 
               {/* Tower Information */}
-              {feedback.tower && (
+              {report.tower && (
                 <div className="mt-6">
                   <h3 className="text-lg font-medium text-gray-800 mb-4">Informasi Tower</h3>
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <p className="text-gray-700">
-                      <span className="font-medium">Nama Site:</span> {feedback.tower.site_name}
+                      <span className="font-medium">Nama Site:</span> {report.tower.site_name}
                     </p>
-                    {feedback.tower.alamat_menara && (
+                    {report.tower.alamat_menara && (
                       <p className="text-gray-700 mt-2">
-                        <span className="font-medium">Alamat:</span> {feedback.tower.alamat_menara}
+                        <span className="font-medium">Alamat:</span> {report.tower.alamat_menara}
                       </p>
                     )}
                   </div>
@@ -264,11 +252,11 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
               )}
 
               {/* Attached Media */}
-              {feedback.assets && feedback.assets.length > 0 && (
+              {report.images && report.images.length > 0 && (
                 <div className="mt-6">
                   <h3 className="text-lg font-medium text-gray-800 mb-4">Media Lampiran</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {feedback.assets.map((asset, index) => {
+                    {report.images.map((asset, index) => {
                       const mediaUrl = getMediaUrl(asset.file_path);
                       const isImg = isImage(asset.file_path, asset.file_type);
                       const isVid = isVideo(asset.file_path, asset.file_type);
@@ -330,7 +318,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
         <div className="lg:col-span-1">
           {/* Reply Form */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Balas Masukan</h3>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Balas Keluhan</h3>
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
@@ -367,7 +355,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                   rows={5}
                   maxLength={1000}
                   className="w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-400"
-                  placeholder="Tulis balasan untuk masukan ini..."
+                  placeholder="Tulis balasan untuk keluhan ini..."
                   required
                 ></textarea>
                 <div className="text-xs text-gray-500 mt-1">
@@ -461,9 +449,9 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-medium text-gray-800 mb-4">Riwayat Balasan</h3>
             
-            {feedback.responses && feedback.responses.length > 0 ? (
+            {report.responses && report.responses.length > 0 ? (
               <div className="space-y-6 max-h-[600px] overflow-y-auto">
-                {feedback.responses.map((response) => (
+                {report.responses.map((response) => (
                   <div key={response.id} className="border rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
@@ -534,7 +522,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
                 <p className="mt-2 text-sm text-gray-500">
-                  Belum ada balasan untuk masukan ini
+                  Belum ada balasan untuk keluhan ini
                 </p>
               </div>
             )}
@@ -580,4 +568,5 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
   );
 };
 
-export default FeedbackShow;
+export default ReportShow;
+
