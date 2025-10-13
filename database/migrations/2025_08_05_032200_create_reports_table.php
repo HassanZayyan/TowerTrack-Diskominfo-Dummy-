@@ -25,7 +25,6 @@ return new class extends Migration
             $table->decimal('reporter_longitude', 11, 8)->nullable();
             $table->decimal('reporter_accuracy', 8, 2)->nullable(); // GPS accuracy in meters
             $table->timestamp('location_captured_at')->nullable();
-            $table->boolean('location_verified')->default(false);
             $table->boolean('is_public')->default(false); // Public visibility for reports
             $table->foreignId('status_id')->nullable()->constrained('statuses')->nullOnDelete();
             $table->timestamps();

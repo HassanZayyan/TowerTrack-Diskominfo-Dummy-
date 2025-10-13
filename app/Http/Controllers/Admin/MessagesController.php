@@ -20,6 +20,7 @@ class MessagesController extends Controller
                 'responses.user:id,name',
                 'responses.assets:id,report_response_id,file_path,file_type',
             ])
+            ->select('id', 'user_id', 'tower_id', 'email', 'reporter_name', 'reporter_phone', 'category', 'message', 'status_id', 'reporter_latitude', 'reporter_longitude', 'reporter_accuracy', 'location_captured_at', 'is_public', 'created_at', 'updated_at')
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($report) {
@@ -40,7 +41,7 @@ class MessagesController extends Controller
                     $query->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 },
             ])
-            ->select('id', 'user_id', 'tower_id', 'sender_name', 'sender_phone', 'category', 'message', 'status', 'created_at', 'updated_at')
+            ->select('id', 'user_id', 'tower_id', 'email', 'sender_name', 'sender_phone', 'category', 'message', 'status', 'reporter_latitude', 'reporter_longitude', 'reporter_accuracy', 'location_captured_at', 'is_public', 'created_at', 'updated_at')
             ->orderByDesc('created_at')
             ->get();
 

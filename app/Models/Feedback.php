@@ -24,7 +24,6 @@ class Feedback extends Model
         'reporter_longitude',
         'reporter_accuracy',
         'location_captured_at',
-        'location_verified',
         'is_public',
     ];
     

@@ -55,6 +55,8 @@ interface BaseItem {
   // For feedbacks
   sender_phone?: string;
   sender_name?: string;
+  // Email field for guest users
+  email?: string;
 }
 
 interface Props {
@@ -86,6 +88,7 @@ const ManagementTable: React.FC<Props> = ({
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: string } | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<{ [key: number]: boolean }>({});
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -149,6 +152,35 @@ const ManagementTable: React.FC<Props> = ({
     setLightboxMedia(null);
   };
 
+  const handleStatusChange = async (itemId: number, newStatus: string) => {
+    // Mark this item as updating
+    setUpdatingStatus(prev => ({ ...prev, [itemId]: true }));
+    
+    try {
+      // Build the route URL
+      const route = type === 'complaints' 
+        ? `/admin/complaints/${itemId}`
+        : `/admin/feedbacks/${itemId}/status`;
+      
+      // Send the update request
+      await router.put(route, {
+        status_id: newStatus,
+      }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+          setUpdatingStatus(prev => ({ ...prev, [itemId]: false }));
+        },
+        onError: () => {
+          setUpdatingStatus(prev => ({ ...prev, [itemId]: false }));
+        },
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      setUpdatingStatus(prev => ({ ...prev, [itemId]: false }));
+    }
+  };
+
   // Filter items
   const filteredItems = items.filter(item => {
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
@@ -190,7 +222,9 @@ const ManagementTable: React.FC<Props> = ({
   };
 
   const getItemEmail = (item: BaseItem) => {
-    return item.user?.email || '-';
+    // For guest users, check the email field directly
+    // For registered users, use user.email
+    return (item as any).email || item.user?.email || '-';
   };
 
   const getVisibilityBadge = (isPublic?: boolean) => {
@@ -487,7 +521,26 @@ const ManagementTable: React.FC<Props> = ({
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex justify-center">
-                          {getStatusBadge(item.status)}
+                          <select
+                            value={item.status}
+                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                            disabled={updatingStatus[item.id]}
+                            className={`text-xs font-medium border rounded-lg px-2 py-1 transition-all focus:ring-2 focus:ring-offset-1 ${
+                              updatingStatus[item.id] 
+                                ? 'opacity-50 cursor-not-allowed' 
+                                : 'cursor-pointer hover:shadow-md'
+                            } ${
+                              item.status === 'pending' 
+                                ? 'bg-red-100 text-red-800 border-red-300 focus:ring-red-400' 
+                                : item.status === 'in_progress'
+                                ? 'bg-orange-100 text-orange-800 border-orange-300 focus:ring-orange-400'
+                                : 'bg-green-100 text-green-800 border-green-300 focus:ring-green-400'
+                            }`}
+                          >
+                            <option value="pending">BARU</option>
+                            <option value="in_progress">PROGRESS</option>
+                            <option value="closed">SELESAI</option>
+                          </select>
                         </div>
                       </td>
                       <td className="px-3 py-4">
@@ -534,7 +587,26 @@ const ManagementTable: React.FC<Props> = ({
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 items-end ml-2">
-                      {getStatusBadge(item.status)}
+                      <select
+                        value={item.status}
+                        onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                        disabled={updatingStatus[item.id]}
+                        className={`text-xs font-medium border rounded-full px-2 py-1 transition-all focus:ring-2 focus:ring-offset-1 ${
+                          updatingStatus[item.id] 
+                            ? 'opacity-50 cursor-not-allowed' 
+                            : 'cursor-pointer hover:shadow-md'
+                        } ${
+                          item.status === 'pending' 
+                            ? 'bg-red-100 text-red-800 border-red-300 focus:ring-red-400' 
+                            : item.status === 'in_progress'
+                            ? 'bg-orange-100 text-orange-800 border-orange-300 focus:ring-orange-400'
+                            : 'bg-green-100 text-green-800 border-green-300 focus:ring-green-400'
+                        }`}
+                      >
+                        <option value="pending">BARU</option>
+                        <option value="in_progress">PROGRESS</option>
+                        <option value="closed">SELESAI</option>
+                      </select>
                       {getVisibilityBadge(item.is_public)}
                     </div>
                   </div>

@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             TowerSeeder::class,
             TowerOwnerSeeder::class,
             StatusSeeder::class,
+            ReportFeedbackSeeder::class, // Sample reports and feedbacks
         ]);
         
         // Seed tower owner user accounts (must be after OwnerSeeder)

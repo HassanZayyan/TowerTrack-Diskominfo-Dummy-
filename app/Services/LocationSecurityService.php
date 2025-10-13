@@ -39,8 +39,7 @@ class LocationSecurityService
         $result = [
             'reporter_latitude' => $sanitizedLatitude,
             'reporter_longitude' => $sanitizedLongitude,
-            'location_captured_at' => now(),
-            'location_verified' => false // Default to false, can be verified later by admin
+            'location_captured_at' => now()
         ];
         
         // Only include accuracy if it's provided and valid

@@ -133,8 +133,7 @@ class UserComplaintController extends Controller
             'reporter_latitude' => $report->reporter_latitude,
             'reporter_longitude' => $report->reporter_longitude,
             'reporter_accuracy' => $report->reporter_accuracy,
-            'location_captured_at' => $report->location_captured_at,
-            'location_verified' => $report->location_verified
+            'location_captured_at' => $report->location_captured_at
         ]);
 
         // Handle uploads (images and/or videos) submitted under "foto" or a generic "assets" key
