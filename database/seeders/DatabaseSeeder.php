@@ -41,9 +41,11 @@ class DatabaseSeeder extends Seeder
             FoRoutesFromPointsSeeder::class,
         ]);
         
-        // Generate GeoJSON routes after basic routes are created
-        $this->call([
-            GenerateGeoJsonRoutesSeeder::class,
-        ]);
+        // Note: GeoJSON routes are NOT pre-generated during seeding
+        // They will be generated ON-DEMAND when users select routes in the UI
+        // This saves OpenRouteService API tokens (70-80% savings)
+        // 
+        // If you need to manually generate all routes, run:
+        // php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force
     }
 }

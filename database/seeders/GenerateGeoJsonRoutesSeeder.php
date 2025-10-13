@@ -12,12 +12,25 @@ class GenerateGeoJsonRoutesSeeder extends Seeder
     /**
      * Run the database seeds.
      * 
-     * Note: GeoJSON routes are now generated ON-DEMAND when users select them.
-     * This seeder is optional and can be used to pre-generate popular routes.
+     * ⚠️  IMPORTANT: This seeder is NOT called automatically in DatabaseSeeder!
+     * 
+     * GeoJSON routes are generated ON-DEMAND when users click routes in the UI.
+     * This seeder is ONLY for manual pre-generation if absolutely needed.
+     * 
+     * AUTOMATIC (Recommended - 0 tokens):
+     *   - Do nothing! Routes generate when users click them
+     *   - Saves 70-80% of API tokens
+     *   - Better for most use cases
+     * 
+     * MANUAL PRE-GENERATION (Not recommended - costs 17 tokens):
+     *   php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force
      */
     public function run(): void
     {
-        $this->command->info('📋 GeoJSON Route Generation - On-Demand Mode');
+        $this->command->newLine();
+        $this->command->info('╔═══════════════════════════════════════════════════════════╗');
+        $this->command->info('║   🚨 GeoJSON Route Generation - Manual Seeder Only       ║');
+        $this->command->info('╚═══════════════════════════════════════════════════════════╝');
         $this->command->newLine();
         
         // Check if API key is configured
@@ -29,24 +42,28 @@ class GenerateGeoJsonRoutesSeeder extends Seeder
         }
         
         $this->command->newLine();
-        $this->command->info('ℹ️  GeoJSON Generation Strategy:');
-        $this->command->line('   • Routes are generated ON-DEMAND when users select them');
-        $this->command->line('   • This saves OpenRouteService API credits');
-        $this->command->line('   • Only requested routes consume API calls');
-        $this->command->line('   • Generated routes are cached for 24 hours');
+        $this->command->info('ℹ️  Current Strategy (Recommended):');
+        $this->command->line('   • Routes are generated ON-DEMAND when users click them in UI');
+        $this->command->line('   • No tokens consumed during database setup');
+        $this->command->line('   • Only clicked routes consume 1 token each');
+        $this->command->line('   • Generated routes cached for 24 hours');
+        $this->command->line('   • Typical savings: 70-80% of API tokens');
         
         $this->command->newLine();
         
         // Check if force flag is provided to pre-generate
-        // Usage: php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force
         $forceGenerate = $this->command->option('force') ?? false;
         
         if (!$forceGenerate) {
-            $this->command->info('✅ Skipping pre-generation (default behavior).');
-            $this->command->line('   Routes will be generated on-demand when users select them.');
+            $this->command->info('✅ SKIPPED - No pre-generation (this is correct!)');
             $this->command->newLine();
-            $this->command->line('   To pre-generate all routes, run with --force flag:');
+            $this->command->line('   🎯 Routes will be generated on-demand when users select them.');
+            $this->command->line('   💰 Tokens saved: 17 (0 consumed now, generated only when needed)');
+            $this->command->newLine();
+            $this->command->line('   🔧 If you really need to pre-generate all routes:');
             $this->command->line('   php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force');
+            $this->command->newLine();
+            $this->command->warn('   ⚠️  Pre-generation NOT recommended - wastes tokens on unused routes!');
             return;
         }
         

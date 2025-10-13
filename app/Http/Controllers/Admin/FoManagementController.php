@@ -65,49 +65,82 @@ class FoManagementController extends Controller
     }
 
     /**
-     * Fetch GeoJSON data for a specific route (on-demand with caching)
-     * This endpoint is called separately to avoid loading all routes at once
+     * Fetch GeoJSON data for a specific route (on-demand with persistent caching)
      * 
-     * NEW: Auto-generates GeoJSON if not exists (on-demand generation)
+     * CACHING STRATEGY:
+     * - Cache duration: 24 hours (persists across page navigation)
+     * - Cache key: route_id + updated_at timestamp (auto-invalidates on update)
+     * - Cache hit: Returns immediately without API call (0 tokens consumed)
+     * - Cache miss + has GeoJSON: Returns existing data (0 tokens consumed)
+     * - Cache miss + no GeoJSON: Generates on-demand (1 token consumed)
+     * 
+     * TOKEN CONSUMPTION:
+     * - First-time access: 1 token (generates GeoJSON via OpenRouteService)
+     * - Subsequent access (within 24h): 0 tokens (uses cache)
+     * - After route update: 1 token (cache auto-invalidated, regenerates)
+     * - Cross-page navigation: 0 tokens (cache persists in server)
+     * 
+     * WORKFLOW:
+     * 1. User clicks route → Check cache
+     * 2. Cache hit? → Return immediately (FAST, no token)
+     * 3. Cache miss + has DB GeoJSON? → Return from DB (FAST, no token)
+     * 4. Cache miss + no GeoJSON? → Generate (SLOW, 1 token)
+     * 5. Store in cache for 24 hours
+     * 6. Subsequent clicks on same route → Cache hit (INSTANT)
      */
     public function getRouteGeoJson(FoRoute $foRoute)
     {
         try {
-            // Check if GeoJSON needs to be generated
-            $needsGeneration = !$foRoute->hasValidGeoJSON();
+            // Step 1: Build cache key (includes updated_at for auto-invalidation)
+            $cacheKey = "fo_route_geojson_{$foRoute->id}_{$foRoute->updated_at->timestamp}";
             
-            if ($needsGeneration) {
-                \Log::info("Route GeoJSON not found, generating on-demand", [
+            // Step 2: Check if data is already in cache (fastest path)
+            if (Cache::has($cacheKey)) {
+                \Log::info("✅ CACHE HIT - Serving from cache (0 tokens)", [
                     'route_id' => $foRoute->id,
-                    'route_name' => $foRoute->name
+                    'route_name' => $foRoute->name,
+                    'cache_key' => $cacheKey
                 ]);
                 
-                // Generate GeoJSON on-demand
+                return response()->json([
+                    'success' => true,
+                    'data' => Cache::get($cacheKey),
+                    'generated_on_demand' => false,
+                    'from_cache' => true,
+                ]);
+            }
+            
+            // Step 3: Cache miss - check if GeoJSON exists in database
+            $hasGeoJSON = $foRoute->hasValidGeoJSON();
+            $needsGeneration = !$hasGeoJSON;
+            
+            if ($needsGeneration) {
+                \Log::info("🔄 CACHE MISS + NO GEOJSON - Generating on-demand (1 token will be consumed)", [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                ]);
+                
+                // Step 4: Generate GeoJSON on-demand (consumes 1 OpenRouteService token)
                 $routeService = app(\App\Services\FoRouteGenerationService::class);
                 $generated = $routeService->generateRouteFromPoints($foRoute);
                 
                 if (!$generated) {
-                    \Log::warning("Failed to generate GeoJSON for route, using fallback", [
+                    \Log::warning("⚠️ GeoJSON generation failed, using fallback polyline (0 tokens)", [
                         'route_id' => $foRoute->id
                     ]);
                 }
                 
-                // Refresh the route model
+                // Refresh the route model to get newly generated GeoJSON
                 $foRoute = $foRoute->fresh();
-            }
-            
-            // Cache key based on route ID and updated_at timestamp
-            $cacheKey = "fo_route_geojson_{$foRoute->id}_{$foRoute->updated_at->timestamp}";
-            
-            // Cache for 24 hours (86400 seconds), or until route is updated
-            $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration) {
-                \Log::info("Building GeoJSON response", [
+            } else {
+                \Log::info("💾 CACHE MISS + HAS GEOJSON - Loading from database (0 tokens)", [
                     'route_id' => $foRoute->id,
                     'route_name' => $foRoute->name,
-                    'was_generated' => $needsGeneration,
-                    'has_geojson' => $foRoute->hasValidGeoJSON()
                 ]);
-
+            }
+            
+            // Step 5: Build response data and store in cache for 24 hours
+            $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration) {
                 // Get all points for this route ordered by sequence
                 $points = FoPoint::where('route_name', $foRoute->name)
                     ->where('area', $foRoute->area)
@@ -140,20 +173,22 @@ class FoManagementController extends Controller
                 ];
             });
 
-            \Log::info("Serving GeoJSON for route", [
+            \Log::info("✅ Response cached for 24 hours - Next access will be instant", [
                 'route_id' => $foRoute->id,
-                'from_cache' => Cache::has($cacheKey),
-                'has_geojson' => $foRoute->hasValidGeoJSON()
+                'cache_key' => $cacheKey,
+                'tokens_consumed' => $needsGeneration ? 1 : 0
             ]);
 
             return response()->json([
                 'success' => true,
                 'data' => $geoJsonData,
                 'generated_on_demand' => $needsGeneration,
+                'from_cache' => false,
+                'tokens_consumed' => $needsGeneration ? 1 : 0,
             ]);
 
         } catch (\Exception $e) {
-            \Log::error("Error fetching route GeoJSON", [
+            \Log::error("❌ Error fetching route GeoJSON", [
                 'route_id' => $foRoute->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -304,29 +339,19 @@ class FoManagementController extends Controller
         $this->updateRouteStatistics($routeId);
         
         // Invalidate cache for this route since points changed
+        // GeoJSON will be regenerated on-demand when user next selects this route
         $this->invalidateRouteCache($routeId);
 
-        // Automatically generate routes after adding new point
-        try {
-            \Illuminate\Support\Facades\Artisan::call('fo:generate-routes', [
-                '--area' => $validated['area']
-            ]);
-            \Log::info('Auto-generated routes after adding new FO point', [
-                'point_id' => $point->id,
-                'route_id' => $routeId,
-                'area' => $validated['area']
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Failed to auto-generate routes after adding FO point: ' . $e->getMessage(), [
-                'point_id' => $point->id,
-                'route_id' => $routeId,
-                'exception' => $e
-            ]);
-        }
+        \Log::info('FO point added successfully - GeoJSON will be regenerated on-demand', [
+            'point_id' => $point->id,
+            'route_id' => $routeId,
+            'area' => $validated['area'],
+            'note' => 'GeoJSON generation deferred until user selects this route (saves 1 API token)'
+        ]);
 
         return redirect()
             ->route('admin.fo-management.routes.detail', $routeId)
-            ->with('success', 'Titik FO berhasil ditambahkan dan rute otomatis diperbarui');
+            ->with('success', 'Titik FO berhasil ditambahkan. Jalur akan diperbarui otomatis saat Anda membuka peta.');
     }
 
     /**

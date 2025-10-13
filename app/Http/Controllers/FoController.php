@@ -432,38 +432,60 @@ class FoController extends Controller
     }
 
     /**
-     * Get route polyline on-demand (for lazy loading)
-     * This endpoint is called when user selects a route from dropdown
+     * Get route polyline on-demand (for lazy loading with persistent caching)
      * 
-     * NEW: Auto-generates GeoJSON if not exists (on-demand generation)
+     * CACHING STRATEGY (Public Page):
+     * - NO server-side cache (simpler, let browser cache handle it)
+     * - Frontend implements session-based cache (faster UX)
+     * - Each route selection generates GeoJSON if not exists
+     * 
+     * TOKEN CONSUMPTION:
+     * - First-time selection: 1 token (if no GeoJSON exists)
+     * - Same route in same session: 0 tokens (frontend cache)
+     * - Same route after page refresh: May consume 0-1 token (depends on DB state)
+     * 
+     * WORKFLOW:
+     * 1. User selects route → Check if GeoJSON exists in database
+     * 2. Has GeoJSON? → Return from DB (0 tokens)
+     * 3. No GeoJSON? → Generate on-demand (1 token)
+     * 4. Frontend caches result in session
+     * 5. User navigates away and back → Frontend uses session cache (0 tokens)
      */
     public function getRoutePolyline($routeId)
     {
         try {
             $foRoute = FoRoute::findOrFail($routeId);
             
-            // Check if GeoJSON needs to be generated
-            $needsGeneration = !$foRoute->hasValidGeoJSON();
+            // Check if GeoJSON exists in database
+            $hasGeoJSON = $foRoute->hasValidGeoJSON();
+            $needsGeneration = !$hasGeoJSON;
             
             if ($needsGeneration) {
-                \Log::info("Route GeoJSON not found, generating on-demand", [
+                \Log::info("🔄 PUBLIC - Generating GeoJSON on-demand (1 token will be consumed)", [
                     'route_id' => $foRoute->id,
                     'route_name' => $foRoute->name,
-                    'endpoint' => 'public'
+                    'endpoint' => 'public',
+                    'user_ip' => request()->ip(),
                 ]);
                 
-                // Generate GeoJSON on-demand
+                // Generate GeoJSON on-demand (consumes 1 OpenRouteService token)
                 $routeService = app(\App\Services\FoRouteGenerationService::class);
                 $generated = $routeService->generateRouteFromPoints($foRoute);
                 
                 if (!$generated) {
-                    \Log::warning("Failed to generate GeoJSON for route, using fallback polyline", [
+                    \Log::warning("⚠️ PUBLIC - GeoJSON generation failed, using fallback polyline (0 tokens)", [
                         'route_id' => $foRoute->id
                     ]);
                 }
                 
-                // Refresh the route model
+                // Refresh the route model to get newly generated GeoJSON
                 $foRoute = $foRoute->fresh();
+            } else {
+                \Log::info("✅ PUBLIC - Loading existing GeoJSON from database (0 tokens)", [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                    'user_ip' => request()->ip(),
+                ]);
             }
             
             // Use GeoJSON coordinates if available, otherwise enhanced polyline
@@ -471,11 +493,12 @@ class FoController extends Controller
                 ? $foRoute->getGeoJSONCoordinates()
                 : $this->generateEnhancedRoutePolyline($foRoute->path_coordinates);
 
-            \Log::info("Serving route polyline", [
+            \Log::info("✅ PUBLIC - Route polyline served", [
                 'route_id' => $foRoute->id,
                 'has_geojson' => $foRoute->hasValidGeoJSON(),
                 'was_generated' => $needsGeneration,
-                'polyline_points' => count($polyline)
+                'polyline_points' => count($polyline),
+                'tokens_consumed' => $needsGeneration ? 1 : 0
             ]);
 
             return response()->json([
@@ -495,10 +518,11 @@ class FoController extends Controller
                     'area' => $foRoute->area,
                     'status' => $foRoute->status,
                     'was_generated_on_demand' => $needsGeneration,
-                ]
+                ],
+                'tokens_consumed' => $needsGeneration ? 1 : 0,
             ]);
         } catch (\Exception $e) {
-            \Log::error("Error fetching route polyline", [
+            \Log::error("❌ PUBLIC - Error fetching route polyline", [
                 'route_id' => $routeId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

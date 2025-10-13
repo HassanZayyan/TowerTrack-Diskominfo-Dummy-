@@ -477,47 +477,100 @@ export default function DataFoIndex({
     setDetailLoading(false);
   };
 
-  // Load route polyline on-demand
+  // Load route polyline on-demand with persistent sessionStorage cache
   const loadRoutePolyline = async (routeId: number) => {
-    // Check if already loaded
+    // Step 1: Check if already loaded in memory (fastest)
     if (loadedRoutes.has(routeId)) {
-      console.log(`Route ${routeId} already loaded from cache`);
+      console.log(`✅ Route ${routeId} already loaded from memory cache (0 tokens)`);
       return;
     }
 
-    // Check if already loading
+    // Step 2: Check sessionStorage cache (fast, persists across page navigation)
+    try {
+      const cacheKey = `fo_route_cache_${routeId}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        
+        // Check if cache is still valid (24 hours)
+        const age = Date.now() - timestamp;
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (age < maxAge) {
+          // Restore from sessionStorage cache
+          setLoadedRoutes(prev => {
+            const newMap = new Map(prev);
+            newMap.set(routeId, data);
+            return newMap;
+          });
+          
+          console.log(`✅ Route ${routeId} restored from sessionStorage (age: ${Math.round(age / 1000 / 60)} minutes)`);
+          
+          setToast({
+            show: true,
+            type: 'success',
+            title: '⚡ Jalur Dimuat',
+            message: `Jalur "${data.name}" berhasil dimuat`
+          });
+          
+          return; // Don't fetch from API
+        } else {
+          // Cache expired, remove it
+          sessionStorage.removeItem(cacheKey);
+          console.log(`🗑️ Expired cache removed for route ${routeId}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`Failed to check sessionStorage for route ${routeId}:`, e);
+    }
+
+    // Step 3: Check if already loading
     if (loadingRoutes.has(routeId)) {
-      console.log(`Route ${routeId} is already being loaded`);
+      console.log(`⏳ Route ${routeId} is already being loaded`);
       return;
     }
 
+    // Step 4: Fetch from API (will generate if needed)
     try {
       // Add to loading set
       setLoadingRoutes(prev => new Set(prev).add(routeId));
 
-      console.log(`Loading polyline for route ${routeId}...`);
+      console.log(`🌐 Loading polyline for route ${routeId} from API...`);
       const response = await fetch(`/api/fo-routes/${routeId}/polyline`);
       const result = await response.json();
 
       if (result.success && result.data) {
-        // Add to loaded routes cache
+        // Add to loaded routes cache (persists in session)
         setLoadedRoutes(prev => {
           const newMap = new Map(prev);
           newMap.set(routeId, result.data);
           return newMap;
         });
 
+        // Also persist to sessionStorage for cross-page navigation
+        try {
+          const cacheKey = `fo_route_cache_${routeId}`;
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            data: result.data,
+            timestamp: Date.now(),
+          }));
+        } catch (e) {
+          console.warn('Failed to persist to sessionStorage:', e);
+        }
+
         console.log(`Route ${routeId} loaded successfully`, result.data);
         
-        // Show different message if route was generated on-demand
+        // Show different message based on generation status
         const wasGenerated = result.data.was_generated_on_demand || false;
+        
         setToast({
           show: true,
           type: 'success',
-          title: wasGenerated ? 'Jalur Dibuat & Dimuat' : 'Jalur Dimuat',
+          title: wasGenerated ? '✅ Jalur Berhasil Dimuat' : '⚡ Jalur Dimuat',
           message: wasGenerated 
-            ? `Jalur "${result.data.name}" berhasil dibuat menggunakan OpenRouteService dan dimuat`
-            : `Jalur "${result.data.name}" berhasil dimuat dari cache`
+            ? `Jalur "${result.data.name}" berhasil dimuat`
+            : `Jalur "${result.data.name}" dimuat dengan cepat`
         });
       } else {
         console.error(`Failed to load route ${routeId}:`, result.message);
@@ -612,6 +665,47 @@ export default function DataFoIndex({
       setMapCenter([centerLat, centerLng]);
     }
   }, [currentMapData.bounds]);
+
+  // Restore cached routes from sessionStorage on mount (persists across page navigation)
+  useEffect(() => {
+    const restoreCache = () => {
+      const restoredRoutes = new Map<number, any>();
+      let restoredCount = 0;
+
+      // Try to restore each route from sessionStorage
+      currentMapData.routes.forEach((route: any) => {
+        try {
+          const cacheKey = `fo_route_cache_${route.id}`;
+          const cached = sessionStorage.getItem(cacheKey);
+          
+          if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            
+            // Check if cache is still valid (24 hours = 86400000 ms)
+            const age = Date.now() - timestamp;
+            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+            
+            if (age < maxAge) {
+              restoredRoutes.set(route.id, data);
+              restoredCount++;
+            } else {
+              // Cache expired, remove it
+              sessionStorage.removeItem(cacheKey);
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to restore cache for route ${route.id}:`, e);
+        }
+      });
+
+      if (restoredCount > 0) {
+        setLoadedRoutes(restoredRoutes);
+        console.log(`✅ Restored ${restoredCount} routes from sessionStorage cache (persists across page navigation)`);
+      }
+    };
+
+    restoreCache();
+  }, [currentMapData.routes]);
 
   // Force map refresh when area changes
   useEffect(() => {
@@ -743,15 +837,19 @@ export default function DataFoIndex({
             </div>
 
             {/* Route Selection Dropdown */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-1">Pilih Jalur FO untuk Ditampilkan</h4>
-                  <p className="text-xs text-gray-600">Klik jalur di bawah untuk memuat dan menampilkan jalur di peta</p>
+                  <h4 className="text-sm font-medium text-gray-900 mb-1">
+                    📍 Pilih Jalur FO untuk Ditampilkan
+                  </h4>
+                  <p className="text-xs text-gray-600">
+                    Klik jalur di bawah untuk menampilkan jalur fiber optic di peta
+                  </p>
                 </div>
                 <button
                   onClick={handleToggleAllRoutes}
-                  className="px-3 py-1.5 text-xs font-medium text-white rounded-md transition-colors flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90 transition-all flex items-center gap-1 shadow-sm"
                   style={{ backgroundColor: '#B71C1C' }}
                   title={selectedRouteIds.length === currentMapData.routes.length ? "Sembunyikan semua jalur" : "Tampilkan semua jalur"}
                 >
@@ -795,16 +893,9 @@ export default function DataFoIndex({
                         </div>
                       )}
                       {isSelected && isLoaded && (
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          {loadedRoutes.get(route.id)?.has_geojson && (
-                            <span className="text-xs font-medium text-green-600" title="Menggunakan GeoJSON dari OpenRouteService">
-                              GeoJSON
-                            </span>
-                          )}
-                        </div>
+                        <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
                       )}
                     </button>
                   );
@@ -812,9 +903,24 @@ export default function DataFoIndex({
               </div>
 
               {selectedRouteIds.length > 0 && (
-                <div className="mt-3 text-xs text-gray-600">
-                  {selectedRouteIds.length} dari {currentMapData.routes.length} jalur dipilih
-                  {loadingRoutes.size > 0 && ` • ${loadingRoutes.size} sedang dimuat...`}
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <div className="text-gray-700">
+                    <span className="font-semibold text-sm">{selectedRouteIds.length}</span>
+                    <span className="text-gray-600"> dari {currentMapData.routes.length} jalur ditampilkan</span>
+                    {loadingRoutes.size > 0 && (
+                      <span className="text-blue-600 ml-2">
+                        • <span className="animate-pulse font-medium">{loadingRoutes.size} sedang dimuat...</span>
+                      </span>
+                    )}
+                  </div>
+                  {loadedRoutes.size > 0 && (
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>{loadedRoutes.size} siap ditampilkan</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -904,16 +1010,10 @@ export default function DataFoIndex({
                            </div>
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: routeData.color }}></div>
-                            <span className="text-xs text-gray-500">Jalur Dimuat</span>
+                            <span className="text-xs text-gray-500">
+                              {routeData.has_geojson ? 'Routing Optimal' : 'Jalur Aktif'}
+                            </span>
                           </div>
-                          {routeData.has_geojson && (
-                            <div className="text-xs text-green-600 font-medium flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Menggunakan GeoJSON
-                            </div>
-                          )}
                         </div>
                       </div>
                      </Popup>
