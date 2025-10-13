@@ -43,6 +43,12 @@ export default function TowerSelectionInput({
   const [searchTerm, setSearchTerm] = useState('');
   const [mapFilter, setMapFilter] = useState<MapFilterType>('all');
 
+  // Enhanced clear handler that also clears the search term
+  const handleClear = () => {
+    setSearchTerm('');
+    onClear?.();
+  };
+
   // Helper function to check if tower has valid coordinates
   const hasValidCoordinates = (tower: Tower): boolean => {
     const lat = Number(tower.latitude);
@@ -262,12 +268,13 @@ export default function TowerSelectionInput({
           selectedTowerId={selectedTowerId}
           selectedTowerDisplay={selectedTowerDisplay}
           onTowerSelect={(tower: BaseTower) => onTowerSelect(tower as Tower)}
-          onClear={onClear}
+          onClear={handleClear}
           placeholder="Ketik minimal 1 karakter untuk mencari..."
           required={false}
           error={error}
           errorMessage={errorMessage}
           onSearchTermChange={setSearchTerm}
+          searchTerm={searchTerm}
         />
       ) : (
         <div className="space-y-3">
@@ -281,7 +288,7 @@ export default function TowerSelectionInput({
                 </div>
                 <button
                   type="button"
-                  onClick={onClear}
+                  onClick={handleClear}
                   className="text-green-600 hover:text-green-800 transition-colors"
                   title="Hapus pilihan"
                 >
