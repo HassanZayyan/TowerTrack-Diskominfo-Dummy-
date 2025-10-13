@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Feedback;
 use App\Models\FeedbackAsset;
 use App\Models\Tower;
+use App\Services\LocationSecurityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -45,14 +46,18 @@ class FeedbackController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'sender_phone' => 'required|string|max:20',
+            'sender_phone' => 'required|string|max:20', // Phone number is required for all users
             'category' => 'required|string|max:100',
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100',
             'email' => auth()->check() && auth()->user()->isComplainant() 
                 ? 'prohibited' // Email not allowed for authenticated complainant users
-                : 'nullable|email|max:255', // Email allowed for anonymous users (optional)
+                : 'required|email|max:255', // Email now required for anonymous users
+            'is_public' => 'required|boolean', // Visibility option
+            'reporter_latitude' => 'nullable|numeric|between:-90,90',
+            'reporter_longitude' => 'nullable|numeric|between:-180,180',
+            'reporter_accuracy' => 'nullable|numeric|min:0|max:10000',
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -74,7 +79,22 @@ class FeedbackController extends Controller
             $email = $validated['email'] ?? null;
         }
 
-        $feedback = Feedback::create([
+        // Handle reporter coordinates if provided
+        $locationData = [];
+        if (!empty($validated['reporter_latitude']) && !empty($validated['reporter_longitude'])) {
+            try {
+                $locationData = LocationSecurityService::validateCoordinates(
+                    (float) $validated['reporter_latitude'],
+                    (float) $validated['reporter_longitude'],
+                    isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
+                );
+            } catch (\InvalidArgumentException $e) {
+                \Log::warning('Invalid coordinates provided: ' . $e->getMessage());
+                // Continue without coordinates rather than failing the request
+            }
+        }
+
+        $feedbackData = [
             'tower_id' => $validated['tower_id'],
             'user_id' => $userId,
             'email' => $email,
@@ -82,8 +102,16 @@ class FeedbackController extends Controller
             'sender_name' => $validated['sender_name'],
             'category' => $validated['category'],
             'message' => $validated['message'],
+            'is_public' => $validated['is_public'] ?? false,
             'status' => 'pending',
-        ]);
+        ];
+
+        // Merge location data if available
+        if (!empty($locationData)) {
+            $feedbackData = array_merge($feedbackData, $locationData);
+        }
+
+        $feedback = Feedback::create($feedbackData);
 
         // Handle file uploads from any accepted key: assets, foto, or video
         $files = collect();
@@ -124,7 +152,10 @@ class FeedbackController extends Controller
 
         $message = auth()->check() 
             ? 'Masukan berhasil dikirim! Terima kasih atas masukan Anda.'
-            : 'Masukan berhasil dikirim! Gunakan email Anda untuk melihat status dan respons.';
+            : 'Masukan berhasil dikirim! ' . 
+              ($validated['is_public'] 
+                ? 'Masukan Anda dapat dilihat di halaman pesan utama.' 
+                : 'Untuk melacak status masukan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
 
         return redirect()->back()->with('success', $message);
     }

@@ -36,7 +36,9 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   // Add "My Messages" link for all users (authenticated and anonymous)
   const isAdminOrOperator = user && ['admin', 'operator'].includes(user.role);
   if (!isAdminOrOperator) {
-    links.push({ href: '/my-messages', label: 'Pesan Saya', icon: 'message' });
+    // Dynamic label: "Pesan Saya" for authenticated users (complainant/tower_owner), "Pesan Publik" for guests
+    const messageLabel = user && ['complainant', 'tower_owner'].includes(user.role) ? 'Pesan Saya' : 'Pesan Publik';
+    links.push({ href: '/my-messages', label: messageLabel, icon: 'message' });
   }
 
   // Show complaint and feedback form links for non-admin/operator users

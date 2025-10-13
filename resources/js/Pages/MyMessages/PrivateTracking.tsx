@@ -1,5 +1,5 @@
-import React from 'react';
-import { Head, usePage, router } from '@inertiajs/react';
+import React, { useState, useCallback } from 'react';
+import { Head, router, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import MessageTable from '@/Components/MyMessages/MessageTable';
 import MessageCard from '@/Components/MyMessages/MessageCard';
@@ -15,11 +15,11 @@ type ReportItem = {
   message: string;
   status: string;
   created_at: string;
-  email?: string | null; // For anonymous users
-  reporter_name?: string | null; // For anonymous users
-  reporter_phone?: string | null; // For anonymous users
+  email?: string | null;
+  reporter_name?: string | null;
+  reporter_phone?: string | null;
   user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null; // For authenticated users
+  user?: { id: number; name: string; email: string } | null;
   tower?: { id: number; site_name: string; alamat_menara?: string };
   responses?: Array<{ id: number; report_id: number; created_at: string }>;
 };
@@ -31,20 +31,20 @@ type FeedbackItem = {
   message: string;
   status: string;
   created_at: string;
-  email?: string | null; // For anonymous users
-  sender_name?: string | null; // For anonymous users
-  sender_phone?: string | null; // For anonymous users
+  email?: string | null;
+  sender_name?: string | null;
+  sender_phone?: string | null;
   user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null; // For authenticated users
+  user?: { id: number; name: string; email: string } | null;
   tower?: { id: number; site_name: string; alamat_menara?: string };
   responses?: Array<{ id: number; feedback_id: number; created_at: string }>;
 };
 
-type MyMessagesProps = {
+type PrivateTrackingProps = {
   reports?: ReportItem[];
   feedbacks?: FeedbackItem[];
-  showEmailInput?: boolean;
-  isAnonymous?: boolean;
+  email?: string;
+  phone?: string;
 };
 
 type MessageItem = {
@@ -55,38 +55,126 @@ type MessageItem = {
   category: string;
   status: string | undefined | null;
   responsesCount: number;
-  senderName: string; // Display name (from user.name or reporter_name/sender_name)
-  senderEmail: string; // Display email (from user.email or email field)
-  isAnonymous: boolean; // Whether the sender is anonymous
+  senderName: string;
+  senderEmail: string;
+  isAnonymous: boolean;
 };
 
-export default function MyMessagesIndex({ 
+// Email Input Form Component - Moved outside to prevent recreation on each render
+const EmailInputForm = ({ 
+  inputEmail, 
+  setInputEmail, 
+  inputPhone, 
+  setInputPhone, 
+  handleFormSubmit 
+}: {
+  inputEmail: string;
+  setInputEmail: (value: string) => void;
+  inputPhone: string;
+  setInputPhone: (value: string) => void;
+  handleFormSubmit: (e: React.FormEvent) => void;
+}) => (
+  <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    </div>
+    <h3 className="text-lg font-medium text-gray-900 mb-2">Lacak Pesan Pribadi</h3>
+    <p className="text-gray-600 mb-6">
+      Masukkan email dan nomor telepon yang Anda gunakan saat mengirim keluhan atau masukan pribadi untuk melihat status dan respons.
+    </p>
+    
+    <form onSubmit={handleFormSubmit} className="max-w-md mx-auto">
+      <div className="mb-4">
+        <InputLabel htmlFor="email" value="Email" />
+        <TextInput
+          id="email"
+          type="email"
+          name="email"
+          value={inputEmail}
+          onChange={(e) => setInputEmail(e.target.value)}
+          className="mt-1 block w-full"
+          required
+          placeholder="Masukkan email Anda"
+          autoComplete="email"
+        />
+      </div>
+      
+      <div className="mb-4">
+        <InputLabel htmlFor="phone" value="Nomor Telepon" />
+        <TextInput
+          id="phone"
+          type="tel"
+          name="phone"
+          value={inputPhone}
+          onChange={(e) => setInputPhone(e.target.value)}
+          className="mt-1 block w-full"
+          required
+          placeholder="Masukkan nomor telepon Anda"
+          autoComplete="tel"
+        />
+      </div>
+      
+      <PrimaryButton
+        type="submit"
+        className="w-full px-6 py-3 font-semibold rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 justify-center text-lg"
+        style={{ backgroundColor: '#D97706', color: '#FFFFFF' }}
+      >
+        <span className="flex items-center justify-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Lacak Pesan Pribadi
+        </span>
+      </PrimaryButton>
+    </form>
+    
+    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <p className="text-yellow-800 text-sm">
+        <strong>Tips:</strong> Hanya pesan yang Anda kirim sebagai <strong>pribadi</strong> yang akan muncul di sini. 
+        Pastikan email dan nomor telepon sesuai dengan yang Anda gunakan saat mengirim pesan.
+        Pesan publik dapat dilihat di <a href="/my-messages" className="underline font-medium">halaman pesan utama</a>.
+      </p>
+    </div>
+  </div>
+);
+
+// Empty State Component - Moved outside to prevent recreation
+const EmptyState = ({ email, phone }: { email: string; phone: string }) => (
+  <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <p className="text-gray-500 font-medium">Tidak ada pesan pribadi</p>
+    <p className="text-gray-400 text-sm mt-1">
+      {email && phone ? 
+        'Tidak ada pesan pribadi yang ditemukan untuk email dan nomor telepon ini' : 
+        'Masukkan email dan nomor telepon Anda untuk melihat pesan pribadi'
+      }
+    </p>
+  </div>
+);
+
+export default function PrivateTracking({ 
   reports = [] as ReportItem[], 
   feedbacks = [] as FeedbackItem[],
-  showEmailInput = false,
-  isAnonymous = false
-}: MyMessagesProps) {
-  const { auth } = usePage().props as any;
-  const isStaff = !!(auth?.user && ['admin','operator'].includes(auth.user.role));
+  email = '',
+  phone = ''
+}: PrivateTrackingProps) {
+  const [inputEmail, setInputEmail] = useState(email);
+  const [inputPhone, setInputPhone] = useState(phone);
 
-  const [email, setEmail] = React.useState('');
-
-  React.useEffect(() => {
-    if (isStaff) {
-      router.visit('/admin');
-    }
-  }, [isStaff]);
-
-  if (isStaff) return null;
-
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      router.visit(`/my-messages?email=${encodeURIComponent(email.trim())}`);
+    if (inputEmail.trim() && inputPhone.trim()) {
+      router.visit(`/my-messages/private?email=${encodeURIComponent(inputEmail.trim())}&phone=${encodeURIComponent(inputPhone.trim())}`);
     }
-  };
+  }, [inputEmail, inputPhone]);
 
-  const getStatusColor = (status: string | undefined | null) => {
+  const getStatusColor = useCallback((status: string | undefined | null) => {
     const statusConfig = {
       pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
       in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
@@ -95,17 +183,15 @@ export default function MyMessagesIndex({
       closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
     };
     
-    // If status is undefined or null, return a default styling
     if (!status) {
       return { bg: '#F3F4F6', text: '#374151', label: 'Tidak diketahui' };
     }
     
-    // Check if the status exists in our config
     return statusConfig[status as keyof typeof statusConfig] || 
       { bg: '#F3F4F6', text: '#374151', label: status.replace ? status.replace('_', ' ') : status };
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
@@ -120,7 +206,7 @@ export default function MyMessagesIndex({
       month: 'short',
       year: 'numeric'
     });
-  };
+  }, []);
 
   // Merge complaints and feedbacks into a single unified list
   const items: MessageItem[] = React.useMemo(() => {
@@ -157,7 +243,7 @@ export default function MyMessagesIndex({
   
   // Detail modal state and helpers
   const [detail, setDetail] = React.useState<{ type: 'report' | 'feedback'; data: ReportItem | FeedbackItem } | null>(null);
-  const openDetail = (it: MessageItem) => {
+  const openDetail = useCallback((it: MessageItem) => {
     const [typ, raw] = it.id.split('-');
     const id = Number(raw);
     if (typ === 'report') {
@@ -167,8 +253,8 @@ export default function MyMessagesIndex({
       const data = (feedbacks || []).find(f => f.id === id);
       if (data) setDetail({ type: 'feedback', data });
     }
-  };
-  const closeDetail = () => setDetail(null);
+  }, [reports, feedbacks]);
+  const closeDetail = useCallback(() => setDetail(null), []);
   const [previewAsset, setPreviewAsset] = React.useState<{ file_path: string; file_type?: string } | null>(null);
 
   const renderAssets = (assets?: Array<{ file_path: string; file_type?: string }>) => {
@@ -201,94 +287,39 @@ export default function MyMessagesIndex({
     );
   };
 
-  // Memoize EmailInputForm to prevent unnecessary re-renders
-  const EmailInputForm = React.memo(() => {
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setEmail(e.target.value);
-    };
-
-    return (
-      <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Lihat Pesan Anda</h3>
-        <p className="text-gray-600 mb-6">
-          Masukkan email yang Anda gunakan saat mengirim keluhan atau masukan untuk melihat status dan respons.
-        </p>
-        
-        <form onSubmit={handleEmailSubmit} className="max-w-md mx-auto">
-          <div className="mb-4">
-            <InputLabel htmlFor="email" value="Email" />
-            <TextInput
-              id="email"
-              type="email"
-              name="email"
-              value={email}
-              onChange={handleInputChange}
-              className="mt-1 block w-full"
-              required
-              placeholder="Masukkan email Anda"
-              autoComplete="email"
-              autoFocus={showEmailInput}
-            />
-          </div>
-          
-          <PrimaryButton
-                      type="submit"
-                      className="w-full px-6 py-3 font-semibold rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 justify-center text-lg"
-                      style={{ backgroundColor: '#FFD700', color: '#212121' }}
-                    >
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Lihat Pesan
-            </span>
-          </PrimaryButton>
-        </form>
-      </div>
-    );
-  });
-
-  // Memoize EmptyState to prevent unnecessary re-renders
-  const EmptyState = React.memo(() => (
-    <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      </div>
-      <p className="text-gray-500 font-medium">Belum ada pesan</p>
-      <p className="text-gray-400 text-sm mt-1">
-        {isAnonymous 
-          ? 'Belum ada pesan publik yang tersedia saat ini' 
-          : 'Anda belum mengirimkan laporan apapun'
-        }
-      </p>
-    </div>
-  ));
-
   return (
-    <MainLayout title={isAnonymous ? "Pesan Publik" : "Pesan Saya"} currentPage="/my-messages">
-      <Head title={isAnonymous ? "Pesan Publik" : "Pesan Saya"} />
+    <MainLayout title="Lacak Pesan Pribadi" currentPage="/my-messages">
+      <Head title="Lacak Pesan Pribadi" />
       
       <div className="p-4 sm:p-6">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Link
+            href="/my-messages"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 hover:shadow-md transform hover:-translate-x-1"
+            style={{ 
+              backgroundColor: '#FEF3C7', 
+              color: '#92400E',
+              border: '2px solid #F59E0B'
+            }}
+          >
+            <svg className="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Kembali ke Pesan Publik</span>
+          </Link>
+        </div>
+
         <div 
           className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" 
-          style={{ backgroundColor: '#FFF8E1' }}
+          style={{ backgroundColor: '#FEF3C7' }}
         >
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              {isAnonymous ? 'Pesan Publik' : 'Pesan Saya'}
+            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#92400E' }}>
+              Lacak Pesan Pribadi
             </h1>
-            <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              {isAnonymous 
-                ? 'Lihat semua keluhan dan masukan publik dari seluruh masyarakat'
-                : 'Lihat status penanganan, balasan, atau penutupan laporan Anda'
-              }
+            <p className="text-sm sm:text-base" style={{ color: '#92400E', opacity: 0.85 }}>
+              Lihat status penanganan pesan pribadi yang Anda kirim
             </p>
           </div>
           <img 
@@ -298,134 +329,71 @@ export default function MyMessagesIndex({
           />
         </div>
 
-        {/* Show info banner for anonymous users about private message tracking */}
-        {isAnonymous && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">Informasi Pesan</h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>Halaman ini menampilkan semua pesan publik. Jika Anda ingin melihat pesan pribadi yang Anda kirim, silakan gunakan fitur tracking pesan pribadi dengan email dan nomor telepon Anda.</p>
-                  <div className="mt-3">
-                    <a 
-                      href="/my-messages/private" 
-                      className="inline-flex items-center px-3 py-2 border border-yellow-400 shadow-sm text-sm leading-4 font-medium rounded-md text-yellow-800 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Lacak Pesan Pribadi
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Show form if no email or phone provided */}
+        {(!email || !phone) && (
+          <div className="mb-6">
+            <EmailInputForm 
+              inputEmail={inputEmail}
+              setInputEmail={setInputEmail}
+              inputPhone={inputPhone}
+              setInputPhone={setInputPhone}
+              handleFormSubmit={handleFormSubmit}
+            />
           </div>
         )}
 
-        {/* Show content if there are items */}
-        {items.length > 0 && (
+        {/* Show results if both email and phone are provided */}
+        {email && phone && (
           <>
-            {/* Summary Stats */}
-            <div className="mb-4 sm:mb-6">
-              <MessageStats items={items} />
-            </div>
+            {items.length > 0 ? (
+              <>
+                {/* Summary Stats */}
+                <div className="mb-4 sm:mb-6">
+                  <MessageStats items={items} />
+                </div>
 
-            {/* Desktop Table View */}
-            <div>
-              <MessageTable 
-                items={items}
-                getStatusColor={getStatusColor}
-                formatDate={formatDate}
-                onOpen={openDetail}
-              />
-            </div>
+                {/* Desktop Table View */}
+                <div>
+                  <MessageTable 
+                    items={items}
+                    getStatusColor={getStatusColor}
+                    formatDate={formatDate}
+                    onOpen={openDetail}
+                  />
+                </div>
 
-            {/* Mobile/Tablet Card View */}
-            <div className="lg:hidden space-y-3">
-              {items.map((item) => (
-                <MessageCard
-                  key={item.id}
-                  item={item}
-                  getStatusColor={getStatusColor}
-                  formatDate={formatDate}
-                  onOpen={openDetail}
-                />
-              ))}
-            </div>
+                {/* Mobile/Tablet Card View */}
+                <div className="lg:hidden space-y-3">
+                  {items.map((item) => (
+                    <MessageCard
+                      key={item.id}
+                      item={item}
+                      getStatusColor={getStatusColor}
+                      formatDate={formatDate}
+                      onOpen={openDetail}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <EmptyState email={email} phone={phone} />
+            )}
           </>
         )}
 
-        {/* Show empty state if no items */}
-        {items.length === 0 && (
-          <div>
-            <EmptyState />
-          </div>
-        )}
-
+        {/* Detail Modal */}
         {detail && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeDetail}>
             <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Detail {detail.type === 'report' ? 'Keluhan' : 'Masukan'}</h3>
+                <h3 className="text-lg font-medium text-gray-900">Detail {detail.type === 'report' ? 'Keluhan' : 'Masukan'} Pribadi</h3>
                 <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
               <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                {/* Sender Information */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Informasi Pengirim
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Nama</div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">
-                          {(detail.data as any).user?.name || (detail.data as any).reporter_name || (detail.data as any).sender_name || 'Anonymous'}
-                        </span>
-                        {!(detail.data as any).user_id && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
-                            Guest
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Email</div>
-                      <div className="font-medium text-gray-900">
-                        {(detail.data as any).user?.email || (detail.data as any).email || '-'}
-                      </div>
-                    </div>
-                    {((detail.data as any).reporter_phone || (detail.data as any).sender_phone) && (
-                      <div>
-                        <div className="text-xs text-gray-600 mb-1">No. Telepon</div>
-                        <div className="font-medium text-gray-900">
-                          {(detail.data as any).reporter_phone || (detail.data as any).sender_phone}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Waktu Kirim</div>
-                      <div className="font-medium text-gray-900">
-                        {formatDate((detail.data as any).created_at)} • {new Date((detail.data as any).created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tower Information */}
                 <div>
-                  <div className="text-sm text-gray-700 mb-1">Tower</div>
+                  <div className="text-sm text-gray-700">Tower</div>
                   <div className="font-medium text-gray-900">{(detail.data as any).tower?.site_name ?? '-'}</div>
                   {(detail.data as any).tower?.alamat_menara && (
                     <div className="text-sm text-gray-600">{(detail.data as any).tower?.alamat_menara}</div>
@@ -449,7 +417,6 @@ export default function MyMessagesIndex({
                   {detail.type === 'report' && (detail.data as any).responses?.length > 0 ? (
                     <div className="space-y-3">
                       {(detail.data as any).responses.map((r: any, i: number) => {
-                        // Determine status label based on response position and overall status
                         const isLastResponse = i === (detail.data as any).responses.length - 1;
                         const overallStatus = (detail.data as any).status;
                         let statusLabel = 'Diproses';
@@ -474,7 +441,6 @@ export default function MyMessagesIndex({
                             </span>
                           </div>
                           {r.message && <div className="text-gray-900">{r.message}</div>}
-                          {/* Media balasan */}
                           {r.assets && r.assets.length > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                               {r.assets.map((a: any, idx: number) => (
@@ -509,7 +475,6 @@ export default function MyMessagesIndex({
                   {detail.type === 'feedback' && (detail.data as any).responses?.length > 0 ? (
                     <div className="space-y-3">
                       {(detail.data as any).responses.map((r: any, i: number) => {
-                        // Determine status label based on response position and overall status
                         const isLastResponse = i === (detail.data as any).responses.length - 1;
                         const overallStatus = (detail.data as any).status;
                         let statusLabel = 'Diproses';
@@ -578,36 +543,36 @@ export default function MyMessagesIndex({
           </div>
         )}
       
-      {/* Asset Preview Modal */}
-      {previewAsset && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
-          <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
-            {previewAsset.file_type === 'video' ? (
-              <video
-                src={`/storage/${previewAsset.file_path}`}
-                controls
-                autoPlay
-                className="max-w-full max-h-[90vh] object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <img 
-                src={`/storage/${previewAsset.file_path}`} 
-                className="max-w-full max-h-[90vh] object-contain" 
-                onClick={(e) => e.stopPropagation()}
-              />
-            )}
-            <button 
-              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
-              onClick={() => setPreviewAsset(null)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        {/* Asset Preview Modal */}
+        {previewAsset && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
+            <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
+              {previewAsset.file_type === 'video' ? (
+                <video
+                  src={`/storage/${previewAsset.file_path}`}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[90vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <img 
+                  src={`/storage/${previewAsset.file_path}`} 
+                  className="max-w-full max-h-[90vh] object-contain" 
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+              <button 
+                className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+                onClick={() => setPreviewAsset(null)}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </MainLayout>
   );
