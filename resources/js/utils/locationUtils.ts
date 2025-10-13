@@ -38,12 +38,20 @@ export function calculateDistance(coord1: Coordinates, coord2: Coordinates): num
   return R * c; // Distance in kilometers
 }
 
+// Interface for geolocation result with accuracy
+export interface LocationResultWithAccuracy {
+  success: boolean;
+  coordinates?: Coordinates;
+  accuracy?: number;
+  error?: string;
+}
+
 /**
  * Get user's current location using Geolocation API
  * @param options Geolocation options
  * @returns Promise with location result
  */
-export function getCurrentLocation(options?: PositionOptions): Promise<LocationResult> {
+export function getCurrentLocation(options?: PositionOptions): Promise<LocationResultWithAccuracy> {
   return new Promise((resolve) => {
     // Check if geolocation is supported
     if (!navigator.geolocation) {
@@ -68,7 +76,8 @@ export function getCurrentLocation(options?: PositionOptions): Promise<LocationR
           coordinates: {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
-          }
+          },
+          accuracy: position.coords.accuracy
         });
       },
       (error) => {
@@ -167,4 +176,64 @@ export async function requestLocationAndValidate(
       message: 'Terjadi kesalahan saat memvalidasi lokasi'
     };
   }
+}
+
+/**
+ * Request user location for cases where tower coordinates are not available
+ * @returns Promise with location result including accuracy info
+ */
+export async function requestUserLocationForReporting(): Promise<{
+  success: boolean;
+  coordinates?: Coordinates;
+  accuracy?: number;
+  message: string;
+}> {
+  try {
+    const locationResult = await getCurrentLocation({
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 60000 // 1 minute
+    });
+    
+    if (!locationResult.success) {
+      return {
+        success: false,
+        message: locationResult.error || 'Gagal mendapatkan lokasi'
+      };
+    }
+    
+    if (!locationResult.coordinates) {
+      return {
+        success: false,
+        message: 'Koordinat lokasi tidak tersedia'
+      };
+    }
+    
+    return {
+      success: true,
+      coordinates: locationResult.coordinates,
+      accuracy: locationResult.accuracy,
+      message: 'Lokasi berhasil diperoleh'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Terjadi kesalahan saat mendapatkan lokasi'
+    };
+  }
+}
+
+/**
+ * Check if tower has valid coordinates
+ * @param tower Tower object to check
+ * @returns Boolean indicating if tower has valid coordinates
+ */
+export function hasValidTowerCoordinates(tower: any): boolean {
+  return tower && 
+         tower.latitude && 
+         tower.longitude && 
+         !isNaN(Number(tower.latitude)) && 
+         !isNaN(Number(tower.longitude)) &&
+         Number(tower.latitude) !== 0 && 
+         Number(tower.longitude) !== 0;
 }

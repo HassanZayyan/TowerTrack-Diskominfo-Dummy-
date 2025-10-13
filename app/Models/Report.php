@@ -18,6 +18,12 @@ class Report extends Model
         'category',
         'message',
         'status_id',
+        'reporter_latitude',
+        'reporter_longitude',
+        'reporter_accuracy',
+        'location_captured_at',
+        'location_verified',
+        'is_public',
     ];
     
     public function tower()

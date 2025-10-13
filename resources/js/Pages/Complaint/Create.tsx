@@ -6,7 +6,7 @@ import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
 import FileUpload from '@/Components/FileUpload';
 import AlertDialog from '@/Components/AlertDialog';
 import { Tower as BaseTower } from '@/utils/searchUtils';
-import { requestLocationAndValidate } from '@/utils/locationUtils';
+import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates } from '@/utils/locationUtils';
 
 interface Tower extends BaseTower {
   latitude: number | string;
@@ -31,6 +31,10 @@ const INITIAL_FORM_STATE = {
   tower_id: '',
   pesan: '',
   email: '',
+  is_public: false,
+  reporter_latitude: '',
+  reporter_longitude: '',
+  reporter_accuracy: '',
 };
 
 const INITIAL_VALIDATION_STATE = {
@@ -95,8 +99,9 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   }, []);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    const newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    setForm(prev => ({ ...prev, [name]: newValue }));
     
     // Clear validation error if typing
     if (validation[name as keyof typeof validation] !== undefined) {
@@ -138,7 +143,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim(),
-      email: isAuthenticatedUser ? false : (form.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) : false) // Skip email validation for authenticated users
+      email: isAuthenticatedUser ? false : (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) // Email is now required for anonymous users
     };
     
     setValidation(newValidation);
@@ -191,58 +196,116 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     
     // Find selected tower to get coordinates
     const selectedTower = towers.find(tower => tower.id.toString() === form.tower_id);
-    if (!selectedTower || !selectedTower.latitude || !selectedTower.longitude) {
-      showErrorDialog('Data Tower Tidak Tersedia', 'Data koordinat tower tidak tersedia');
+    if (!selectedTower) {
+      showErrorDialog('Data Tower Tidak Tersedia', 'Tower yang dipilih tidak ditemukan');
       return;
     }
+    
+    // Check if tower has valid coordinates
+    const towerHasCoordinates = hasValidTowerCoordinates(selectedTower);
     
     setIsSubmitting(true);
     
     try {
-      // Validate location distance
-      const locationValidation = await requestLocationAndValidate({
-        latitude: Number(selectedTower.latitude),
-        longitude: Number(selectedTower.longitude)
-      }, 1); // 1 km maximum distance
+      let locationValidation;
+      let userLocationCaptured = false;
+      let userLocationResult: Awaited<ReturnType<typeof requestUserLocationForReporting>> | undefined;
       
-      if (!locationValidation.success) {
-        // Provide more informative location error messages
-        let locationTitle = 'Validasi Lokasi Gagal';
-        let locationMessage = locationValidation.message;
+      if (towerHasCoordinates) {
+        // Standard location validation against tower coordinates
+        locationValidation = await requestLocationAndValidate({
+          latitude: Number(selectedTower.latitude),
+          longitude: Number(selectedTower.longitude)
+        }, 1); // 1 km maximum distance
         
-        if (locationValidation.message.includes('Izin lokasi ditolak')) {
-          locationTitle = 'Izin Lokasi Diperlukan';
-          locationMessage = 'Untuk mengirim keluhan, Anda perlu mengizinkan akses lokasi. Silakan aktifkan izin lokasi di browser dan coba lagi.';
-        } else if (locationValidation.message.includes('terlalu jauh')) {
-          locationTitle = 'Jarak Terlalu Jauh';
-          locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
-        } else if (locationValidation.message.includes('Waktu permintaan lokasi habis')) {
-          locationTitle = 'Timeout Lokasi';
-          locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
-        } else if (locationValidation.message.includes('tidak tersedia')) {
-          locationTitle = 'Lokasi Tidak Tersedia';
-          locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+        if (!locationValidation.success) {
+          // Provide more informative location error messages
+          let locationTitle = 'Validasi Lokasi Gagal';
+          let locationMessage = locationValidation.message;
+          
+          if (locationValidation.message.includes('Izin lokasi ditolak')) {
+            locationTitle = 'Izin Lokasi Diperlukan';
+            locationMessage = 'Untuk mengirim keluhan, Anda perlu mengizinkan akses lokasi. Silakan aktifkan izin lokasi di browser dan coba lagi.';
+          } else if (locationValidation.message.includes('terlalu jauh')) {
+            locationTitle = 'Jarak Terlalu Jauh';
+            locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
+          } else if (locationValidation.message.includes('Waktu permintaan lokasi habis')) {
+            locationTitle = 'Timeout Lokasi';
+            locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
+          } else if (locationValidation.message.includes('tidak tersedia')) {
+            locationTitle = 'Lokasi Tidak Tersedia';
+            locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+          }
+          
+          showWarningDialog(locationTitle, locationMessage);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // Tower has no coordinates, request user location for documentation
+        userLocationResult = await requestUserLocationForReporting();
+        
+        if (!userLocationResult.success) {
+          let locationTitle = 'Lokasi Diperlukan';
+          let locationMessage = userLocationResult.message;
+          
+          if (userLocationResult.message.includes('Izin lokasi ditolak')) {
+            locationTitle = 'Izin Lokasi Diperlukan';
+            locationMessage = 'Karena tower ini tidak memiliki koordinat, kami memerlukan lokasi Anda untuk mendokumentasikan laporan. Silakan aktifkan izin lokasi di browser dan coba lagi.';
+          } else if (userLocationResult.message.includes('Waktu permintaan lokasi habis')) {
+            locationTitle = 'Timeout Lokasi';
+            locationMessage = 'Gagal mendapatkan lokasi dalam waktu yang ditentukan. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.';
+          } else if (userLocationResult.message.includes('tidak tersedia')) {
+            locationTitle = 'Lokasi Tidak Tersedia';
+            locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+          }
+          
+          showWarningDialog(locationTitle, locationMessage);
+          setIsSubmitting(false);
+          return;
         }
         
-        showWarningDialog(locationTitle, locationMessage);
-        setIsSubmitting(false);
-        return;
+        // Store user location for documentation
+        if (userLocationResult.coordinates) {
+          const updatedForm = {
+            ...form,
+            reporter_latitude: userLocationResult.coordinates.latitude.toString(),
+            reporter_longitude: userLocationResult.coordinates.longitude.toString(),
+            reporter_accuracy: userLocationResult.accuracy?.toString() || ''
+          };
+          setForm(updatedForm);
+        }
+        
+        userLocationCaptured = true;
+        locationValidation = { success: true, message: 'Lokasi berhasil diperoleh untuk dokumentasi' };
       }
       
       // Create form data to handle file uploads
       const formData = new FormData();
       
+      // Use the updated form data if coordinates were captured
+      const formDataToUse = userLocationCaptured && userLocationResult?.coordinates ? {
+        ...form,
+        reporter_latitude: userLocationResult.coordinates.latitude.toString(),
+        reporter_longitude: userLocationResult.coordinates.longitude.toString(),
+        reporter_accuracy: userLocationResult.accuracy?.toString() || ''
+      } : form;
+      
       // Append form fields with trimmed values, excluding email for authenticated users
-      Object.entries(form).forEach(([key, value]) => {
+      Object.entries(formDataToUse).forEach(([key, value]) => {
         // Skip email field for authenticated users to avoid 'prohibited' validation error
         if (key === 'email' && isAuthenticatedUser) {
           return;
         }
-        // For guests, do not append empty email to avoid array/empty issues
+        // For guests, email is now required
         if (key === 'email' && !isAuthenticatedUser) {
           const trimmed = (value as string).trim();
-          if (!trimmed) return;
           formData.append('email', trimmed);
+          return;
+        }
+        // Handle boolean values
+        if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0');
           return;
         }
         formData.append(key, typeof value === 'string' ? value.trim() : value);
@@ -392,7 +455,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                 {!isAuthenticatedUser && (
                   <div>
                     <label className="block text-gray-700 font-medium mb-2">
-                      Email <span className="text-gray-500">(Opsional)</span>
+                      Email <span className="text-red-600">*</span>
                     </label>
                     <input
                       type="email"
@@ -404,10 +467,51 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                       maxLength={100}
                     />
                     {validation.email && (
-                      <p className="text-red-500 text-sm mt-1">Format email tidak valid</p>
+                      <p className="text-red-500 text-sm mt-1">Email harus diisi dengan format yang valid</p>
                     )}
                   </div>
                 )}
+                
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-medium mb-3">
+                    Visibilitas Laporan <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        name="is_public"
+                        checked={!form.is_public}
+                        onChange={() => setForm(prev => ({ ...prev, is_public: false }))}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Hanya Anda dan admin yang dapat melihat laporan ini. Gunakan email Anda untuk melacak status.
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        name="is_public"
+                        checked={form.is_public}
+                        onChange={() => setForm(prev => ({ ...prev, is_public: true }))}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Terbuka (Public)</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Laporan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
                 
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
