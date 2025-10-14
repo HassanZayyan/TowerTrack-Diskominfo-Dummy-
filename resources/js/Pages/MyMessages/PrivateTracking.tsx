@@ -7,6 +7,8 @@ import MessageStats from '@/Components/MyMessages/MessageStats';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
+import AnimatedButton from '@/Components/AnimatedButton';
+import StaggeredContainer from '@/Components/StaggeredContainer';
 
 type ReportItem = {
   id: number;
@@ -74,67 +76,83 @@ const EmailInputForm = ({
   setInputPhone: (value: string) => void;
   handleFormSubmit: (e: React.FormEvent) => void;
 }) => (
-  <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div className="bg-gradient-to-br from-amber-50 via-white to-amber-50 rounded-xl shadow-lg border border-amber-100 p-8 text-center">
+    <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg">
+      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     </div>
-    <h3 className="text-lg font-medium text-gray-900 mb-2">Lacak Pesan Pribadi</h3>
-    <p className="text-gray-600 mb-6">
-      Masukkan email dan nomor telepon yang Anda gunakan saat mengirim keluhan atau masukan pribadi untuk melihat status dan respons.
+    <h3 className="text-2xl font-bold text-gray-900 mb-3">🔐 Lacak Pesan Pribadi</h3>
+    <p className="text-gray-600 mb-8 max-w-md mx-auto">
+      Masukkan email dan nomor telepon yang Anda gunakan saat mengirim keluhan atau masukan <span className="font-semibold">pribadi</span> untuk melihat status dan respons.
     </p>
     
-    <form onSubmit={handleFormSubmit} className="max-w-md mx-auto">
-      <div className="mb-4">
-        <InputLabel htmlFor="email" value="Email" />
-        <TextInput
-          id="email"
-          type="email"
-          name="email"
-          value={inputEmail}
-          onChange={(e) => setInputEmail(e.target.value)}
-          className="mt-1 block w-full"
-          required
-          placeholder="Masukkan email Anda"
-          autoComplete="email"
-        />
+    <form onSubmit={handleFormSubmit} className="max-w-md mx-auto space-y-5">
+      <div>
+        <InputLabel htmlFor="email" value="Alamat Email" className="text-left mb-2" />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+            </svg>
+          </div>
+          <TextInput
+            id="email"
+            type="email"
+            name="email"
+            value={inputEmail}
+            onChange={(e) => setInputEmail(e.target.value)}
+            className="mt-1 block w-full pl-10"
+            required
+            placeholder="contoh@email.com"
+            autoComplete="email"
+          />
+        </div>
       </div>
       
-      <div className="mb-4">
-        <InputLabel htmlFor="phone" value="Nomor Telepon" />
-        <TextInput
-          id="phone"
-          type="tel"
-          name="phone"
-          value={inputPhone}
-          onChange={(e) => setInputPhone(e.target.value)}
-          className="mt-1 block w-full"
-          required
-          placeholder="Masukkan nomor telepon Anda"
-          autoComplete="tel"
-        />
+      <div>
+        <InputLabel htmlFor="phone" value="Nomor Telepon" className="text-left mb-2" />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+          </div>
+          <TextInput
+            id="phone"
+            type="tel"
+            name="phone"
+            value={inputPhone}
+            onChange={(e) => setInputPhone(e.target.value)}
+            className="mt-1 block w-full pl-10"
+            required
+            placeholder="08xx-xxxx-xxxx"
+            autoComplete="tel"
+          />
+        </div>
       </div>
       
-      <PrimaryButton
+      <AnimatedButton
         type="submit"
-        className="w-full px-6 py-3 font-semibold rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 justify-center text-lg"
-        style={{ backgroundColor: '#D97706', color: '#FFFFFF' }}
-      >
-        <span className="flex items-center justify-center gap-2">
+        variant="primary"
+        size="lg"
+        animation="glow"
+        fullWidth
+        icon={
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          Lacak Pesan Pribadi
-        </span>
-      </PrimaryButton>
+        }
+      >
+        Lacak Pesan Pribadi
+      </AnimatedButton>
     </form>
     
-    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-      <p className="text-yellow-800 text-sm">
-        <strong>Tips:</strong> Hanya pesan yang Anda kirim sebagai <strong>pribadi</strong> yang akan muncul di sini. 
+    <div className="mt-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg text-left">
+      <p className="text-amber-900 text-sm leading-relaxed">
+        <span className="font-semibold">💡 Tips:</span> Hanya pesan yang Anda kirim sebagai <span className="font-semibold">pribadi</span> yang akan muncul di sini. 
         Pastikan email dan nomor telepon sesuai dengan yang Anda gunakan saat mengirim pesan.
-        Pesan publik dapat dilihat di <a href="/my-messages" className="underline font-medium">halaman pesan utama</a>.
+        Pesan publik dapat dilihat di <Link href="/my-messages" className="underline font-semibold hover:text-amber-700">halaman pesan utama</Link>.
       </p>
     </div>
   </div>
@@ -142,20 +160,22 @@ const EmailInputForm = ({
 
 // Empty State Component - Moved outside to prevent recreation
 const EmptyState = ({ email, phone }: { email: string; phone: string }) => (
-  <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
+  <StaggeredContainer delay={200} animationType="bounceIn" duration={500}>
+    <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-12 text-center">
+      <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+        <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h3 className="text-2xl font-bold text-gray-900 mb-3">Tidak Ada Pesan Pribadi</h3>
+      <p className="text-gray-600 max-w-md mx-auto text-base">
+        {email && phone ? 
+          'Tidak ada pesan pribadi yang ditemukan untuk email dan nomor telepon ini. Pastikan data yang Anda masukkan sesuai dengan yang digunakan saat mengirim pesan.' : 
+          'Masukkan email dan nomor telepon Anda untuk melihat pesan pribadi yang telah Anda kirim.'
+        }
+      </p>
     </div>
-    <p className="text-gray-500 font-medium">Tidak ada pesan pribadi</p>
-    <p className="text-gray-400 text-sm mt-1">
-      {email && phone ? 
-        'Tidak ada pesan pribadi yang ditemukan untuk email dan nomor telepon ini' : 
-        'Masukkan email dan nomor telepon Anda untuk melihat pesan pribadi'
-      }
-    </p>
-  </div>
+  </StaggeredContainer>
 );
 
 export default function PrivateTracking({ 
@@ -293,45 +313,65 @@ export default function PrivateTracking({
       
       <div className="p-4 sm:p-6">
         {/* Back Button */}
-        <div className="mb-6">
-          <Link
-            href="/my-messages"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 hover:shadow-md transform hover:-translate-x-1"
-            style={{ 
-              backgroundColor: '#FEF3C7', 
-              color: '#92400E',
-              border: '2px solid #F59E0B'
-            }}
-          >
-            <svg className="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Kembali ke Pesan Publik</span>
-          </Link>
-        </div>
-
-        <div 
-          className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" 
-          style={{ backgroundColor: '#FEF3C7' }}
-        >
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#92400E' }}>
-              Lacak Pesan Pribadi
-            </h1>
-            <p className="text-sm sm:text-base" style={{ color: '#92400E', opacity: 0.85 }}>
-              Lihat status penanganan pesan pribadi yang Anda kirim
-            </p>
+        <StaggeredContainer delay={0} animationType="fadeInLeft" duration={400}>
+          <div className="mb-6">
+            <AnimatedButton
+              variant="outline"
+              size="md"
+              animation="scale"
+              onClick={() => router.visit('/my-messages')}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+              }
+              className="border-amber-500 text-amber-700 hover:bg-amber-500 hover:text-white"
+            >
+              Kembali ke Pesan Publik
+            </AnimatedButton>
           </div>
-          <img 
-            src="/images/kab-smg-logo.png" 
-            alt="Kabupaten Semarang" 
-            className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" 
-          />
-        </div>
+        </StaggeredContainer>
+
+        <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
+          <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-amber-50 via-white to-amber-50 border border-amber-100">
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-amber-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow-md">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-700 to-amber-600 bg-clip-text text-transparent">
+                    Lacak Pesan Pribadi
+                  </h1>
+                </div>
+                <p className="text-sm sm:text-base text-gray-700 ml-14">
+                  Pantau status penanganan pesan pribadi yang Anda kirim dengan aman dan mudah
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 font-medium">Kabupaten</p>
+                  <p className="text-sm font-bold text-amber-700">Semarang</p>
+                </div>
+                <img 
+                  src="/images/kab-smg-logo.png" 
+                  alt="Kabupaten Semarang" 
+                  className="h-12 w-12 object-contain drop-shadow-md" 
+                />
+              </div>
+            </div>
+          </div>
+        </StaggeredContainer>
 
         {/* Show form if no email or phone provided */}
         {(!email || !phone) && (
-          <div className="mb-6">
+          <StaggeredContainer delay={200} animationType="scaleIn" duration={500}>
             <EmailInputForm 
               inputEmail={inputEmail}
               setInputEmail={setInputEmail}
@@ -339,7 +379,7 @@ export default function PrivateTracking({
               setInputPhone={setInputPhone}
               handleFormSubmit={handleFormSubmit}
             />
-          </div>
+          </StaggeredContainer>
         )}
 
         {/* Show results if both email and phone are provided */}
@@ -348,30 +388,38 @@ export default function PrivateTracking({
             {items.length > 0 ? (
               <>
                 {/* Summary Stats */}
-                <div className="mb-4 sm:mb-6">
-                  <MessageStats items={items} />
-                </div>
+                <StaggeredContainer delay={200} animationType="fadeInUp" duration={400}>
+                  <div className="mb-6">
+                    <MessageStats items={items} />
+                  </div>
+                </StaggeredContainer>
 
                 {/* Desktop Table View */}
-                <div>
+                <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
                   <MessageTable 
                     items={items}
                     getStatusColor={getStatusColor}
                     formatDate={formatDate}
                     onOpen={openDetail}
                   />
-                </div>
+                </StaggeredContainer>
 
                 {/* Mobile/Tablet Card View */}
                 <div className="lg:hidden space-y-3">
-                  {items.map((item) => (
-                    <MessageCard
-                      key={item.id}
-                      item={item}
-                      getStatusColor={getStatusColor}
-                      formatDate={formatDate}
-                      onOpen={openDetail}
-                    />
+                  {items.map((item, index) => (
+                    <StaggeredContainer 
+                      key={item.id} 
+                      delay={300 + (index * 50)} 
+                      animationType="scaleIn" 
+                      duration={400}
+                    >
+                      <MessageCard
+                        item={item}
+                        getStatusColor={getStatusColor}
+                        formatDate={formatDate}
+                        onOpen={openDetail}
+                      />
+                    </StaggeredContainer>
                   ))}
                 </div>
               </>
@@ -383,161 +431,303 @@ export default function PrivateTracking({
 
         {/* Detail Modal */}
         {detail && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeDetail}>
-            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Detail {detail.type === 'report' ? 'Keluhan' : 'Masukan'} Pribadi</h3>
-                <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={closeDetail}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden transform transition-all duration-300 animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-5 bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Detail {detail.type === 'report' ? 'Keluhan' : 'Masukan'} Pribadi</h3>
+                </div>
+                <button 
+                  onClick={closeDetail} 
+                  className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div>
-                  <div className="text-sm text-gray-700">Tower</div>
-                  <div className="font-medium text-gray-900">{(detail.data as any).tower?.site_name ?? '-'}</div>
-                  {(detail.data as any).tower?.alamat_menara && (
-                    <div className="text-sm text-gray-600">{(detail.data as any).tower?.alamat_menara}</div>
-                  )}
+              <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto bg-gray-50">
+                {/* Tower & Category Information */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                      <h5 className="text-sm font-bold text-gray-900">Lokasi Tower</h5>
+                    </div>
+                    <div className="font-semibold text-gray-900 text-base mb-1">{(detail.data as any).tower?.site_name ?? '-'}</div>
+                    {(detail.data as any).tower?.alamat_menara && (
+                      <div className="text-sm text-gray-600 flex items-start gap-1">
+                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {(detail.data as any).tower?.alamat_menara}
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </div>
+                      <h5 className="text-sm font-bold text-gray-900">Kategori</h5>
+                    </div>
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                      {(detail.data as any).category ?? '-'}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-700">Kategori</div>
-                  <div className="font-medium text-gray-900">{(detail.data as any).category ?? '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-700">Pesan</div>
-                  <div className="text-gray-900 whitespace-pre-wrap">{(detail.data as any).message}</div>
+
+                {/* Message Content */}
+                <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                    </div>
+                    <h5 className="text-sm font-bold text-gray-900">Isi Pesan</h5>
+                  </div>
+                  <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    {(detail.data as any).message}
+                  </div>
                 </div>
                 {detail.type === 'report' ? (
                   renderAssets((detail.data as any).images || (detail.data as any).assets)
                 ) : (
                   renderAssets((detail.data as any).assets || (detail.data as any).images)
                 )}
-                <div>
-                  <div className="text-sm font-medium text-gray-900 mb-2">Balasan Admin</div>
+                {/* Admin Responses */}
+                <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    </div>
+                    <h5 className="text-sm font-bold text-gray-900">Balasan Admin</h5>
+                  </div>
                   {detail.type === 'report' && (detail.data as any).responses?.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="relative space-y-4">
+                      {/* Timeline line */}
+                      <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200"></div>
+                      
                       {(detail.data as any).responses.map((r: any, i: number) => {
                         const isLastResponse = i === (detail.data as any).responses.length - 1;
                         const overallStatus = (detail.data as any).status;
                         let statusLabel = 'Diproses';
-                        let statusColor = 'bg-blue-100 text-blue-800';
+                        let statusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                        let dotColor = 'bg-blue-500';
                         
                         if (isLastResponse) {
                           const statusConfig = getStatusColor(overallStatus);
                           statusLabel = statusConfig.label;
                           if (overallStatus === 'closed' || overallStatus === 'resolved') {
-                            statusColor = 'bg-green-100 text-green-800';
+                            statusColor = 'bg-green-100 text-green-800 border-green-200';
+                            dotColor = 'bg-green-500';
                           } else if (overallStatus === 'pending') {
-                            statusColor = 'bg-yellow-100 text-yellow-800';
+                            statusColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                            dotColor = 'bg-amber-500';
+                          } else if (overallStatus === 'in_progress') {
+                            statusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                            dotColor = 'bg-blue-500';
                           }
                         }
                         
                         return (
-                        <div key={i} className="bg-gray-50 rounded p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm text-gray-600">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                              {statusLabel}
-                            </span>
-                          </div>
-                          {r.message && <div className="text-gray-900">{r.message}</div>}
-                          {r.assets && r.assets.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                              {r.assets.map((a: any, idx: number) => (
-                                <div key={idx} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
-                                  {a.file_type === 'video' ? (
-                                    <div className="relative w-full h-40 bg-black">
-                                      <video
-                                        src={`/storage/${a.file_path}#t=0.1`}
-                                        preload="metadata"
-                                        className="w-full h-full object-cover"
-                                      />
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                        <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                                          <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M8 5v10l8-5-8-5z"/>
-                                          </svg>
-                                        </div>
-                                      </div>
+                          <div key={i} className="relative pl-12">
+                            {/* Timeline dot */}
+                            <div className={`absolute left-2.5 top-3 w-3 h-3 rounded-full ${dotColor} ring-4 ring-white shadow-md z-10`}></div>
+                            
+                            <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg p-4 border border-indigo-100 shadow-sm">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-semibold text-gray-900">{r.user?.name ?? 'Admin'}</div>
+                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      {formatDate(r.created_at)} • {new Date(r.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                     </div>
-                                  ) : (
-                                    <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
-                                  )}
+                                  </div>
                                 </div>
-                              ))}
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${statusColor}`}>
+                                  {statusLabel}
+                                </span>
+                              </div>
+                              {r.message && (
+                                <div className="text-gray-900 leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-100">
+                                  {r.message}
+                                </div>
+                              )}
+                              {r.assets && r.assets.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                                  {r.assets.map((a: any, idx: number) => (
+                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-black cursor-pointer transform transition-transform hover:scale-105" onClick={() => setPreviewAsset(a)}>
+                                      {a.file_type === 'video' ? (
+                                        <div className="relative w-full h-32 bg-black">
+                                          <video
+                                            src={`/storage/${a.file_path}#t=0.1`}
+                                            preload="metadata"
+                                            className="w-full h-full object-cover"
+                                          />
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                                            <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
+                                              <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M8 5v10l8-5-8-5z"/>
+                                              </svg>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
                         );
                       })}
                     </div>
                   ) : null}
                   {detail.type === 'feedback' && (detail.data as any).responses?.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="relative space-y-4">
+                      {/* Timeline line */}
+                      <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200"></div>
+                      
                       {(detail.data as any).responses.map((r: any, i: number) => {
                         const isLastResponse = i === (detail.data as any).responses.length - 1;
                         const overallStatus = (detail.data as any).status;
                         let statusLabel = 'Diproses';
-                        let statusColor = 'bg-blue-100 text-blue-800';
+                        let statusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                        let dotColor = 'bg-blue-500';
                         
                         if (isLastResponse) {
                           const statusConfig = getStatusColor(overallStatus);
                           statusLabel = statusConfig.label;
                           if (overallStatus === 'closed' || overallStatus === 'resolved') {
-                            statusColor = 'bg-green-100 text-green-800';
+                            statusColor = 'bg-green-100 text-green-800 border-green-200';
+                            dotColor = 'bg-green-500';
                           } else if (overallStatus === 'pending') {
-                            statusColor = 'bg-yellow-100 text-yellow-800';
+                            statusColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                            dotColor = 'bg-amber-500';
+                          } else if (overallStatus === 'in_progress') {
+                            statusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                            dotColor = 'bg-blue-500';
                           }
                         }
                         
                         return (
-                        <div key={i} className="bg-gray-50 rounded p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm text-gray-600">{r.user?.name ?? 'Admin'} • {formatDate(r.created_at)}</div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                              {statusLabel}
-                            </span>
-                          </div>
-                          {r.message && <div className="text-gray-900">{r.message}</div>}
-                          {r.assets && r.assets.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                              {r.assets.map((a: any, idx: number) => (
-                                <div key={idx} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
-                                  {a.file_type === 'video' ? (
-                                    <div className="relative w-full h-40 bg-black">
-                                      <video
-                                        src={`/storage/${a.file_path}#t=0.1`}
-                                        preload="metadata"
-                                        className="w-full h-full object-cover"
-                                      />
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                        <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                                          <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M8 5v10l8-5-8-5z"/>
-                                          </svg>
-                                        </div>
-                                      </div>
+                          <div key={i} className="relative pl-12">
+                            {/* Timeline dot */}
+                            <div className={`absolute left-2.5 top-3 w-3 h-3 rounded-full ${dotColor} ring-4 ring-white shadow-md z-10`}></div>
+                            
+                            <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg p-4 border border-indigo-100 shadow-sm">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-semibold text-gray-900">{r.user?.name ?? 'Admin'}</div>
+                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      {formatDate(r.created_at)} • {new Date(r.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                     </div>
-                                  ) : (
-                                    <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
-                                  )}
+                                  </div>
                                 </div>
-                              ))}
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${statusColor}`}>
+                                  {statusLabel}
+                                </span>
+                              </div>
+                              {r.message && (
+                                <div className="text-gray-900 leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-100">
+                                  {r.message}
+                                </div>
+                              )}
+                              {r.assets && r.assets.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                                  {r.assets.map((a: any, idx: number) => (
+                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-black cursor-pointer transform transition-transform hover:scale-105" onClick={() => setPreviewAsset(a)}>
+                                      {a.file_type === 'video' ? (
+                                        <div className="relative w-full h-32 bg-black">
+                                          <video
+                                            src={`/storage/${a.file_path}#t=0.1`}
+                                            preload="metadata"
+                                            className="w-full h-full object-cover"
+                                          />
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                                            <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
+                                              <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M8 5v10l8-5-8-5z"/>
+                                              </svg>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
                         );
                       })}
                     </div>
                   ) : null}
                   {((detail.type === 'report' && (!(detail.data as any).responses || (detail.data as any).responses.length === 0)) ||
                    (detail.type === 'feedback' && (!(detail.data as any).responses || (detail.data as any).responses.length === 0))) && (
-                    <div className="text-gray-500">Belum ada balasan.</div>
+                    <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+                      <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 font-medium">Belum ada balasan dari admin</p>
+                      <p className="text-gray-400 text-sm mt-1">Kami akan segera merespons pesan Anda</p>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className="px-6 py-3 border-t bg-gray-50 text-right">
-                <button onClick={closeDetail} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Tutup</button>
+              <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+                <AnimatedButton
+                  variant="secondary"
+                  size="md"
+                  animation="scale"
+                  onClick={closeDetail}
+                  icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  }
+                >
+                  Tutup
+                </AnimatedButton>
               </div>
             </div>
           </div>

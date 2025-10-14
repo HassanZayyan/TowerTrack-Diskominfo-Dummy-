@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import AnimatedButton from '@/Components/AnimatedButton';
+import StaggeredContainer from '@/Components/StaggeredContainer';
 
 interface FeedbackAsset {
   id: number;
@@ -191,354 +193,508 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       <Head title="Detail Masukan" />
       
       {/* Back button */}
-      <div className="mb-6">
-        <a
-          href={route('admin.messages.index', { tab: 'feedbacks' })}
-          className="inline-flex items-center text-red-600 hover:text-red-800"
-        >
-          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-          </svg>
-          <span>Kembali ke daftar masukan</span>
-        </a>
-      </div>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Detail Masukan #{feedback.id}</h1>
-        <div className="flex items-center gap-3">
-          <p className="text-gray-600">Status: {getStatusBadge(feedback.status)}</p>
-          <p className="text-gray-600">Dikirim: {formatDate(feedback.created_at)}</p>
+      <StaggeredContainer delay={0} animationType="fadeInLeft" duration={400}>
+        <div className="mb-6">
+          <AnimatedButton
+            variant="outline"
+            size="md"
+            animation="scale"
+            onClick={() => router.visit(route('admin.messages.index', { tab: 'feedbacks' }))}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            }
+            className="border-blue-500 text-blue-700 hover:bg-blue-600 hover:text-white"
+          >
+            Kembali ke Daftar Masukan
+          </AnimatedButton>
         </div>
-      </div>
+      </StaggeredContainer>
+
+      <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
+        <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50 border border-blue-100">
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-700 to-blue-600 bg-clip-text text-transparent">
+                    Detail Masukan #{feedback.id}
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Dikirim: {formatDate(feedback.created_at)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 font-medium">Status:</span>
+                {getStatusBadge(feedback.status)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </StaggeredContainer>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column - Feedback details */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-full bg-red-500 flex items-center justify-center">
-                    <span className="text-white font-semibold text-lg">
-                      {(feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || '?').charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="ml-4">
-                    <h2 className="text-lg font-medium text-gray-800">
-                      {feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || 'Pengguna'}
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      {feedback.sender_phone || feedback.user?.email || '-'}
-                    </p>
-                  </div>
+        <div className="lg:col-span-2 space-y-6">
+          <StaggeredContainer delay={200} animationType="fadeInUp" duration={500}>
+            {/* Sender Information Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-md">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                 </div>
-                <div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {extractSenderName(feedback.category).category}
+                <h3 className="text-lg font-bold text-gray-900">Informasi Pengirim</h3>
+              </div>
+              
+              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
+                <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-4 ring-white">
+                  <span className="text-white font-bold text-2xl">
+                    {(feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || '?').charAt(0).toUpperCase()}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-4">Pesan</h3>
-              <div className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-200">
-                {feedback.message}
-              </div>
-
-              {/* Tower Information */}
-              {feedback.tower && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">Informasi Tower</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <p className="text-gray-700">
-                      <span className="font-medium">Nama Site:</span> {feedback.tower.site_name}
-                    </p>
-                    {feedback.tower.alamat_menara && (
-                      <p className="text-gray-700 mt-2">
-                        <span className="font-medium">Alamat:</span> {feedback.tower.alamat_menara}
-                      </p>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">
+                    {feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || 'Pengguna'}
+                  </h2>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <span className="font-medium">{feedback.sender_phone || '-'}</span>
+                    </div>
+                    {feedback.user?.email && (
+                      <>
+                        <span className="hidden sm:inline text-gray-400">•</span>
+                        <div className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className="font-medium">{feedback.user?.email}</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
-              )}
+                <span className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
+                  {extractSenderName(feedback.category).category}
+                </span>
+              </div>
+            </div>
+          </StaggeredContainer>
 
-              {/* Attached Media */}
-              {feedback.assets && feedback.assets.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">Media Lampiran</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {feedback.assets.map((asset, index) => {
-                      const mediaUrl = getMediaUrl(asset.file_path);
-                      const isImg = isImage(asset.file_path, asset.file_type);
-                      const isVid = isVideo(asset.file_path, asset.file_type);
+          <StaggeredContainer delay={250} animationType="fadeInUp" duration={500}>
+            {/* Message Content Card */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Pesan Masukan</h3>
+              </div>
+              <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gradient-to-br from-green-50 to-white p-5 rounded-lg border border-green-100">
+                {feedback.message}
+              </div>
+            </div>
+          </StaggeredContainer>
 
-                      return (
-                        <div key={asset.id} className="relative group overflow-hidden rounded-lg border border-gray-200">
-                          {isImg ? (
-                            <img
-                              src={mediaUrl}
-                              alt={`Lampiran ${index + 1}`}
-                              className="w-full h-32 object-cover cursor-pointer"
-                              onClick={() => openLightbox(mediaUrl, 'image')}
-                            />
-                          ) : isVid ? (
-                            <div
-                              className="w-full h-32 bg-gray-100 flex items-center justify-center cursor-pointer"
-                              onClick={() => openLightbox(mediaUrl, 'video')}
-                            >
-                              <div className="text-center">
-                                <svg className="w-10 h-10 text-blue-500 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                </svg>
-                                <span className="text-xs text-gray-600">Play Video</span>
-                              </div>
+          {/* Tower Information */}
+          {feedback.tower && (
+            <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Informasi Tower</h3>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-lg border border-purple-100">
+                  <div className="flex items-start gap-2 mb-3">
+                    <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <div>
+                      <p className="text-xs text-purple-700 mb-1 font-medium">Nama Site</p>
+                      <p className="text-base font-bold text-gray-900">{feedback.tower.site_name}</p>
+                    </div>
+                  </div>
+                  {feedback.tower.alamat_menara && (
+                    <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
+                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-xs text-purple-700 mb-1 font-medium">Alamat</p>
+                        <p className="text-sm text-gray-700 leading-relaxed">{feedback.tower.alamat_menara}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </StaggeredContainer>
+          )}
+
+          {/* Attached Media */}
+          {feedback.assets && feedback.assets.length > 0 && (
+            <StaggeredContainer delay={350} animationType="fadeInUp" duration={500}>
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg shadow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Media Lampiran</h3>
+                  <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    {feedback.assets.length} file
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {feedback.assets.map((asset, index) => {
+                    const mediaUrl = getMediaUrl(asset.file_path);
+                    const isImg = isImage(asset.file_path, asset.file_type);
+                    const isVid = isVideo(asset.file_path, asset.file_type);
+
+                    return (
+                      <div key={asset.id} className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-pink-400 transition-all shadow-sm hover:shadow-lg transform hover:scale-105 duration-300">
+                        {isImg ? (
+                          <img
+                            src={mediaUrl}
+                            alt={`Lampiran ${index + 1}`}
+                            className="w-full h-32 object-cover cursor-pointer"
+                            onClick={() => openLightbox(mediaUrl, 'image')}
+                          />
+                        ) : isVid ? (
+                          <div
+                            className="w-full h-32 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center cursor-pointer"
+                            onClick={() => openLightbox(mediaUrl, 'video')}
+                          >
+                            <div className="text-center">
+                              <svg className="w-12 h-12 text-blue-600 mx-auto drop-shadow-md" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-xs text-blue-700 font-medium">Play Video</span>
                             </div>
-                          ) : (
-                            <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
-                              <div className="text-center">
-                                <svg className="w-10 h-10 text-gray-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                                </svg>
-                                <span className="text-xs text-gray-600">File</span>
-                              </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <div className="text-center">
+                              <svg className="w-10 h-10 text-gray-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-xs text-gray-600">File</span>
                             </div>
-                          )}
-                          
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          </div>
+                        )}
+                        
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                          <button
+                            onClick={() => openLightbox(mediaUrl, isImg ? 'image' : 'video')}
+                            className="p-2 bg-white rounded-full shadow-lg transform scale-90 group-hover:scale-100 transition-transform"
+                          >
+                            <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </StaggeredContainer>
+          )}
+        </div>
+
+        {/* Right column - Reply form and previous responses */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Reply Form */}
+          <StaggeredContainer delay={400} animationType="fadeInRight" duration={500}>
+            <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-indigo-200 p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Balas Masukan</h3>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label htmlFor="status" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Update Status
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="status"
+                      value={replyStatus}
+                      onChange={handleStatusChange}
+                      className="w-full appearance-none bg-white border-2 border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 pr-10 py-3 px-4 cursor-pointer transition-all duration-200 hover:border-indigo-300 font-medium"
+                      required
+                    >
+                      <option value="pending">🔴 BARU</option>
+                      <option value="in_progress">🟡 PROGRESS</option>
+                      <option value="closed">🟢 SELESAI</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    Pesan Balasan
+                  </label>
+                  <textarea
+                    id="message"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    rows={6}
+                    maxLength={1000}
+                    className="w-full border-2 border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 p-3 transition-all duration-200 hover:border-indigo-300"
+                    placeholder="Tulis balasan untuk masukan ini..."
+                    required
+                  ></textarea>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="text-xs text-gray-500">
+                      {replyMessage.length}/1000 karakter
+                    </div>
+                    <div className={`text-xs font-medium ${replyMessage.length > 900 ? 'text-red-600' : 'text-gray-500'}`}>
+                      {1000 - replyMessage.length} tersisa
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Lampirkan Media <span className="text-gray-500 font-normal">(Opsional)</span>
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-6 pb-6 border-2 border-indigo-200 border-dashed rounded-xl bg-white/50 backdrop-blur-sm hover:border-indigo-300 transition-colors">
+                    <div className="space-y-2 text-center">
+                      <svg className="mx-auto h-12 w-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <div className="flex text-sm text-gray-600">
+                        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-semibold text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-1">
+                          <span>Upload file</span>
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            className="sr-only"
+                            multiple
+                            accept="image/*,video/*"
+                            onChange={handleFileSelection}
+                          />
+                        </label>
+                        <p className="pl-1">atau drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, MP4 hingga 5MB (gambar) atau 50MB (video)
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Selected files preview */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="relative bg-white border-2 border-indigo-100 rounded-lg p-3 hover:border-indigo-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 p-2 bg-indigo-100 rounded-lg">
+                              <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {file.type.startsWith('image/') ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                ) : (
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                )}
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium text-gray-900 truncate block">{file.name}</span>
+                              <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
+                            </div>
                             <button
-                              onClick={() => openLightbox(mediaUrl, isImg ? 'image' : 'video')}
-                              className="p-1 bg-white rounded-full"
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             >
-                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <AnimatedButton
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    animation="glow"
+                    fullWidth
+                    disabled={isSubmitting || !replyMessage.trim()}
+                    loading={isSubmitting}
+                    icon={
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    }
+                  >
+                    {isSubmitting ? 'Mengirim...' : 'Kirim Balasan'}
+                  </AnimatedButton>
+                </div>
+              </form>
+            </div>
+          </StaggeredContainer>
+
+          {/* Previous Responses */}
+          <StaggeredContainer delay={450} animationType="fadeInRight" duration={500}>
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-sm">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Riwayat Balasan</h3>
+                {feedback.responses && feedback.responses.length > 0 && (
+                  <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    {feedback.responses.length} balasan
+                  </span>
+                )}
+              </div>
+              
+              {feedback.responses && feedback.responses.length > 0 ? (
+                <div className="relative space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                  {/* Timeline line */}
+                  <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-cyan-200 via-cyan-300 to-cyan-200"></div>
+                  
+                  {feedback.responses.map((response, index) => (
+                    <div key={response.id} className="relative pl-12">
+                      {/* Timeline dot */}
+                      <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-white shadow-md z-10"></div>
+                      
+                      <div className="bg-gradient-to-br from-cyan-50 to-white rounded-xl p-4 border border-cyan-100 shadow-sm">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-md ring-2 ring-white">
+                              <span className="text-white font-bold text-sm">
+                                {response.user?.name.charAt(0).toUpperCase() || 'A'}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">
+                                {response.user?.name || 'Admin'}
+                              </p>
+                              <p className="text-xs text-gray-500 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {formatDate(response.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-cyan-100 mb-3">
+                          {response.message}
+                        </div>
+                        
+                        {/* Response attachments */}
+                        {response.assets && response.assets.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {response.assets.map((asset, idx) => {
+                              const mediaUrl = getMediaUrl(asset.file_path);
+                              const isImg = isImage(asset.file_path, asset.file_type);
+                              const isVid = isVideo(asset.file_path, asset.file_type);
+
+                              return (
+                                <div key={asset.id} className="relative rounded-lg overflow-hidden border-2 border-cyan-200 hover:border-cyan-400 transition-all transform hover:scale-105 cursor-pointer">
+                                  {isImg ? (
+                                    <img
+                                      src={mediaUrl}
+                                      alt={`Response media ${idx + 1}`}
+                                      className="w-full h-20 object-cover"
+                                      onClick={() => openLightbox(mediaUrl, 'image')}
+                                    />
+                                  ) : isVid ? (
+                                    <div 
+                                      className="w-full h-20 bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center"
+                                      onClick={() => openLightbox(mediaUrl, 'video')}
+                                    >
+                                      <svg className="w-8 h-8 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
+                                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-10 text-center border-2 border-dashed border-gray-300">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
                   </div>
+                  <p className="text-base font-semibold text-gray-600 mb-1">
+                    Belum Ada Balasan
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Kirim balasan pertama untuk masukan ini
+                  </p>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Right column - Reply form and previous responses */}
-        <div className="lg:col-span-1">
-          {/* Reply Form */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Balas Masukan</h3>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <div className="relative">
-                  <select
-                    id="status"
-                    value={replyStatus}
-                    onChange={handleStatusChange}
-                    className="w-full appearance-none border-gray-300 rounded-md shadow-sm focus:ring focus:ring-red-200 focus:border-red-400 pr-10 py-2 px-3 cursor-pointer transition-colors duration-200 hover:bg-gray-50 min-w-[140px]"
-                    required
-                  >
-                    <option value="pending">🔴 BARU</option>
-                    <option value="in_progress">🟡 PROGRESS</option>
-                    <option value="closed">🟢 SELESAI</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
-                  Pesan Balasan
-                </label>
-                <textarea
-                  id="message"
-                  value={replyMessage}
-                  onChange={(e) => setReplyMessage(e.target.value)}
-                  rows={5}
-                  maxLength={1000}
-                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-400"
-                  placeholder="Tulis balasan untuk masukan ini..."
-                  required
-                ></textarea>
-                <div className="text-xs text-gray-500 mt-1">
-                  {replyMessage.length}/1000 karakter
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Lampirkan Media (Opsional)
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                  <div className="space-y-1 text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <div className="flex text-sm text-gray-600">
-                      <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                        <span>Upload file</span>
-                        <input
-                          id="file-upload"
-                          name="file-upload"
-                          type="file"
-                          className="sr-only"
-                          multiple
-                          accept="image/*,video/*"
-                          onChange={handleFileSelection}
-                        />
-                      </label>
-                      <p className="pl-1">atau drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, MP4 hingga 5MB (gambar) atau 50MB (video)
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Selected files preview */}
-                {selectedFiles.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="relative border rounded-md p-2">
-                        <div className="flex items-center">
-                          <svg className="h-6 w-6 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            {file.type.startsWith('image/') ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            ) : (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                            )}
-                          </svg>
-                          <span className="text-sm truncate">{file.name}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="absolute top-1 right-1 text-red-500 hover:text-red-700"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !replyMessage.trim()}
-                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Mengirim...
-                    </>
-                  ) : (
-                    'Kirim Balasan'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Previous Responses */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Riwayat Balasan</h3>
-            
-            {feedback.responses && feedback.responses.length > 0 ? (
-              <div className="space-y-6 max-h-[600px] overflow-y-auto">
-                {feedback.responses.map((response) => (
-                  <div key={response.id} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                          <span className="text-white font-semibold text-sm">
-                            {response.user?.name.charAt(0).toUpperCase() || 'A'}
-                          </span>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-800">
-                            {response.user?.name || 'Admin'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatDate(response.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap mb-4">
-                      {response.message}
-                    </div>
-                    
-                    {/* Response attachments */}
-                    {response.assets && response.assets.length > 0 && (
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        {response.assets.map((asset, index) => {
-                          const mediaUrl = getMediaUrl(asset.file_path);
-                          const isImg = isImage(asset.file_path, asset.file_type);
-                          const isVid = isVideo(asset.file_path, asset.file_type);
-
-                          return (
-                            <div key={asset.id} className="relative rounded overflow-hidden border border-gray-200">
-                              {isImg ? (
-                                <img
-                                  src={mediaUrl}
-                                  alt={`Response media ${index + 1}`}
-                                  className="w-full h-20 object-cover cursor-pointer"
-                                  onClick={() => openLightbox(mediaUrl, 'image')}
-                                />
-                              ) : isVid ? (
-                                <div 
-                                  className="w-full h-20 bg-gray-100 flex items-center justify-center cursor-pointer"
-                                  onClick={() => openLightbox(mediaUrl, 'video')}
-                                >
-                                  <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              ) : (
-                                <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
-                                  <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                <p className="mt-2 text-sm text-gray-500">
-                  Belum ada balasan untuk masukan ini
-                </p>
-              </div>
-            )}
-          </div>
+          </StaggeredContainer>
         </div>
       </div>
 
