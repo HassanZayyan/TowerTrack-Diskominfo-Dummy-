@@ -3,6 +3,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
+import { PageProps } from '@/types';
 
 interface ReportAsset {
   id: number;
@@ -57,7 +58,7 @@ interface Report {
   responses?: ReportResponse[];
 }
 
-interface Props {
+interface Props extends PageProps {
   report: Report;
 }
 
@@ -107,6 +108,32 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // First update the status if it has changed
+    if (replyStatus !== report.status) {
+      router.put(route('admin.complaints.updateStatus', report.id), {
+        status_id: replyStatus,
+      }, {
+        onSuccess: () => {
+          // After status update, send the response if there's a message
+          if (replyMessage.trim()) {
+            sendResponse();
+          } else {
+            setIsSubmitting(false);
+          }
+        },
+        onError: () => {
+          setIsSubmitting(false);
+        }
+      });
+    } else if (replyMessage.trim()) {
+      // If status hasn't changed but there's a message, send response directly
+      sendResponse();
+    } else {
+      setIsSubmitting(false);
+    }
+  };
+
+  const sendResponse = () => {
     const formData = new FormData();
     formData.append('message', replyMessage);
     formData.append('status_id', replyStatus);
@@ -420,61 +447,6 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
             </StaggeredContainer>
           )}
 
-          <StaggeredContainer delay={250} animationType="fadeInUp" duration={500}>
-            {/* Message Content Card */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Pesan Keluhan</h3>
-              </div>
-              <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gradient-to-br from-green-50 to-white p-5 rounded-lg border border-green-100">
-                {report.message}
-              </div>
-            </div>
-          </StaggeredContainer>
-
-          {/* Tower Information */}
-          {report.tower && (
-            <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
-              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">Informasi Tower</h3>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-lg border border-purple-100">
-                  <div className="flex items-start gap-2 mb-3">
-                    <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    <div>
-                      <p className="text-xs text-purple-700 mb-1 font-medium">Nama Site</p>
-                      <p className="text-base font-bold text-gray-900">{report.tower.site_name}</p>
-                    </div>
-                  </div>
-                  {report.tower.alamat_menara && (
-                    <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
-                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <div>
-                        <p className="text-xs text-purple-700 mb-1 font-medium">Alamat</p>
-                        <p className="text-sm text-gray-700 leading-relaxed">{report.tower.alamat_menara}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </StaggeredContainer>
-          )}
         </div>
 
         {/* Right column - Reply form and previous responses */}
@@ -492,7 +464,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
               </div>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label htmlFor="status" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <label htmlFor="status" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -519,7 +491,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <label htmlFor="message" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
@@ -532,8 +504,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                     rows={6}
                     maxLength={1000}
                     className="w-full border-2 border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 p-3 transition-all duration-200 hover:border-indigo-300"
-                    placeholder="Tulis balasan untuk keluhan ini..."
-                    required
+                    placeholder="Tulis balasan untuk keluhan ini... (opsional jika hanya ingin update status)"
                   ></textarea>
                   <div className="flex items-center justify-between mt-2">
                     <div className="text-xs text-gray-500">
@@ -546,7 +517,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -620,7 +591,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                     size="lg"
                     animation="glow"
                     fullWidth
-                    disabled={isSubmitting || !replyMessage.trim()}
+                    disabled={isSubmitting || (!replyMessage.trim() && replyStatus === report.status)}
                     loading={isSubmitting}
                     icon={
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -628,7 +599,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                       </svg>
                     }
                   >
-                    {isSubmitting ? 'Mengirim...' : 'Kirim Balasan'}
+                    {isSubmitting ? 'Memproses...' : (replyMessage.trim() ? 'Kirim Balasan' : 'Update Status')}
                   </AnimatedButton>
                 </div>
               </form>

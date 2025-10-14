@@ -59,22 +59,25 @@ class ComplaintController extends Controller
     public function respond(Request $request, Report $report)
     {
         $validated = $request->validate([
-            'message' => 'required|string|max:1000',
+            'message' => 'nullable|string|max:1000',
             'status_id' => 'required',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'videos.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
         try {
-            // Create response first
-            $response = ReportResponse::create([
-                'report_id' => $report->id,
-                'user_id' => $request->user()->id,
-                'message' => $validated['message'],
-            ]);
+            // Create response only if there's a message
+            $response = null;
+            if (!empty($validated['message'])) {
+                $response = ReportResponse::create([
+                    'report_id' => $report->id,
+                    'user_id' => $request->user()->id,
+                    'message' => $validated['message'],
+                ]);
+            }
             
-            // Process images
-            if ($request->hasFile('images')) {
+            // Process images only if there's a response
+            if ($response && $request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $filePath = $image->store('admin-response-photos', 'public');
                     $fileType = 'image';
@@ -90,8 +93,8 @@ class ComplaintController extends Controller
                 }
             }
             
-            // Process videos
-            if ($request->hasFile('videos')) {
+            // Process videos only if there's a response
+            if ($response && $request->hasFile('videos')) {
                 foreach ($request->file('videos') as $video) {
                     $filePath = $video->store('admin-response-videos', 'public');
                     $fileType = 'video';
@@ -107,8 +110,8 @@ class ComplaintController extends Controller
                 }
             }
 
-            // Set the status for this response if the method exists
-            if (method_exists($response, 'setStatus')) {
+            // Set the status for this response if the method exists and response exists
+            if ($response && method_exists($response, 'setStatus')) {
                 $response->setStatus($validated['status_id']);
             }
             
@@ -119,8 +122,8 @@ class ComplaintController extends Controller
             // Log the error
             \Log::error('Error responding to complaint: ' . $e->getMessage());
             
-            // If response creation failed, try again without additional processing
-            if (!isset($response)) {
+            // If response creation failed and there was supposed to be a message, try again
+            if (!isset($response) && !empty($validated['message'])) {
                 $response = ReportResponse::create([
                     'report_id' => $report->id,
                     'user_id' => $request->user()->id,
