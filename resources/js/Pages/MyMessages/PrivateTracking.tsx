@@ -4,6 +4,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import MessageTable from '@/Components/MyMessages/MessageTable';
 import MessageCard from '@/Components/MyMessages/MessageCard';
 import MessageStats from '@/Components/MyMessages/MessageStats';
+import VideoThumbnail from '@/Components/VideoThumbnail';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -282,24 +283,33 @@ export default function PrivateTracking({
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
         {assets.map((a, i) => (
-          <div key={i} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
+          <div key={i} className="rounded overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200">
             {a.file_type === 'video' ? (
-              <div className="relative w-full h-40 bg-black">
-                <video
-                  src={`/storage/${a.file_path}#t=0.1`}
-                  preload="metadata"
-                  className="w-full h-full object-cover"
+              <VideoThumbnail
+                src={`/storage/${a.file_path}`}
+                fileType="video"
+                className="w-full h-40"
+                onClick={() => setPreviewAsset(a)}
+                showPlayButton={true}
+                alt={`Video attachment ${i + 1}`}
+                loading="lazy"
+              />
+            ) : (
+              <div className="relative w-full h-40 bg-gray-100">
+                <img 
+                  src={`/storage/${a.file_path}`} 
+                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                  alt={`Image attachment ${i + 1}`}
+                  loading="lazy"
+                  onClick={() => setPreviewAsset(a)}
+                  onError={(e) => {
+                    e.currentTarget.src = '/images/placeholder-image.png';
+                  }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                  <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M8 5v10l8-5-8-5z"/>
-                    </svg>
-                  </div>
+                <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                  🖼️ Image
                 </div>
               </div>
-            ) : (
-              <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
             )}
           </div>
         ))}
@@ -580,24 +590,33 @@ export default function PrivateTracking({
                               {r.assets && r.assets.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                                   {r.assets.map((a: any, idx: number) => (
-                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-black cursor-pointer transform transition-transform hover:scale-105" onClick={() => setPreviewAsset(a)}>
+                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-white shadow-sm hover:shadow-md cursor-pointer transform transition-all duration-200">
                                       {a.file_type === 'video' ? (
-                                        <div className="relative w-full h-32 bg-black">
-                                          <video
-                                            src={`/storage/${a.file_path}#t=0.1`}
-                                            preload="metadata"
-                                            className="w-full h-full object-cover"
+                                        <VideoThumbnail
+                                          src={`/storage/${a.file_path}`}
+                                          fileType="video"
+                                          className="w-full h-32"
+                                          onClick={() => setPreviewAsset(a)}
+                                          showPlayButton={true}
+                                          alt={`Admin response video ${idx + 1}`}
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <div className="relative w-full h-32 bg-gray-100">
+                                          <img 
+                                            src={`/storage/${a.file_path}`} 
+                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                                            alt={`Admin response image ${idx + 1}`}
+                                            loading="lazy"
+                                            onClick={() => setPreviewAsset(a)}
+                                            onError={(e) => {
+                                              e.currentTarget.src = '/images/placeholder-image.png';
+                                            }}
                                           />
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                            <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
-                                              <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M8 5v10l8-5-8-5z"/>
-                                              </svg>
-                                            </div>
+                                          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                            🖼️ Image
                                           </div>
                                         </div>
-                                      ) : (
-                                        <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
                                       )}
                                     </div>
                                   ))}
@@ -671,24 +690,33 @@ export default function PrivateTracking({
                               {r.assets && r.assets.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                                   {r.assets.map((a: any, idx: number) => (
-                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-black cursor-pointer transform transition-transform hover:scale-105" onClick={() => setPreviewAsset(a)}>
+                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-white shadow-sm hover:shadow-md cursor-pointer transform transition-all duration-200">
                                       {a.file_type === 'video' ? (
-                                        <div className="relative w-full h-32 bg-black">
-                                          <video
-                                            src={`/storage/${a.file_path}#t=0.1`}
-                                            preload="metadata"
-                                            className="w-full h-full object-cover"
+                                        <VideoThumbnail
+                                          src={`/storage/${a.file_path}`}
+                                          fileType="video"
+                                          className="w-full h-32"
+                                          onClick={() => setPreviewAsset(a)}
+                                          showPlayButton={true}
+                                          alt={`Admin response video ${idx + 1}`}
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <div className="relative w-full h-32 bg-gray-100">
+                                          <img 
+                                            src={`/storage/${a.file_path}`} 
+                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                                            alt={`Admin response image ${idx + 1}`}
+                                            loading="lazy"
+                                            onClick={() => setPreviewAsset(a)}
+                                            onError={(e) => {
+                                              e.currentTarget.src = '/images/placeholder-image.png';
+                                            }}
                                           />
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                            <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
-                                              <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M8 5v10l8-5-8-5z"/>
-                                              </svg>
-                                            </div>
+                                          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                            🖼️ Image
                                           </div>
                                         </div>
-                                      ) : (
-                                        <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
                                       )}
                                     </div>
                                   ))}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
+import VideoThumbnail from '@/Components/VideoThumbnail';
 
 interface MediaItem {
   id: number;
@@ -87,8 +88,10 @@ const ManagementTable: React.FC<Props> = ({
   const availableStatuses = statuses.length > 0 ? statuses : defaultStatuses;
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: string } | null>(null);
+  const [previewAsset, setPreviewAsset] = useState<{ file_path: string; file_type?: string } | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<{ [key: number]: boolean }>({});
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -144,12 +147,12 @@ const ManagementTable: React.FC<Props> = ({
     }
   };
 
-  const openLightbox = (mediaPath: string, mediaType: string) => {
-    setLightboxMedia({ url: mediaPath, type: mediaType });
+  const openPreview = (asset: { file_path: string; file_type?: string }) => {
+    setPreviewAsset(asset);
   };
 
-  const closeLightbox = () => {
-    setLightboxMedia(null);
+  const closePreview = () => {
+    setPreviewAsset(null);
   };
 
   const handleStatusChange = async (itemId: number, newStatus: string) => {
@@ -195,6 +198,18 @@ const ManagementTable: React.FC<Props> = ({
       (item.category || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  // Pagination logic
+  const totalItems = filteredItems.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedItems = filteredItems.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchTerm]);
 
   const getItemDisplayName = (item: BaseItem) => {
     if (type === 'complaints') {
@@ -350,7 +365,7 @@ const ManagementTable: React.FC<Props> = ({
 
       {/* Main Content - Table Layout */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        {filteredItems.length === 0 ? (
+        {paginatedItems.length === 0 ? (
           <div className="p-8 sm:p-12 text-center">
             <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -392,7 +407,7 @@ const ManagementTable: React.FC<Props> = ({
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
                       Email
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
                       {type === 'complaints' ? 'Keluhan' : 'Masukan'}
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
@@ -413,10 +428,10 @@ const ManagementTable: React.FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredItems.map((item) => (
+                  {paginatedItems.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-4">
-                        <div className="flex items-center">
+                      <td className="px-3 py-4 align-top">
+                        <div className="flex items-start">
                           <div className="flex-shrink-0 h-8 w-8">
                             <div className="h-8 w-8 rounded-full bg-gradient-to-r from-red-400 to-red-600 flex items-center justify-center">
                               <span className="text-xs font-medium text-white">
@@ -430,12 +445,12 @@ const ManagementTable: React.FC<Props> = ({
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <div className="text-sm text-gray-700 truncate" title={getItemEmail(item)}>
                           {getItemEmail(item)}
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <div className="text-sm">
                           <div className="font-medium text-gray-900 mb-1 truncate">{getItemCategory(item)}</div>
                           <div className="text-gray-600 text-xs line-clamp-2 max-h-8 overflow-hidden">
@@ -445,40 +460,35 @@ const ManagementTable: React.FC<Props> = ({
                             }
                           </div>
                           {getItemAssets(item).length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {getItemAssets(item).slice(0, 2).map((asset, index) => (
-                                <button
+                            <div className="grid grid-cols-2 gap-1 mt-2">
+                              {getItemAssets(item).slice(0, 6).map((asset, index) => (
+                                <div
                                   key={index}
-                                  onClick={() => openLightbox(`/storage/${asset.file_path}`, asset.file_type || 'image')}
-                                  className="relative w-10 h-10 rounded-md overflow-hidden border border-gray-200 hover:border-red-400 transition-colors group"
+                                  className="rounded overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                                  onClick={() => openPreview(asset)}
                                 >
                                   {asset.file_type === 'video' || asset.file_path.toLowerCase().match(/\.(mp4|mov|avi|webm)$/i) ? (
-                                    <div className="w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
-                                      <video 
-                                        className="w-full h-full object-cover"
-                                        poster={`/storage/${asset.file_path.replace(/\.(mp4|mov|avi|webm)$/i, '.jpg')}`}
-                                        muted
-                                      >
-                                        <source src={`/storage/${asset.file_path}`} type="video/mp4" />
-                                      </video>
-                                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-20 transition-all">
-                                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path d="M8 5v10l8-5-8-5z"/>
-                                        </svg>
-                                      </div>
-                                    </div>
+                                    <VideoThumbnail
+                                      src={`/storage/${asset.file_path}`}
+                                      fileType="video"
+                                      className="w-20 h-16"
+                                      onClick={() => openPreview(asset)}
+                                      showPlayButton={true}
+                                      alt="Video media"
+                                      loading="lazy"
+                                    />
                                   ) : (
                                     <img 
                                       src={`/storage/${asset.file_path}`} 
                                       alt="Media"
-                                      className="w-full h-full object-cover"
+                                      className="w-20 h-16 object-cover"
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.style.display = 'none';
                                         const parent = target.parentElement;
                                         if (parent) {
                                           parent.innerHTML = `
-                                            <div class="w-full h-full bg-gray-100 flex items-center justify-center">
+                                            <div class="w-20 h-16 bg-gray-100 flex items-center justify-center">
                                               <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                               </svg>
@@ -488,18 +498,20 @@ const ManagementTable: React.FC<Props> = ({
                                       }}
                                     />
                                   )}
-                                </button>
+                                </div>
                               ))}
-                              {getItemAssets(item).length > 2 && (
-                                <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center">
-                                  <span className="text-xs text-gray-500">+{getItemAssets(item).length - 2}</span>
+                              {getItemAssets(item).length > 6 && (
+                                <div className="col-span-2 flex justify-center">
+                                  <div className="w-16 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center">
+                                    <span className="text-xs text-gray-500">+{getItemAssets(item).length - 6} lainnya</span>
+                                  </div>
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <div className="text-sm text-gray-700">
                           <div className="font-medium truncate" title={item.tower?.site_name || '-'}>
                             {item.tower?.site_name || '-'}
@@ -514,12 +526,12 @@ const ManagementTable: React.FC<Props> = ({
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <div className="flex justify-center">
                           {getVisibilityBadge(item.is_public)}
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <div className="flex justify-center">
                           <select
                             value={item.status}
@@ -543,13 +555,13 @@ const ManagementTable: React.FC<Props> = ({
                           </select>
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <div className="text-sm text-gray-500">
                           <div className="text-xs">{formatDate(item.created_at).split(',')[0]}</div>
                           <div className="text-xs text-gray-400">{formatDate(item.created_at).split(',')[1]?.trim()}</div>
                         </div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 align-top">
                         <button
                           onClick={() => handleViewDetail(item)}
                           className="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
@@ -626,40 +638,35 @@ const ManagementTable: React.FC<Props> = ({
                   )}
                   
                   {getItemAssets(item).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {getItemAssets(item).slice(0, 4).map((asset, index) => (
-                        <button
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {getItemAssets(item).slice(0, 6).map((asset, index) => (
+                        <div
                           key={index}
-                          onClick={() => openLightbox(`/storage/${asset.file_path}`, asset.file_type || 'image')}
-                          className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-red-400 transition-colors group"
+                          className="rounded overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                          onClick={() => openPreview(asset)}
                         >
                           {asset.file_type === 'video' || asset.file_path.toLowerCase().match(/\.(mp4|mov|avi|webm)$/i) ? (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center relative">
-                              <video 
-                                className="w-full h-full object-cover"
-                                poster={`/storage/${asset.file_path.replace(/\.(mp4|mov|avi|webm)$/i, '.jpg')}`}
-                                muted
-                              >
-                                <source src={`/storage/${asset.file_path}`} type="video/mp4" />
-                              </video>
-                              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center group-hover:bg-opacity-30 transition-all">
-                                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M8 5v10l8-5-8-5z"/>
-                                </svg>
-                              </div>
-                            </div>
+                            <VideoThumbnail
+                              src={`/storage/${asset.file_path}`}
+                              fileType="video"
+                              className="w-20 h-16"
+                              onClick={() => openPreview(asset)}
+                              showPlayButton={true}
+                              alt="Video media"
+                              loading="lazy"
+                            />
                           ) : (
                             <img 
                               src={`/storage/${asset.file_path}`} 
                               alt="Media"
-                              className="w-full h-full object-cover"
+                              className="w-20 h-16 object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                                 const parent = target.parentElement;
                                 if (parent) {
                                   parent.innerHTML = `
-                                    <div class="w-full h-full bg-gray-100 flex items-center justify-center">
+                                    <div class="w-20 h-16 bg-gray-100 flex items-center justify-center">
                                       <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                       </svg>
@@ -669,11 +676,13 @@ const ManagementTable: React.FC<Props> = ({
                               }}
                             />
                           )}
-                        </button>
+                        </div>
                       ))}
-                      {getItemAssets(item).length > 4 && (
-                        <div className="w-16 h-16 rounded-lg bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-500">+{getItemAssets(item).length - 4}</span>
+                      {getItemAssets(item).length > 6 && (
+                        <div className="col-span-2 flex justify-center">
+                          <div className="w-20 h-16 rounded-lg bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                            <span className="text-xs text-gray-500">+{getItemAssets(item).length - 6} lainnya</span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -699,58 +708,33 @@ const ManagementTable: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Lightbox Modal */}
-      {lightboxMedia && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4" 
-          onClick={closeLightbox}
-        >
-          <div className="relative max-w-5xl max-h-full">
-            {lightboxMedia.type === 'video' ? (
-              <div className="relative">
-                <video 
-                  src={lightboxMedia.url}
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  controls
-                  autoPlay
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ maxHeight: '80vh' }}
-                />
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Video
-                </div>
-              </div>
+      {/* Asset Preview Modal */}
+      {previewAsset && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
+          <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
+            {previewAsset.file_type === 'video' ? (
+              <video
+                src={`/storage/${previewAsset.file_path}`}
+                controls
+                autoPlay
+                className="max-w-full max-h-[90vh] object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
             ) : (
-              <div className="relative">
-                <img 
-                  src={lightboxMedia.url}
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  alt="Media full size"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ maxHeight: '80vh' }}
-                />
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Gambar
-                </div>
-              </div>
+              <img 
+                src={`/storage/${previewAsset.file_path}`} 
+                className="max-w-full max-h-[90vh] object-contain" 
+                onClick={(e) => e.stopPropagation()}
+              />
             )}
-            <button
-              onClick={closeLightbox}
-              className="absolute top-4 right-4 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 transition-all z-10"
+            <button 
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+              onClick={() => setPreviewAsset(null)}
             >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg text-sm">
-              Klik di luar media untuk menutup
-            </div>
           </div>
         </div>
       )}
@@ -763,15 +747,100 @@ const ManagementTable: React.FC<Props> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             <span>
-              Menampilkan <span className="font-semibold text-gray-800">{filteredItems.length}</span> dari{' '}
-              <span className="font-semibold text-gray-800">{items.length}</span> total {title.toLowerCase()}
-              {filteredItems.length !== items.length && (
+              Menampilkan <span className="font-semibold text-gray-800">{startIndex + 1}-{Math.min(endIndex, totalItems)}</span> dari{' '}
+              <span className="font-semibold text-gray-800">{totalItems}</span> total {title.toLowerCase()}
+              {totalItems !== items.length && (
                 <span className="text-orange-600 font-medium"> (terfilter)</span>
               )}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 bg-white rounded-lg shadow-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Halaman <span className="font-semibold">{currentPage}</span> dari{' '}
+              <span className="font-semibold">{totalPages}</span>
+            </div>
+            
+            <div className="flex items-center space-x-1">
+              {/* Previous Button */}
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  currentPage === 1
+                    ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 bg-white border border-gray-300'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              {/* Page Numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first 2 pages, last 2 pages, current page, and pages around current
+                const showPage = page === 1 || 
+                  page === totalPages || 
+                  Math.abs(page - currentPage) <= 1;
+                
+                if (!showPage) {
+                  // Show ellipsis
+                  if (page === 2 && currentPage > 4) {
+                    return (
+                      <span key={page} className="px-3 py-2 text-sm text-gray-500">
+                        ...
+                      </span>
+                    );
+                  }
+                  if (page === totalPages - 1 && currentPage < totalPages - 3) {
+                    return (
+                      <span key={page} className="px-3 py-2 text-sm text-gray-500">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      page === currentPage
+                        ? 'text-white bg-red-600 hover:bg-red-700'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 bg-white border border-gray-300'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              {/* Next Button */}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  currentPage === totalPages
+                    ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 bg-white border border-gray-300'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

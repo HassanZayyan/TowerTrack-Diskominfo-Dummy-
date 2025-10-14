@@ -77,7 +77,7 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>{item.type}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-teal-50 text-teal-700'}`}>{item.type}</span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     <div>{item.towerName}</div>

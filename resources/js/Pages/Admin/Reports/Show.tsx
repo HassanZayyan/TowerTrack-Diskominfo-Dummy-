@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import VideoThumbnail from '@/Components/VideoThumbnail';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import { PageProps } from '@/types';
@@ -406,17 +407,15 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                             onClick={() => openLightbox(mediaUrl, 'image')}
                           />
                         ) : isVid ? (
-                          <div
-                            className="w-full h-32 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center cursor-pointer"
+                          <VideoThumbnail
+                            src={mediaUrl}
+                            fileType="video"
+                            className="w-full h-32 rounded-xl"
                             onClick={() => openLightbox(mediaUrl, 'video')}
-                          >
-                            <div className="text-center">
-                              <svg className="w-12 h-12 text-blue-600 mx-auto drop-shadow-md" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                              </svg>
-                              <span className="text-xs text-blue-700 font-medium">Play Video</span>
-                            </div>
-                          </div>
+                            showPlayButton={true}
+                            alt={`Video lampiran ${index + 1}`}
+                            loading="lazy"
+                          />
                         ) : (
                           <div className="w-full h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                             <div className="text-center">
@@ -677,14 +676,15 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                                       onClick={() => openLightbox(mediaUrl, 'image')}
                                     />
                                   ) : isVid ? (
-                                    <div 
-                                      className="w-full h-20 bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center"
+                                    <VideoThumbnail
+                                      src={mediaUrl}
+                                      fileType="video"
+                                      className="w-full h-20"
                                       onClick={() => openLightbox(mediaUrl, 'video')}
-                                    >
-                                      <svg className="w-8 h-8 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
+                                      showPlayButton={true}
+                                      alt={`Response video ${idx + 1}`}
+                                      loading="lazy"
+                                    />
                                   ) : (
                                     <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
                                       <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -727,7 +727,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
           className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
           onClick={() => setLightboxOpen(false)}
         >
-          <div className="relative max-w-4xl max-h-[90vh]">
+          <div className="relative max-w-5xl max-h-full">
             {lightboxType === 'image' ? (
               <img
                 src={lightboxSrc}
@@ -736,13 +736,22 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <video
-                src={lightboxSrc}
-                className="max-w-full max-h-full"
-                controls
-                autoPlay
-                onClick={(e) => e.stopPropagation()}
-              />
+              <div className="relative">
+                <video 
+                  src={lightboxSrc}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                  controls
+                  autoPlay
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxHeight: '80vh' }}
+                />
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Video
+                </div>
+              </div>
             )}
             <button
               className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-2"

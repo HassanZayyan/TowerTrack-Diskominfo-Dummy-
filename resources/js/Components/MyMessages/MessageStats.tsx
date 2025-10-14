@@ -26,8 +26,8 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       ),
-      gradient: 'from-blue-500 to-blue-600',
-      bgGradient: 'from-blue-50 to-blue-100'
+      gradient: 'from-red-500 to-red-600',
+      bgGradient: 'from-red-50 to-red-100'
     },
     {
       label: 'Menunggu',
@@ -48,8 +48,8 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
-      gradient: 'from-indigo-500 to-indigo-600',
-      bgGradient: 'from-indigo-50 to-indigo-100'
+      gradient: 'from-sky-500 to-sky-600',
+      bgGradient: 'from-sky-50 to-sky-100'
     },
     {
       label: 'Selesai',

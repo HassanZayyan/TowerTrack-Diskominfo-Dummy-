@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import VideoThumbnail from '@/Components/VideoThumbnail';
 
 
 interface FeedbackAsset {
@@ -94,10 +95,13 @@ const MediaPreview = ({ asset }: { asset: FeedbackAsset }) => {
   } else if (asset.file_type === 'video') {
     return (
       <div className="relative">
-        <video 
+        <VideoThumbnail
           src={fileUrl}
-          controls
-          className="w-full h-32 object-cover rounded-lg shadow-md"
+          fileType="video"
+          className="w-full h-32 rounded-lg shadow-md"
+          showPlayButton={true}
+          alt={asset.file_name}
+          loading="lazy"
         />
       </div>
     );

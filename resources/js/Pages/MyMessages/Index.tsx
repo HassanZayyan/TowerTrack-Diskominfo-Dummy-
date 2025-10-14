@@ -4,6 +4,7 @@ import MainLayout from '@/Layouts/MainLayout';
 import MessageTable from '@/Components/MyMessages/MessageTable';
 import MessageCard from '@/Components/MyMessages/MessageCard';
 import MessageStats from '@/Components/MyMessages/MessageStats';
+import VideoThumbnail from '@/Components/VideoThumbnail';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -240,24 +241,33 @@ export default function MyMessagesIndex({
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
         {assets.map((a, i) => (
-          <div key={i} className="rounded overflow-hidden border bg-black cursor-pointer" onClick={() => setPreviewAsset(a)}>
+          <div key={i} className="rounded overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200">
             {a.file_type === 'video' ? (
-              <div className="relative w-full h-40 bg-black">
-                <video
-                  src={`/storage/${a.file_path}#t=0.1`}
-                  preload="metadata"
-                  className="w-full h-full object-cover"
+              <VideoThumbnail
+                src={`/storage/${a.file_path}`}
+                fileType="video"
+                className="w-full h-40"
+                onClick={() => setPreviewAsset(a)}
+                showPlayButton={true}
+                alt={`Video attachment ${i + 1}`}
+                loading="lazy"
+              />
+            ) : (
+              <div className="relative w-full h-40 bg-gray-100">
+                <img 
+                  src={`/storage/${a.file_path}`} 
+                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                  alt={`Image attachment ${i + 1}`}
+                  loading="lazy"
+                  onClick={() => setPreviewAsset(a)}
+                  onError={(e) => {
+                    e.currentTarget.src = '/images/placeholder-image.png';
+                  }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                  <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M8 5v10l8-5-8-5z"/>
-                    </svg>
-                  </div>
+                <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                  🖼️ Image
                 </div>
               </div>
-            ) : (
-              <img src={`/storage/${a.file_path}`} className="w-full h-40 object-cover" />
             )}
           </div>
         ))}
@@ -272,8 +282,8 @@ export default function MyMessagesIndex({
     };
 
     return (
-      <div className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-xl shadow-lg border border-blue-100 p-8 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg">
+      <div className="bg-gradient-to-br from-teal-50 via-white to-teal-50 rounded-xl shadow-lg border border-teal-100 p-8 text-center">
+        <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg">
           <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
@@ -442,7 +452,7 @@ export default function MyMessagesIndex({
             <StaggeredContainer delay={200} animationType="scaleIn" duration={400}>
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5 sm:p-6 mb-6">
                 <div className="flex items-center gap-2 mb-5">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm">
+                  <div className="p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-sm">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
@@ -791,9 +801,9 @@ export default function MyMessagesIndex({
               </div>
               <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto bg-gray-50">
                 {/* Sender Information Card */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200 shadow-sm">
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-5 border border-teal-200 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                    <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-md">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -802,7 +812,7 @@ export default function MyMessagesIndex({
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
-                      <div className="text-xs font-medium text-blue-700 mb-1.5 flex items-center gap-1">
+                      <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
@@ -820,7 +830,7 @@ export default function MyMessagesIndex({
                       </div>
                     </div>
                     <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
-                      <div className="text-xs font-medium text-blue-700 mb-1.5 flex items-center gap-1">
+                      <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
@@ -832,7 +842,7 @@ export default function MyMessagesIndex({
                     </div>
                     {((detail.data as any).reporter_phone || (detail.data as any).sender_phone) && (
                       <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
-                        <div className="text-xs font-medium text-blue-700 mb-1.5 flex items-center gap-1">
+                        <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
@@ -844,7 +854,7 @@ export default function MyMessagesIndex({
                       </div>
                     )}
                     <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
-                      <div className="text-xs font-medium text-blue-700 mb-1.5 flex items-center gap-1">
+                      <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -985,24 +995,33 @@ export default function MyMessagesIndex({
                               {r.assets && r.assets.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                                   {r.assets.map((a: any, idx: number) => (
-                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-black cursor-pointer transform transition-transform hover:scale-105" onClick={() => setPreviewAsset(a)}>
+                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-white shadow-sm hover:shadow-md cursor-pointer transform transition-all duration-200">
                                       {a.file_type === 'video' ? (
-                                        <div className="relative w-full h-32 bg-black">
-                                          <video
-                                            src={`/storage/${a.file_path}#t=0.1`}
-                                            preload="metadata"
-                                            className="w-full h-full object-cover"
+                                        <VideoThumbnail
+                                          src={`/storage/${a.file_path}`}
+                                          fileType="video"
+                                          className="w-full h-32"
+                                          onClick={() => setPreviewAsset(a)}
+                                          showPlayButton={true}
+                                          alt={`Admin response video ${idx + 1}`}
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <div className="relative w-full h-32 bg-gray-100">
+                                          <img 
+                                            src={`/storage/${a.file_path}`} 
+                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                                            alt={`Admin response image ${idx + 1}`}
+                                            loading="lazy"
+                                            onClick={() => setPreviewAsset(a)}
+                                            onError={(e) => {
+                                              e.currentTarget.src = '/images/placeholder-image.png';
+                                            }}
                                           />
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                            <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
-                                              <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M8 5v10l8-5-8-5z"/>
-                                              </svg>
-                                            </div>
+                                          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                            🖼️ Image
                                           </div>
                                         </div>
-                                      ) : (
-                                        <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
                                       )}
                                     </div>
                                   ))}
@@ -1076,24 +1095,33 @@ export default function MyMessagesIndex({
                               {r.assets && r.assets.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                                   {r.assets.map((a: any, idx: number) => (
-                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-black cursor-pointer transform transition-transform hover:scale-105" onClick={() => setPreviewAsset(a)}>
+                                    <div key={idx} className="rounded-lg overflow-hidden border-2 border-indigo-200 bg-white shadow-sm hover:shadow-md cursor-pointer transform transition-all duration-200">
                                       {a.file_type === 'video' ? (
-                                        <div className="relative w-full h-32 bg-black">
-                                          <video
-                                            src={`/storage/${a.file_path}#t=0.1`}
-                                            preload="metadata"
-                                            className="w-full h-full object-cover"
+                                        <VideoThumbnail
+                                          src={`/storage/${a.file_path}`}
+                                          fileType="video"
+                                          className="w-full h-32"
+                                          onClick={() => setPreviewAsset(a)}
+                                          showPlayButton={true}
+                                          alt={`Admin response video ${idx + 1}`}
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <div className="relative w-full h-32 bg-gray-100">
+                                          <img 
+                                            src={`/storage/${a.file_path}`} 
+                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                                            alt={`Admin response image ${idx + 1}`}
+                                            loading="lazy"
+                                            onClick={() => setPreviewAsset(a)}
+                                            onError={(e) => {
+                                              e.currentTarget.src = '/images/placeholder-image.png';
+                                            }}
                                           />
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                            <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
-                                              <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M8 5v10l8-5-8-5z"/>
-                                              </svg>
-                                            </div>
+                                          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                            🖼️ Image
                                           </div>
                                         </div>
-                                      ) : (
-                                        <img src={`/storage/${a.file_path}`} className="w-full h-32 object-cover" />
                                       )}
                                     </div>
                                   ))}

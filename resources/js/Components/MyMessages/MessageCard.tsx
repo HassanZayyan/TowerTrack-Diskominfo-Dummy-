@@ -36,7 +36,7 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen }
                 Guest
               </span>
             )}
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-teal-50 text-teal-700'}`}>
               {item.type}
             </span>
           </div>
