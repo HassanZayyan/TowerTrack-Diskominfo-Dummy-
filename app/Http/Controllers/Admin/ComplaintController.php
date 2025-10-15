@@ -17,10 +17,8 @@ class ComplaintController extends Controller
                 'tower:id,site_name,alamat_menara', 
                 'images:id,report_id,file_path,file_type', 
                 'user:id,name,email',
-                'status:id,name,slug,color,icon',
-                'responses' => function($query) {
-                    $query->with(['statuses:id,name,slug,color,icon']);
-                }
+                'responses.user:id,name',
+                'responses.assets:id,report_response_id,file_path,file_type'
             ])
             ->orderByDesc('created_at')
             ->get();
@@ -43,25 +41,43 @@ class ComplaintController extends Controller
         ]);
     }
 
+    public function show(Report $report)
+    {
+        $report->load([
+            'tower:id,site_name,alamat_menara',
+            'user:id,name,email',
+            'images',
+            'responses.user:id,name',
+            'responses.assets'
+        ]);
+
+        return Inertia::render('Admin/Reports/Show', [
+            'report' => $report
+        ]);
+    }
+
     public function respond(Request $request, Report $report)
     {
         $validated = $request->validate([
-            'message' => 'required|string|max:1000',
+            'message' => 'nullable|string|max:1000',
             'status_id' => 'required',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'videos.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
         try {
-            // Create response first
-            $response = ReportResponse::create([
-                'report_id' => $report->id,
-                'user_id' => $request->user()->id,
-                'message' => $validated['message'],
-            ]);
+            // Create response only if there's a message
+            $response = null;
+            if (!empty($validated['message'])) {
+                $response = ReportResponse::create([
+                    'report_id' => $report->id,
+                    'user_id' => $request->user()->id,
+                    'message' => $validated['message'],
+                ]);
+            }
             
-            // Process images
-            if ($request->hasFile('images')) {
+            // Process images only if there's a response
+            if ($response && $request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $filePath = $image->store('admin-response-photos', 'public');
                     $fileType = 'image';
@@ -77,8 +93,8 @@ class ComplaintController extends Controller
                 }
             }
             
-            // Process videos
-            if ($request->hasFile('videos')) {
+            // Process videos only if there's a response
+            if ($response && $request->hasFile('videos')) {
                 foreach ($request->file('videos') as $video) {
                     $filePath = $video->store('admin-response-videos', 'public');
                     $fileType = 'video';
@@ -94,8 +110,8 @@ class ComplaintController extends Controller
                 }
             }
 
-            // Set the status for this response if the method exists
-            if (method_exists($response, 'setStatus')) {
+            // Set the status for this response if the method exists and response exists
+            if ($response && method_exists($response, 'setStatus')) {
                 $response->setStatus($validated['status_id']);
             }
             
@@ -106,8 +122,8 @@ class ComplaintController extends Controller
             // Log the error
             \Log::error('Error responding to complaint: ' . $e->getMessage());
             
-            // If response creation failed, try again without additional processing
-            if (!isset($response)) {
+            // If response creation failed and there was supposed to be a message, try again
+            if (!isset($response) && !empty($validated['message'])) {
                 $response = ReportResponse::create([
                     'report_id' => $report->id,
                     'user_id' => $request->user()->id,
@@ -127,7 +143,7 @@ class ComplaintController extends Controller
 
         // Ubah slug ke id status
         $statusSlug = $validated['status_id'];
-        $statusModel = \App\Models\Status::where('slug', $statusSlug)->first();
+        $statusModel = Status::where('slug', $statusSlug)->first();
         $statusId = $statusModel ? $statusModel->id : $validated['status_id'];
 
         try {

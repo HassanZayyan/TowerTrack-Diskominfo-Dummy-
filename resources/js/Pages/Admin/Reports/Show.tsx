@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import VideoThumbnail from '@/Components/VideoThumbnail';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
+import { PageProps } from '@/types';
 
-interface FeedbackAsset {
+interface ReportAsset {
   id: number;
   file_path: string;
   file_type: string;
@@ -24,29 +25,29 @@ interface Tower {
   alamat_menara?: string;
 }
 
-interface FeedbackResponseAsset {
+interface ReportResponseAsset {
   id: number;
   file_path: string;
   file_type: string;
   mime_type?: string;
 }
 
-interface FeedbackResponse {
+interface ReportResponse {
   id: number;
-  feedback_id: number;
+  report_id: number;
   user_id: number;
   message: string;
   created_at: string;
   user?: User;
-  assets?: FeedbackResponseAsset[];
+  assets?: ReportResponseAsset[];
 }
 
-interface Feedback {
+interface Report {
   id: number;
   tower_id: number | null;
   user_id: number;
-  sender_phone: string;
-  sender_name?: string;
+  reporter_phone: string;
+  reporter_name?: string;
   category: string;
   message: string;
   status: string;
@@ -54,34 +55,30 @@ interface Feedback {
   updated_at: string;
   user?: User;
   tower?: Tower;
-  assets?: FeedbackAsset[];
-  responses?: FeedbackResponse[];
+  images?: ReportAsset[];
+  responses?: ReportResponse[];
 }
 
-interface Props {
-  feedback: Feedback;
+interface Props extends PageProps {
+  report: Report;
 }
 
-const FeedbackShow: React.FC<Props> = ({ feedback }) => {
-  // Fungsi untuk mengekstrak nama pengirim dari kategori
-  const extractSenderName = (category: string): { name: string; category: string } => {
-    const match = category.match(/\[Dari:\s(.+?)\]$/);
-    if (match && match[1]) {
-      return {
-        name: match[1],
-        category: category.replace(/\s*\[Dari:\s(.+?)\]$/, '')
-      };
-    }
-    return { name: '', category };
-  };
-
+const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
+  const { props } = usePage<Props>();
+  const report = props.report;
+  
   const [replyMessage, setReplyMessage] = useState('');
-  const [replyStatus, setReplyStatus] = useState(feedback.status);
+  const [replyStatus, setReplyStatus] = useState(report.status);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState('');
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Sync replyStatus with report status from server
+  useEffect(() => {
+    setReplyStatus(report.status);
+  }, [report.status]);
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -112,6 +109,32 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // First update the status if it has changed
+    if (replyStatus !== report.status) {
+      router.put(route('admin.complaints.updateStatus', report.id), {
+        status_id: replyStatus,
+      }, {
+        onSuccess: () => {
+          // After status update, send the response if there's a message
+          if (replyMessage.trim()) {
+            sendResponse();
+          } else {
+            setIsSubmitting(false);
+          }
+        },
+        onError: () => {
+          setIsSubmitting(false);
+        }
+      });
+    } else if (replyMessage.trim()) {
+      // If status hasn't changed but there's a message, send response directly
+      sendResponse();
+    } else {
+      setIsSubmitting(false);
+    }
+  };
+
+  const sendResponse = () => {
     const formData = new FormData();
     formData.append('message', replyMessage);
     formData.append('status_id', replyStatus);
@@ -125,7 +148,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       }
     });
     
-    router.post(route('admin.feedbacks.respond', feedback.id), formData, {
+    router.post(route('admin.complaints.respond', report.id), formData, {
       forceFormData: true,
       onSuccess: () => {
         setReplyMessage('');
@@ -190,8 +213,8 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
   };
 
   return (
-    <AdminLayout title="Detail Masukan">
-      <Head title="Detail Masukan" />
+    <AdminLayout title="Detail Keluhan">
+      <Head title="Detail Keluhan" />
       
       {/* Back button */}
       <StaggeredContainer delay={0} animationType="fadeInLeft" duration={400}>
@@ -200,45 +223,45 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
             variant="outline"
             size="md"
             animation="scale"
-            onClick={() => router.visit(route('admin.messages.index', { tab: 'feedbacks' }))}
+            onClick={() => router.visit(route('admin.messages.index', { tab: 'complaints' }))}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
             }
-            className="border-blue-500 text-blue-700 hover:bg-blue-600 hover:text-white"
+            className="border-red-500 text-red-700 hover:bg-red-600 hover:text-white"
           >
-            Kembali ke Daftar Masukan
+            Kembali ke Daftar Keluhan
           </AnimatedButton>
         </div>
       </StaggeredContainer>
 
       <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
-        <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50 border border-blue-100">
+        <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
           {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-red-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
           
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md">
+                <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-700 to-blue-600 bg-clip-text text-transparent">
-                    Detail Masukan #{feedback.id}
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent">
+                    Detail Keluhan #{report.id}
                   </h1>
                   <p className="text-sm text-gray-600 mt-1">
-                    Dikirim: {formatDate(feedback.created_at)}
+                    Dikirim: {formatDate(report.created_at)}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-600 font-medium">Status:</span>
-                {getStatusBadge(feedback.status)}
+                {getStatusBadge(report.status)}
               </div>
             </div>
           </div>
@@ -246,7 +269,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       </StaggeredContainer>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Feedback details */}
+        {/* Left column - Report details */}
         <div className="lg:col-span-2 space-y-6">
           <StaggeredContainer delay={200} animationType="fadeInUp" duration={500}>
             {/* Sender Information Card */}
@@ -257,41 +280,41 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Informasi Pengirim</h3>
+                <h3 className="text-lg font-bold text-gray-900">Informasi Pelapor</h3>
               </div>
               
               <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
-                <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-4 ring-white">
+                <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg ring-4 ring-white">
                   <span className="text-white font-bold text-2xl">
-                    {(feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || '?').charAt(0).toUpperCase()}
+                    {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || 'Pengguna'}
+                    {report.reporter_name || report.user?.name || 'Anonim'}
                   </h2>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
-                      <span className="font-medium">{feedback.sender_phone || '-'}</span>
+                      <span className="font-medium">{report.reporter_phone || '-'}</span>
                     </div>
-                    {feedback.user?.email && (
+                    {report.user?.email && (
                       <>
                         <span className="hidden sm:inline text-gray-400">•</span>
                         <div className="flex items-center gap-1">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
-                          <span className="font-medium">{feedback.user?.email}</span>
+                          <span className="font-medium">{report.user?.email}</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
-                <span className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
-                  {extractSenderName(feedback.category).category}
+                <span className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-red-100 text-red-800 border border-red-200 shadow-sm">
+                  {report.category}
                 </span>
               </div>
             </div>
@@ -306,16 +329,16 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Pesan Masukan</h3>
+                <h3 className="text-lg font-bold text-gray-900">Pesan Keluhan</h3>
               </div>
-              <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gradient-to-br from-green-50 to-white p-5 rounded-lg border border-green-100">
-                {feedback.message}
+              <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gradient-to-br from-gray-50 to-white p-5 rounded-lg border border-gray-200">
+                {report.message}
               </div>
             </div>
           </StaggeredContainer>
 
           {/* Tower Information */}
-          {feedback.tower && (
+          {report.tower && (
             <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
                 <div className="flex items-center gap-2 mb-4">
@@ -332,19 +355,19 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                     <div>
-                      <p className="text-xs text-purple-700 mb-1 font-medium">Nama Site</p>
-                      <p className="text-base font-bold text-gray-900">{feedback.tower.site_name}</p>
+                      <p className="text-xs text-gray-600 mb-1 font-medium">Nama Site</p>
+                      <p className="text-base font-bold text-gray-900">{report.tower.site_name}</p>
                     </div>
                   </div>
-                  {feedback.tower.alamat_menara && (
+                  {report.tower.alamat_menara && (
                     <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
                       <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <div>
-                        <p className="text-xs text-purple-700 mb-1 font-medium">Alamat</p>
-                        <p className="text-sm text-gray-700 leading-relaxed">{feedback.tower.alamat_menara}</p>
+                        <p className="text-xs text-gray-600 mb-1 font-medium">Alamat</p>
+                        <p className="text-sm text-gray-700">{report.tower.alamat_menara}</p>
                       </div>
                     </div>
                   )}
@@ -354,7 +377,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
           )}
 
           {/* Attached Media */}
-          {feedback.assets && feedback.assets.length > 0 && (
+          {report.images && report.images.length > 0 && (
             <StaggeredContainer delay={350} animationType="fadeInUp" duration={500}>
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
                 <div className="flex items-center gap-2 mb-4">
@@ -365,11 +388,11 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                   </div>
                   <h3 className="text-lg font-bold text-gray-900">Media Lampiran</h3>
                   <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {feedback.assets.length} file
+                    {report.images.length} file
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {feedback.assets.map((asset, index) => {
+                  {report.images.map((asset, index) => {
                     const mediaUrl = getMediaUrl(asset.file_path);
                     const isImg = isImage(asset.file_path, asset.file_type);
                     const isVid = isVideo(asset.file_path, asset.file_type);
@@ -422,6 +445,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
               </div>
             </StaggeredContainer>
           )}
+
         </div>
 
         {/* Right column - Reply form and previous responses */}
@@ -435,11 +459,11 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Balas Masukan</h3>
+                <h3 className="text-lg font-bold text-gray-900">Balas Keluhan</h3>
               </div>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label htmlFor="status" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <label htmlFor="status" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -466,7 +490,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <label htmlFor="message" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
@@ -479,8 +503,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     rows={6}
                     maxLength={1000}
                     className="w-full border-2 border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 p-3 transition-all duration-200 hover:border-indigo-300"
-                    placeholder="Tulis balasan untuk masukan ini..."
-                    required
+                    placeholder="Tulis balasan untuk keluhan ini... (opsional jika hanya ingin update status)"
                   ></textarea>
                   <div className="flex items-center justify-between mt-2">
                     <div className="text-xs text-gray-500">
@@ -493,7 +516,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -567,7 +590,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     size="lg"
                     animation="glow"
                     fullWidth
-                    disabled={isSubmitting || !replyMessage.trim()}
+                    disabled={isSubmitting || (!replyMessage.trim() && replyStatus === report.status)}
                     loading={isSubmitting}
                     icon={
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -575,7 +598,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                       </svg>
                     }
                   >
-                    {isSubmitting ? 'Mengirim...' : 'Kirim Balasan'}
+                    {isSubmitting ? 'Memproses...' : (replyMessage.trim() ? 'Kirim Balasan' : 'Update Status')}
                   </AnimatedButton>
                 </div>
               </form>
@@ -592,19 +615,19 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">Riwayat Balasan</h3>
-                {feedback.responses && feedback.responses.length > 0 && (
+                {report.responses && report.responses.length > 0 && (
                   <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {feedback.responses.length} balasan
+                    {report.responses.length} balasan
                   </span>
                 )}
               </div>
               
-              {feedback.responses && feedback.responses.length > 0 ? (
+              {report.responses && report.responses.length > 0 ? (
                 <div className="relative space-y-4 max-h-[600px] overflow-y-auto pr-2">
                   {/* Timeline line */}
                   <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-cyan-200 via-cyan-300 to-cyan-200"></div>
                   
-                  {feedback.responses.map((response, index) => (
+                  {report.responses.map((response, index) => (
                     <div key={response.id} className="relative pl-12">
                       {/* Timeline dot */}
                       <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-white shadow-md z-10"></div>
@@ -689,7 +712,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     Belum Ada Balasan
                   </p>
                   <p className="text-sm text-gray-500">
-                    Kirim balasan pertama untuk masukan ini
+                    Kirim balasan pertama untuk keluhan ini
                   </p>
                 </div>
               )}
@@ -745,4 +768,5 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
   );
 };
 
-export default FeedbackShow;
+export default ReportShow;
+

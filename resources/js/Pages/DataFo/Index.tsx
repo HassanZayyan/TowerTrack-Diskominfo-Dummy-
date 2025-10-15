@@ -128,15 +128,16 @@ interface FoPoint {
 interface FoRoute {
   id: number;
   name: string;
+  area: string;
+  status: string;
   color: string;
   total_distance: number;
   total_points: number;
   description: string;
-  path_coordinates: Array<{ lat: number; lng: number }>;
-  polyline: Array<[number, number]>;
-  // Legacy properties for compatibility
-  area?: string;
-  status?: string;
+  routing_service?: string | null;
+  // Polyline data excluded from initial load - loaded on-demand
+  path_coordinates?: Array<{ lat: number; lng: number }>;
+  polyline?: Array<[number, number]>;
   coordinates?: Array<[number, number]>;
 }
 
@@ -207,6 +208,11 @@ export default function DataFoIndex({
   const [mapCenter, setMapCenter] = useState<[number, number]>([-7.1368, 110.4044]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Lazy loading state for routes
+  const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
+  const [loadedRoutes, setLoadedRoutes] = useState<Map<number, any>>(new Map());
+  const [loadingRoutes, setLoadingRoutes] = useState<Set<number>>(new Set());
 
   // Use data from Inertia props with fallback
   const currentMapData = mapData || {
@@ -281,9 +287,9 @@ export default function DataFoIndex({
     has_images: Boolean(point.has_images)
   })) || [];
 
-  const filteredRoutes = currentMapData.routes?.filter(route => {
-    // Validate route data
-    if (!route || !Array.isArray(route.polyline)) {
+  const filteredRoutes: FoRoute[] = currentMapData.routes?.filter(route => {
+    // Routes are now simple metadata without polylines
+    if (!route) {
       return false;
     }
     
@@ -291,18 +297,20 @@ export default function DataFoIndex({
                          route.description?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   }).map(route => ({
-    ...route,
+    id: route.id,
     area: selectedArea,
     status: 'active',
-    coordinates: route.polyline || [],
     // Ensure all required fields exist with proper types
     name: route.name || 'Unnamed Route',
     color: route.color || '#3B82F6',
     total_distance: typeof route.total_distance === 'number' ? route.total_distance : 0,
     total_points: typeof route.total_points === 'number' ? route.total_points : 0,
     description: route.description || 'No description available',
-    polyline: Array.isArray(route.polyline) ? route.polyline : [],
-    path_coordinates: Array.isArray(route.path_coordinates) ? route.path_coordinates : []
+    routing_service: route.routing_service || null,
+    // Optional fields not included in initial load
+    coordinates: undefined,
+    polyline: undefined,
+    path_coordinates: undefined,
   })) || [];
 
   const handleAreaChange = (area: string) => {
@@ -468,6 +476,161 @@ export default function DataFoIndex({
     setDetailData(null);
     setDetailLoading(false);
   };
+
+  // Load route polyline on-demand with persistent sessionStorage cache
+  const loadRoutePolyline = async (routeId: number) => {
+    // Step 1: Check if already loaded in memory (fastest)
+    if (loadedRoutes.has(routeId)) {
+      console.log(`✅ Route ${routeId} already loaded from memory cache (0 tokens)`);
+      return;
+    }
+
+    // Step 2: Check sessionStorage cache (fast, persists across page navigation)
+    try {
+      const cacheKey = `fo_route_cache_${routeId}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        
+        // Check if cache is still valid (24 hours)
+        const age = Date.now() - timestamp;
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (age < maxAge) {
+          // Restore from sessionStorage cache
+          setLoadedRoutes(prev => {
+            const newMap = new Map(prev);
+            newMap.set(routeId, data);
+            return newMap;
+          });
+          
+          console.log(`✅ Route ${routeId} restored from sessionStorage (age: ${Math.round(age / 1000 / 60)} minutes)`);
+          
+          setToast({
+            show: true,
+            type: 'success',
+            title: '⚡ Jalur Dimuat',
+            message: `Jalur "${data.name}" berhasil dimuat`
+          });
+          
+          return; // Don't fetch from API
+        } else {
+          // Cache expired, remove it
+          sessionStorage.removeItem(cacheKey);
+          console.log(`🗑️ Expired cache removed for route ${routeId}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`Failed to check sessionStorage for route ${routeId}:`, e);
+    }
+
+    // Step 3: Check if already loading
+    if (loadingRoutes.has(routeId)) {
+      console.log(`⏳ Route ${routeId} is already being loaded`);
+      return;
+    }
+
+    // Step 4: Fetch from API (will generate if needed)
+    try {
+      // Add to loading set
+      setLoadingRoutes(prev => new Set(prev).add(routeId));
+
+      console.log(`🌐 Loading polyline for route ${routeId} from API...`);
+      const response = await fetch(`/api/fo-routes/${routeId}/polyline`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Add to loaded routes cache (persists in session)
+        setLoadedRoutes(prev => {
+          const newMap = new Map(prev);
+          newMap.set(routeId, result.data);
+          return newMap;
+        });
+
+        // Also persist to sessionStorage for cross-page navigation
+        try {
+          const cacheKey = `fo_route_cache_${routeId}`;
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            data: result.data,
+            timestamp: Date.now(),
+          }));
+        } catch (e) {
+          console.warn('Failed to persist to sessionStorage:', e);
+        }
+
+        console.log(`Route ${routeId} loaded successfully`, result.data);
+        
+        // Show different message based on generation status
+        const wasGenerated = result.data.was_generated_on_demand || false;
+        
+        setToast({
+          show: true,
+          type: 'success',
+          title: wasGenerated ? '✅ Jalur Berhasil Dimuat' : '⚡ Jalur Dimuat',
+          message: wasGenerated 
+            ? `Jalur "${result.data.name}" berhasil dimuat`
+            : `Jalur "${result.data.name}" dimuat dengan cepat`
+        });
+      } else {
+        console.error(`Failed to load route ${routeId}:`, result.message);
+        setToast({
+          show: true,
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal memuat jalur'
+        });
+      }
+    } catch (error) {
+      console.error(`Error loading route ${routeId}:`, error);
+      setToast({
+        show: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Terjadi kesalahan saat memuat jalur'
+      });
+    } finally {
+      // Remove from loading set
+      setLoadingRoutes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(routeId);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle route selection from dropdown
+  const handleRouteSelection = (routeId: number) => {
+    const isSelected = selectedRouteIds.includes(routeId);
+    
+    if (isSelected) {
+      // Unselect route
+      setSelectedRouteIds(prev => prev.filter(id => id !== routeId));
+    } else {
+      // Select route and load its polyline
+      setSelectedRouteIds(prev => [...prev, routeId]);
+      loadRoutePolyline(routeId);
+    }
+  };
+
+  // Toggle all routes
+  const handleToggleAllRoutes = () => {
+    if (selectedRouteIds.length === currentMapData.routes.length) {
+      // Unselect all
+      setSelectedRouteIds([]);
+    } else {
+      // Select all and load all routes
+      const allRouteIds = currentMapData.routes.map((r: any) => r.id);
+      setSelectedRouteIds(allRouteIds);
+      
+      // Load all routes that aren't already loaded
+      allRouteIds.forEach((id: number) => {
+        if (!loadedRoutes.has(id)) {
+          loadRoutePolyline(id);
+        }
+      });
+    }
+  };
   
 
 
@@ -502,6 +665,47 @@ export default function DataFoIndex({
       setMapCenter([centerLat, centerLng]);
     }
   }, [currentMapData.bounds]);
+
+  // Restore cached routes from sessionStorage on mount (persists across page navigation)
+  useEffect(() => {
+    const restoreCache = () => {
+      const restoredRoutes = new Map<number, any>();
+      let restoredCount = 0;
+
+      // Try to restore each route from sessionStorage
+      currentMapData.routes.forEach((route: any) => {
+        try {
+          const cacheKey = `fo_route_cache_${route.id}`;
+          const cached = sessionStorage.getItem(cacheKey);
+          
+          if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            
+            // Check if cache is still valid (24 hours = 86400000 ms)
+            const age = Date.now() - timestamp;
+            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+            
+            if (age < maxAge) {
+              restoredRoutes.set(route.id, data);
+              restoredCount++;
+            } else {
+              // Cache expired, remove it
+              sessionStorage.removeItem(cacheKey);
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to restore cache for route ${route.id}:`, e);
+        }
+      });
+
+      if (restoredCount > 0) {
+        setLoadedRoutes(restoredRoutes);
+        console.log(`✅ Restored ${restoredCount} routes from sessionStorage cache (persists across page navigation)`);
+      }
+    };
+
+    restoreCache();
+  }, [currentMapData.routes]);
 
   // Force map refresh when area changes
   useEffect(() => {
@@ -597,37 +801,128 @@ export default function DataFoIndex({
         {/* Map Section */}
         <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
           <div className="bg-white rounded-lg shadow mb-6 overflow-hidden" data-section="map">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
-              <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
+                <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={handleExport}
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
+                  title="Export data ke CSV"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export
+                </button>
+                <button 
+                  onClick={handleFullscreen}
+                  className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center gap-2" 
+                  style={{ backgroundColor: '#B71C1C' }}
+                  title={isFullscreen ? "Keluar dari fullscreen" : "Masuk ke mode fullscreen"}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {isFullscreen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    )}
+                  </svg>
+                  {isFullscreen ? 'Exit' : 'Fullscreen'}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={handleExport}
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
-                title="Export data ke CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export
-              </button>
-              <button 
-                onClick={handleFullscreen}
-                className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center gap-2" 
-                style={{ backgroundColor: '#B71C1C' }}
-                title={isFullscreen ? "Keluar dari fullscreen" : "Masuk ke mode fullscreen"}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isFullscreen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+
+            {/* Route Selection Dropdown */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-1">
+                    📍 Pilih Jalur FO untuk Ditampilkan
+                  </h4>
+                  <p className="text-xs text-gray-600">
+                    Klik jalur di bawah untuk menampilkan jalur fiber optic di peta
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleAllRoutes}
+                  className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90 transition-all flex items-center gap-1 shadow-sm"
+                  style={{ backgroundColor: '#B71C1C' }}
+                  title={selectedRouteIds.length === currentMapData.routes.length ? "Sembunyikan semua jalur" : "Tampilkan semua jalur"}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {selectedRouteIds.length === currentMapData.routes.length ? 'Sembunyikan Semua' : 'Tampilkan Semua'}
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {currentMapData.routes.map((route: any) => {
+                  const isSelected = selectedRouteIds.includes(route.id);
+                  const isLoading = loadingRoutes.has(route.id);
+                  const isLoaded = loadedRoutes.has(route.id);
+                  
+                  return (
+                    <button
+                      key={route.id}
+                      onClick={() => handleRouteSelection(route.id)}
+                      disabled={isLoading}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'bg-white border-2 shadow-sm'
+                          : 'bg-white border border-gray-200 hover:bg-gray-50'
+                      } ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                      style={{
+                        borderColor: isSelected ? route.color : undefined
+                      }}
+                      title={`${route.name} - ${route.total_distance?.toFixed(1) || 0} km`}
+                    >
+                      <div
+                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: route.color || '#3B82F6' }}
+                      />
+                      <span className="flex-1 text-left truncate text-gray-900">{route.name}</span>
+                      {isLoading && (
+                        <div className="flex items-center gap-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                          <span className="text-xs text-gray-500">Loading...</span>
+                        </div>
+                      )}
+                      {isSelected && isLoaded && (
+                        <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedRouteIds.length > 0 && (
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <div className="text-gray-700">
+                    <span className="font-semibold text-sm">{selectedRouteIds.length}</span>
+                    <span className="text-gray-600"> dari {currentMapData.routes.length} jalur ditampilkan</span>
+                    {loadingRoutes.size > 0 && (
+                      <span className="text-blue-600 ml-2">
+                        • <span className="animate-pulse font-medium">{loadingRoutes.size} sedang dimuat...</span>
+                      </span>
+                    )}
+                  </div>
+                  {loadedRoutes.size > 0 && (
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>{loadedRoutes.size} siap ditampilkan</span>
+                    </div>
                   )}
-                </svg>
-                {isFullscreen ? 'Exit' : 'Fullscreen'}
-              </button>
+                </div>
+              )}
             </div>
           </div>
           
@@ -666,11 +961,14 @@ export default function DataFoIndex({
                 {/* Auto-fit bounds */}
                 {currentMapData.bounds && <FitBounds bounds={currentMapData.bounds} />}
                 
-                 {/* Render FO Routes (Polylines) - Render first so they appear below markers */}
-                 {filteredRoutes.map((route) => {
+                 {/* Render FO Routes (Polylines) - Only selected and loaded routes */}
+                 {Array.from(loadedRoutes.entries()).map(([routeId, routeData]) => {
+                   // Only render if selected
+                   if (!selectedRouteIds.includes(routeId)) return null;
+
                    // Validate polyline data before rendering
-                   const validPolyline = Array.isArray(route.polyline) && route.polyline.length > 0 
-                     ? route.polyline.filter((coord: any) => 
+                   const validPolyline = Array.isArray(routeData.polyline) && routeData.polyline.length > 0 
+                     ? routeData.polyline.filter((coord: any) => 
                          Array.isArray(coord) && coord.length === 2 && 
                          typeof coord[0] === 'number' && typeof coord[1] === 'number' &&
                          !isNaN(coord[0]) && !isNaN(coord[1])
@@ -681,38 +979,40 @@ export default function DataFoIndex({
                    
                    return (
                      <Polyline
-                       key={route.id}
+                       key={routeData.id}
                        positions={validPolyline}
                        pathOptions={{
-                         color: route.color || '#3B82F6',
+                         color: routeData.color || '#3B82F6',
                          weight: 4,
                          opacity: 0.8,
                        }}
                        eventHandlers={{
                          click: () => {
-                           console.log('Route clicked:', route.name);
-                           setSelectedRoute(route);
+                           console.log('Route clicked:', routeData.name);
+                           setSelectedRoute(routeData);
                          }
                        }}
                      >
                     <Popup maxWidth={300}>
                       <div className="p-3 min-w-[250px]">
-                        <h4 className="font-semibold text-sm text-gray-900 mb-2">{route.name}</h4>
-                        <p className="text-xs text-gray-600 mb-3">{route.description}</p>
+                        <h4 className="font-semibold text-sm text-gray-900 mb-2">{routeData.name}</h4>
+                        <p className="text-xs text-gray-600 mb-3">{routeData.description}</p>
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                             <span className="text-xs text-gray-500">Total Titik:</span>
-                            <span className="text-xs font-medium">{route.total_points}</span>
+                            <span className="text-xs font-medium">{routeData.total_points}</span>
                           </div>
                            <div className="flex justify-between items-center">
                              <span className="text-xs text-gray-500">Jarak Total:</span>
                              <span className="text-xs font-medium">
-                               {typeof route.total_distance === 'number' ? route.total_distance.toFixed(2) : '0.00'} km
+                               {typeof routeData.total_distance === 'number' ? routeData.total_distance.toFixed(2) : '0.00'} km
                              </span>
                            </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: route.color }}></div>
-                            <span className="text-xs text-gray-500">Jalur Aktif</span>
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: routeData.color }}></div>
+                            <span className="text-xs text-gray-500">
+                              {routeData.has_geojson ? 'Routing Optimal' : 'Jalur Aktif'}
+                            </span>
                           </div>
                         </div>
                       </div>

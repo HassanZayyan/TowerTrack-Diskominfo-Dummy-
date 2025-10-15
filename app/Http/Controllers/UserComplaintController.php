@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ReportAsset;
 use App\Models\Tower;
+use App\Services\LocationSecurityService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -46,14 +47,18 @@ class UserComplaintController extends Controller
         try {
             $validated = $request->validate([
                 'nama' => 'nullable|string|max:255',
-                'telepon' => 'required|string|max:20',
+                'telepon' => 'required|string|max:20', // Phone number is required for all users
                 'kategori' => 'required|string|max:100',
                 'lokasi_tower' => 'required|string|max:255',
                 'tower_id' => 'required|exists:towers,id',
                 'pesan' => 'required|string|max:1000',
                 'email' => auth()->check() && auth()->user()->isComplainant() 
                     ? 'prohibited' // Email not allowed for authenticated complainant users
-                    : 'nullable|email|max:255', // Email allowed for anonymous users
+                    : 'required|email|max:255', // Email now required for anonymous users
+                'is_public' => 'required|boolean', // Visibility option
+                'reporter_latitude' => 'nullable|numeric|between:-90,90',
+                'reporter_longitude' => 'nullable|numeric|between:-180,180',
+                'reporter_accuracy' => 'nullable|numeric|min:0|max:10000',
                 'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
                 'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
                 'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -78,8 +83,32 @@ class UserComplaintController extends Controller
             $email = $validated['email'] ?? null;
         }
 
+        // Handle reporter coordinates if provided
+        $locationData = [];
+        \Log::info('Received coordinates:', [
+            'reporter_latitude' => $validated['reporter_latitude'] ?? 'not provided',
+            'reporter_longitude' => $validated['reporter_longitude'] ?? 'not provided',
+            'reporter_accuracy' => $validated['reporter_accuracy'] ?? 'not provided'
+        ]);
+        
+        if (!empty($validated['reporter_latitude']) && !empty($validated['reporter_longitude'])) {
+            try {
+                $locationData = LocationSecurityService::validateCoordinates(
+                    (float) $validated['reporter_latitude'],
+                    (float) $validated['reporter_longitude'],
+                    isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
+                );
+                \Log::info('Coordinates validated successfully:', $locationData);
+            } catch (\InvalidArgumentException $e) {
+                \Log::warning('Invalid coordinates provided: ' . $e->getMessage());
+                // Continue without coordinates rather than failing the request
+            }
+        } else {
+            \Log::info('No coordinates provided in request');
+        }
+
         // Always set status_id to 1 (pending) for new complaints
-        $report = Report::create([
+        $reportData = [
             'tower_id' => $validated['tower_id'],
             'user_id' => $userId,
             'email' => $email,
@@ -87,7 +116,24 @@ class UserComplaintController extends Controller
             'reporter_phone' => $validated['telepon'],
             'category' => $validated['kategori'],
             'message' => $validated['pesan'],
+            'is_public' => $validated['is_public'] ?? false,
             'status_id' => 1, // 1 = pending
+        ];
+
+        // Merge location data if available
+        if (!empty($locationData)) {
+            $reportData = array_merge($reportData, $locationData);
+            \Log::info('Report data with coordinates:', $reportData);
+        } else {
+            \Log::info('Report data without coordinates:', $reportData);
+        }
+
+        $report = Report::create($reportData);
+        \Log::info('Report created with ID: ' . $report->id, [
+            'reporter_latitude' => $report->reporter_latitude,
+            'reporter_longitude' => $report->reporter_longitude,
+            'reporter_accuracy' => $report->reporter_accuracy,
+            'location_captured_at' => $report->location_captured_at
         ]);
 
         // Handle uploads (images and/or videos) submitted under "foto" or a generic "assets" key
@@ -156,7 +202,10 @@ class UserComplaintController extends Controller
 
         $message = auth()->check() 
             ? 'Keluhan berhasil dikirim! Terima kasih atas laporan Anda.'
-            : 'Keluhan berhasil dikirim! Gunakan email Anda untuk melihat status dan respons.';
+            : 'Keluhan berhasil dikirim! ' . 
+              ($validated['is_public'] 
+                ? 'Keluhan Anda dapat dilihat di halaman pesan utama.' 
+                : 'Untuk melacak status keluhan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
 
         return redirect()->back()->with('success', $message);
     }

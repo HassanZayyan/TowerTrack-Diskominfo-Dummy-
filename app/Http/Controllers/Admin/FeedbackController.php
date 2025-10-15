@@ -107,23 +107,26 @@ class FeedbackController extends Controller
     public function respond(Request $request, Feedback $feedback)
     {
         $validated = $request->validate([
-            'message' => 'required|string|max:1000',
+            'message' => 'nullable|string|max:1000',
             'status_id' => 'required',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'videos.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:51200',
         ]);
 
         try {
-            // Create response first
-            $response = FeedbackResponse::create([
-                'feedback_id' => $feedback->id,
-                'user_id' => auth()->id(),
-                'message' => $validated['message'],
-            ]);
+            // Create response only if there's a message
+            $response = null;
+            if (!empty($validated['message'])) {
+                $response = FeedbackResponse::create([
+                    'feedback_id' => $feedback->id,
+                    'user_id' => auth()->id(),
+                    'message' => $validated['message'],
+                ]);
+            }
             
             // Now handle file uploads and store them in feedback_response_assets
-            // Process images
-            if ($request->hasFile('images')) {
+            // Process images only if there's a response
+            if ($response && $request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $filePath = $image->store('feedback-response-photos', 'public');
                     $fileType = 'image';
@@ -140,8 +143,8 @@ class FeedbackController extends Controller
                 }
             }
             
-            // Process videos
-            if ($request->hasFile('videos')) {
+            // Process videos only if there's a response
+            if ($response && $request->hasFile('videos')) {
                 foreach ($request->file('videos') as $video) {
                     $filePath = $video->store('feedback-response-videos', 'public');
                     $fileType = 'video';
@@ -177,8 +180,8 @@ class FeedbackController extends Controller
             // Log the error
             \Log::error('Error responding to feedback: ' . $e->getMessage());
             
-            // If response creation failed, try again without additional processing
-            if (!isset($response)) {
+            // If response creation failed and there was supposed to be a message, try again
+            if (!isset($response) && !empty($validated['message'])) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
                     'user_id' => auth()->id(),

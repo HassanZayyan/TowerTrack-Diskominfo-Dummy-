@@ -36,6 +36,7 @@ Route::get('/dashboard', function () {
 // Public Routes
 Route::get('/data-tower', [TowerController::class, 'index'])->name('data.tower');
 Route::get('/data-fo', [FoController::class, 'index'])->name('data.fo');
+Route::get('/api/fo-routes/{routeId}/polyline', [FoController::class, 'getRoutePolyline'])->name('api.fo.route.polyline');
 Route::post('/fo-route/{foRoute}/generate-geojson', [FoController::class, 'generateGeoJSONRoute'])->name('fo.route.generate-geojson');
 Route::post('/api/fo-routes/generate-all', [FoController::class, 'generateAllGeoJSONRoutes'])->name('api.fo.routes.generate-all');
 Route::get('/fo-details/{type}/{id}', [FoController::class, 'getDetails'])->name('fo.details');
@@ -54,12 +55,13 @@ Route::post('/complaint', [UserComplaintController::class, 'store'])->name('comp
 Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
 Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');
 
-// User reports page (messages) - accessible by authenticated users or anonymous with email
+// User reports page (messages) - accessible by authenticated users or anonymous
 Route::get('/my-messages', function () {
     if (auth()->check()) {
-        // Authenticated user
-        $reports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara', 
+        // Authenticated user (complainant/tower_owner) - show their own reports + public reports from others
+        $ownReports = \App\Models\Report::with([
+            'tower:id,site_name,alamat_menara',
+            'user:id,name,email', // Include user info for authenticated reports
             'responses' => function ($q) {
                 $q->select('id','report_id','message','created_at','user_id')
                   ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
@@ -68,19 +70,33 @@ Route::get('/my-messages', function () {
         ])
         ->where('user_id', auth()->id())
         ->orderByDesc('created_at')
-        ->get()
-        ->map(function ($report) {
-            $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
-            $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-            return $report;
-        });
+        ->get();
+        
+        // Get public reports from others
+        $publicReports = \App\Models\Report::with([
+            'tower:id,site_name,alamat_menara',
+            'user:id,name,email', // Include user info for authenticated reports
+            'responses' => function ($q) {
+                $q->select('id','report_id','message','created_at','user_id')
+                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
+            },
+            'images:id,report_id,file_path,file_type'
+        ])
+        ->where('is_public', true)
+        ->where('user_id', '!=', auth()->id())
+        ->orderByDesc('created_at')
+        ->get();
+        
+        $reports = $ownReports->merge($publicReports)->sortByDesc('created_at')->values();
 
         $feedbacks = collect();
         
         try {
             if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-                $feedbacks = \App\Models\Feedback::with([
+                // Get own feedbacks
+                $ownFeedbacks = \App\Models\Feedback::with([
                     'tower:id,site_name,alamat_menara',
+                    'user:id,name,email', // Include user info for authenticated feedbacks
                     'assets:id,feedback_id,file_path,file_type',
                     'responses' => function ($q) {
                         $q->select('id','feedback_id','created_at','user_id','message')
@@ -90,53 +106,63 @@ Route::get('/my-messages', function () {
                 ->where('user_id', auth()->id())
                 ->orderByDesc('created_at')
                 ->get();
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-            $feedbacks = collect();
-        }
-    } else {
-        // Anonymous user - check email query parameter
-        $email = request()->query('email');
-        if (!$email) {
-            return Inertia::render('MyMessages/Index', [
-                'reports' => [],
-                'feedbacks' => [],
-                'showEmailInput' => true,
-            ]);
-        }
-        
-        $reports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara', 
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('email', $email)
-        ->whereNull('user_id')
-        ->orderByDesc('created_at')
-        ->get()
-        ->map(function ($report) {
-            $statusMap = [1 => 'pending', 2 => 'in_progress', 3 => 'closed'];
-            $report->setAttribute('status', $statusMap[$report->status_id] ?? 'pending');
-            return $report;
-        });
-        
-        $feedbacks = collect();
-        try {
-            if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-                $feedbacks = \App\Models\Feedback::with([
+                
+                // Get public feedbacks from others
+                $publicFeedbacks = \App\Models\Feedback::with([
                     'tower:id,site_name,alamat_menara',
+                    'user:id,name,email', // Include user info for authenticated feedbacks
                     'assets:id,feedback_id,file_path,file_type',
                     'responses' => function ($q) {
                         $q->select('id','feedback_id','created_at','user_id','message')
                           ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                     }
                 ])
-                ->where('email', $email)
-                ->whereNull('user_id')
+                ->where('is_public', true)
+                ->where('user_id', '!=', auth()->id())
+                ->orderByDesc('created_at')
+                ->get();
+                
+                $feedbacks = $ownFeedbacks->merge($publicFeedbacks)->sortByDesc('created_at')->values();
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
+            $feedbacks = collect();
+        }
+        
+        return Inertia::render('MyMessages/Index', [
+            'reports' => $reports,
+            'feedbacks' => $feedbacks,
+            'showEmailInput' => false,
+            'isAnonymous' => false,
+        ]);
+    } else {
+        // Anonymous user (guest) - show ALL public reports
+        $reports = \App\Models\Report::with([
+            'tower:id,site_name,alamat_menara',
+            'user:id,name,email', // Include user info for authenticated reports
+            'responses' => function ($q) {
+                $q->select('id','report_id','message','created_at','user_id')
+                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
+            },
+            'images:id,report_id,file_path,file_type'
+        ])
+        ->where('is_public', true)
+        ->orderByDesc('created_at')
+        ->get();
+        
+        $feedbacks = collect();
+        try {
+            if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
+                $feedbacks = \App\Models\Feedback::with([
+                    'tower:id,site_name,alamat_menara',
+                    'user:id,name,email', // Include user info for authenticated feedbacks
+                    'assets:id,feedback_id,file_path,file_type',
+                    'responses' => function ($q) {
+                        $q->select('id','feedback_id','created_at','user_id','message')
+                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
+                    }
+                ])
+                ->where('is_public', true)
                 ->orderByDesc('created_at')
                 ->get();
             }
@@ -144,15 +170,77 @@ Route::get('/my-messages', function () {
             \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
             $feedbacks = collect();
         }
+        
+        return Inertia::render('MyMessages/Index', [
+            'reports' => $reports,
+            'feedbacks' => $feedbacks,
+            'showEmailInput' => false, // Guest tidak perlu input email - langsung lihat public reports
+            'isAnonymous' => true,
+        ]);
     }
+})->name('my.messages');
 
-    return Inertia::render('MyMessages/Index', [
+// Guest private message tracking route - untuk melacak pesan private guest
+Route::get('/my-messages/private', function () {
+    $email = request()->query('email');
+    $phone = request()->query('phone');
+    
+    if (!$email || !$phone) {
+        return Inertia::render('MyMessages/PrivateTracking', [
+            'reports' => [],
+            'feedbacks' => [],
+            'email' => $email,
+            'phone' => $phone,
+        ]);
+    }
+    
+    // Get private reports for this email AND phone combination
+    $reports = \App\Models\Report::with([
+        'tower:id,site_name,alamat_menara', 
+        'responses' => function ($q) {
+            $q->select('id','report_id','message','created_at','user_id')
+              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
+        },
+        'images:id,report_id,file_path,file_type'
+    ])
+    ->where('email', $email)
+    ->where('reporter_phone', $phone)
+    ->where('is_public', false) // Only private reports
+    ->whereNull('user_id')
+    ->orderByDesc('created_at')
+    ->get();
+    
+    // Get private feedbacks for this email AND phone combination
+    $feedbacks = collect();
+    try {
+        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
+            $feedbacks = \App\Models\Feedback::with([
+                'tower:id,site_name,alamat_menara',
+                'assets:id,feedback_id,file_path,file_type',
+                'responses' => function ($q) {
+                    $q->select('id','feedback_id','created_at','user_id','message')
+                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
+                }
+            ])
+            ->where('email', $email)
+            ->where('sender_phone', $phone)
+            ->where('is_public', false) // Only private feedbacks
+            ->whereNull('user_id')
+            ->orderByDesc('created_at')
+            ->get();
+        }
+    } catch (\Exception $e) {
+        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
+        $feedbacks = collect();
+    }
+    
+    return Inertia::render('MyMessages/PrivateTracking', [
         'reports' => $reports,
         'feedbacks' => $feedbacks,
-        'showEmailInput' => false,
-        'isAnonymous' => !auth()->check(),
+        'email' => $email,
+        'phone' => $phone,
     ]);
-})->name('my.messages');
+})->name('my.messages.private');
 
 // Admin/Authenticated Routes
 Route::middleware('auth')->group(function () {
@@ -188,6 +276,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     })->name('feedbacks.index');
 
     // Complaints actions
+    Route::get('/complaints/{report}', [\App\Http\Controllers\Admin\ComplaintController::class, 'show'])->name('complaints.show');
     Route::post('/complaints/{report}/respond', [\App\Http\Controllers\Admin\ComplaintController::class, 'respond'])->name('complaints.respond');
     Route::put('/complaints/{report}', [\App\Http\Controllers\Admin\ComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
 
@@ -217,6 +306,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         // FO Routes Management - specific routes must come before parameterized routes
         Route::get('/fo-management/routes/create', [FoManagementController::class, 'createRoute'])->name('fo-management.routes.create');
         Route::get('/fo-management/routes/{foRoute}', [FoManagementController::class, 'routeDetail'])->name('fo-management.routes.detail');
+        Route::get('/fo-management/routes/{foRoute}/geojson', [FoManagementController::class, 'getRouteGeoJson'])->name('fo-management.routes.geojson');
         Route::post('/fo-management/routes', [FoManagementController::class, 'storeRoute'])->name('fo-management.routes.store');
         Route::get('/fo-management/routes/{foRoute}/edit', [FoManagementController::class, 'editRoute'])->name('fo-management.routes.edit');
         Route::put('/fo-management/routes/{foRoute}', [FoManagementController::class, 'updateRoute'])->name('fo-management.routes.update');

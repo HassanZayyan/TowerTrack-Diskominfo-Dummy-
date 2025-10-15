@@ -17,11 +17,12 @@ interface FoRoute {
   name: string;
   area: string;
   description?: string;
-  coordinates: Array<[number, number]>;
+  coordinates?: Array<[number, number]>; // Optional - loaded on-demand
   status: string;
   color: string;
   total_distance?: number;
   total_points?: number;
+  routing_service?: string | null;
   properties?: any;
 }
 

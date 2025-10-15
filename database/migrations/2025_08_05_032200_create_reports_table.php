@@ -20,6 +20,12 @@ return new class extends Migration
             $table->string('reporter_phone')->nullable();
             $table->string('category');
             $table->text('message');
+            // Add reporter coordinates for cases where tower coordinates are not available
+            $table->decimal('reporter_latitude', 10, 8)->nullable();
+            $table->decimal('reporter_longitude', 11, 8)->nullable();
+            $table->decimal('reporter_accuracy', 8, 2)->nullable(); // GPS accuracy in meters
+            $table->timestamp('location_captured_at')->nullable();
+            $table->boolean('is_public')->default(false); // Public visibility for reports
             $table->foreignId('status_id')->nullable()->constrained('statuses')->nullOnDelete();
             $table->timestamps();
         });

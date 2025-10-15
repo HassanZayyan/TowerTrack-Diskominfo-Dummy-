@@ -8,6 +8,9 @@ interface MessageItem {
   category: string;
   status: string | undefined | null;
   responsesCount: number;
+  senderName: string;
+  senderEmail: string;
+  isAnonymous: boolean;
 }
 
 interface MessageCardProps {
@@ -24,17 +27,28 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen }
     <div className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 text-sm mb-1">
-            {item.towerName ?? 'Tower tidak diketahui'}
-          </h3>
-          <p className="text-xs text-gray-500 mb-2">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-semibold text-gray-900 text-sm">
+              {item.senderName}
+            </h3>
+            {item.isAnonymous && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                Guest
+              </span>
+            )}
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-teal-50 text-teal-700'}`}>
+              {item.type}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mb-1">{item.senderEmail}</p>
+          <p className="text-xs text-gray-500 mb-1">
+            <span className="font-medium">Tower:</span> {item.towerName ?? 'Tower tidak diketahui'}
+          </p>
+          <p className="text-xs text-gray-500">
             {formatDate(item.created_at)} • {new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
-          {item.type}
-        </span>
-        <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
+        <span className="px-2 py-1 rounded-full text-xs font-medium ml-2" style={{
           backgroundColor: statusConfig.bg,
           color: statusConfig.text
         }}>

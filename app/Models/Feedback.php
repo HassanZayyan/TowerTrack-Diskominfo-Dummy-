@@ -20,6 +20,11 @@ class Feedback extends Model
         'category',
         'message',
         'status',
+        'reporter_latitude',
+        'reporter_longitude',
+        'reporter_accuracy',
+        'location_captured_at',
+        'is_public',
     ];
     
     public function tower()

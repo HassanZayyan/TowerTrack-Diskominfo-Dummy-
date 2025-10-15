@@ -8,6 +8,9 @@ interface MessageItem {
   category: string;
   status: string | undefined | null;
   responsesCount: number;
+  senderName: string;
+  senderEmail: string;
+  isAnonymous: boolean;
 }
 
 interface MessageTableProps {
@@ -25,6 +28,7 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Waktu</th>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pengirim</th>
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Jenis</th>
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tower</th>
               <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kategori</th>
@@ -36,7 +40,7 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
           <tbody className="bg-white divide-y divide-gray-100">
             {items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
                   <div className="flex flex-col items-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                       <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,8 +63,21 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
                       <div className="text-xs text-gray-500">{new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
                   </td>
+                  <td className="px-4 py-4 text-sm">
+                    <div className="max-w-xs">
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium text-gray-900 truncate">{item.senderName}</span>
+                        {item.isAnonymous && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                            Guest
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">{item.senderEmail}</div>
+                    </div>
+                  </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>{item.type}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.type === 'Keluhan' ? 'bg-red-50 text-red-700' : 'bg-teal-50 text-teal-700'}`}>{item.type}</span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     <div>{item.towerName}</div>

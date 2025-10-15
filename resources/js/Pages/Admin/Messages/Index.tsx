@@ -44,7 +44,8 @@ interface ReportItem {
   user?: User;
   responses?: ResponseItem[];
   images?: MediaItem[];
-}
+  email?: string;
+ }
 
 interface FeedbackItem {
   id: number;
@@ -59,6 +60,7 @@ interface FeedbackItem {
   user?: User;
   assets?: MediaItem[];
   responses?: ResponseItem[];
+  email?: string;
 }
 
 interface StatusItem {

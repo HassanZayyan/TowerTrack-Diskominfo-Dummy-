@@ -9,18 +9,24 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class FoManagementController extends Controller
 {
     /**
      * Display list of FO routes (main entry point)
+     * Optimized: path_coordinates excluded to reduce payload size
      */
     public function routesList(Request $request)
     {
         $area = $request->get('area', 'ungaran');
         
-        // Get FO Routes with pagination
-        $foRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))
+        // Get FO Routes with pagination (excluding heavy path_coordinates field)
+        $foRoutes = FoRoute::select([
+                'id', 'name', 'area', 'status', 'color', 'total_distance', 
+                'total_points', 'description', 'created_at', 'updated_at'
+            ])
+            ->when($area, fn($q) => $q->where('area', $area))
             ->orderBy('name')
             ->paginate(50)
             ->through(function ($route) {
@@ -35,6 +41,7 @@ class FoManagementController extends Controller
                     'description' => $route->description,
                     'created_at' => $route->created_at->format('d M Y H:i'),
                     'updated_at' => $route->updated_at->format('d M Y H:i'),
+                    // path_coordinates intentionally excluded - fetch on-demand via API
                 ];
             });
 
@@ -58,7 +65,145 @@ class FoManagementController extends Controller
     }
 
     /**
+     * Fetch GeoJSON data for a specific route (on-demand with persistent caching)
+     * 
+     * CACHING STRATEGY:
+     * - Cache duration: 24 hours (persists across page navigation)
+     * - Cache key: route_id + updated_at timestamp (auto-invalidates on update)
+     * - Cache hit: Returns immediately without API call (0 tokens consumed)
+     * - Cache miss + has GeoJSON: Returns existing data (0 tokens consumed)
+     * - Cache miss + no GeoJSON: Generates on-demand (1 token consumed)
+     * 
+     * TOKEN CONSUMPTION:
+     * - First-time access: 1 token (generates GeoJSON via OpenRouteService)
+     * - Subsequent access (within 24h): 0 tokens (uses cache)
+     * - After route update: 1 token (cache auto-invalidated, regenerates)
+     * - Cross-page navigation: 0 tokens (cache persists in server)
+     * 
+     * WORKFLOW:
+     * 1. User clicks route → Check cache
+     * 2. Cache hit? → Return immediately (FAST, no token)
+     * 3. Cache miss + has DB GeoJSON? → Return from DB (FAST, no token)
+     * 4. Cache miss + no GeoJSON? → Generate (SLOW, 1 token)
+     * 5. Store in cache for 24 hours
+     * 6. Subsequent clicks on same route → Cache hit (INSTANT)
+     */
+    public function getRouteGeoJson(FoRoute $foRoute)
+    {
+        try {
+            // Step 1: Build cache key (includes updated_at for auto-invalidation)
+            $cacheKey = "fo_route_geojson_{$foRoute->id}_{$foRoute->updated_at->timestamp}";
+            
+            // Step 2: Check if data is already in cache (fastest path)
+            if (Cache::has($cacheKey)) {
+                \Log::info("✅ CACHE HIT - Serving from cache (0 tokens)", [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                    'cache_key' => $cacheKey
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'data' => Cache::get($cacheKey),
+                    'generated_on_demand' => false,
+                    'from_cache' => true,
+                ]);
+            }
+            
+            // Step 3: Cache miss - check if GeoJSON exists in database
+            $hasGeoJSON = $foRoute->hasValidGeoJSON();
+            $needsGeneration = !$hasGeoJSON;
+            
+            if ($needsGeneration) {
+                \Log::info("🔄 CACHE MISS + NO GEOJSON - Generating on-demand (1 token will be consumed)", [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                ]);
+                
+                // Step 4: Generate GeoJSON on-demand (consumes 1 OpenRouteService token)
+                $routeService = app(\App\Services\FoRouteGenerationService::class);
+                $generated = $routeService->generateRouteFromPoints($foRoute);
+                
+                if (!$generated) {
+                    \Log::warning("⚠️ GeoJSON generation failed, using fallback polyline (0 tokens)", [
+                        'route_id' => $foRoute->id
+                    ]);
+                }
+                
+                // Refresh the route model to get newly generated GeoJSON
+                $foRoute = $foRoute->fresh();
+            } else {
+                \Log::info("💾 CACHE MISS + HAS GEOJSON - Loading from database (0 tokens)", [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                ]);
+            }
+            
+            // Step 5: Build response data and store in cache for 24 hours
+            $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration) {
+                // Get all points for this route ordered by sequence
+                $points = FoPoint::where('route_name', $foRoute->name)
+                    ->where('area', $foRoute->area)
+                    ->orderBy('sequence_number')
+                    ->get();
+
+                // Build coordinates array from points
+                $coordinates = $points->map(function ($point) {
+                    return [
+                        'lat' => (float) $point->latitude,
+                        'lng' => (float) $point->longitude,
+                        'name' => $point->name,
+                        'type' => $point->type,
+                        'status' => $point->status,
+                    ];
+                })->toArray();
+
+                return [
+                    'route_id' => $foRoute->id,
+                    'route_name' => $foRoute->name,
+                    'area' => $foRoute->area,
+                    'status' => $foRoute->status,
+                    'color' => $foRoute->color,
+                    'total_distance' => (float) ($foRoute->total_distance ?? 0),
+                    'coordinates' => $coordinates,
+                    'path_coordinates' => $foRoute->path_coordinates ?? [],
+                    'has_geojson' => $foRoute->hasValidGeoJSON(),
+                    'was_generated_on_demand' => $needsGeneration,
+                    'cached_at' => now()->toISOString(),
+                ];
+            });
+
+            \Log::info("✅ Response cached for 24 hours - Next access will be instant", [
+                'route_id' => $foRoute->id,
+                'cache_key' => $cacheKey,
+                'tokens_consumed' => $needsGeneration ? 1 : 0
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $geoJsonData,
+                'generated_on_demand' => $needsGeneration,
+                'from_cache' => false,
+                'tokens_consumed' => $needsGeneration ? 1 : 0,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("❌ Error fetching route GeoJSON", [
+                'route_id' => $foRoute->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data GeoJSON rute: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Display detail of a specific FO route with its points
+     * Optimized: path_coordinates loaded lazily via separate API call
      */
     public function routeDetail(Request $request, FoRoute $foRoute)
     {
@@ -112,7 +257,7 @@ class FoManagementController extends Controller
                 }),
         ];
 
-        // Format route data
+        // Format route data (without path_coordinates - loaded lazily via API)
         $routeData = [
             'id' => $foRoute->id,
             'name' => $foRoute->name,
@@ -122,7 +267,7 @@ class FoManagementController extends Controller
             'total_distance' => (float) ($foRoute->total_distance ?? 0),
             'total_points' => (int) ($foRoute->total_points ?? 0),
             'description' => $foRoute->description,
-            'path_coordinates' => $foRoute->path_coordinates,
+            // path_coordinates excluded - frontend will fetch via getRouteGeoJson endpoint
             'created_at' => $foRoute->created_at->format('d M Y H:i'),
             'updated_at' => $foRoute->updated_at->format('d M Y H:i'),
         ];
@@ -192,28 +337,21 @@ class FoManagementController extends Controller
 
         // Update route's total_points and path coordinates
         $this->updateRouteStatistics($routeId);
+        
+        // Invalidate cache for this route since points changed
+        // GeoJSON will be regenerated on-demand when user next selects this route
+        $this->invalidateRouteCache($routeId);
 
-        // Automatically generate routes after adding new point
-        try {
-            \Illuminate\Support\Facades\Artisan::call('fo:generate-routes', [
-                '--area' => $validated['area']
-            ]);
-            \Log::info('Auto-generated routes after adding new FO point', [
-                'point_id' => $point->id,
-                'route_id' => $routeId,
-                'area' => $validated['area']
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Failed to auto-generate routes after adding FO point: ' . $e->getMessage(), [
-                'point_id' => $point->id,
-                'route_id' => $routeId,
-                'exception' => $e
-            ]);
-        }
+        \Log::info('FO point added successfully - GeoJSON will be regenerated on-demand', [
+            'point_id' => $point->id,
+            'route_id' => $routeId,
+            'area' => $validated['area'],
+            'note' => 'GeoJSON generation deferred until user selects this route (saves 1 API token)'
+        ]);
 
         return redirect()
             ->route('admin.fo-management.routes.detail', $routeId)
-            ->with('success', 'Titik FO berhasil ditambahkan dan rute otomatis diperbarui');
+            ->with('success', 'Titik FO berhasil ditambahkan. Jalur akan diperbarui otomatis saat Anda membuka peta.');
     }
 
     /**
@@ -292,6 +430,7 @@ class FoManagementController extends Controller
             $oldRoute = FoRoute::where('name', $oldRouteName)->where('area', $oldArea)->first();
             if ($oldRoute) {
                 $this->updateRouteStatistics($oldRoute->id);
+                $this->invalidateRouteCache($oldRoute->id);
             }
         }
 
@@ -301,6 +440,7 @@ class FoManagementController extends Controller
             ->first();
         if ($newRoute) {
             $this->updateRouteStatistics($newRoute->id);
+            $this->invalidateRouteCache($newRoute->id);
             
             // Redirect to route detail if we came from there
             if ($request->get('from_route') === 'detail') {
@@ -330,6 +470,7 @@ class FoManagementController extends Controller
         $route = FoRoute::where('name', $routeName)->where('area', $area)->first();
         if ($route) {
             $this->updateRouteStatistics($route->id);
+            $this->invalidateRouteCache($route->id);
         }
 
         return back()->with('success', 'Titik FO berhasil dihapus');
@@ -463,6 +604,9 @@ class FoManagementController extends Controller
                 // Update route statistics
                 $this->updateRouteStatistics($foRoute->id);
             }
+            
+            // Always invalidate cache when route is updated
+            $this->invalidateRouteCache($foRoute->id);
 
             \Log::info('FO Route updated successfully', [
                 'route_id' => $foRoute->id,
@@ -498,6 +642,8 @@ class FoManagementController extends Controller
      */
     public function destroyRoute(FoRoute $foRoute)
     {
+        $routeId = $foRoute->id;
+        
         DB::transaction(function () use ($foRoute) {
             // Delete related FO points by route name and area
             FoPoint::where('route_name', $foRoute->name)
@@ -507,6 +653,9 @@ class FoManagementController extends Controller
             // Delete the route itself
             $foRoute->delete();
         });
+
+        // Invalidate cache for deleted route
+        $this->invalidateRouteCache($routeId);
 
         return back()->with('success', 'Jalur FO dan titik-titik terkait berhasil dihapus');
     }
@@ -521,6 +670,21 @@ class FoManagementController extends Controller
             'point_ids' => 'required|array|min:1',
             'point_ids.*' => 'integer|exists:fo_points,id',
         ]);
+
+        // Get affected points first to determine which routes to invalidate
+        $affectedPoints = FoPoint::whereIn('id', $validated['point_ids'])->get();
+        $affectedRouteIds = [];
+        
+        foreach ($affectedPoints as $point) {
+            $route = FoRoute::where('name', $point->route_name)
+                ->where('area', $point->area)
+                ->first();
+            if ($route) {
+                $affectedRouteIds[] = $route->id;
+            }
+        }
+        
+        $affectedRouteIds = array_unique($affectedRouteIds);
 
         $points = FoPoint::whereIn('id', $validated['point_ids']);
 
@@ -543,6 +707,9 @@ class FoManagementController extends Controller
                 break;
         }
 
+        // Invalidate cache for all affected routes
+        $this->invalidateMultipleRoutesCache($affectedRouteIds);
+
         return back()->with('success', $message);
     }
 
@@ -557,7 +724,8 @@ class FoManagementController extends Controller
             'route_ids.*' => 'integer|exists:fo_routes,id',
         ]);
 
-        $routes = FoRoute::whereIn('id', $validated['route_ids']);
+        $routeIds = $validated['route_ids'];
+        $routes = FoRoute::whereIn('id', $routeIds);
 
         switch ($validated['action']) {
             case 'activate':
@@ -590,6 +758,9 @@ class FoManagementController extends Controller
                 $message = 'Jalur FO beserta titik-titik terkait berhasil dihapus';
                 break;
         }
+
+        // Invalidate cache for all affected routes
+        $this->invalidateMultipleRoutesCache($routeIds);
 
         return back()->with('success', $message);
     }
@@ -700,6 +871,57 @@ class FoManagementController extends Controller
         }, $fileName, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    /**
+     * Invalidate cache for a specific route's GeoJSON data
+     * Called when route or its points are modified
+     */
+    private function invalidateRouteCache($routeId)
+    {
+        try {
+            $route = FoRoute::find($routeId);
+            if (!$route) {
+                \Log::warning("Cannot invalidate cache - route not found", ['route_id' => $routeId]);
+                return;
+            }
+
+            // Clear all cache entries for this route (regardless of timestamp)
+            $pattern = "fo_route_geojson_{$routeId}_*";
+            
+            // For file/database cache drivers, we can use forget with the exact key
+            // Since updated_at might have changed, we'll clear potential old entries
+            // by iterating through a reasonable time range (last 30 days)
+            for ($i = 0; $i < 30; $i++) {
+                $timestamp = now()->subDays($i)->timestamp;
+                $cacheKey = "fo_route_geojson_{$routeId}_{$timestamp}";
+                Cache::forget($cacheKey);
+            }
+
+            // Also clear the current timestamp key
+            $currentKey = "fo_route_geojson_{$routeId}_{$route->updated_at->timestamp}";
+            Cache::forget($currentKey);
+
+            \Log::info("Cache invalidated for route", [
+                'route_id' => $routeId,
+                'route_name' => $route->name
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error invalidating route cache", [
+                'route_id' => $routeId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Invalidate cache for multiple routes
+     */
+    private function invalidateMultipleRoutesCache(array $routeIds)
+    {
+        foreach ($routeIds as $routeId) {
+            $this->invalidateRouteCache($routeId);
+        }
     }
 
     /**
