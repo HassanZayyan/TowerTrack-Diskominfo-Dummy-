@@ -171,7 +171,7 @@ export default function DataTowerIndex({
     router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
   };
 
-  // Debounced real-time search (similar to FO page)
+  // Debounced real-time search - optimized timing for better performance
   useEffect(() => {
     // Skip running on initial mount to avoid duplicate initial fetch
     if (initialSearchMountRef.current) {
@@ -183,6 +183,8 @@ export default function DataTowerIndex({
       clearTimeout(searchDebounceRef.current);
     }
 
+    // Increased debounce delay from 500ms to 800ms for better performance
+    // Reduces unnecessary API calls while typing
     searchDebounceRef.current = setTimeout(() => {
       // Avoid re-applying the same search
       if (lastAppliedSearchRef.current === searchTerm) return;
@@ -191,7 +193,7 @@ export default function DataTowerIndex({
       const params = buildFilterParams({ search: searchTerm, page: 1 });
       lastAppliedSearchRef.current = searchTerm;
       router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
-    }, 500);
+    }, 800);
 
     return () => {
       if (searchDebounceRef.current) {

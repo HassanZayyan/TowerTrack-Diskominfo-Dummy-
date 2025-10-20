@@ -6,9 +6,20 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        <!-- DNS Prefetch for external resources -->
+        <link rel="dns-prefetch" href="https://fonts.bunny.net">
+        <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+        
+        <!-- Preconnect for faster font loading -->
+        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
+        
         <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+        <!-- Preload critical images (only if on homepage) -->
+        @if(request()->is('/'))
+            <link rel="preload" as="image" href="{{ asset('images/hero-section.png') }}" type="image/png">
+        @endif
 
         <!-- Scripts -->
         @routes

@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import LeafletMap from '@/Components/LeafletMap';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { router } from '@inertiajs/react';
+
+// Lazy load LeafletMap for better initial page load performance
+const LeafletMap = lazy(() => import('@/Components/LeafletMap'));
 
 interface Tower {
   id: number;
@@ -220,20 +222,29 @@ export default function TowerMap({
             }
           }}
         >
-          <LeafletMap
-            ref={mapRef}
-            center={[-7.197, 110.426]}
-            zoom={10}
-            style={{ height: '100%', width: '100%' }}
-            markers={markers}
-            showLines={measureEnabled}
-            showCoverage={showCoverage}
-            defaultRadiusMeters={500}
-            onDistanceChange={onDistanceChange}
-            resetLinesTrigger={resetLinesCounter}
-            // Only provide onMarkerClick when NOT in measurement mode to prevent conflicts
-            onMarkerClick={!measureEnabled ? onMarkerClick : undefined}
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full bg-gray-50">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+                <p className="text-gray-600 font-medium">Memuat peta...</p>
+              </div>
+            </div>
+          }>
+            <LeafletMap
+              ref={mapRef}
+              center={[-7.197, 110.426]}
+              zoom={10}
+              style={{ height: '100%', width: '100%' }}
+              markers={markers}
+              showLines={measureEnabled}
+              showCoverage={showCoverage}
+              defaultRadiusMeters={500}
+              onDistanceChange={onDistanceChange}
+              resetLinesTrigger={resetLinesCounter}
+              // Only provide onMarkerClick when NOT in measurement mode to prevent conflicts
+              onMarkerClick={!measureEnabled ? onMarkerClick : undefined}
+            />
+          </Suspense>
         </div>
         
         {/* Controls overlay */}

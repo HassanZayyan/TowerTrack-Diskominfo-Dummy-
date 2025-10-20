@@ -161,7 +161,7 @@ const EmailInputForm = ({
 
 // Empty State Component - Moved outside to prevent recreation
 const EmptyState = ({ email, phone }: { email: string; phone: string }) => (
-  <StaggeredContainer delay={200} animationType="bounceIn" duration={500}>
+  <StaggeredContainer delay={200} animationType="scaleIn" duration={500}>
     <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-12 text-center">
       <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
         <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

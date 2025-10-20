@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import L from 'leaflet';
+
 // Fix marker icon paths under Vite
 // @ts-ignore
 import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png';
@@ -52,7 +53,6 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     const markerInstancesRef = useRef<L.Marker[]>([]);
     const selectedPointsRef = useRef<L.LatLng[]>([]);
     const measurePolylineRef = useRef<L.Polyline | null>(null);
-    // Polygon measurement is not used anymore
     const distanceLabelRef = useRef<L.Marker | null>(null);
     const isInitializedRef = useRef<boolean>(false);
     const scaleControlRef = useRef<L.Control.Scale | null>(null);
