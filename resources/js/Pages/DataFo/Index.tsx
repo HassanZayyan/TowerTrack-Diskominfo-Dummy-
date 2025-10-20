@@ -726,7 +726,10 @@ export default function DataFoIndex({
       
       {/* Full Screen Hero Section - Outside MainLayout */}
       <HeroSection
-        title="Data Fiber Optic Kabupaten Semarang"
+        title={<>
+          Data Fiber Optic
+          <span className="block sm:inline sm:ml-2">Kabupaten Semarang</span>
+        </>}
         subtitle="Kelola dan pantau infrastruktur jaringan fiber optic untuk konektivitas digital yang optimal di seluruh wilayah Kabupaten Semarang."
         variant="brand"
         align="center"

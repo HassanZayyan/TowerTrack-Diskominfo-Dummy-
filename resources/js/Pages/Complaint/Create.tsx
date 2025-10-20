@@ -484,7 +484,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                       <div className="ml-3 flex-1">
                         <div className="font-medium text-gray-900">Tertutup (Private)</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          Hanya Anda dan admin yang dapat melihat laporan ini. Gunakan email Anda untuk melacak status.
+                          Hanya Anda dan admin yang dapat melihat keluhan ini. Gunakan email Anda untuk melacak status.
                         </div>
                       </div>
                     </label>
@@ -501,7 +501,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                       <div className="ml-3 flex-1">
                         <div className="font-medium text-gray-900">Terbuka (Public)</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          Laporan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
+                          Keluhan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
                         </div>
                       </div>
                     </label>
