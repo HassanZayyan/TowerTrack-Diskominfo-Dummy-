@@ -325,7 +325,7 @@ export default function RoutesList() {
             canEdit ? (
               <Link
                 href={route('admin.fo-management.routes.create')}
-                className="inline-flex items-center px-4 py-2 rounded-lg transition-colors shadow-sm"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors shadow-sm w-full sm:w-auto text-center"
                 style={{ 
                   backgroundColor: '#FFD700', 
                   color: '#B71C1C'
@@ -337,7 +337,7 @@ export default function RoutesList() {
                   e.currentTarget.style.backgroundColor = '#FFD700';
                 }}
               >
-                + Tambah Jalur Baru
+                <span className="text-center">+ Tambah Jalur Baru</span>
               </Link>
             ) : null
           }

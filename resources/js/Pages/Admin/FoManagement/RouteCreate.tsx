@@ -35,26 +35,27 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
         {/* Enhanced Header */}
         <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl shadow-2xl mb-8 overflow-hidden">
-          <div className="px-8 py-8 text-white relative">
+          <div className="px-4 sm:px-8 py-6 sm:py-8 text-white relative">
             <div className="absolute inset-0 bg-black opacity-10"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm">
-                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {/* Mobile-First Header Layout */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="p-3 sm:p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm self-start">
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                   </div>
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">Tambah Jalur FO Baru</h1>
-                    <p className="text-red-100 text-lg">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 leading-tight">Tambah Jalur FO Baru</h1>
+                    <p className="text-red-100 text-sm sm:text-lg leading-relaxed">
                       Buat jalur fiber optic baru dengan menentukan koordinat dan informasi jalur
                     </p>
                   </div>
                 </div>
                 <Link
                   href={route('admin.fo-management.routes.list')}
-                  className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors w-full sm:w-auto"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -62,18 +63,20 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                   Kembali
                 </Link>
               </div>
-              <div className="flex items-center gap-6 text-sm text-red-100">
+              
+              {/* Progress Steps - Mobile Optimized */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm text-red-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                  <span>Langkah 1: Informasi Dasar</span>
+                  <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
+                  <span className="text-xs sm:text-sm">Langkah 1: Informasi Dasar</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                  <span>Langkah 2: Koordinat Jalur</span>
+                  <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
+                  <span className="text-xs sm:text-sm">Langkah 2: Koordinat Jalur</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                  <span>Langkah 3: Simpan</span>
+                  <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
+                  <span className="text-xs sm:text-sm">Langkah 3: Simpan</span>
                 </div>
               </div>
             </div>
@@ -82,20 +85,20 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
         {/* Main Form Container */}
         <div className="bg-white shadow-2xl rounded-2xl border border-gray-100 overflow-hidden">
-          <form onSubmit={handleSubmit} className="space-y-8 p-8">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 p-4 sm:p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {/* Basic Information */}
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-100">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-green-600 rounded-lg">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 sm:p-6 border border-green-100">
+                  <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                    <div className="p-2 bg-green-600 rounded-lg flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Informasi Dasar</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Informasi Dasar</h3>
                   </div>
-                  <p className="text-gray-600 text-sm">Masukkan informasi dasar untuk jalur fiber optic</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Masukkan informasi dasar untuk jalur fiber optic</p>
                 </div>
                 
                 <div className="space-y-6">
@@ -262,16 +265,16 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
 
               {/* Description */}
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl p-6 border border-yellow-100">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-yellow-600 rounded-lg">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl p-4 sm:p-6 border border-yellow-100">
+                  <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                    <div className="p-2 bg-yellow-600 rounded-lg flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Deskripsi Jalur</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Deskripsi Jalur</h3>
                   </div>
-                  <p className="text-gray-600 text-sm">Tambahkan deskripsi detail untuk jalur fiber optic</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Tambahkan deskripsi detail untuk jalur fiber optic</p>
                 </div>
                 
                 <div>
@@ -311,17 +314,17 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
             </div>
 
             {/* Point Management Info */}
-            <div className="xl:col-span-2 space-y-6">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-600 rounded-lg">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-200">
+                <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                  <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">Manajemen Titik FO</h3>
-                    <p className="text-gray-600 text-sm">Tambahkan titik-titik FO setelah jalur dibuat</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Manajemen Titik FO</h3>
+                    <p className="text-gray-600 text-xs sm:text-sm">Tambahkan titik-titik FO setelah jalur dibuat</p>
                   </div>
                 </div>
                 <div className="bg-white/50 rounded-lg p-4 mb-4">
@@ -355,7 +358,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
             </div>
 
             {/* Submit Buttons */}
-            <div className="bg-white border-t border-gray-200 px-8 py-6 mt-8">
+            <div className="bg-white border-t border-gray-200 px-4 sm:px-8 py-4 sm:py-6 mt-6 sm:mt-8">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,41 +366,37 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                   </svg>
                   <span>Pastikan semua data sudah benar sebelum menyimpan</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                   <Link
                     href={route('admin.fo-management.routes.list')}
-                    className="px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-100 transition-all duration-200"
+                    className="px-4 sm:px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-100 transition-all duration-200 flex items-center justify-center gap-2"
                   >
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Batal
-                    </div>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Batal
                   </Link>
                   <button
                     type="submit"
                     disabled={processing}
-                    className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-red-200 transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed"
+                    className="px-6 sm:px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-red-200 transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    <div className="flex items-center gap-2">
-                      {processing ? (
-                        <>
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Menyimpan...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Simpan Jalur
-                        </>
-                      )}
-                    </div>
+                    {processing ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Simpan Jalur
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

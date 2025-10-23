@@ -100,26 +100,26 @@ export default function PointEdit({
         <div className="py-8">
           {/* Header */}
           <div className="mb-8">
-            <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-3xl p-8 shadow-2xl border border-white/20 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-3xl p-4 sm:p-8 shadow-2xl border border-white/20 backdrop-blur-sm">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-2xl p-3 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Edit Titik Fiber Optic</h1>
-                    <p className="text-white/90 text-lg">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 leading-tight">Edit Titik Fiber Optic</h1>
+                    <p className="text-white/90 text-sm sm:text-lg break-words">
                       Edit informasi titik: {foPoint.name}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <Link
                     href={route('admin.fo-management.routes.detail', parentRouteId || 15)}
-                    className="group inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-red-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                    className="group inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-red-600 transition-all duration-200 shadow-sm hover:shadow-md w-full sm:w-auto"
                     title="Kembali ke detail jalur"
                   >
                     <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +145,7 @@ export default function PointEdit({
               <div className="mt-6 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse flex-shrink-0"></div>
                     <span className="text-white/90 text-sm font-medium">Siap untuk diperbarui</span>
                   </div>
                 </div>
@@ -156,20 +156,20 @@ export default function PointEdit({
         {/* Form */}
         <div>
           <div className="bg-white/80 backdrop-blur-sm shadow-2xl rounded-3xl border border-gray-100 overflow-hidden">
-            <form onSubmit={handleSubmit} className="p-8">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-8">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
                 {/* Basic Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 mb-6">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 border border-gray-200 mb-6">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2 flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900">Informasi Dasar</h3>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">Informasi Dasar</h3>
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed">
+                    <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
                       Perbarui informasi dasar titik fiber optic seperti nama, area, dan status
                     </p>
                   </div>
@@ -338,17 +338,17 @@ export default function PointEdit({
 
                 {/* Location and Route Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 mb-6">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 border border-gray-200 mb-6">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2 flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900">Lokasi & Jalur</h3>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">Lokasi & Jalur</h3>
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed">
+                    <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
                       Tentukan koordinat lokasi dan jalur yang akan dilalui titik ini
                     </p>
                   </div>
@@ -603,17 +603,17 @@ export default function PointEdit({
             </div>
 
               {/* Description */}
-              <div className="xl:col-span-2">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 mb-6">
+              <div className="xl:col-span-2 mt-6">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 border border-gray-200 mb-6">
                   <div className="flex items-center space-x-3 mb-4">
-                    <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2 flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Deskripsi Tambahan</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Deskripsi Tambahan</h3>
                   </div>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-4">
                     Tambahkan informasi detail atau catatan khusus untuk titik ini
                   </p>
                   
@@ -657,17 +657,17 @@ export default function PointEdit({
 
               {/* Submit Buttons */}
               <div className="xl:col-span-2">
-                <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl p-6 border border-gray-200 mt-8">
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl p-4 sm:p-6 border border-gray-200 mt-8">
                   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     <div className="flex items-center space-x-3">
-                      <div className="bg-gradient-to-r from-gray-500 to-slate-500 rounded-xl p-2">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-gradient-to-r from-gray-500 to-slate-500 rounded-xl p-2 flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <div>
-                        <h4 className="text-lg font-bold text-gray-900">Konfirmasi Perubahan</h4>
-                        <p className="text-sm text-gray-600">Pastikan semua data sudah benar sebelum menyimpan</p>
+                        <h4 className="text-base sm:text-lg font-bold text-gray-900">Konfirmasi Perubahan</h4>
+                        <p className="text-xs sm:text-sm text-gray-600">Pastikan semua data sudah benar sebelum menyimpan</p>
                       </div>
                     </div>
                     

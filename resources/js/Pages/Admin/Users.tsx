@@ -198,7 +198,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                   setShowPassword(false);
                   setShowModal(true);
                 }}
-                className="inline-flex items-center px-4 py-2 rounded-lg transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
                 style={{ 
                   backgroundColor: '#FFD700', 
                   color: '#B71C1C'

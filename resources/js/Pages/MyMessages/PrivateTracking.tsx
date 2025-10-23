@@ -46,8 +46,8 @@ type FeedbackItem = {
 type PrivateTrackingProps = {
   reports?: ReportItem[];
   feedbacks?: FeedbackItem[];
-  email?: string;
-  phone?: string;
+  email?: string | null;
+  phone?: string | null;
 };
 
 type MessageItem = {
@@ -182,11 +182,11 @@ const EmptyState = ({ email, phone }: { email: string; phone: string }) => (
 export default function PrivateTracking({ 
   reports = [] as ReportItem[], 
   feedbacks = [] as FeedbackItem[],
-  email = '',
-  phone = ''
+  email = null,
+  phone = null
 }: PrivateTrackingProps) {
-  const [inputEmail, setInputEmail] = useState(email);
-  const [inputPhone, setInputPhone] = useState(phone);
+  const [inputEmail, setInputEmail] = useState(email || '');
+  const [inputPhone, setInputPhone] = useState(phone || '');
 
   const handleFormSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
