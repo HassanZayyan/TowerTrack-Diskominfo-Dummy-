@@ -6,6 +6,7 @@ use App\Models\Report;
 use App\Models\ReportAsset;
 use App\Models\Tower;
 use App\Services\LocationSecurityService;
+use App\Http\Requests\StoreComplaintRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -42,31 +43,9 @@ class UserComplaintController extends Controller
     /**
      * Store complaint submitted by authenticated or anonymous user.
      */
-    public function store(Request $request)
+    public function store(StoreComplaintRequest $request)
     {
-        try {
-            $validated = $request->validate([
-                'nama' => 'nullable|string|max:255',
-                'telepon' => 'required|string|max:20', // Phone number is required for all users
-                'kategori' => 'required|string|max:100',
-                'lokasi_tower' => 'required|string|max:255',
-                'tower_id' => 'required|exists:towers,id',
-                'pesan' => 'required|string|max:1000',
-                'email' => auth()->check() && auth()->user()->isComplainant() 
-                    ? 'prohibited' // Email not allowed for authenticated complainant users
-                    : 'required|email|max:255', // Email now required for anonymous users
-                'is_public' => 'required|boolean', // Visibility option
-                'reporter_latitude' => 'nullable|numeric|between:-90,90',
-                'reporter_longitude' => 'nullable|numeric|between:-180,180',
-                'reporter_accuracy' => 'nullable|numeric|min:0|max:10000',
-                'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
-                'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
-                'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Validation error: ' . json_encode($e->errors()));
-            return back()->withErrors($e->errors())->withInput();
-        }
+        $validated = $request->validated();
 
         // Handle user ID and email for authenticated vs anonymous users
         $userId = null;

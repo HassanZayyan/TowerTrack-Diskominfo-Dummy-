@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\PerformanceMonitoring::class,
         ]);
 
         // Register custom middleware aliases
@@ -24,6 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'tower.owner.dashboard.redirect' => \App\Http\Middleware\TowerOwnerDashboardRedirectMiddleware::class,
             'tower.owner.access.control' => \App\Http\Middleware\TowerOwnerAccessControlMiddleware::class,
             'admin_or_operator' => \App\Http\Middleware\AdminOrOperatorMiddleware::class,
+            'validate.file.uploads' => \App\Http\Middleware\ValidateFileUploads::class,
+        ]);
+
+        // Ensure CSRF protection is properly configured
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'stripe/*',
+            'webhook/*'
         ]);
 
         //
