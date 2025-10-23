@@ -180,35 +180,35 @@ export default function TowerSelectionInput({
       {/* Coordinate Filter */}
       <div className="mb-3">
         <div className="bg-gray-50 border border-gray-300 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
             <label className="text-sm font-medium text-gray-700">
               Filter Tower:
             </label>
-            <div className="flex gap-1 text-xs">
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+            <div className="flex flex-wrap gap-1 text-xs">
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded whitespace-nowrap">
                 {towerStats.withCoordinates} di peta
               </span>
-              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded whitespace-nowrap">
                 {towerStats.withoutCoordinates} tanpa koordinat
               </span>
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1 sm:gap-2">
             <button
               type="button"
               onClick={() => setMapFilter('all')}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+              className={`px-1 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
                 mapFilter === 'all'
                   ? 'bg-red-600 text-white shadow-md'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <div className="flex flex-col items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
-                <span className="text-xs">Semua</span>
+                <span className="text-xs font-medium leading-tight">Semua</span>
                 <span className="text-xs font-semibold">{towerStats.total}</span>
               </div>
             </button>
@@ -216,17 +216,17 @@ export default function TowerSelectionInput({
             <button
               type="button"
               onClick={() => setMapFilter('with_coordinates')}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+              className={`px-1 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
                 mapFilter === 'with_coordinates'
                   ? 'bg-red-600 text-white shadow-md'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <div className="flex flex-col items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
-                <span className="text-xs">Di Peta</span>
+                <span className="text-xs font-medium leading-tight">Di Peta</span>
                 <span className="text-xs font-semibold">{towerStats.withCoordinates}</span>
               </div>
             </button>
@@ -234,17 +234,17 @@ export default function TowerSelectionInput({
             <button
               type="button"
               onClick={() => setMapFilter('without_coordinates')}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+              className={`px-1 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
                 mapFilter === 'without_coordinates'
                   ? 'bg-red-600 text-white shadow-md'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <div className="flex flex-col items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                <span className="text-xs">Tanpa Koordinat</span>
+                <span className="text-xs font-medium leading-tight">Tanpa Koordinat</span>
                 <span className="text-xs font-semibold">{towerStats.withoutCoordinates}</span>
               </div>
             </button>

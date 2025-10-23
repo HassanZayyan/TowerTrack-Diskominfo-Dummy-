@@ -338,7 +338,7 @@ export default function MyMessagesIndex({
 
   // Memoize EmptyState to prevent unnecessary re-renders
   const EmptyState = React.memo(() => (
-    <StaggeredContainer delay={200} animationType="bounceIn" duration={500}>
+    <StaggeredContainer delay={200} animationType="scaleIn" duration={500}>
       <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-12 text-center">
         <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
           <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,7 +621,7 @@ export default function MyMessagesIndex({
 
             {/* No results message */}
             {filteredItems.length === 0 && (
-              <StaggeredContainer delay={250} animationType="bounceIn" duration={500}>
+              <StaggeredContainer delay={250} animationType="scaleIn" duration={500}>
                 <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow-lg border border-gray-200 p-10 text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
                     <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

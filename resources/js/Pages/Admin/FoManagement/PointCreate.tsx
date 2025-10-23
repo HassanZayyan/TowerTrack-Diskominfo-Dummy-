@@ -71,53 +71,55 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
       <div className="space-y-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-3xl shadow-2xl overflow-hidden">
-          <div className="px-8 py-12 relative">
+          <div className="px-4 sm:px-8 py-8 sm:py-12 relative">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative z-10">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
                     </div>
-                    <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold text-white">
+                    <div className="flex-1 min-w-0">
+                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
                         Tambah Titik FO Baru
                       </h1>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-white/80 text-lg">Jalur:</span>
-                        <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white font-semibold">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+                        <span className="text-white/80 text-sm sm:text-lg">Jalur:</span>
+                        <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white font-semibold text-sm sm:text-base break-words">
                           {foRoute.name}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-white/90">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 text-white/90">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
                       <span className="text-sm">Area: {foRoute.area}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
                       <span className="text-sm">Titik ke-{nextSequence}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-blue-400 rounded-full flex-shrink-0"></div>
                       <span className="text-sm">Total {foRoute.total_points} titik existing</span>
                     </div>
                   </div>
                 </div>
-                <Link
-                  href={route('admin.fo-management.routes.detail', foRoute.id)}
-                  className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Kembali ke Detail Jalur
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <Link
+                    href={route('admin.fo-management.routes.detail', foRoute.id)}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors w-full sm:w-auto"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Kembali ke Detail Jalur
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -125,30 +127,30 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
 
         {/* Form */}
         <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 overflow-hidden">
-          <form onSubmit={handleSubmit} className="p-8">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
               {/* Basic Information */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-red-900">Informasi Dasar</h3>
-                      <p className="text-sm text-red-700">Data utama titik fiber optik</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg sm:text-xl font-bold text-red-900">Informasi Dasar</h3>
+                      <p className="text-xs sm:text-sm text-red-700">Data utama titik fiber optik</p>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="name" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
-                        Nama Titik
+                        <span className="flex-1">Nama Titik</span>
                         <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -156,7 +158,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                         id="name"
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
-                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                        className={`block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all duration-200 text-sm sm:text-base ${
                           errors.name 
                             ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
                             : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
@@ -276,28 +278,28 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
               </div>
 
               {/* Location & Description */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">  
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-blue-900">Lokasi Koordinat</h3>
-                      <p className="text-sm text-blue-700">Tentukan posisi titik FO</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg sm:text-xl font-bold text-blue-900">Lokasi Koordinat</h3>
+                      <p className="text-xs sm:text-sm text-blue-700">Tentukan posisi titik FO</p>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="latitude" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           </svg>
-                          Latitude
+                          <span className="flex-1">Latitude</span>
                           <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -306,7 +308,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                           step="any"
                           value={data.latitude}
                           onChange={(e) => setData('latitude', e.target.value)}
-                          className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                          className={`block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all duration-200 text-sm sm:text-base ${
                             errors.latitude 
                               ? 'border-red-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100' 
                               : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
@@ -325,10 +327,10 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       
                       <div>
                         <label htmlFor="longitude" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           </svg>
-                          Longitude
+                          <span className="flex-1">Longitude</span>
                           <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -337,7 +339,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                           step="any"
                           value={data.longitude}
                           onChange={(e) => setData('longitude', e.target.value)}
-                          className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                          className={`block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all duration-200 text-sm sm:text-base ${
                             errors.longitude 
                               ? 'border-red-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100' 
                               : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 hover:border-gray-300'
@@ -366,16 +368,16 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                       </svg>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-yellow-900">Deskripsi</h3>
-                      <p className="text-sm text-yellow-700">Informasi tambahan (opsional)</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg sm:text-xl font-bold text-yellow-900">Deskripsi</h3>
+                      <p className="text-xs sm:text-sm text-yellow-700">Informasi tambahan (opsional)</p>
                     </div>
                   </div>
                   
@@ -407,7 +409,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       </div>
                     )}
                   </div>
-                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="mt-4 sm:mt-6 grid grid-cols-1 gap-4">
                     <div>
                       <label htmlFor="isp_image" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                         <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,11 +500,11 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
             </div>
 
             {/* Submit Buttons */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-4">
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4">
                 <Link
                   href={route('admin.fo-management.routes.detail', foRoute.id)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-200 text-sm sm:text-base"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -512,11 +514,11 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                 <button
                   type="submit"
                   disabled={processing}
-                  className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200"
+                  className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200 text-sm sm:text-base"
                 >
                   {processing ? (
                     <>
-                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -524,7 +526,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span>Simpan Titik</span>
