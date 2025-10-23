@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FoPoint;
 use App\Models\FoRoute;
+use App\Services\FoRouteService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -44,27 +45,8 @@ class FoController extends Controller
                 ];
             });
 
-        // Get FO routes by area - WITHOUT heavy polyline data for initial load
-        // Users can load specific route polylines via dropdown on-demand
-        $foRoutes = FoRoute::where('area', $area)
-            ->where('status', 'active')
-            ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service')
-            ->get()
-            ->map(function ($route) {
-                return [
-                    'id' => $route->id,
-                    'name' => $route->name,
-                    'color' => $route->color,
-                    'total_distance' => is_numeric($route->actual_distance) ? (float) $route->actual_distance : 
-                                        (is_numeric($route->total_distance) ? (float) $route->total_distance : 0.0),
-                    'total_points' => (int) $route->total_points,
-                    'description' => $route->description,
-                    // Polyline data excluded - load via API when route is selected
-                    'area' => $route->area,
-                    'status' => $route->status,
-                    'routing_service' => $route->routing_service,
-                ];
-            });
+        // Get FO routes by area using optimized service with caching
+        $foRoutes = FoRouteService::getActiveRoutesByArea($area);
 
         // Calculate map bounds
         $bounds = $this->calculateMapBounds($foPoints);

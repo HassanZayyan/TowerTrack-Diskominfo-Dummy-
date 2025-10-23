@@ -46,10 +46,10 @@ Route::get('/tower/{tower}', [TowerController::class, 'show'])->name('tower.show
 
 // Public feedback and complaint forms (no authentication required)
 Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback');
-Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
+Route::post('/feedback', [FeedbackController::class, 'store'])->middleware('validate.file.uploads')->name('feedback.store');
 
 Route::get('/complaint', [UserComplaintController::class, 'index'])->name('complaint');
-Route::post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
+Route::post('/complaint', [UserComplaintController::class, 'store'])->middleware('validate.file.uploads')->name('complaint.store');
 
 // User feedback list and details (authenticated or anonymous with email)
 Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
