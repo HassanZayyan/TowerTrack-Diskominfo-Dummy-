@@ -7,7 +7,7 @@ import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
 import AlertDialog from '@/Components/AlertDialog';
 
 import { validatePhoneNumber } from '@/utils/validationUtils';
-import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates } from '@/utils/locationUtils';
+import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
 import 'leaflet/dist/leaflet.css';
 
 interface Tower {
@@ -321,10 +321,18 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     try {
       let locationValidation;
       let userLocationCaptured = false;
-      let userLocationResult: Awaited<ReturnType<typeof requestUserLocationForReporting>> | undefined;
+      let userLocationResult: Awaited<ReturnType<typeof getLocationForAccountSwitching>> | undefined;
       
       // Always request user location for documentation and validation
-      userLocationResult = await requestUserLocationForReporting();
+      // Use advanced account-switching optimized location capture with tower validation
+      userLocationResult = await getLocationForAccountSwitching(
+        auth?.user?.id, 
+        towerHasCoordinates ? {
+          latitude: Number(selectedTower.latitude),
+          longitude: Number(selectedTower.longitude)
+        } : undefined,
+        5 // Use more attempts for better accuracy
+      );
       
       if (!userLocationResult.success) {
         let locationTitle = 'Lokasi Diperlukan';
@@ -339,6 +347,15 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         } else if (userLocationResult.message.includes('tidak tersedia')) {
           locationTitle = 'Lokasi Tidak Tersedia';
           locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+        } else if (userLocationResult.message.includes('beberapa percobaan')) {
+          locationTitle = 'Lokasi Tidak Stabil';
+          locationMessage = 'GPS tidak dapat memberikan lokasi yang stabil. Coba pindah ke area terbuka atau gunakan WiFi untuk meningkatkan akurasi.';
+        } else if (userLocationResult.message.includes('restart WiFi')) {
+          locationTitle = 'Perlu Refresh Lokasi';
+          locationMessage = 'Koordinat GPS tidak akurat. Coba restart WiFi atau pindah ke area terbuka untuk mendapatkan lokasi yang lebih tepat.';
+        } else if (userLocationResult.message.includes('Semua strategi')) {
+          locationTitle = 'GPS Tidak Responsif';
+          locationMessage = 'GPS tidak dapat memberikan lokasi yang akurat. Pastikan GPS aktif, tidak dalam mode hemat daya, dan coba restart aplikasi.';
         }
         
         showWarningDialog(locationTitle, locationMessage);
@@ -358,6 +375,30 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       }
       
       userLocationCaptured = true;
+      
+      // Show detailed location feedback based on validation results
+      if (userLocationResult.validation && userLocationResult.validation.issues.length > 0) {
+        const issues = userLocationResult.validation.issues;
+        const recommendations = userLocationResult.validation.recommendations;
+        
+        if (userLocationResult.validation.confidence === 'low') {
+          showWarningDialog(
+            'Masalah Lokasi GPS Ditemukan', 
+            `${issues.join('. ')}. ${recommendations.join('. ')}`
+          );
+        } else if (userLocationResult.validation.confidence === 'medium') {
+          showWarningDialog(
+            'Akurasi Lokasi Sedang', 
+            `${issues.join('. ')}. ${recommendations.join('. ')}`
+          );
+        }
+      } else if (userLocationResult.isFreshLocation) {
+        // Show success message for fresh location
+        showSuccessDialog(
+          'Lokasi Diperbarui', 
+          `Lokasi GPS telah diperbarui dengan akurasi ${userLocationResult.accuracy ? `±${Math.round(userLocationResult.accuracy)}m` : 'baik'}.`
+        );
+      }
       
       if (towerHasCoordinates) {
         // Additional validation against tower coordinates for distance check

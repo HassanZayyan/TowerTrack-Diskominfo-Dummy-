@@ -5,7 +5,7 @@ namespace App\Services;
 class LocationSecurityService
 {
     /**
-     * Validate and sanitize coordinate data
+     * Validate and sanitize coordinate data with enhanced accuracy assessment
      *
      * @param float $latitude
      * @param float $longitude
@@ -45,9 +45,37 @@ class LocationSecurityService
         // Only include accuracy if it's provided and valid
         if ($sanitizedAccuracy !== null) {
             $result['reporter_accuracy'] = $sanitizedAccuracy;
+            
+            // Log location quality for monitoring
+            $quality = self::assessLocationQuality($sanitizedAccuracy);
+            \Log::info('Location captured', [
+                'accuracy' => $sanitizedAccuracy,
+                'quality' => $quality,
+                'latitude' => $sanitizedLatitude,
+                'longitude' => $sanitizedLongitude
+            ]);
         }
         
         return $result;
+    }
+    
+    /**
+     * Assess location quality based on accuracy
+     *
+     * @param float $accuracy Accuracy in meters
+     * @return string Quality level
+     */
+    public static function assessLocationQuality(float $accuracy): string
+    {
+        if ($accuracy <= 10) {
+            return 'excellent';
+        } elseif ($accuracy <= 50) {
+            return 'good';
+        } elseif ($accuracy <= 100) {
+            return 'fair';
+        } else {
+            return 'poor';
+        }
     }
     
     /**
