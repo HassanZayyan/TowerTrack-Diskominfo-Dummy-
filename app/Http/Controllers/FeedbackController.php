@@ -51,8 +51,8 @@ class FeedbackController extends Controller
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100',
-            'email' => auth()->check() && auth()->user()->isComplainant() 
-                ? 'prohibited' // Email not allowed for authenticated complainant users
+            'email' => auth()->check() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
+                ? 'prohibited' // Email not allowed for authenticated users (complainant and tower_owner)
                 : 'required|email|max:255', // Email now required for anonymous users
             'is_public' => 'required|boolean', // Visibility option
             'reporter_latitude' => 'nullable|numeric|between:-90,90',
@@ -70,8 +70,8 @@ class FeedbackController extends Controller
         
         if (auth()->check()) {
             $userId = auth()->id();
-            // For authenticated complainant users, use their email automatically
-            if (auth()->user()->isComplainant()) {
+            // For authenticated users (complainant and tower_owner), use their email automatically
+            if (auth()->user()->isComplainant() || auth()->user()->isTowerOwner()) {
                 $email = auth()->user()->email;
             }
         } else {

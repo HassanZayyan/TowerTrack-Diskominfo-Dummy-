@@ -398,12 +398,12 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                     const isVid = isVideo(asset.file_path, asset.file_type);
 
                     return (
-                      <div key={asset.id} className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-pink-400 transition-all shadow-sm hover:shadow-lg transform hover:scale-105 duration-300">
+                      <div key={asset.id} className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-pink-400 transition-all shadow-sm hover:shadow-lg duration-300">
                         {isImg ? (
                           <img
                             src={mediaUrl}
                             alt={`Lampiran ${index + 1}`}
-                            className="w-full h-32 object-cover cursor-pointer"
+                            className="w-full h-32 object-contain cursor-pointer bg-gray-50"
                             onClick={() => openLightbox(mediaUrl, 'image')}
                           />
                         ) : isVid ? (
@@ -667,7 +667,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                               const isVid = isVideo(asset.file_path, asset.file_type);
 
                               return (
-                                <div key={asset.id} className="relative rounded-lg overflow-hidden border-2 border-cyan-200 hover:border-cyan-400 transition-all transform hover:scale-105 cursor-pointer">
+                                <div key={asset.id} className="relative rounded-lg overflow-hidden border-2 border-cyan-200 hover:border-cyan-400 transition-all cursor-pointer">
                                   {isImg ? (
                                     <img
                                       src={mediaUrl}
@@ -727,13 +727,14 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
           className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
           onClick={() => setLightboxOpen(false)}
         >
-          <div className="relative max-w-5xl max-h-full">
+          <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center">
             {lightboxType === 'image' ? (
               <img
                 src={lightboxSrc}
                 alt="Full size preview"
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full w-auto h-auto object-contain"
                 onClick={(e) => e.stopPropagation()}
+                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
               />
             ) : (
               <div className="relative">

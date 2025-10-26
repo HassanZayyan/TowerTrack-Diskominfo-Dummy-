@@ -298,7 +298,7 @@ export default function PrivateTracking({
               <div className="relative w-full h-40 bg-gray-100">
                 <img 
                   src={`/storage/${a.file_path}`} 
-                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                  className="w-full h-full object-cover cursor-pointer transition-transform duration-200" 
                   alt={`Image attachment ${i + 1}`}
                   loading="lazy"
                   onClick={() => setPreviewAsset(a)}
@@ -605,7 +605,7 @@ export default function PrivateTracking({
                                         <div className="relative w-full h-32 bg-gray-100">
                                           <img 
                                             src={`/storage/${a.file_path}`} 
-                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                                            className="w-full h-full object-cover cursor-pointer transition-transform duration-200" 
                                             alt={`Admin response image ${idx + 1}`}
                                             loading="lazy"
                                             onClick={() => setPreviewAsset(a)}
@@ -705,7 +705,7 @@ export default function PrivateTracking({
                                         <div className="relative w-full h-32 bg-gray-100">
                                           <img 
                                             src={`/storage/${a.file_path}`} 
-                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200" 
+                                            className="w-full h-full object-cover cursor-pointer transition-transform duration-200" 
                                             alt={`Admin response image ${idx + 1}`}
                                             loading="lazy"
                                             onClick={() => setPreviewAsset(a)}
