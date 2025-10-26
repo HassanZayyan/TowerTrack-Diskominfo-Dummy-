@@ -753,7 +753,7 @@ class FoManagementController extends Controller
                     }
 
                     // Delete the routes themselves
-                    \App\Models\FoRoute::whereIn('id', $routesToDelete->pluck('id'))->delete();
+                    FoRoute::whereIn('id', $routesToDelete->pluck('id'))->delete();
                 });
                 $message = 'Jalur FO beserta titik-titik terkait berhasil dihapus';
                 break;
