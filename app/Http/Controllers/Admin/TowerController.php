@@ -12,6 +12,7 @@ class TowerController extends Controller
 {
     /**
      * Normalize incoming tower payload: convert empty strings to null for nullable numeric/date fields
+     * and properly format coordinates
      */
     protected function normalizeTowerInput(array $input): array
     {
@@ -21,10 +22,18 @@ class TowerController extends Controller
         $nullableDateFields = ['tanggal_ijin', 'berlaku_hingga'];
 
         foreach ($nullableNumericFields as $field) {
-            if (array_key_exists($field, $input) && $input[$field] === '') {
-                $input[$field] = null;
+            if (array_key_exists($field, $input)) {
+                if ($input[$field] === '' || $input[$field] === null) {
+                    $input[$field] = null;
+                } else {
+                    // For coordinate fields, ensure proper formatting
+                    if (in_array($field, ['latitude', 'longitude'])) {
+                        $input[$field] = $this->formatCoordinate($input[$field]);
+                    }
+                }
             }
         }
+        
         foreach ($nullableDateFields as $field) {
             if (array_key_exists($field, $input) && ($input[$field] === '' || $input[$field] === null)) {
                 $input[$field] = null;
@@ -32,6 +41,27 @@ class TowerController extends Controller
         }
 
         return $input;
+    }
+
+    /**
+     * Format coordinate value to ensure proper decimal precision
+     */
+    protected function formatCoordinate($value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        // Convert to float and round to 8 decimal places
+        $floatValue = (float) $value;
+        
+        // Check if the value is within valid ranges
+        if (strpos($value, 'latitude') !== false || strpos($value, 'longitude') !== false) {
+            // This is a field name, not a value
+            return $floatValue;
+        }
+        
+        return round($floatValue, 8);
     }
 
     public function index(Request $request)
@@ -266,8 +296,8 @@ class TowerController extends Controller
             'owner_alamat' => 'nullable|string|max:1000',
             
             // Location Information
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90|regex:/^-?\d{1,3}(\.\d{1,8})?$/',
+            'longitude' => 'nullable|numeric|between:-180,180|regex:/^-?\d{1,3}(\.\d{1,8})?$/',
             
             // Technical Information
             'tinggi_menara' => 'nullable|numeric|min:0',
@@ -289,26 +319,28 @@ class TowerController extends Controller
         // Address is required for new towers
         $rules['alamat_menara'] = 'required|string|max:1000';
         
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'latitude.regex' => 'Format latitude tidak valid. Gunakan format: -90.00000000 hingga 90.00000000 (maksimal 8 digit desimal)',
+            'longitude.regex' => 'Format longitude tidak valid. Gunakan format: -180.00000000 hingga 180.00000000 (maksimal 8 digit desimal)',
+            'latitude.between' => 'Latitude harus antara -90 dan 90 derajat',
+            'longitude.between' => 'Longitude harus antara -180 dan 180 derajat',
+        ]);
 
-        // Handle owner creation or selection
+        // Handle owner selection
         $ownerId = null;
         
         // For tower owners, force them to use their own owner record
         if (auth()->user() && auth()->user()->role === 'tower_owner') {
             $ownerId = auth()->user()->owner_id;
         } else {
-            // For admin/operator, allow owner selection
-            if (($validated['owner_id'] ?? null) === 'new' && ($validated['owner_name'] ?? null)) {
-                // Create new owner
-                $owner = Owner::create([
-                    'name' => $validated['owner_name'],
-                    'alamat' => $validated['owner_alamat'] ?? '',
-                ]);
-                $ownerId = $owner->id;
-            } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
-                // Use existing owner
+            // For admin/operator, validate that selected owner exists
+            if (!empty($validated['owner_id'])) {
                 $ownerId = (int) $validated['owner_id'];
+                
+                // Validate that the owner exists
+                if (!Owner::where('id', $ownerId)->exists()) {
+                    return back()->withErrors(['owner_id' => 'Owner yang dipilih tidak ditemukan.']);
+                }
             }
         }
 
@@ -352,8 +384,8 @@ class TowerController extends Controller
             
             // Location Information  
             'alamat_menara' => 'nullable|string|max:1000',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90|regex:/^-?\d{1,3}(\.\d{1,8})?$/',
+            'longitude' => 'nullable|numeric|between:-180,180|regex:/^-?\d{1,3}(\.\d{1,8})?$/',
             
             // Technical Information
             'tinggi_menara' => 'nullable|numeric|min:0',
@@ -370,6 +402,11 @@ class TowerController extends Controller
             'tanggal_ijin' => 'nullable|date',
             'berlaku_hingga' => 'nullable|date',
             'jenis_ijin' => 'nullable|string|max:100',
+        ], [
+            'latitude.regex' => 'Format latitude tidak valid. Gunakan format: -90.00000000 hingga 90.00000000 (maksimal 8 digit desimal)',
+            'longitude.regex' => 'Format longitude tidak valid. Gunakan format: -180.00000000 hingga 180.00000000 (maksimal 8 digit desimal)',
+            'latitude.between' => 'Latitude harus antara -90 dan 90 derajat',
+            'longitude.between' => 'Longitude harus antara -180 dan 180 derajat',
         ]);
 
         // Handle owner update
@@ -386,16 +423,13 @@ class TowerController extends Controller
                 $tower->owners()->detach();
                 
                 $ownerId = null;
-                if ($validated['owner_id'] === 'new' && !empty($validated['owner_name'])) {
-                    // Create new owner
-                    $owner = Owner::create([
-                        'name' => $validated['owner_name'],
-                        'alamat' => $validated['owner_alamat'] ?? '',
-                    ]);
-                    $ownerId = $owner->id;
-                } elseif (!empty($validated['owner_id']) && $validated['owner_id'] !== 'new') {
-                    // Use existing owner
+                if (!empty($validated['owner_id'])) {
                     $ownerId = (int) $validated['owner_id'];
+                    
+                    // Validate that the owner exists
+                    if (!Owner::where('id', $ownerId)->exists()) {
+                        return back()->withErrors(['owner_id' => 'Owner yang dipilih tidak ditemukan.']);
+                    }
                 }
                 
                 // Attach new owner if selected

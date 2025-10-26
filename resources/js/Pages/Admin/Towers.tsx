@@ -198,22 +198,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
     
     // Handle owner selection
     if (key === 'owner_id') {
-      if (value === 'new') {
-        // Set up for new owner creation
-        setSelectedOwners(prev => ({
-          ...prev,
-          [id]: { id: 'new', name: '', alamat: '' }
-        }));
-        setEditing(prev => ({ 
-          ...prev, 
-          [id]: { 
-            ...prev[id], 
-            owner_id: 'new',
-            owner_name: '',
-            owner_alamat: ''
-          } 
-        }));
-      } else if (value === '') {
+      if (value === '') {
         // Clear owner selection
         setSelectedOwners(prev => {
           const newState = { ...prev };
@@ -356,15 +341,9 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       // Ensure owner data is properly included
       const selectedOwner = selectedOwners[id];
       if (selectedOwner) {
-        if (selectedOwner.id === 'new') {
-          editData.owner_id = 'new';
-          editData.owner_name = editData.owner_name || '';
-          editData.owner_alamat = editData.owner_alamat || '';
-        } else {
-          editData.owner_id = selectedOwner.id.toString();
-          editData.owner_name = selectedOwner.name;
-          editData.owner_alamat = selectedOwner.alamat;
-        }
+        editData.owner_id = selectedOwner.id.toString();
+        editData.owner_name = selectedOwner.name;
+        editData.owner_alamat = selectedOwner.alamat;
       }
       
       router.put(route('admin.towers.update', { tower: id }), editData, {
@@ -1196,39 +1175,13 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             error={getFieldError(tower.id, 'owner_id')}
                             options={[
                               { value: '', label: 'Pilih Owner' },
-                              ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name })),
-                              { value: 'new', label: '+ Tambah Owner Baru' }
+                              ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))
                             ]}
                             placeholder="Pilih owner"
                             disabled={!isEditing(tower.id)}
                           />
                         </div>
-                        {selectedOwners[tower.id]?.id === 'new' && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Owner Baru</label>
-                              <FormInput 
-                                value={getEditValue(tower, 'owner_name') || ''}
-                                onChange={(value) => updateField(tower.id, 'owner_name', value)}
-                                error={getFieldError(tower.id, 'owner_name')}
-                                placeholder="Masukkan nama owner baru"
-                                disabled={!isEditing(tower.id)}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner Baru</label>
-                              <FormInput 
-                                value={getEditValue(tower, 'owner_alamat') || ''}
-                                onChange={(value) => updateField(tower.id, 'owner_alamat', value)}
-                                error={getFieldError(tower.id, 'owner_alamat')}
-                                rows={3}
-                                placeholder="Alamat lengkap owner baru"
-                                disabled={!isEditing(tower.id)}
-                              />
-                            </div>
-                          </>
-                        )}
-                        {selectedOwners[tower.id] && selectedOwners[tower.id].id !== 'new' && (
+                        {selectedOwners[tower.id] && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
                             <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">

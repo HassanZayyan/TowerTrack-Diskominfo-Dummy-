@@ -4,12 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\Owner;
 use App\Models\Tower;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TowerController extends Controller
 {
+    /**
+     * Safely format a date field
+     */
+    private function formatDate($date): ?string
+    {
+        if (!$date) {
+            return null;
+        }
+        
+        try {
+            return Carbon::parse($date)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     /**
      * Display a listing of towers with filtering and pagination
      */
@@ -88,8 +105,8 @@ class TowerController extends Controller
                 'tower_type' => $tower->tower_type,
                 'site_type' => $tower->site_type,
                 'no_ijin' => $tower->no_ijin,
-                'tanggal_ijin' => $tower->tanggal_ijin ? $tower->tanggal_ijin->format('Y-m-d') : null,
-                'berlaku_hingga' => $tower->berlaku_hingga ? $tower->berlaku_hingga->format('Y-m-d') : null,
+                'tanggal_ijin' => $this->formatDate($tower->tanggal_ijin),
+                'berlaku_hingga' => $this->formatDate($tower->berlaku_hingga),
                 'jenis_ijin' => $tower->jenis_ijin,
                 'status' => $tower->status_ijin ?? '',
                 'prs' => $tower->prs,
@@ -151,8 +168,8 @@ class TowerController extends Controller
                     'tower_type' => $tower->tower_type,
                     'site_type' => $tower->site_type,
                     'no_ijin' => $tower->no_ijin,
-                    'tanggal_ijin' => $tower->tanggal_ijin ? $tower->tanggal_ijin->format('Y-m-d') : null,
-                    'berlaku_hingga' => $tower->berlaku_hingga ? $tower->berlaku_hingga->format('Y-m-d') : null,
+                    'tanggal_ijin' => $this->formatDate($tower->tanggal_ijin),
+                    'berlaku_hingga' => $this->formatDate($tower->berlaku_hingga),
                     'jenis_ijin' => $tower->jenis_ijin,
                     'status' => $tower->status_ijin ?? '',
                     'prs' => $tower->prs,
@@ -168,6 +185,9 @@ class TowerController extends Controller
                                 ->pluck('name')
                                 ->toArray();
 
+        // Get total active tower count (not affected by pagination or filters)
+        $totalActiveTowers = Tower::where('status_ijin', 'Aktif')->count();
+
         return Inertia::render('DataTower/Index', [
             'towers' => $towersData,
             'mapTowers' => $mapTowers,
@@ -176,6 +196,7 @@ class TowerController extends Controller
             'perPage' => $towers->perPage(),
             'total' => $towers->total(),
             'lastPage' => $towers->lastPage(),
+            'totalActiveTowers' => $totalActiveTowers, // Add total active tower count
         ]);
     }
 

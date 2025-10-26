@@ -33,6 +33,7 @@ interface DataTowerProps {
   perPage: number;
   total: number;
   lastPage: number; // Total number of pages
+  totalActiveTowers: number; // Total active towers count
 }
 
 export default function DataTowerIndex({ 
@@ -42,7 +43,8 @@ export default function DataTowerIndex({
   currentPage = 1, 
   perPage = 10, 
   total = 0,
-  lastPage = 1
+  lastPage = 1,
+  totalActiveTowers = 0
 }: DataTowerProps) {
   const [searchTerm, setSearchTerm] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -308,6 +310,7 @@ export default function DataTowerIndex({
                 towers={towers}
                 mapMarkersCount={markers.length}
                 ownerFilter={ownerFilter}
+                totalActiveTowers={totalActiveTowers}
               />
 
               {/* Map Section */}

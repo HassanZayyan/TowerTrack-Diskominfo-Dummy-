@@ -13,10 +13,12 @@ interface TowerStatsProps {
   towers: Tower[];
   mapMarkersCount: number;
   ownerFilter: string;
+  totalActiveTowers: number; // Total active towers from backend
 }
 
-export default function TowerStats({ total, towers, mapMarkersCount, ownerFilter }: TowerStatsProps) {
-  const activeCount = towers.filter(t => t.status === 'Aktif' || t.status === 'AKTIF').length;
+export default function TowerStats({ total, towers, mapMarkersCount, ownerFilter, totalActiveTowers }: TowerStatsProps) {
+  // Use totalActiveTowers from backend instead of calculating from paginated towers
+  const activeCount = totalActiveTowers;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
