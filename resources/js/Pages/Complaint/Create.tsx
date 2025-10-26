@@ -475,6 +475,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
+                        id="is_public_private"
                         name="is_public"
                         checked={!form.is_public}
                         onChange={() => setForm(prev => ({ ...prev, is_public: false }))}
@@ -492,6 +493,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
+                        id="is_public_public"
                         name="is_public"
                         checked={form.is_public}
                         onChange={() => setForm(prev => ({ ...prev, is_public: true }))}

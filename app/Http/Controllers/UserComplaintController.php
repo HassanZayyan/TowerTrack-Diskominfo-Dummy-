@@ -52,9 +52,9 @@ class UserComplaintController extends Controller
                 'lokasi_tower' => 'required|string|max:255',
                 'tower_id' => 'required|exists:towers,id',
                 'pesan' => 'required|string|max:1000',
-                'email' => auth()->check() && auth()->user()->isComplainant() 
-                    ? 'prohibited' // Email not allowed for authenticated complainant users
-                    : 'required|email|max:255', // Email now required for anonymous users
+                'email' => auth()->check() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
+                    ? 'prohibited' // Email not allowed for authenticated users (both complainant and tower_owner)
+                    : 'required|email|max:255', // Email required for anonymous users
                 'is_public' => 'required|boolean', // Visibility option
                 'reporter_latitude' => 'nullable|numeric|between:-90,90',
                 'reporter_longitude' => 'nullable|numeric|between:-180,180',
@@ -74,12 +74,12 @@ class UserComplaintController extends Controller
         
         if (auth()->check()) {
             $userId = auth()->id();
-            // For authenticated complainant users, use their email automatically
-            if (auth()->user()->isComplainant()) {
+            // For authenticated users (both complainant and tower_owner), use their email automatically
+            if (auth()->user()->isComplainant() || auth()->user()->isTowerOwner()) {
                 $email = auth()->user()->email;
             }
         } else {
-            // For anonymous users, email is optional
+            // For anonymous users, email is required
             $email = $validated['email'] ?? null;
         }
 

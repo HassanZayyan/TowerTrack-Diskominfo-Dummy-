@@ -189,7 +189,7 @@ const ManagementTable: React.FC<Props> = ({
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
     const itemName = type === 'complaints' 
       ? (item.reporter_name || item.user?.name || '')
-      : (item.user?.name || '');
+      : (item.sender_name || item.user?.name || '');
     const itemEmail = item.user?.email || '';
     const matchesSearch = searchTerm === '' || 
       itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -215,7 +215,7 @@ const ManagementTable: React.FC<Props> = ({
     if (type === 'complaints') {
       return item.reporter_name || item.user?.name || 'Anonim';
     }
-    return item.user?.name || 'Anonim';
+    return item.sender_name || item.user?.name || 'Anonim';
   };
 
   const getItemPhone = (item: BaseItem) => {

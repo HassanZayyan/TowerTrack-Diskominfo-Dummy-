@@ -48,6 +48,7 @@ type MyMessagesProps = {
   feedbacks?: FeedbackItem[];
   showEmailInput?: boolean;
   isAnonymous?: boolean;
+  isMyPosts?: boolean; // Flag to indicate if this is the "My Posts" view
 };
 
 type MessageItem = {
@@ -67,7 +68,8 @@ export default function MyMessagesIndex({
   reports = [] as ReportItem[], 
   feedbacks = [] as FeedbackItem[],
   showEmailInput = false,
-  isAnonymous = false
+  isAnonymous = false,
+  isMyPosts = false
 }: MyMessagesProps) {
   const { auth } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin','operator'].includes(auth.user.role));
@@ -196,12 +198,17 @@ export default function MyMessagesIndex({
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(item => 
-        item.towerName.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.senderName.toLowerCase().includes(query) ||
-        item.senderEmail.toLowerCase().includes(query)
-      );
+      result = result.filter(item => {
+        const basicMatch = 
+          item.towerName.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query) ||
+          item.senderName.toLowerCase().includes(query);
+        
+        // Only search by email on "My Posts" page for privacy
+        const emailMatch = isMyPosts ? item.senderEmail.toLowerCase().includes(query) : false;
+        
+        return basicMatch || emailMatch;
+      });
     }
 
     return result;
@@ -356,9 +363,12 @@ export default function MyMessagesIndex({
     </StaggeredContainer>
   ));
 
+  // Determine the title based on the view
+  const pageTitle = isMyPosts ? "Pesan Saya" : (isAnonymous ? "Pesan Publik" : "Pesan Publik");
+  
   return (
-    <MainLayout title={isAnonymous ? "Pesan Publik" : "Pesan Saya"} currentPage="/my-messages">
-      <Head title={isAnonymous ? "Pesan Publik" : "Pesan Saya"} />
+    <MainLayout title={pageTitle} currentPage="/my-messages">
+      <Head title={pageTitle} />
       
       <div className="p-4 sm:p-6">
         <StaggeredContainer delay={0} animationType="fadeInUp" duration={500}>
@@ -376,13 +386,15 @@ export default function MyMessagesIndex({
                     </svg>
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent">
-                    {isAnonymous ? 'Pesan Publik' : 'Pesan Saya'}
+                    {pageTitle}
                   </h1>
                 </div>
                 <p className="text-sm sm:text-base text-gray-700 ml-14">
-                  {isAnonymous 
-                    ? 'Pantau semua keluhan dan masukan publik dari seluruh masyarakat'
-                    : 'Pantau status penanganan, balasan, dan progres laporan Anda'
+                  {isMyPosts 
+                    ? 'Lihat semua pesan Anda, baik yang publik maupun pribadi'
+                    : isAnonymous 
+                      ? 'Pantau semua keluhan dan masukan publik dari seluruh masyarakat'
+                      : 'Pantau pesan publik dari semua pengguna'
                   }
                 </p>
               </div>
@@ -438,6 +450,87 @@ export default function MyMessagesIndex({
           </StaggeredContainer>
         )}
 
+        {/* Show info banner for authenticated users about public messages */}
+        {!isAnonymous && auth?.user && !isMyPosts && (
+          <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
+            <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-md">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="p-2 bg-blue-500 rounded-lg shadow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-blue-900 mb-2">💡 Informasi Penting</h3>
+                  <p className="text-sm text-blue-800 leading-relaxed mb-3">
+                    Halaman ini menampilkan pesan <span className="font-semibold">publik</span> dari semua pengguna. Anda dapat melihat semua pesan publik yang dikirim oleh masyarakat.
+                  </p>
+                  <AnimatedButton
+                    variant="outline"
+                    size="sm"
+                    animation="scale"
+                    onClick={() => router.visit('/my-messages/my-posts')}
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    }
+                    className="border-blue-600 text-blue-800 hover:bg-blue-600 hover:text-white"
+                  >
+                    Pesan Saya
+                  </AnimatedButton>
+                </div>
+              </div>
+            </div>
+          </StaggeredContainer>
+        )}
+
+        {/* Show info banner for "My Posts" view with back button */}
+        {!isAnonymous && auth?.user && isMyPosts && (
+          <>
+            {/* Back Button */}
+            <StaggeredContainer delay={50} animationType="fadeInUp" duration={400}>
+              <div className="mb-4">
+                <AnimatedButton
+                  variant="primary"
+                  size="sm"
+                  animation="scale"
+                  onClick={() => router.visit('/my-messages')}
+                  icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                  }
+                >
+                  Kembali ke Pesan Publik
+                </AnimatedButton>
+              </div>
+            </StaggeredContainer>
+            
+            <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
+              <div className="mb-6 p-5 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg shadow-md">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="p-2 bg-green-500 rounded-lg shadow-sm">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-green-900 mb-2">💡 Informasi Penting</h3>
+                    <p className="text-sm text-green-800 leading-relaxed">
+                      Halaman ini menampilkan semua pesan yang Anda kirim, baik yang <span className="font-semibold">publik</span> maupun yang <span className="font-semibold">pribadi</span>. Anda dapat melihat status dan balasan admin untuk semua laporan Anda.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </StaggeredContainer>
+          </>
+        )}
+
         {/* Show content if there are items */}
         {allItems.length > 0 && (
           <>
@@ -475,7 +568,7 @@ export default function MyMessagesIndex({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 pr-20 block w-full"
-                      placeholder="Cari berdasarkan tower, kategori, nama, atau email..."
+                      placeholder={isMyPosts ? "Cari berdasarkan tower, kategori, nama, atau email..." : "Cari berdasarkan tower, kategori, atau nama..."}
                     />
                     {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all') && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -662,6 +755,7 @@ export default function MyMessagesIndex({
                   getStatusColor={getStatusColor}
                   formatDate={formatDate}
                   onOpen={openDetail}
+                  hideEmail={!isMyPosts} // Hide email on public pages (not my posts)
                 />
               </StaggeredContainer>
             )}
@@ -681,6 +775,7 @@ export default function MyMessagesIndex({
                       getStatusColor={getStatusColor}
                       formatDate={formatDate}
                       onOpen={openDetail}
+                      hideEmail={!isMyPosts} // Hide email on public pages (not my posts)
                     />
                   </StaggeredContainer>
                 ))}
@@ -829,18 +924,20 @@ export default function MyMessagesIndex({
                         )}
                       </div>
                     </div>
-                    <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
-                      <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        Email
+                    {isMyPosts && (
+                      <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
+                        <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Email
+                        </div>
+                        <div className="font-semibold text-gray-900 truncate">
+                          {(detail.data as any).user?.email || (detail.data as any).email || '-'}
+                        </div>
                       </div>
-                      <div className="font-semibold text-gray-900 truncate">
-                        {(detail.data as any).user?.email || (detail.data as any).email || '-'}
-                      </div>
-                    </div>
-                    {((detail.data as any).reporter_phone || (detail.data as any).sender_phone) && (
+                    )}
+                    {isMyPosts && ((detail.data as any).reporter_phone || (detail.data as any).sender_phone) && (
                       <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
                         <div className="text-xs font-medium text-teal-700 mb-1.5 flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

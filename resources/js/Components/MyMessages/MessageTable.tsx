@@ -18,9 +18,10 @@ interface MessageTableProps {
   getStatusColor: (status: string | undefined | null) => { bg: string; text: string; label: string };
   formatDate: (dateString: string) => string;
   onOpen?: (item: MessageItem) => void;
+  hideEmail?: boolean; // Flag to hide email for privacy
 }
 
-export default function MessageTable({ items, getStatusColor, formatDate, onOpen }: MessageTableProps) {
+export default function MessageTable({ items, getStatusColor, formatDate, onOpen, hideEmail = false }: MessageTableProps) {
   return (
     <div className="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -73,7 +74,7 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">{item.senderEmail}</div>
+                      {!hideEmail && <div className="text-xs text-gray-500 truncate">{item.senderEmail}</div>}
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">

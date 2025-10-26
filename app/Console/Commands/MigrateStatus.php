@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 class MigrateStatus extends Command
 {
@@ -41,6 +42,6 @@ class MigrateStatus extends Command
         
         $this->info('Migration complete!');
         
-        return Command::SUCCESS;
+        return SymfonyCommand::SUCCESS;
     }
 }

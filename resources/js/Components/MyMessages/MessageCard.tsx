@@ -18,9 +18,10 @@ interface MessageCardProps {
   getStatusColor: (status: string | undefined | null) => { bg: string; text: string; label: string };
   formatDate: (dateString: string) => string;
   onOpen?: (item: MessageItem) => void;
+  hideEmail?: boolean; // Flag to hide email for privacy
 }
 
-export default function MessageCard({ item, getStatusColor, formatDate, onOpen }: MessageCardProps) {
+export default function MessageCard({ item, getStatusColor, formatDate, onOpen, hideEmail = false }: MessageCardProps) {
   const statusConfig = getStatusColor(item.status);
   
   return (
@@ -47,7 +48,7 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen }
           
           {/* Contact and Location Info */}
           <div className="space-y-1">
-            <p className="text-xs text-gray-500 truncate">{item.senderEmail}</p>
+            {!hideEmail && <p className="text-xs text-gray-500 truncate">{item.senderEmail}</p>}
             <p className="text-xs text-gray-500 truncate">
               <span className="font-medium">Tower:</span> {item.towerName ?? 'Tower tidak diketahui'}
             </p>

@@ -57,78 +57,44 @@ Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('f
 
 // User reports page (messages) - accessible by authenticated users or anonymous
 Route::get('/my-messages', function () {
-    if (auth()->check()) {
-        // Authenticated user (complainant/tower_owner) - show their own reports + public reports from others
-        $ownReports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email', // Include user info for authenticated reports
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('user_id', auth()->id())
-        ->orderByDesc('created_at')
-        ->get();
-        
-        // Get public reports from others
-        $publicReports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email', // Include user info for authenticated reports
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('is_public', true)
-        ->where('user_id', '!=', auth()->id())
-        ->orderByDesc('created_at')
-        ->get();
-        
-        $reports = $ownReports->merge($publicReports)->sortByDesc('created_at')->values();
+    // Always show ONLY public messages (both for authenticated and anonymous users)
+    $reports = \App\Models\Report::with([
+        'tower:id,site_name,alamat_menara',
+        'user:id,name,email', // Include user info for authenticated reports
+        'responses' => function ($q) {
+            $q->select('id','report_id','message','created_at','user_id')
+              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
+        },
+        'images:id,report_id,file_path,file_type'
+    ])
+    ->where('is_public', true)
+    ->orderByDesc('created_at')
+    ->get();
 
-        $feedbacks = collect();
-        
-        try {
-            if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-                // Get own feedbacks
-                $ownFeedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email', // Include user info for authenticated feedbacks
-                    'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                    }
-                ])
-                ->where('user_id', auth()->id())
-                ->orderByDesc('created_at')
-                ->get();
-                
-                // Get public feedbacks from others
-                $publicFeedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email', // Include user info for authenticated feedbacks
-                    'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                    }
-                ])
-                ->where('is_public', true)
-                ->where('user_id', '!=', auth()->id())
-                ->orderByDesc('created_at')
-                ->get();
-                
-                $feedbacks = $ownFeedbacks->merge($publicFeedbacks)->sortByDesc('created_at')->values();
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-            $feedbacks = collect();
+    $feedbacks = collect();
+    
+    try {
+        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
+            $feedbacks = \App\Models\Feedback::with([
+                'tower:id,site_name,alamat_menara',
+                'user:id,name,email', // Include user info for authenticated feedbacks
+                'assets:id,feedback_id,file_path,file_type',
+                'responses' => function ($q) {
+                    $q->select('id','feedback_id','created_at','user_id','message')
+                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
+                }
+            ])
+            ->where('is_public', true)
+            ->orderByDesc('created_at')
+            ->get();
         }
-        
+    } catch (\Exception $e) {
+        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
+        $feedbacks = collect();
+    }
+    
+    if (auth()->check()) {
+        // Authenticated user - they can see public messages and have access to "My Messages"
         return Inertia::render('MyMessages/Index', [
             'reports' => $reports,
             'feedbacks' => $feedbacks,
@@ -179,6 +145,57 @@ Route::get('/my-messages', function () {
         ]);
     }
 })->name('my.messages');
+
+// "Pesan Saya" route - Show user's own messages (both public and private)
+Route::get('/my-messages/my-posts', function () {
+    if (!auth()->check()) {
+        return redirect()->route('my.messages');
+    }
+    
+    // Get ALL user's reports (both public and private)
+    $reports = \App\Models\Report::with([
+        'tower:id,site_name,alamat_menara',
+        'user:id,name,email',
+        'responses' => function ($q) {
+            $q->select('id','report_id','message','created_at','user_id')
+              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
+        },
+        'images:id,report_id,file_path,file_type'
+    ])
+    ->where('user_id', auth()->id())
+    ->orderByDesc('created_at')
+    ->get();
+
+    $feedbacks = collect();
+    
+    try {
+        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
+            $feedbacks = \App\Models\Feedback::with([
+                'tower:id,site_name,alamat_menara',
+                'user:id,name,email',
+                'assets:id,feedback_id,file_path,file_type',
+                'responses' => function ($q) {
+                    $q->select('id','feedback_id','created_at','user_id','message')
+                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
+                }
+            ])
+            ->where('user_id', auth()->id())
+            ->orderByDesc('created_at')
+            ->get();
+        }
+    } catch (\Exception $e) {
+        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
+        $feedbacks = collect();
+    }
+    
+    return Inertia::render('MyMessages/Index', [
+        'reports' => $reports,
+        'feedbacks' => $feedbacks,
+        'showEmailInput' => false,
+        'isAnonymous' => false,
+        'isMyPosts' => true, // Flag to indicate this is "My Posts" view
+    ]);
+})->middleware('auth')->name('my.messages.myposts');
 
 // Guest private message tracking route - untuk melacak pesan private guest
 Route::get('/my-messages/private', function () {
