@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FoRoute;
 use App\Models\FoPoint;
+use App\Rules\GoogleDriveUrl;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -323,10 +324,10 @@ class FoManagementController extends Controller
             'route_id' => 'required|exists:fo_routes,id',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
-            // Optional Google Drive links for images
-            'isp_image' => 'nullable|string|max:2048|url',
-            'pole_image' => 'nullable|string|max:2048|url',
-            'junction_box_image' => 'nullable|string|max:2048|url',
+            // Optional Google Drive links for images - validated to ensure proper format
+            'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
+            'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
+            'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
         ]);
 
         // Remove route_id from validated data as it's not in the database
@@ -414,10 +415,10 @@ class FoManagementController extends Controller
             'route_name' => 'required|string|max:255',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',
-            // Optional Google Drive links for images
-            'isp_image' => 'nullable|string|max:2048|url',
-            'pole_image' => 'nullable|string|max:2048|url',
-            'junction_box_image' => 'nullable|string|max:2048|url',
+            // Optional Google Drive links for images - validated to ensure proper format
+            'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
+            'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
+            'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
         ]);
 
         $oldRouteName = $foPoint->route_name;

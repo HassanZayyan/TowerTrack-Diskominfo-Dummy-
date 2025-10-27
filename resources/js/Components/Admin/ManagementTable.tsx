@@ -397,32 +397,32 @@ const ManagementTable: React.FC<Props> = ({
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1200px' }}>
+            <div className="hidden lg:block overflow-x-hidden">
+              <table className="w-full divide-y divide-gray-200 table-fixed">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pelapor
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {type === 'complaints' ? 'Keluhan' : 'Masukan'}
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tower
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Visibilitas
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tanggal
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
@@ -446,7 +446,7 @@ const ManagementTable: React.FC<Props> = ({
                         </div>
                       </td>
                       <td className="px-3 py-4 align-top">
-                        <div className="text-sm text-gray-700 truncate" title={getItemEmail(item)}>
+                        <div className="text-sm text-gray-700 truncate max-w-[200px]" title={getItemEmail(item)} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {getItemEmail(item)}
                         </div>
                       </td>
@@ -595,7 +595,9 @@ const ManagementTable: React.FC<Props> = ({
                       <div className="ml-3 min-w-0 flex-1">
                         <div className="text-sm font-medium text-gray-900 truncate">{getItemDisplayName(item)}</div>
                         <div className="text-xs text-gray-500 truncate">{getItemPhone(item)}</div>
-                        <div className="text-xs text-gray-500 truncate">{getItemEmail(item)}</div>
+                        <div className="text-xs text-gray-500 truncate max-w-[120px]" title={getItemEmail(item)} style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {getItemEmail(item)}
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 items-end ml-2">
