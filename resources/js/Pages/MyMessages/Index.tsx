@@ -619,9 +619,7 @@ export default function MyMessagesIndex({
                     <option value="all">Semua Status</option>
                     <option value="pending">Menunggu</option>
                     <option value="in_progress">Sedang Diproses</option>
-                    <option value="responded">Sudah Dibalas</option>
                     <option value="resolved">Selesai</option>
-                    <option value="closed">Ditutup</option>
                   </select>
                 </div>
               </div>
