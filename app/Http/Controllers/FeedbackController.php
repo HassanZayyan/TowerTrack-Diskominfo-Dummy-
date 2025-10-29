@@ -55,9 +55,9 @@ class FeedbackController extends Controller
                 ? 'prohibited' // Email not allowed for authenticated users (complainant and tower_owner)
                 : 'required|email|max:255', // Email now required for anonymous users
             'is_public' => 'required|boolean', // Visibility option
-            'reporter_latitude' => 'nullable|numeric|between:-90,90',
-            'reporter_longitude' => 'nullable|numeric|between:-180,180',
-            'reporter_accuracy' => 'nullable|numeric|min:0|max:10000',
+            'reporter_latitude' => 'nullable|numeric',
+            'reporter_longitude' => 'nullable|numeric',
+            'reporter_accuracy' => 'nullable|numeric',
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -79,19 +79,19 @@ class FeedbackController extends Controller
             $email = $validated['email'] ?? null;
         }
 
-        // Handle reporter coordinates if provided
+        // Handle reporter coordinates - completely optional, never blocks submission
         $locationData = [];
         if (!empty($validated['reporter_latitude']) && !empty($validated['reporter_longitude'])) {
-            try {
-                $locationData = LocationSecurityService::validateCoordinates(
-                    (float) $validated['reporter_latitude'],
-                    (float) $validated['reporter_longitude'],
-                    isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
-                );
-            } catch (\InvalidArgumentException $e) {
-                \Log::warning('Invalid coordinates provided: ' . $e->getMessage());
-                // Continue without coordinates rather than failing the request
+            $coordinatesResult = LocationSecurityService::validateCoordinates(
+                (float) $validated['reporter_latitude'],
+                (float) $validated['reporter_longitude'],
+                isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
+            );
+            
+            if ($coordinatesResult !== null) {
+                $locationData = $coordinatesResult;
             }
+            // Always continue - coordinates are completely optional
         }
 
         $feedbackData = [
@@ -113,41 +113,9 @@ class FeedbackController extends Controller
 
         $feedback = Feedback::create($feedbackData);
 
-        // Handle file uploads from any accepted key: assets, foto, or video
-        $files = collect();
-        if ($request->hasFile('assets')) {
-            $files = $files->merge($request->file('assets'));
-        }
-        if ($request->hasFile('foto')) {
-            $files = $files->merge($request->file('foto'));
-        }
-        if ($request->hasFile('video')) {
-            $files = $files->merge($request->file('video'));
-        }
-
-        foreach ($files as $file) {
-            try {
-                $mime = $file->getMimeType();
-                $isImage = str_starts_with($mime, 'image/');
-                $dir = $isImage ? 'feedback-photos' : 'feedback-videos';
-                $path = $file->store($dir, 'public');
-                if (!$path) {
-                    \Log::error('Failed to store feedback asset: ' . $file->getClientOriginalName());
-                    continue;
-                }
-
-                FeedbackAsset::create([
-                    'feedback_id' => $feedback->id,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $isImage ? 'image' : 'video',
-                    'mime_type' => $mime,
-                    'file_size' => $file->getSize(),
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('Error uploading feedback asset: ' . $e->getMessage());
-                continue;
-            }
+        // Handle file uploads only if files exist for faster response
+        if ($this->hasAnyFiles($request)) {
+            $this->handleFileUploads($request, $feedback->id);
         }
 
         $message = auth()->check() 
@@ -196,5 +164,54 @@ class FeedbackController extends Controller
         return Inertia::render('Feedback/Show', [
             'feedback' => $feedback,
         ]);
+    }
+
+    /**
+     * Quick check if request has any files to upload
+     */
+    private function hasAnyFiles(Request $request): bool
+    {
+        return $request->hasFile('foto') || $request->hasFile('assets') || $request->hasFile('video');
+    }
+
+    /**
+     * Handle file uploads for feedback - optimized method to avoid duplication
+     */
+    private function handleFileUploads(Request $request, int $feedbackId): void
+    {
+        // Collect all files from different input fields
+        $allFiles = collect();
+        
+        foreach (['foto', 'assets', 'video'] as $fieldName) {
+            if ($request->hasFile($fieldName)) {
+                $files = $request->file($fieldName);
+                $allFiles = $allFiles->merge(is_array($files) ? $files : [$files]);
+            }
+        }
+
+        // Process each file
+        foreach ($allFiles->filter() as $file) {
+            try {
+                $mimeType = $file->getMimeType();
+                $isImage = str_starts_with($mimeType, 'image/');
+                $directory = $isImage ? 'feedback-photos' : 'feedback-videos';
+
+                $path = $file->store($directory, 'public');
+                if ($path) {
+                    FeedbackAsset::create([
+                        'feedback_id' => $feedbackId,
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_type' => $isImage ? 'image' : 'video',
+                        'mime_type' => $mimeType,
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Log error but don't fail the entire request
+                \Log::error('Error uploading feedback file: ' . $e->getMessage());
+                continue;
+            }
+        }
     }
 }

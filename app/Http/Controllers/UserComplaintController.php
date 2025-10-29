@@ -56,9 +56,9 @@ class UserComplaintController extends Controller
                     ? 'prohibited' // Email not allowed for authenticated users (both complainant and tower_owner)
                     : 'required|email|max:255', // Email required for anonymous users
                 'is_public' => 'required|boolean', // Visibility option
-                'reporter_latitude' => 'nullable|numeric|between:-90,90',
-                'reporter_longitude' => 'nullable|numeric|between:-180,180',
-                'reporter_accuracy' => 'nullable|numeric|min:0|max:10000',
+                'reporter_latitude' => 'nullable|numeric',
+                'reporter_longitude' => 'nullable|numeric',
+                'reporter_accuracy' => 'nullable|numeric',
                 'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
                 'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
                 'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -83,28 +83,20 @@ class UserComplaintController extends Controller
             $email = $validated['email'] ?? null;
         }
 
-        // Handle reporter coordinates if provided
+        // Handle reporter coordinates - completely optional, never blocks submission
         $locationData = [];
-        \Log::info('Received coordinates:', [
-            'reporter_latitude' => $validated['reporter_latitude'] ?? 'not provided',
-            'reporter_longitude' => $validated['reporter_longitude'] ?? 'not provided',
-            'reporter_accuracy' => $validated['reporter_accuracy'] ?? 'not provided'
-        ]);
         
         if (!empty($validated['reporter_latitude']) && !empty($validated['reporter_longitude'])) {
-            try {
-                $locationData = LocationSecurityService::validateCoordinates(
-                    (float) $validated['reporter_latitude'],
-                    (float) $validated['reporter_longitude'],
-                    isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
-                );
-                \Log::info('Coordinates validated successfully:', $locationData);
-            } catch (\InvalidArgumentException $e) {
-                \Log::warning('Invalid coordinates provided: ' . $e->getMessage());
-                // Continue without coordinates rather than failing the request
+            $coordinatesResult = LocationSecurityService::validateCoordinates(
+                (float) $validated['reporter_latitude'],
+                (float) $validated['reporter_longitude'],
+                isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
+            );
+            
+            if ($coordinatesResult !== null) {
+                $locationData = $coordinatesResult;
             }
-        } else {
-            \Log::info('No coordinates provided in request');
+            // Always continue - coordinates are completely optional
         }
 
         // Always set status_id to 1 (pending) for new complaints
@@ -123,81 +115,13 @@ class UserComplaintController extends Controller
         // Merge location data if available
         if (!empty($locationData)) {
             $reportData = array_merge($reportData, $locationData);
-            \Log::info('Report data with coordinates:', $reportData);
-        } else {
-            \Log::info('Report data without coordinates:', $reportData);
         }
 
         $report = Report::create($reportData);
-        \Log::info('Report created with ID: ' . $report->id, [
-            'reporter_latitude' => $report->reporter_latitude,
-            'reporter_longitude' => $report->reporter_longitude,
-            'reporter_accuracy' => $report->reporter_accuracy,
-            'location_captured_at' => $report->location_captured_at
-        ]);
 
-        // Handle uploads (images and/or videos) submitted under "foto" or a generic "assets" key
-        try {
-            $filesFromFoto = $request->file('foto', []);
-            $filesFromAssets = $request->file('assets', []);
-            $allFiles = array_filter(array_merge($filesFromFoto, $filesFromAssets));
-
-            if (!empty($allFiles)) {
-                foreach ($allFiles as $file) {
-                    try {
-                        $mimeType = $file->getClientMimeType();
-                        $isImage = str_starts_with($mimeType, 'image/');
-                        $directory = $isImage ? 'report-photos' : 'report-videos';
-
-                        $path = $file->store($directory, 'public');
-                        if (!$path) {
-                            \Log::error('Failed to store file: ' . $file->getClientOriginalName());
-                            continue;
-                        }
-                        
-                        ReportAsset::create([
-                            'report_id' => $report->id,
-                            'file_path' => $path,
-                            'file_name' => $file->getClientOriginalName(),
-                            'file_type' => $isImage ? 'image' : 'video',
-                            'mime_type' => $mimeType,
-                            'file_size' => $file->getSize(),
-                        ]);
-                    } catch (\Exception $e) {
-                        \Log::error('Error uploading file: ' . $e->getMessage());
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error handling photo/video uploads: ' . $e->getMessage());
-        }
-
-        // Handle video uploads
-        try {
-            if ($request->hasFile('video')) {
-                foreach ($request->file('video') as $video) {
-                    try {
-                        $path = $video->store('report-videos', 'public');
-                        if (!$path) {
-                            \Log::error('Failed to store video: ' . $video->getClientOriginalName());
-                            continue;
-                        }
-                        
-                        ReportAsset::create([
-                            'report_id' => $report->id,
-                            'file_path' => $path,
-                            'file_name' => $video->getClientOriginalName(),
-                            'file_type' => 'video',
-                            'mime_type' => $video->getClientMimeType(),
-                            'file_size' => $video->getSize(),
-                        ]);
-                    } catch (\Exception $e) {
-                        \Log::error('Error uploading video: ' . $e->getMessage());
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error handling video uploads: ' . $e->getMessage());
+        // Handle file uploads only if files exist for faster response
+        if ($this->hasAnyFiles($request)) {
+            $this->handleFileUploads($request, $report->id);
         }
 
         $message = auth()->check() 
@@ -208,6 +132,55 @@ class UserComplaintController extends Controller
                 : 'Untuk melacak status keluhan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
 
         return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Quick check if request has any files to upload
+     */
+    private function hasAnyFiles(Request $request): bool
+    {
+        return $request->hasFile('foto') || $request->hasFile('assets') || $request->hasFile('video');
+    }
+
+    /**
+     * Handle file uploads for reports - optimized method to avoid duplication
+     */
+    private function handleFileUploads(Request $request, int $reportId): void
+    {
+        // Collect all files from different input fields
+        $allFiles = collect();
+        
+        foreach (['foto', 'assets', 'video'] as $fieldName) {
+            if ($request->hasFile($fieldName)) {
+                $files = $request->file($fieldName);
+                $allFiles = $allFiles->merge(is_array($files) ? $files : [$files]);
+            }
+        }
+
+        // Process each file
+        foreach ($allFiles->filter() as $file) {
+            try {
+                $mimeType = $file->getClientMimeType();
+                $isImage = str_starts_with($mimeType, 'image/');
+                $directory = $isImage ? 'report-photos' : 'report-videos';
+
+                $path = $file->store($directory, 'public');
+                if ($path) {
+                    ReportAsset::create([
+                        'report_id' => $reportId,
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_type' => $isImage ? 'image' : 'video',
+                        'mime_type' => $mimeType,
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Log error but don't fail the entire request
+                \Log::error('Error uploading file: ' . $e->getMessage());
+                continue;
+            }
+        }
     }
 }
 
