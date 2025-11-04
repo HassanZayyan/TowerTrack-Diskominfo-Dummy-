@@ -218,46 +218,52 @@ export default function FoTable({
           <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Titik-titik FO</h3>
           <p className="text-sm text-gray-600 mt-1">{filteredPoints.length} titik ditemukan</p>
         </div>
-        <div className="overflow-x-auto flex-1 min-h-0">
-          <table className="min-w-full divide-y divide-gray-200 h-full">
-            <thead className="bg-gray-50">
+        <div className="flex-1 min-h-0 overflow-y-auto relative overscroll-contain">
+          <table className="w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2 sm:w-2/5">Nama</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Tipe</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Status</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 relative z-10">
               {currentPoints.length > 0 ? currentPoints.map((point) => (
                 <tr key={point.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: '#212121' }}>{point.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{point.description}</div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-medium truncate" style={{ color: '#212121' }} title={point.name}>{point.name}</div>
+                      <div className="text-xs text-gray-500 mt-1 truncate" title={point.description}>{point.description}</div>
+                      <div className="text-xs text-gray-400 mt-1 truncate">
+                        {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    {getTypeBadge(point.type)}
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {getTypeBadge(point.type)}
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    {getStatusBadge(point.status)}
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {getStatusBadge(point.status)}
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onPointClick?.(point);
-                      }}
-                      className="text-white px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#B71C1C' }}
-                    >
-                      Detail
-                    </button>
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onPointClick?.(point);
+                        }}
+                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                        style={{ backgroundColor: '#B71C1C' }}
+                      >
+                        Detail
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
@@ -293,51 +299,57 @@ export default function FoTable({
           <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Jalur-jalur FO</h3>
           <p className="text-sm text-gray-600 mt-1">{filteredRoutes.length} jalur ditemukan</p>
         </div>
-        <div className="overflow-x-auto flex-1 min-h-0">
-          <table className="min-w-full divide-y divide-gray-200 h-full">
-            <thead className="bg-gray-50">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative overscroll-contain">
+          <table className="w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titik</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
+                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Titik</th>
+                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Status</th>
+                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 relative z-10">
               {currentRoutes.length > 0 ? currentRoutes.map((route) => (
                 <tr key={route.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: '#212121' }}>{route.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{route.description}</div>
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-medium truncate" style={{ color: '#212121' }} title={route.name}>{route.name}</div>
+                      <div className="text-xs text-gray-500 mt-1 truncate" title={route.description}>{route.description}</div>
                       <div className="flex items-center mt-1">
                         <div 
-                          className="w-3 h-3 rounded-full mr-2" 
+                          className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded-full mr-1 sm:mr-2 flex-shrink-0" 
                           style={{ backgroundColor: route.color }}
                         ></div>
-                        <span className="text-xs text-gray-400">Warna jalur</span>
+                        <span className="text-xs text-gray-400 truncate">Warna jalur</span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm text-gray-900">{route.total_points || 0}</span>
-                    <div className="text-xs text-gray-500">titik</div>
+                  <td className="px-1 sm:px-4 py-3">
+                    <div className="text-center sm:text-left">
+                      <span className="text-xs sm:text-sm text-gray-900 font-medium">{route.total_points || 0}</span>
+                      <div className="text-xs text-gray-500">titik</div>
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    {getStatusBadge(route.status)}
+                  <td className="px-1 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {getStatusBadge(route.status)}
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onRouteClick?.(route);
-                      }}
-                      className="text-white px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#B71C1C' }}
-                    >
-                      Detail
-                    </button>
+                  <td className="px-1 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onRouteClick?.(route);
+                        }}
+                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                        style={{ backgroundColor: '#B71C1C' }}
+                      >
+                        Detail
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
@@ -375,46 +387,52 @@ export default function FoTable({
           <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Titik-titik FO</h3>
           <p className="text-sm text-gray-600 mt-1">{filteredPoints.length} titik ditemukan</p>
         </div>
-        <div className="overflow-x-auto flex-1 min-h-0">
-          <table className="min-w-full divide-y divide-gray-200 h-full">
-            <thead className="bg-gray-50">
+        <div className="flex-1 min-h-0 overflow-y-auto relative overscroll-contain">
+          <table className="w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2 sm:w-2/5">Nama</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Tipe</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Status</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 relative z-10">
               {currentPoints.length > 0 ? currentPoints.map((point) => (
                 <tr key={point.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: '#212121' }}>{point.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{point.description}</div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-medium truncate" style={{ color: '#212121' }} title={point.name}>{point.name}</div>
+                      <div className="text-xs text-gray-500 mt-1 truncate" title={point.description}>{point.description}</div>
+                      <div className="text-xs text-gray-400 mt-1 truncate">
+                        {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    {getTypeBadge(point.type)}
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {getTypeBadge(point.type)}
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    {getStatusBadge(point.status)}
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {getStatusBadge(point.status)}
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onPointClick?.(point);
-                      }}
-                      className="text-white px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#B71C1C' }}
-                    >
-                      Detail
-                    </button>
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onPointClick?.(point);
+                        }}
+                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                        style={{ backgroundColor: '#B71C1C' }}
+                      >
+                        Detail
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
@@ -447,51 +465,57 @@ export default function FoTable({
           <h3 className="text-lg font-medium" style={{ color: '#212121' }}>Jalur-jalur FO</h3>
           <p className="text-sm text-gray-600 mt-1">{filteredRoutes.length} jalur ditemukan</p>
         </div>
-        <div className="overflow-x-auto flex-1 min-h-0">
-          <table className="min-w-full divide-y divide-gray-200 h-full">
-            <thead className="bg-gray-50">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative overscroll-contain">
+          <table className="w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titik</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
+                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Titik</th>
+                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Status</th>
+                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 relative z-10">
               {currentRoutes.length > 0 ? currentRoutes.map((route) => (
                 <tr key={route.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: '#212121' }}>{route.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{route.description}</div>
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-medium truncate" style={{ color: '#212121' }} title={route.name}>{route.name}</div>
+                      <div className="text-xs text-gray-500 mt-1 truncate" title={route.description}>{route.description}</div>
                       <div className="flex items-center mt-1">
                         <div 
-                          className="w-3 h-3 rounded-full mr-2" 
+                          className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded-full mr-1 sm:mr-2 flex-shrink-0" 
                           style={{ backgroundColor: route.color }}
                         ></div>
-                        <span className="text-xs text-gray-400">Warna jalur</span>
+                        <span className="text-xs text-gray-400 truncate">Warna jalur</span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm text-gray-900">{route.total_points || 0}</span>
-                    <div className="text-xs text-gray-500">titik</div>
+                  <td className="px-1 sm:px-4 py-3">
+                    <div className="text-center sm:text-left">
+                      <span className="text-xs sm:text-sm text-gray-900 font-medium">{route.total_points || 0}</span>
+                      <div className="text-xs text-gray-500">titik</div>
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    {getStatusBadge(route.status)}
+                  <td className="px-1 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {getStatusBadge(route.status)}
+                    </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onRouteClick?.(route);
-                      }}
-                      className="text-white px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#B71C1C' }}
-                    >
-                      Detail
-                    </button>
+                  <td className="px-1 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onRouteClick?.(route);
+                        }}
+                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                        style={{ backgroundColor: '#B71C1C' }}
+                      >
+                        Detail
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
@@ -501,7 +525,7 @@ export default function FoTable({
                   </td>
                 </tr>
               )}
-              {/* Fill remaining space if needed */}
+              {/* Fill Pleasant space if needed */}
               {currentRoutes.length < routesPerPage && Array.from({ length: routesPerPage - currentRoutes.length }).map((_, index) => (
                 <tr key={`empty-${index}`} className="h-16">
                   <td colSpan={4} className="px-4 py-4">&nbsp;</td>

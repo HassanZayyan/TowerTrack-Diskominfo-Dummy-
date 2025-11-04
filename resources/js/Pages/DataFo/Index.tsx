@@ -808,12 +808,16 @@ export default function DataFoIndex({
         <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
           <div className="bg-white rounded-lg shadow mb-6 overflow-hidden" data-section="map">
           <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+            {/* Header Content - Responsive Layout */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+              {/* Title and Description Section */}
+              <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
                 <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
               </div>
-              <div className="flex items-center space-x-2">
+
+              {/* Action Buttons Section - Responsive Button Layout */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button 
                   onClick={() => setShowMarkers(!showMarkers)}
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
@@ -843,7 +847,7 @@ export default function DataFoIndex({
                 </button>
                 <button 
                   onClick={handleExport}
-                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
                   title="Export data ke CSV"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -853,7 +857,7 @@ export default function DataFoIndex({
                 </button>
                 <button 
                   onClick={handleFullscreen}
-                  className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center gap-2" 
+                  className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto" 
                   style={{ backgroundColor: '#B71C1C' }}
                   title={isFullscreen ? "Keluar dari fullscreen" : "Masuk ke mode fullscreen"}
                 >
@@ -871,8 +875,10 @@ export default function DataFoIndex({
 
             {/* Route Selection Dropdown */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div>
+              {/* Header Section - Responsive Layout */}
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-3">
+                {/* Title and Description Section */}
+                <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-medium text-gray-900 mb-1">
                     📍 Pilih Jalur FO untuk Ditampilkan
                   </h4>
@@ -880,17 +886,21 @@ export default function DataFoIndex({
                     Klik jalur di bawah untuk menampilkan jalur fiber optic di peta
                   </p>
                 </div>
-                <button
-                  onClick={handleToggleAllRoutes}
-                  className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90 transition-all flex items-center gap-1 shadow-sm"
-                  style={{ backgroundColor: '#B71C1C' }}
-                  title={selectedRouteIds.length === currentMapData.routes.length ? "Sembunyikan semua jalur" : "Tampilkan semua jalur"}
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {selectedRouteIds.length === currentMapData.routes.length ? 'Sembunyikan Semua' : 'Tampilkan Semua'}
-                </button>
+                
+                {/* Action Button Section */}
+                <div className="flex justify-center lg:justify-end">
+                  <button
+                    onClick={handleToggleAllRoutes}
+                    className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90 transition-all flex items-center justify-center gap-1 shadow-sm w-full sm:w-auto"
+                    style={{ backgroundColor: '#B71C1C' }}
+                    title={selectedRouteIds.length === currentMapData.routes.length ? "Sembunyikan semua jalur" : "Tampilkan semua jalur"}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {selectedRouteIds.length === currentMapData.routes.length ? 'Sembunyikan Semua' : 'Tampilkan Semua'}
+                  </button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">

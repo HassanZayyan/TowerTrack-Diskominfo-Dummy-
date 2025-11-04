@@ -254,8 +254,8 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Tab Navigation */}
           <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-gray-200">
-            <nav className="overflow-x-auto">
-              <div className="flex space-x-2 sm:space-x-4 min-w-max">
+            <nav className="overflow-x-hidden">
+              <div className="grid grid-cols-4 gap-1 sm:gap-2">
                 {[
                   { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
                   { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
@@ -266,16 +266,16 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    className={`flex flex-col items-center justify-center px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                       activeTab === tab.id
                         ? 'bg-red-100 text-red-700 border border-red-300'
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
                     </svg>
-                    <span className="hidden xs:inline sm:inline">{tab.label}</span>
+                    <span className="text-center leading-tight">{tab.label}</span>
                   </button>
                 ))}
               </div>
