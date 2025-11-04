@@ -213,6 +213,9 @@ export default function DataFoIndex({
   const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
   const [loadedRoutes, setLoadedRoutes] = useState<Map<number, any>>(new Map());
   const [loadingRoutes, setLoadingRoutes] = useState<Set<number>>(new Set());
+  
+  // Marker visibility state - default true to show markers by default
+  const [showMarkers, setShowMarkers] = useState<boolean>(true);
 
   // Use data from Inertia props with fallback
   const currentMapData = mapData || {
@@ -812,6 +815,33 @@ export default function DataFoIndex({
               </div>
               <div className="flex items-center space-x-2">
                 <button 
+                  onClick={() => setShowMarkers(!showMarkers)}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+                    showMarkers 
+                      ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' 
+                      : 'text-white hover:opacity-90'
+                  }`}
+                  style={showMarkers ? {} : { backgroundColor: '#B71C1C' }}
+                  title={showMarkers ? "Sembunyikan marker untuk melihat jalur dengan jelas" : "Tampilkan marker"}
+                  aria-label={showMarkers ? "Sembunyikan marker" : "Tampilkan marker"}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    {showMarkers ? (
+                      <>
+                        {/* Eye icon - markers visible */}
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </>
+                    ) : (
+                      <>
+                        {/* Eye-off icon - markers hidden */}
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </>
+                    )}
+                  </svg>
+                  {showMarkers ? 'Sembunyikan Marker' : 'Tampilkan Marker'}
+                </button>
+                <button 
                   onClick={handleExport}
                   className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
                   title="Export data ke CSV"
@@ -1024,8 +1054,8 @@ export default function DataFoIndex({
                    );
                  })}
                 
-                 {/* Render FO Points (Markers) */}
-                 {filteredPoints.map((point) => {
+                 {/* Render FO Points (Markers) - Only render if showMarkers is true */}
+                 {showMarkers && filteredPoints.map((point) => {
                    // Validate point coordinates before rendering
                    if (typeof point.latitude !== 'number' || typeof point.longitude !== 'number' ||
                        isNaN(point.latitude) || isNaN(point.longitude)) {
