@@ -253,7 +253,7 @@ export default function DataTowerIndex({
       {/* Full Screen Hero Section - Outside MainLayout */}
       <HeroSection
         title={<>
-          Selamat datang di TowerTrack
+          Selamat Datang di TowerTrack
           <span className="block sm:inline sm:ml-2">Monitoring Tower Kabupaten Semarang</span>
         </>}
         subtitle="Pantau persebaran tower, jangkauan, dan data penting lainnya dalam satu tempat."
