@@ -1,4 +1,5 @@
 import React from 'react';
+import { router } from '@inertiajs/react';
 
 interface MessageItem {
   id: string;
@@ -85,8 +86,21 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen, 
             <span className="whitespace-nowrap">{item.responsesCount} balasan</span>
           </div>
           <button
-            className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium whitespace-nowrap touch-manipulation"
-            onClick={() => onOpen && onOpen(item)}
+            className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium whitespace-nowrap touch-manipulation transition-colors"
+            onClick={() => {
+              if (onOpen) {
+                onOpen(item);
+              } else {
+                // Fallback to public routes if onOpen not provided
+                const [type, raw] = item.id.split('-');
+                const id = Number(raw);
+                if (type === 'report') {
+                  router.visit(`/my-messages/reports/${id}`);
+                } else if (type === 'feedback') {
+                  router.visit(`/my-messages/feedbacks/${id}`);
+                }
+              }
+            }}
           >
             Lihat
           </button>

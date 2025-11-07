@@ -59,6 +59,16 @@ class Report extends Model
     }
     
     /**
+     * Get all comments for this report.
+     */
+    public function comments()
+    {
+        return $this->morphMany(PublicComment::class, 'commentable')
+            ->where('is_approved', true)
+            ->orderBy('created_at', 'desc');
+    }
+    
+    /**
      * Get the status slug attribute from status_id
      */
     protected function status(): Attribute

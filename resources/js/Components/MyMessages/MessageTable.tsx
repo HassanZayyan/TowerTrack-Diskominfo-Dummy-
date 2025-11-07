@@ -1,4 +1,5 @@
 import React from 'react';
+import { router } from '@inertiajs/react';
 
 interface MessageItem {
   id: string;
@@ -105,8 +106,21 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <button
-                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                      onClick={() => onOpen && onOpen(item)}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      onClick={() => {
+                        if (onOpen) {
+                          onOpen(item);
+                        } else {
+                          // Fallback to public routes if onOpen not provided
+                          const [type, raw] = item.id.split('-');
+                          const id = Number(raw);
+                          if (type === 'report') {
+                            router.visit(`/my-messages/reports/${id}`);
+                          } else if (type === 'feedback') {
+                            router.visit(`/my-messages/feedbacks/${id}`);
+                          }
+                        }
+                      }}
                     >
                       Lihat
                     </button>

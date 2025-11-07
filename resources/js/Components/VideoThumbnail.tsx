@@ -155,12 +155,12 @@ export default function VideoThumbnail({
   }
 
   return (
-    <div className="relative cursor-pointer group" onClick={handleClick}>
+    <div className="relative cursor-pointer group bg-gray-100" onClick={handleClick}>
       {/* Thumbnail Image */}
       <img
         src={thumbnailSrc}
         alt={alt}
-        className={`${className} object-cover transition-all duration-200`}
+        className={`${className} object-contain transition-all duration-200 group-hover:scale-105`}
         loading={loading}
         onError={() => setHasError(true)}
       />

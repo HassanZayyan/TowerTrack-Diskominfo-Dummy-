@@ -9,7 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Models\Tower;
-use App\Http\Controllers\UserComplaintController;
+use App\Http\Controllers\ComplaintController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\StaffMiddleware;
 use App\Http\Middleware\NonStaffMiddleware;
@@ -48,8 +48,8 @@ Route::get('/tower/{tower}', [TowerController::class, 'show'])->name('tower.show
 Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback');
 Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
 
-Route::get('/complaint', [UserComplaintController::class, 'index'])->name('complaint');
-Route::post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
+Route::get('/complaint', [ComplaintController::class, 'index'])->name('complaint');
+Route::post('/complaint', [ComplaintController::class, 'store'])->name('complaint.store');
 
 // User feedback list and details (authenticated or anonymous with email)
 Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
@@ -258,6 +258,24 @@ Route::get('/my-messages/private', function () {
         'phone' => $phone,
     ]);
 })->name('my.messages.private');
+
+// Public detail pages for reports and feedbacks (with comments)
+Route::get('/my-messages/reports/{report}', [ComplaintController::class, 'showPublic'])
+    ->name('public.reports.show');
+Route::get('/my-messages/feedbacks/{feedback}', [FeedbackController::class, 'showPublic'])
+    ->name('public.feedbacks.show');
+
+// Private detail pages for reports and feedbacks (without comments, requires email & phone)
+Route::get('/my-messages/private/reports/{report}', [ComplaintController::class, 'showPrivate'])
+    ->name('private.reports.show');
+Route::get('/my-messages/private/feedbacks/{feedback}', [FeedbackController::class, 'showPrivate'])
+    ->name('private.feedbacks.show');
+
+// Public comment routes (guest and authenticated users can comment)
+Route::post('/my-messages/reports/{report}/comments', [\App\Http\Controllers\PublicCommentController::class, 'storeReport'])
+    ->name('public.reports.comments.store');
+Route::post('/my-messages/feedbacks/{feedback}/comments', [\App\Http\Controllers\PublicCommentController::class, 'storeFeedback'])
+    ->name('public.feedbacks.comments.store');
 
 // Admin/Authenticated Routes
 Route::middleware('auth')->group(function () {

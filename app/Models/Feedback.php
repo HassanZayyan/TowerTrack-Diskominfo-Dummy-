@@ -46,4 +46,14 @@ class Feedback extends Model
     {
         return $this->hasMany(FeedbackResponse::class);
     }
+    
+    /**
+     * Get all comments for this feedback.
+     */
+    public function comments()
+    {
+        return $this->morphMany(PublicComment::class, 'commentable')
+            ->where('is_approved', true)
+            ->orderBy('created_at', 'desc');
+    }
 }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class DatabaseSeeder extends Seeder
 {
@@ -12,6 +13,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Clean up user-uploaded files from storage before seeding
+        $this->cleanupStorageFiles();
+        
         // Add banned column to users table if it doesn't exist
         $this->call([
             AddBannedColumnSeeder::class,
@@ -48,5 +52,49 @@ class DatabaseSeeder extends Seeder
         // 
         // If you need to manually generate all routes, run:
         // php artisan db:seed --class=GenerateGeoJsonRoutesSeeder --force
+    }
+
+    /**
+     * Clean up all user-uploaded files from storage.
+     * This prevents orphaned files after fresh seed and improves performance.
+     */
+    private function cleanupStorageFiles(): void
+    {
+        $this->command->info('🧹 Cleaning up storage files...');
+        
+        $directories = [
+            'report-photos',
+            'report-videos',
+            'feedback-photos',
+            'feedback-videos',
+            'feedback-response-photos',
+            'feedback-response-videos',
+            'admin-response-photos',
+            'admin-response-videos',
+            'avatars',
+            'complaint-response-photos',
+        ];
+
+        $totalDeleted = 0;
+        
+        foreach ($directories as $directory) {
+            if (Storage::disk('public')->exists($directory)) {
+                $files = Storage::disk('public')->allFiles($directory);
+                $count = count($files);
+                
+                if ($count > 0) {
+                    Storage::disk('public')->deleteDirectory($directory);
+                    Storage::disk('public')->makeDirectory($directory);
+                    $totalDeleted += $count;
+                    $this->command->info("  ✓ Deleted {$count} files from {$directory}/");
+                }
+            }
+        }
+        
+        if ($totalDeleted > 0) {
+            $this->command->info("✓ Total: {$totalDeleted} files deleted");
+        } else {
+            $this->command->info("✓ No files to clean");
+        }
     }
 }

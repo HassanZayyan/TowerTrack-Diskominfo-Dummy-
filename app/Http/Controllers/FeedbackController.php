@@ -11,8 +11,21 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class FeedbackController extends Controller
+class FeedbackController extends MessageableController
 {
+    /**
+     * Configuration for Feedback model.
+     */
+    protected function getConfig(): array
+    {
+        return [
+            'assets_relation' => 'assets',
+            'assets_select' => ['id', 'feedback_id', 'file_path', 'file_type'],
+            'responses_select' => ['id', 'feedback_id', 'created_at', 'user_id', 'message'],
+            'response_assets_relation' => 'assets:id,feedback_response_id,file_path,file_type',
+            'phone_field' => 'sender_phone',
+        ];
+    }
     /**
      * Show feedback form with towers from database.
      */
@@ -163,6 +176,38 @@ class FeedbackController extends Controller
 
         return Inertia::render('Feedback/Show', [
             'feedback' => $feedback,
+        ]);
+    }
+
+    /**
+     * Display a public feedback detail page with comments.
+     */
+    public function showPublic(Feedback $feedback): Response
+    {
+        $this->validatePublicAccess($feedback, 'Pesan');
+        $comments = $this->loadPublicRelationships($feedback, $this->getConfig());
+
+        return Inertia::render('MyMessages/ShowFeedback', [
+            'feedback' => $feedback,
+            'statuses' => $this->getStatuses(),
+            'comments' => $comments,
+        ]);
+    }
+
+    /**
+     * Display a private feedback detail page (without comments).
+     */
+    public function showPrivate(Feedback $feedback, Request $request): Response
+    {
+        $config = $this->getConfig();
+        [$email, $phone] = $this->validatePrivateAccess($feedback, $request, $config['phone_field']);
+        $this->loadPrivateRelationships($feedback, $config);
+
+        return Inertia::render('MyMessages/ShowPrivateFeedback', [
+            'feedback' => $feedback,
+            'statuses' => $this->getStatuses(),
+            'email' => $email,
+            'phone' => $phone,
         ]);
     }
 

@@ -1,0 +1,383 @@
+import React, { useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import MainLayout from '@/Layouts/MainLayout';
+import AnimatedButton from '@/Components/AnimatedButton';
+import StaggeredContainer from '@/Components/StaggeredContainer';
+import CommentForm from '@/Components/MyMessages/CommentForm';
+import CommentList from '@/Components/MyMessages/CommentList';
+import AssetGrid from '@/Components/MyMessages/AssetGrid';
+import { Comment } from '@/Components/MyMessages/CommentItem';
+
+type Report = {
+  id: number;
+  tower_id: number;
+  category: string;
+  message: string;
+  status: string;
+  created_at: string;
+  email?: string | null;
+  reporter_name?: string | null;
+  reporter_phone?: string | null;
+  user_id?: number | null;
+  user?: { id: number; name: string; email: string } | null;
+  tower?: { id: number; site_name: string; alamat_menara?: string };
+  images?: Array<{ id: number; file_path: string; file_type?: string }>;
+  responses?: Array<{
+    id: number;
+    message?: string;
+    created_at: string;
+    user?: { id: number; name: string } | null;
+    assets?: Array<{ file_path: string; file_type?: string }>;
+  }>;
+  comments?: Array<{
+    id: number;
+    message: string;
+    created_at: string;
+    user?: { id: number; name: string; email?: string } | null;
+    guest_name?: string | null;
+    guest_email?: string | null;
+  }>;
+};
+
+type PaginationLink = {
+  url: string | null;
+  label: string;
+  active: boolean;
+};
+
+type PaginationData = {
+  data: Comment[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  links: PaginationLink[];
+};
+
+type ShowReportProps = {
+  report: Report;
+  statuses?: Array<{ id: number; name: string; slug: string; color: string; icon: string }>;
+  comments?: PaginationData;
+};
+
+export default function ShowReport({ report, statuses = [], comments }: ShowReportProps) {
+  const { auth } = usePage().props as any;
+  const [previewAsset, setPreviewAsset] = useState<{ file_path: string; file_type?: string } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [replyingTo, setReplyingTo] = useState<{ id: number; name: string } | null>(null);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Hari ini';
+    if (diffDays === 2) return 'Kemarin';
+    if (diffDays <= 7) return `${diffDays - 1} hari yang lalu`;
+    
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+      pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
+      in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
+      responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
+      resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
+      closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
+    };
+    
+    return statusConfig[status] || { bg: '#F3F4F6', text: '#374151', label: status || 'Tidak diketahui' };
+  };
+
+
+  const handleCommentSuccess = () => {
+    setRefreshKey(prev => prev + 1);
+    setReplyingTo(null); // Reset reply mode
+    router.reload({ only: ['report'] });
+  };
+
+  const handleReply = (commentId: number, authorName: string) => {
+    // Scroll to form after clicking reply for better UX
+    setReplyingTo({ id: commentId, name: authorName });
+    // Smooth scroll to comment form
+    setTimeout(() => {
+      const formElement = document.querySelector('[data-comment-form]');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  return (
+    <MainLayout title={`Detail Keluhan #${report.id}`} currentPage="/my-messages">
+      <Head title={`Detail Keluhan #${report.id}`} />
+      
+      <div className="p-4 sm:p-6">
+        {/* Back Button */}
+        <StaggeredContainer delay={0} animationType="fadeInLeft" duration={400}>
+          <div className="mb-6">
+            <AnimatedButton
+              variant="outline"
+              size="md"
+              animation="scale"
+              onClick={() => router.visit('/my-messages')}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+              }
+              className="border-red-500 text-red-700 hover:bg-red-500 hover:text-white"
+            >
+              Kembali ke Pesan Publik
+            </AnimatedButton>
+          </div>
+        </StaggeredContainer>
+
+        <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
+          <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent">
+                Detail Keluhan #{report.id}
+              </h1>
+            </div>
+          </div>
+        </StaggeredContainer>
+
+        {/* Sender Information Card */}
+        <StaggeredContainer delay={150} animationType="fadeInUp" duration={400}>
+          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-5 border border-teal-200 shadow-sm mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h4 className="text-base font-bold text-gray-900">Informasi Pengirim</h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
+                <div className="text-xs font-medium text-teal-700 mb-1.5">Nama</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-900">
+                    {report.user?.name || report.reporter_name || 'Anonymous'}
+                  </span>
+                  {!report.user_id && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                      Guest
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
+                <div className="text-xs font-medium text-teal-700 mb-1.5">Waktu Kirim</div>
+                <div className="font-semibold text-gray-900">
+                  {formatDate(report.created_at)} • {new Date(report.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </StaggeredContainer>
+
+        {/* Tower & Category Information */}
+        <StaggeredContainer delay={200} animationType="fadeInUp" duration={400}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <h5 className="text-sm font-bold text-gray-900">Lokasi Tower</h5>
+              </div>
+              <div className="font-semibold text-gray-900 text-base mb-1">{report.tower?.site_name ?? '-'}</div>
+              {report.tower?.alamat_menara && (
+                <div className="text-sm text-gray-600 flex items-start gap-1">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {report.tower.alamat_menara}
+                </div>
+              )}
+            </div>
+            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                </div>
+                <h5 className="text-sm font-bold text-gray-900">Kategori</h5>
+              </div>
+              <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                {report.category ?? '-'}
+              </span>
+            </div>
+          </div>
+        </StaggeredContainer>
+
+        {/* Message Content */}
+        <StaggeredContainer delay={250} animationType="fadeInUp" duration={400}>
+          <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <h5 className="text-sm font-bold text-gray-900">Isi Pesan</h5>
+            </div>
+            <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-100">
+              {report.message}
+            </div>
+          </div>
+        </StaggeredContainer>
+
+        {/* Assets */}
+        {report.images && report.images.length > 0 && (
+          <StaggeredContainer delay={300} animationType="fadeInUp" duration={400}>
+            <div className="mb-6">
+              <AssetGrid 
+                assets={report.images.map(img => ({ file_path: img.file_path, file_type: img.file_type }))}
+                onPreview={setPreviewAsset}
+              />
+            </div>
+          </StaggeredContainer>
+        )}
+
+        {/* Admin Responses */}
+        {report.responses && report.responses.length > 0 && (
+          <StaggeredContainer delay={350} animationType="fadeInUp" duration={400}>
+            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h5 className="text-sm font-bold text-gray-900">Balasan Admin</h5>
+              </div>
+              <div className="relative space-y-4">
+                <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200"></div>
+                {report.responses.map((r, i) => {
+                  const isLastResponse = i === report.responses!.length - 1;
+                  const statusConfig = getStatusColor(report.status);
+                  return (
+                    <div key={i} className="relative pl-12">
+                      <div className={`absolute left-2.5 top-3 w-3 h-3 rounded-full ${isLastResponse ? 'bg-indigo-500' : 'bg-blue-500'} ring-4 ring-white shadow-md z-10`}></div>
+                      <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg p-4 border border-indigo-100 shadow-sm">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">{r.user?.name ?? 'Admin'}</div>
+                              <div className="text-xs text-gray-500">
+                                {formatDate(r.created_at)} • {new Date(r.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                          {isLastResponse && (
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-${statusConfig.bg} text-${statusConfig.text} border-${statusConfig.bg}`}>
+                              {statusConfig.label}
+                            </span>
+                          )}
+                        </div>
+                        {r.message && (
+                          <div className="text-gray-900 leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-100">
+                            {r.message}
+                          </div>
+                        )}
+                        {r.assets && r.assets.length > 0 && (
+                          <AssetGrid 
+                            assets={r.assets}
+                            onPreview={setPreviewAsset}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </StaggeredContainer>
+        )}
+
+        {/* Comments Section */}
+        <StaggeredContainer delay={400} animationType="fadeInUp" duration={400}>
+          <div className="mb-6" data-comment-form>
+            <CommentForm 
+              type="report" 
+              id={report.id} 
+              parentId={replyingTo?.id || null}
+              replyingTo={replyingTo?.name || null}
+              onSuccess={handleCommentSuccess}
+              onCancel={handleCancelReply}
+            />
+          </div>
+        </StaggeredContainer>
+
+        <StaggeredContainer delay={450} animationType="fadeInUp" duration={400}>
+          <div className="mb-6">
+            <CommentList 
+              comments={comments?.data || report.comments || []} 
+              onReply={handleReply}
+              pagination={comments}
+            />
+          </div>
+        </StaggeredContainer>
+
+        {/* Asset Preview Modal */}
+        {previewAsset && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
+            <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
+              {previewAsset.file_type === 'video' ? (
+                <video
+                  src={`/storage/${previewAsset.file_path}`}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[90vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <img 
+                  src={`/storage/${previewAsset.file_path}`} 
+                  className="max-w-full max-h-[90vh] object-contain" 
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+              <button 
+                className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+                onClick={() => setPreviewAsset(null)}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </MainLayout>
+  );
+}
+

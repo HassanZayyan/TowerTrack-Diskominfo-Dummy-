@@ -10,8 +10,21 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class UserComplaintController extends Controller
+class ComplaintController extends MessageableController
 {
+    /**
+     * Configuration for Report model.
+     */
+    protected function getConfig(): array
+    {
+        return [
+            'assets_relation' => 'images',
+            'assets_select' => ['id', 'report_id', 'file_path', 'file_type'],
+            'responses_select' => ['id', 'report_id', 'message', 'created_at', 'user_id'],
+            'response_assets_relation' => 'assets:id,report_response_id,file_path,file_type',
+            'phone_field' => 'reporter_phone',
+        ];
+    }
     /**
      * Show complaint form with towers from database (no CSV).
      */
@@ -181,6 +194,38 @@ class UserComplaintController extends Controller
                 continue;
             }
         }
+    }
+
+    /**
+     * Display a public report detail page with comments.
+     */
+    public function showPublic(Report $report): Response
+    {
+        $this->validatePublicAccess($report, 'Pesan');
+        $comments = $this->loadPublicRelationships($report, $this->getConfig());
+
+        return Inertia::render('MyMessages/ShowReport', [
+            'report' => $report,
+            'statuses' => $this->getStatuses(),
+            'comments' => $comments,
+        ]);
+    }
+
+    /**
+     * Display a private report detail page (without comments).
+     */
+    public function showPrivate(Report $report, Request $request): Response
+    {
+        $config = $this->getConfig();
+        [$email, $phone] = $this->validatePrivateAccess($report, $request, $config['phone_field']);
+        $this->loadPrivateRelationships($report, $config);
+
+        return Inertia::render('MyMessages/ShowPrivateReport', [
+            'report' => $report,
+            'statuses' => $this->getStatuses(),
+            'email' => $email,
+            'phone' => $phone,
+        ]);
     }
 }
 
