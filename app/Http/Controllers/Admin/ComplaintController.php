@@ -72,6 +72,9 @@ class ComplaintController extends Controller
                 $response = ReportResponse::create([
                     'report_id' => $report->id,
                     'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $validated['message'],
                 ]);
             }
@@ -154,6 +157,9 @@ class ComplaintController extends Controller
                 $response = ReportResponse::create([
                     'report_id' => $report->id,
                     'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
 
@@ -171,6 +177,9 @@ class ComplaintController extends Controller
                 ReportResponse::create([
                     'report_id' => $report->id,
                     'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
             }

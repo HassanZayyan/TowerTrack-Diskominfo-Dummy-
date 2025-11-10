@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Commentable;
 
 class Feedback extends Model
 {
     use HasFactory;
+    use Commentable;
     
     protected $table = 'feedbacks';
     
@@ -47,13 +49,4 @@ class Feedback extends Model
         return $this->hasMany(FeedbackResponse::class);
     }
     
-    /**
-     * Get all comments for this feedback.
-     */
-    public function comments()
-    {
-        return $this->morphMany(PublicComment::class, 'commentable')
-            ->where('is_approved', true)
-            ->orderBy('created_at', 'desc');
-    }
 }

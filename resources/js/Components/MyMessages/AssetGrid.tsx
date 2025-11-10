@@ -1,7 +1,7 @@
 import React from 'react';
 import VideoThumbnail from '@/Components/VideoThumbnail';
 
-type Asset = {
+export type Asset = {
   file_path: string;
   file_type?: string;
 };

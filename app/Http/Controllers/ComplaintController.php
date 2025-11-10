@@ -6,6 +6,7 @@ use App\Models\Report;
 use App\Models\ReportAsset;
 use App\Models\Tower;
 use App\Services\LocationSecurityService;
+use App\Http\Requests\StoreMessageResponseRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,9 +21,27 @@ class ComplaintController extends MessageableController
         return [
             'assets_relation' => 'images',
             'assets_select' => ['id', 'report_id', 'file_path', 'file_type'],
-            'responses_select' => ['id', 'report_id', 'message', 'created_at', 'user_id'],
+            'responses_select' => ['id', 'report_id', 'message', 'created_at', 'user_id', 'sender_type', 'sender_name', 'sender_email', 'sender_phone'],
             'response_assets_relation' => 'assets:id,report_response_id,file_path,file_type',
             'phone_field' => 'reporter_phone',
+            'email_field' => 'email',
+            'name_field' => 'reporter_name',
+            'response_model' => \App\Models\ReportResponse::class,
+            'response_foreign_key' => 'report_id',
+            'response_assets_relation_name' => 'assets',
+            'response_attachment_disk' => 'public',
+            'response_attachment_directories' => [
+                'image' => 'report-response-photos',
+                'video' => 'report-response-videos',
+            ],
+            'asset_model' => ReportAsset::class,
+            'asset_foreign_key' => 'report_id',
+            'asset_disk' => 'public',
+            'asset_directories' => [
+                'image' => 'report-photos',
+                'video' => 'report-videos',
+            ],
+            'asset_fields' => ['foto', 'assets', 'video'],
         ];
     }
     /**
@@ -130,11 +149,13 @@ class ComplaintController extends MessageableController
             $reportData = array_merge($reportData, $locationData);
         }
 
+        $config = $this->getConfig();
+
         $report = Report::create($reportData);
 
         // Handle file uploads only if files exist for faster response
-        if ($this->hasAnyFiles($request)) {
-            $this->handleFileUploads($request, $report->id);
+        if ($this->hasInitialAttachments($request, $config)) {
+            $this->storeInitialAttachments($request, $report->id, $config);
         }
 
         $message = auth()->check() 
@@ -145,55 +166,6 @@ class ComplaintController extends MessageableController
                 : 'Untuk melacak status keluhan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
 
         return redirect()->back()->with('success', $message);
-    }
-
-    /**
-     * Quick check if request has any files to upload
-     */
-    private function hasAnyFiles(Request $request): bool
-    {
-        return $request->hasFile('foto') || $request->hasFile('assets') || $request->hasFile('video');
-    }
-
-    /**
-     * Handle file uploads for reports - optimized method to avoid duplication
-     */
-    private function handleFileUploads(Request $request, int $reportId): void
-    {
-        // Collect all files from different input fields
-        $allFiles = collect();
-        
-        foreach (['foto', 'assets', 'video'] as $fieldName) {
-            if ($request->hasFile($fieldName)) {
-                $files = $request->file($fieldName);
-                $allFiles = $allFiles->merge(is_array($files) ? $files : [$files]);
-            }
-        }
-
-        // Process each file
-        foreach ($allFiles->filter() as $file) {
-            try {
-                $mimeType = $file->getClientMimeType();
-                $isImage = str_starts_with($mimeType, 'image/');
-                $directory = $isImage ? 'report-photos' : 'report-videos';
-
-                $path = $file->store($directory, 'public');
-                if ($path) {
-                    ReportAsset::create([
-                        'report_id' => $reportId,
-                        'file_path' => $path,
-                        'file_name' => $file->getClientOriginalName(),
-                        'file_type' => $isImage ? 'image' : 'video',
-                        'mime_type' => $mimeType,
-                        'file_size' => $file->getSize(),
-                    ]);
-                }
-            } catch (\Exception $e) {
-                // Log error but don't fail the entire request
-                \Log::error('Error uploading file: ' . $e->getMessage());
-                continue;
-            }
-        }
     }
 
     /**
@@ -226,6 +198,14 @@ class ComplaintController extends MessageableController
             'email' => $email,
             'phone' => $phone,
         ]);
+    }
+
+    /**
+     * Store a response from reporter or staff.
+     */
+    public function storeResponse(StoreMessageResponseRequest $request, Report $report)
+    {
+        return $this->handleResponseSubmission($request, $report, $this->getConfig());
     }
 }
 

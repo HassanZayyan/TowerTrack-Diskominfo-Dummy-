@@ -4,6 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import VideoThumbnail from '@/Components/VideoThumbnail';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
+import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMessages/MessageResponseTimeline';
 
 interface FeedbackAsset {
   id: number;
@@ -34,11 +35,15 @@ interface FeedbackResponseAsset {
 interface FeedbackResponse {
   id: number;
   feedback_id: number;
-  user_id: number;
-  message: string;
+  user_id: number | null;
+  message: string | null;
   created_at: string;
-  user?: User;
+  user?: User | null;
   assets?: FeedbackResponseAsset[];
+  sender_type?: 'staff' | 'reporter' | 'guest';
+  sender_name?: string | null;
+  sender_email?: string | null;
+  sender_phone?: string | null;
 }
 
 interface Feedback {
@@ -144,6 +149,30 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
     setReplyStatus(newStatus);
   };
 
+  const mapFeedbackResponses = (responses?: FeedbackResponse[]): MessageResponseItem[] => {
+    if (!responses || responses.length === 0) {
+      return [];
+    }
+
+    return responses.map((response) => ({
+      id: response.id,
+      message: response.message ?? '',
+      created_at: response.created_at,
+      sender_type: response.sender_type ?? (response.user_id ? 'staff' : 'reporter'),
+      sender_name: response.sender_name ?? response.user?.name ?? null,
+      sender_email: response.sender_email ?? null,
+      sender_phone: response.sender_phone ?? null,
+      user: response.user ? { id: response.user.id, name: response.user.name } : null,
+      assets:
+        response.assets?.map((asset) => ({
+          file_path: asset.file_path,
+          file_type: asset.file_type,
+        })) ?? [],
+    }));
+  };
+
+  const mappedResponses = mapFeedbackResponses(feedback.responses);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
@@ -173,6 +202,16 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
         {labels[status as keyof typeof labels] || labels.pending}
       </span>
     );
+  };
+
+  const resolveFeedbackStatusStyle = (statusValue: string | null | undefined) => {
+    const normalized = (statusValue ?? 'pending').toLowerCase() as 'pending' | 'in_progress' | 'closed';
+    const map: Record<'pending' | 'in_progress' | 'closed', { label: string; bg: string; text: string }> = {
+      pending: { label: 'Menunggu', bg: '#FEF3C7', text: '#92400E' },
+      in_progress: { label: 'Sedang Diproses', bg: '#DBEAFE', text: '#1E40AF' },
+      closed: { label: 'Selesai', bg: '#D1FAE5', text: '#065F46' },
+    };
+    return map[normalized] ?? map.pending;
   };
 
   const getMediaUrl = (path: string) => {
@@ -425,7 +464,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
           )}
         </div>
 
-        {/* Right column - Reply form and previous responses */}
+        {/* Right column - Reply form */}
         <div className="lg:col-span-1 space-y-6">
           {/* Reply Form */}
           <StaggeredContainer delay={400} animationType="fadeInRight" duration={500}>
@@ -583,121 +622,56 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
             </div>
           </StaggeredContainer>
 
-          {/* Previous Responses */}
-          <StaggeredContainer delay={450} animationType="fadeInRight" duration={500}>
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-sm">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Riwayat Balasan</h3>
-                {feedback.responses && feedback.responses.length > 0 && (
-                  <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {feedback.responses.length} balasan
-                  </span>
-                )}
-              </div>
-              
-              {feedback.responses && feedback.responses.length > 0 ? (
-                <div className="relative space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                  {/* Timeline line */}
-                  <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-cyan-200 via-cyan-300 to-cyan-200"></div>
-                  
-                  {feedback.responses.map((response, index) => (
-                    <div key={response.id} className="relative pl-12">
-                      {/* Timeline dot */}
-                      <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-white shadow-md z-10"></div>
-                      
-                      <div className="bg-gradient-to-br from-cyan-50 to-white rounded-xl p-4 border border-cyan-100 shadow-sm">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-md ring-2 ring-white">
-                              <span className="text-white font-bold text-sm">
-                                {response.user?.name.charAt(0).toUpperCase() || 'A'}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900">
-                                {response.user?.name || 'Admin'}
-                              </p>
-                              <p className="text-xs text-gray-500 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {formatDate(response.created_at)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-cyan-100 mb-3">
-                          {response.message}
-                        </div>
-                        
-                        {/* Response attachments */}
-                        {response.assets && response.assets.length > 0 && (
-                          <div className="grid grid-cols-3 gap-2">
-                            {response.assets.map((asset, idx) => {
-                              const mediaUrl = getMediaUrl(asset.file_path);
-                              const isImg = isImage(asset.file_path, asset.file_type);
-                              const isVid = isVideo(asset.file_path, asset.file_type);
-
-                              return (
-                                <div key={asset.id} className="relative rounded-lg overflow-hidden border-2 border-cyan-200 hover:border-cyan-400 transition-all cursor-pointer">
-                                  {isImg ? (
-                                    <img
-                                      src={mediaUrl}
-                                      alt={`Response media ${idx + 1}`}
-                                      className="w-full h-20 object-cover"
-                                      onClick={() => openLightbox(mediaUrl, 'image')}
-                                    />
-                                  ) : isVid ? (
-                                    <VideoThumbnail
-                                      src={mediaUrl}
-                                      fileType="video"
-                                      className="w-full h-20"
-                                      onClick={() => openLightbox(mediaUrl, 'video')}
-                                      showPlayButton={true}
-                                      alt={`Response video ${idx + 1}`}
-                                      loading="lazy"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
-                                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-10 text-center border-2 border-dashed border-gray-300">
-                  <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                  </div>
-                  <p className="text-base font-semibold text-gray-600 mb-1">
-                    Belum Ada Balasan
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Kirim balasan pertama untuk masukan ini
-                  </p>
-                </div>
-              )}
-            </div>
-          </StaggeredContainer>
         </div>
       </div>
+
+      {/* Previous Responses */}
+      <StaggeredContainer delay={450} animationType="fadeInUp" duration={500}>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mt-6">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-sm">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Riwayat Balasan</h3>
+            {feedback.responses && feedback.responses.length > 0 && (
+              <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {feedback.responses.length} balasan
+              </span>
+            )}
+          </div>
+          
+          {mappedResponses.length > 0 ? (
+            <MessageResponseTimeline
+              responses={mappedResponses}
+              status={feedback.status}
+              statusResolver={resolveFeedbackStatusStyle}
+              heading={null}
+              accentColorClass="from-cyan-500 to-cyan-600"
+              onPreviewAsset={(asset) => {
+                const mediaUrl = getMediaUrl(asset.file_path);
+                const type = asset.file_type === 'video' ? 'video' : 'image';
+                openLightbox(mediaUrl, type as 'image' | 'video');
+              }}
+            />
+          ) : (
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-10 text-center border-2 border-dashed border-gray-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <p className="text-base font-semibold text-gray-600 mb-1">
+                Belum Ada Balasan
+              </p>
+              <p className="text-sm text-gray-500">
+                Kirim balasan pertama untuk masukan ini
+              </p>
+            </div>
+          )}
+        </div>
+      </StaggeredContainer>
 
       {/* Lightbox */}
       {lightboxOpen && (

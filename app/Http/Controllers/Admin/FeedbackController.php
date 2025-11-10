@@ -119,7 +119,10 @@ class FeedbackController extends Controller
             if (!empty($validated['message'])) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $validated['message'],
                 ]);
             }
@@ -184,7 +187,10 @@ class FeedbackController extends Controller
             if (!isset($response) && !empty($validated['message'])) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $validated['message'],
                 ]);
             }
@@ -222,7 +228,10 @@ class FeedbackController extends Controller
             if ($request->has('message') && !empty($request->message)) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
             }
@@ -234,7 +243,10 @@ class FeedbackController extends Controller
             if ($request->has('message') && !empty($request->message)) {
                 FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
             }

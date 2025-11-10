@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Traits\Commentable;
 
 class Report extends Model
 {
     use HasFactory;
+    use Commentable;
     
     protected $fillable = [
         'tower_id',
@@ -56,16 +58,6 @@ class Report extends Model
     public function images()
     {
         return $this->hasMany(ReportAsset::class);
-    }
-    
-    /**
-     * Get all comments for this report.
-     */
-    public function comments()
-    {
-        return $this->morphMany(PublicComment::class, 'commentable')
-            ->where('is_approved', true)
-            ->orderBy('created_at', 'desc');
     }
     
     /**

@@ -6,8 +6,8 @@ use App\Models\Feedback;
 use App\Models\FeedbackAsset;
 use App\Models\Tower;
 use App\Services\LocationSecurityService;
+use App\Http\Requests\StoreMessageResponseRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,9 +21,27 @@ class FeedbackController extends MessageableController
         return [
             'assets_relation' => 'assets',
             'assets_select' => ['id', 'feedback_id', 'file_path', 'file_type'],
-            'responses_select' => ['id', 'feedback_id', 'created_at', 'user_id', 'message'],
+            'responses_select' => ['id', 'feedback_id', 'created_at', 'user_id', 'message', 'sender_type', 'sender_name', 'sender_email', 'sender_phone'],
             'response_assets_relation' => 'assets:id,feedback_response_id,file_path,file_type',
             'phone_field' => 'sender_phone',
+            'email_field' => 'email',
+            'name_field' => 'sender_name',
+            'response_model' => \App\Models\FeedbackResponse::class,
+            'response_foreign_key' => 'feedback_id',
+            'response_assets_relation_name' => 'assets',
+            'response_attachment_disk' => 'public',
+            'response_attachment_directories' => [
+                'image' => 'feedback-response-photos',
+                'video' => 'feedback-response-videos',
+            ],
+            'asset_model' => FeedbackAsset::class,
+            'asset_foreign_key' => 'feedback_id',
+            'asset_disk' => 'public',
+            'asset_directories' => [
+                'image' => 'feedback-photos',
+                'video' => 'feedback-videos',
+            ],
+            'asset_fields' => ['assets', 'foto', 'video'],
         ];
     }
     /**
@@ -88,7 +106,7 @@ class FeedbackController extends MessageableController
                 $email = auth()->user()->email;
             }
         } else {
-            // For anonymous users, email is optional
+            // For anonymous users, email is required
             $email = $validated['email'] ?? null;
         }
 
@@ -124,11 +142,13 @@ class FeedbackController extends MessageableController
             $feedbackData = array_merge($feedbackData, $locationData);
         }
 
+        $config = $this->getConfig();
+
         $feedback = Feedback::create($feedbackData);
 
         // Handle file uploads only if files exist for faster response
-        if ($this->hasAnyFiles($request)) {
-            $this->handleFileUploads($request, $feedback->id);
+        if ($this->hasInitialAttachments($request, $config)) {
+            $this->storeInitialAttachments($request, $feedback->id, $config);
         }
 
         $message = auth()->check() 
@@ -212,51 +232,11 @@ class FeedbackController extends MessageableController
     }
 
     /**
-     * Quick check if request has any files to upload
+     * Store a response from feedback sender or staff.
      */
-    private function hasAnyFiles(Request $request): bool
+    public function storeResponse(StoreMessageResponseRequest $request, Feedback $feedback)
     {
-        return $request->hasFile('foto') || $request->hasFile('assets') || $request->hasFile('video');
+        return $this->handleResponseSubmission($request, $feedback, $this->getConfig());
     }
 
-    /**
-     * Handle file uploads for feedback - optimized method to avoid duplication
-     */
-    private function handleFileUploads(Request $request, int $feedbackId): void
-    {
-        // Collect all files from different input fields
-        $allFiles = collect();
-        
-        foreach (['foto', 'assets', 'video'] as $fieldName) {
-            if ($request->hasFile($fieldName)) {
-                $files = $request->file($fieldName);
-                $allFiles = $allFiles->merge(is_array($files) ? $files : [$files]);
-            }
-        }
-
-        // Process each file
-        foreach ($allFiles->filter() as $file) {
-            try {
-                $mimeType = $file->getMimeType();
-                $isImage = str_starts_with($mimeType, 'image/');
-                $directory = $isImage ? 'feedback-photos' : 'feedback-videos';
-
-                $path = $file->store($directory, 'public');
-                if ($path) {
-                    FeedbackAsset::create([
-                        'feedback_id' => $feedbackId,
-                        'file_path' => $path,
-                        'file_name' => $file->getClientOriginalName(),
-                        'file_type' => $isImage ? 'image' : 'video',
-                        'mime_type' => $mimeType,
-                        'file_size' => $file->getSize(),
-                    ]);
-                }
-            } catch (\Exception $e) {
-                // Log error but don't fail the entire request
-                \Log::error('Error uploading feedback file: ' . $e->getMessage());
-                continue;
-            }
-        }
-    }
 }

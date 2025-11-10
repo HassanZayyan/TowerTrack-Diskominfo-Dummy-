@@ -17,6 +17,7 @@ use App\Http\Middleware\TowerOwnerMiddleware;
 use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
 use App\Http\Controllers\Admin\FoManagementController;
+use App\Services\PublicMessageQueryService;
 
 Route::get('/', function () {
     return redirect()->route('data.tower');
@@ -56,94 +57,15 @@ Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name(
 Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');
 
 // User reports page (messages) - accessible by authenticated users or anonymous
-Route::get('/my-messages', function () {
-    // Always show ONLY public messages (both for authenticated and anonymous users)
-    $reports = \App\Models\Report::with([
-        'tower:id,site_name,alamat_menara',
-        'user:id,name,email', // Include user info for authenticated reports
-        'responses' => function ($q) {
-            $q->select('id','report_id','message','created_at','user_id')
-              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-        },
-        'images:id,report_id,file_path,file_type'
-    ])
-    ->where('is_public', true)
-    ->orderByDesc('created_at')
-    ->get();
+Route::get('/my-messages', function (PublicMessageQueryService $messageQueryService) {
+    $isAuthenticated = auth()->check();
 
-    $feedbacks = collect();
-    
-    try {
-        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-            $feedbacks = \App\Models\Feedback::with([
-                'tower:id,site_name,alamat_menara',
-                'user:id,name,email', // Include user info for authenticated feedbacks
-                'assets:id,feedback_id,file_path,file_type',
-                'responses' => function ($q) {
-                    $q->select('id','feedback_id','created_at','user_id','message')
-                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                }
-            ])
-            ->where('is_public', true)
-            ->orderByDesc('created_at')
-            ->get();
-        }
-    } catch (\Exception $e) {
-        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-        $feedbacks = collect();
-    }
-    
-    if (auth()->check()) {
-        // Authenticated user - they can see public messages and have access to "My Messages"
-        return Inertia::render('MyMessages/Index', [
-            'reports' => $reports,
-            'feedbacks' => $feedbacks,
-            'showEmailInput' => false,
-            'isAnonymous' => false,
-        ]);
-    } else {
-        // Anonymous user (guest) - show ALL public reports
-        $reports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email', // Include user info for authenticated reports
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('is_public', true)
-        ->orderByDesc('created_at')
-        ->get();
-        
-        $feedbacks = collect();
-        try {
-            if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-                $feedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email', // Include user info for authenticated feedbacks
-                    'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                    }
-                ])
-                ->where('is_public', true)
-                ->orderByDesc('created_at')
-                ->get();
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-            $feedbacks = collect();
-        }
-        
-        return Inertia::render('MyMessages/Index', [
-            'reports' => $reports,
-            'feedbacks' => $feedbacks,
-            'showEmailInput' => false, // Guest tidak perlu input email - langsung lihat public reports
-            'isAnonymous' => true,
-        ]);
-    }
+    return Inertia::render('MyMessages/Index', [
+        'reports' => $messageQueryService->getPublicReports($isAuthenticated),
+        'feedbacks' => $messageQueryService->getPublicFeedbacks($isAuthenticated),
+        'showEmailInput' => false,
+        'isAnonymous' => !$isAuthenticated,
+    ]);
 })->name('my.messages');
 
 // "Pesan Saya" route - Show user's own messages (both public and private)
@@ -157,7 +79,7 @@ Route::get('/my-messages/my-posts', function () {
         'tower:id,site_name,alamat_menara',
         'user:id,name,email',
         'responses' => function ($q) {
-            $q->select('id','report_id','message','created_at','user_id')
+            $q->select('id','report_id','message','created_at','user_id','sender_type','sender_name','sender_email','sender_phone')
               ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
         },
         'images:id,report_id,file_path,file_type'
@@ -174,9 +96,9 @@ Route::get('/my-messages/my-posts', function () {
                 'tower:id,site_name,alamat_menara',
                 'user:id,name,email',
                 'assets:id,feedback_id,file_path,file_type',
-                'responses' => function ($q) {
-                    $q->select('id','feedback_id','created_at','user_id','message')
-                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
+                    'responses' => function ($q) {
+                        $q->select('id','feedback_id','created_at','user_id','message','sender_type','sender_name','sender_email','sender_phone')
+                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 }
             ])
             ->where('user_id', auth()->id())
@@ -215,7 +137,7 @@ Route::get('/my-messages/private', function () {
     $reports = \App\Models\Report::with([
         'tower:id,site_name,alamat_menara', 
         'responses' => function ($q) {
-            $q->select('id','report_id','message','created_at','user_id')
+            $q->select('id','report_id','message','created_at','user_id','sender_type','sender_name','sender_email','sender_phone')
               ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
         },
         'images:id,report_id,file_path,file_type'
@@ -235,7 +157,7 @@ Route::get('/my-messages/private', function () {
                 'tower:id,site_name,alamat_menara',
                 'assets:id,feedback_id,file_path,file_type',
                 'responses' => function ($q) {
-                    $q->select('id','feedback_id','created_at','user_id','message')
+                    $q->select('id','feedback_id','created_at','user_id','message','sender_type','sender_name','sender_email','sender_phone')
                       ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 }
             ])
@@ -270,6 +192,11 @@ Route::get('/my-messages/private/reports/{report}', [ComplaintController::class,
     ->name('private.reports.show');
 Route::get('/my-messages/private/feedbacks/{feedback}', [FeedbackController::class, 'showPrivate'])
     ->name('private.feedbacks.show');
+
+Route::post('/my-messages/reports/{report}/responses', [ComplaintController::class, 'storeResponse'])
+    ->name('public.reports.responses.store');
+Route::post('/my-messages/feedbacks/{feedback}/responses', [FeedbackController::class, 'storeResponse'])
+    ->name('public.feedbacks.responses.store');
 
 // Public comment routes (guest and authenticated users can comment)
 Route::post('/my-messages/reports/{report}/comments', [\App\Http\Controllers\PublicCommentController::class, 'storeReport'])

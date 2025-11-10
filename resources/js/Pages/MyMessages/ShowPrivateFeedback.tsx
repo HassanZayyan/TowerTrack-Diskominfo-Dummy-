@@ -4,6 +4,9 @@ import MainLayout from '@/Layouts/MainLayout';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import AssetGrid from '@/Components/MyMessages/AssetGrid';
+import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMessages/MessageResponseTimeline';
+import MessageResponseForm from '@/Components/MyMessages/MessageResponseForm';
+import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 
 type Feedback = {
   id: number;
@@ -19,13 +22,8 @@ type Feedback = {
   user?: { id: number; name: string; email: string } | null;
   tower?: { id: number; site_name: string; alamat_menara?: string };
   assets?: Array<{ id: number; file_path: string; file_type?: string }>;
-  responses?: Array<{
-    id: number;
-    message?: string;
-    created_at: string;
-    user?: { id: number; name: string } | null;
-    assets?: Array<{ file_path: string; file_type?: string }>;
-  }>;
+  responses?: MessageResponseItem[];
+  is_public?: boolean;
 };
 
 type ShowPrivateFeedbackProps = {
@@ -38,6 +36,7 @@ type ShowPrivateFeedbackProps = {
 export default function ShowPrivateFeedback({ feedback, statuses = [], email, phone }: ShowPrivateFeedbackProps) {
   const { auth } = usePage().props as any;
   const [previewAsset, setPreviewAsset] = useState<{ file_path: string; file_type?: string } | null>(null);
+  const [isResponseModalOpen, setResponseModalOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -66,6 +65,29 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
     };
     
     return statusConfig[status] || { bg: '#F3F4F6', text: '#374151', label: status || 'Tidak diketahui' };
+  };
+
+  const handleResponseSuccess = React.useCallback(() => {
+    router.reload({ only: ['feedback'] });
+  }, [router]);
+
+  const authUser = auth?.user;
+  const isAuthenticated = Boolean(authUser);
+  const staffRoles = ['admin', 'operator', 'tower_owner', 'staff'];
+  const normalizedRole =
+    typeof authUser?.role === 'string' ? authUser.role.toLowerCase() : undefined;
+  const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
+  const isOwner = isAuthenticated && feedback.user_id && Number(feedback.user_id) === Number(authUser.id);
+  const hasGuestAccess = !isAuthenticated && Boolean(email) && Boolean(phone);
+  const canRespond = isStaff || isOwner || hasGuestAccess;
+
+  const responseStatusResolver = (statusValue: string | null | undefined) => {
+    const resolved = getStatusColor(statusValue ?? '');
+    return {
+      label: resolved.label,
+      bg: resolved.bg,
+      text: resolved.text,
+    };
   };
 
 
@@ -216,67 +238,80 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
           </StaggeredContainer>
         )}
 
-        {/* Admin Responses */}
-        {feedback.responses && feedback.responses.length > 0 && (
-          <StaggeredContainer delay={350} animationType="fadeInUp" duration={400}>
-            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <h5 className="text-sm font-bold text-gray-900">Balasan Admin</h5>
-              </div>
-              <div className="relative space-y-4">
-                <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200"></div>
-                {feedback.responses.map((r, i) => {
-                  const isLastResponse = i === feedback.responses!.length - 1;
-                  const statusConfig = getStatusColor(feedback.status);
-                  return (
-                    <div key={i} className="relative pl-12">
-                      <div className={`absolute left-2.5 top-3 w-3 h-3 rounded-full ${isLastResponse ? 'bg-indigo-500' : 'bg-blue-500'} ring-4 ring-white shadow-md z-10`}></div>
-                      <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg p-4 border border-indigo-100 shadow-sm">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <div className="text-sm font-semibold text-gray-900">{r.user?.name ?? 'Admin'}</div>
-                              <div className="text-xs text-gray-500">
-                                {formatDate(r.created_at)} • {new Date(r.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                          </div>
-                          {isLastResponse && (
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border`} style={{
-                              backgroundColor: statusConfig.bg,
-                              color: statusConfig.text,
-                              borderColor: statusConfig.bg
-                            }}>
-                              {statusConfig.label}
-                            </span>
-                          )}
-                        </div>
-                        {r.message && (
-                          <div className="text-gray-900 leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-100">
-                            {r.message}
-                          </div>
-                        )}
-                        {r.assets && r.assets.length > 0 && (
-                          <AssetGrid 
-                            assets={r.assets}
-                            onPreview={setPreviewAsset}
-                          />
-                        )}
-                      </div>
+        {canRespond && (
+          <StaggeredContainer delay={340} animationType="fadeInUp" duration={400}>
+            <div className="mb-6">
+              <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-indigo-200 p-6 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
                     </div>
-                  );
-                })}
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Balas Masukan</h3>
+                      <p className="text-sm text-gray-600">
+                        Kirim pembaruan status atau klarifikasi kepada pengirim masukan pribadi ini.
+                      </p>
+                    </div>
+                  </div>
+                  <MessageActionDialog
+                    triggerLabel="Kirim Balasan"
+                    triggerIcon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m7 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    }
+                    triggerVariant="primary"
+                    triggerSize="md"
+                    triggerFullWidth={false}
+                    triggerClassName="whitespace-nowrap"
+                    title="Kirim Balasan"
+                    description={!isAuthenticated ? 'Email dan nomor telepon otomatis diisi sesuai data pengirim.' : undefined}
+                    maxWidth="3xl"
+                    isOpen={isResponseModalOpen}
+                    setOpen={setResponseModalOpen}
+                    onClose={() => setResponseModalOpen(false)}
+                  >
+                    {(close) => (
+                      <MessageResponseForm
+                        type="feedback"
+                        id={feedback.id}
+                        canRespond={canRespond}
+                        defaultSenderName={authUser?.name ?? feedback.sender_name ?? ''}
+                        defaultEmail={authUser?.email ?? email ?? feedback.email ?? ''}
+                        defaultPhone={phone ?? feedback.sender_phone ?? ''}
+                        onSuccess={() => {
+                          handleResponseSuccess();
+                          close();
+                        }}
+                        showContactFields={!isAuthenticated}
+                        lockContactFields={!isAuthenticated}
+                        description={!isAuthenticated ? 'Email dan nomor telepon otomatis diisi sesuai data pengirim.' : undefined}
+                      />
+                    )}
+                  </MessageActionDialog>
+                </div>
+
+                <div className="rounded-lg border border-indigo-100 bg-white/70 px-4 py-3 text-sm text-indigo-700 shadow-sm">
+                  Balasan hanya dapat dilihat oleh pengirim masukan melalui halaman pelacakan pribadi.
+                </div>
               </div>
+            </div>
+          </StaggeredContainer>
+        )}
+
+        {feedback.responses && feedback.responses.length > 0 && (
+          <StaggeredContainer delay={360} animationType="fadeInUp" duration={400}>
+            <div className="mb-6">
+              <MessageResponseTimeline
+                responses={feedback.responses}
+                status={feedback.status}
+                statusResolver={responseStatusResolver}
+                heading="Riwayat Balasan"
+                onPreviewAsset={(asset) => setPreviewAsset(asset)}
+              />
             </div>
           </StaggeredContainer>
         )}

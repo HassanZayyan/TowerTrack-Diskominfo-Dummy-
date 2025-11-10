@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Traits\HasStatusHandling;
 use App\Models\PublicComment;
+use App\Http\Requests\StoreMessageResponseRequest;
+use App\Services\MessageResponseService;
 
 /**
  * Base controller for messageable models (Report and Feedback).
@@ -16,6 +19,13 @@ use App\Models\PublicComment;
 abstract class MessageableController extends Controller
 {
     use HasStatusHandling;
+    
+    protected MessageResponseService $messageResponseService;
+
+    public function __construct(MessageResponseService $messageResponseService)
+    {
+        $this->messageResponseService = $messageResponseService;
+    }
     
     /**
      * Configuration for different messageable types.
@@ -112,6 +122,175 @@ abstract class MessageableController extends Controller
         ];
         
         $model->load($relationships);
+    }
+
+    /**
+     * Handle storing of responses for a messageable model.
+     */
+    protected function handleResponseSubmission(StoreMessageResponseRequest $request, $model, array $config): RedirectResponse
+    {
+        $validated = $request->validated();
+        $senderContext = $this->resolveSenderContext($request, $model, $config);
+
+        $payload = array_merge($senderContext, [
+            'message' => $validated['message'],
+            'attachments' => $request->file('attachments', []),
+        ]);
+
+        $this->messageResponseService->createResponse($model, $payload, $config);
+
+        return back()->with('success', 'Balasan berhasil dikirim.');
+    }
+
+    /**
+     * Resolve the sender information for the response.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function resolveSenderContext(Request $request, $model, array $config): array
+    {
+        $user = $request->user();
+
+        if ($user) {
+            if (method_exists($user, 'isStaff') && $user->isStaff()) {
+                return [
+                    'user_id' => $user->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $user->name,
+                    'sender_email' => $user->email,
+                    'sender_phone' => null,
+                ];
+            }
+
+            if ((int) $model->user_id === (int) $user->id) {
+                return [
+                    'user_id' => $user->id,
+                    'sender_type' => 'reporter',
+                    'sender_name' => $user->name,
+                    'sender_email' => $user->email,
+                    'sender_phone' => $model->{$config['phone_field']} ?? null,
+                ];
+            }
+
+            abort(403, 'Anda tidak memiliki akses untuk membalas pesan ini.');
+        }
+
+        $emailField = $config['email_field'] ?? 'email';
+        $nameField = $config['name_field'] ?? 'name';
+        $phoneField = $config['phone_field'] ?? 'phone';
+
+        $storedEmail = $emailField ? (string) ($model->{$emailField} ?? '') : '';
+        $storedPhone = $phoneField ? (string) ($model->{$phoneField} ?? '') : '';
+
+        $requiresEmail = $emailField && $storedEmail !== '';
+        $requiresPhone = $phoneField && $storedPhone !== '';
+
+        $providedEmail = (string) $request->input('email', '');
+        $providedPhone = (string) $request->input('phone', '');
+
+        if ($requiresEmail && $providedEmail === '') {
+            abort(403, 'Email diperlukan untuk membalas pesan ini.');
+        }
+
+        if ($requiresPhone && $providedPhone === '') {
+            abort(403, 'Nomor telepon diperlukan untuk membalas pesan ini.');
+        }
+
+        if ($requiresEmail && !hash_equals($storedEmail, $providedEmail)) {
+            abort(403, 'Email tidak cocok dengan data pengirim.');
+        }
+
+        if ($requiresPhone && !hash_equals($storedPhone, $providedPhone)) {
+            abort(403, 'Anda tidak memiliki akses ke pesan ini.');
+        }
+
+        $fallbackName = $model->{$nameField} ?? null;
+
+        return [
+            'user_id' => null,
+            'sender_type' => 'guest',
+            'sender_name' => $request->input('sender_name') ?: $fallbackName,
+            'sender_email' => $requiresEmail ? $providedEmail : null,
+            'sender_phone' => $requiresPhone ? $providedPhone : null,
+        ];
+    }
+
+    /**
+     * Determine whether the incoming request contains any primary attachments.
+     */
+    protected function hasInitialAttachments(Request $request, array $config = []): bool
+    {
+        $fields = $config['asset_fields'] ?? ['foto', 'assets', 'video'];
+
+        foreach ($fields as $field) {
+            if ($request->hasFile($field)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Persist primary attachments for the given messageable model.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function storeInitialAttachments(Request $request, int $messageId, array $config): void
+    {
+        $modelClass = $config['asset_model'] ?? null;
+        $foreignKey = $config['asset_foreign_key'] ?? null;
+
+        if (!$modelClass || !$foreignKey || !class_exists($modelClass)) {
+            return;
+        }
+
+        $disk = $config['asset_disk'] ?? 'public';
+        $directories = $config['asset_directories'] ?? [];
+        $fields = $config['asset_fields'] ?? ['foto', 'assets', 'video'];
+
+        $files = collect();
+        foreach ($fields as $field) {
+            if ($request->hasFile($field)) {
+                $fieldFiles = $request->file($field);
+                $files = $files->merge(is_array($fieldFiles) ? $fieldFiles : [$fieldFiles]);
+            }
+        }
+
+        $files->filter()->each(function ($file) use ($modelClass, $foreignKey, $messageId, $directories, $disk) {
+            try {
+                $mimeType = method_exists($file, 'getClientMimeType')
+                    ? $file->getClientMimeType()
+                    : $file->getMimeType();
+
+                $isImage = str_starts_with($mimeType ?? '', 'image/');
+                $directory = $isImage
+                    ? ($directories['image'] ?? 'message-assets/images')
+                    : ($directories['video'] ?? 'message-assets/videos');
+
+                $path = $file->store($directory, $disk);
+
+                if (!$path) {
+                    return;
+                }
+
+                $modelClass::create([
+                    $foreignKey => $messageId,
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $isImage ? 'image' : 'video',
+                    'mime_type' => $mimeType,
+                    'file_size' => $file->getSize(),
+                ]);
+            } catch (\Throwable $exception) {
+                \Log::error(sprintf(
+                    'Failed storing message attachment for %s: %s',
+                    $modelClass,
+                    $exception->getMessage()
+                ));
+            }
+        });
     }
 }
 
