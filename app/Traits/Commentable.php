@@ -31,8 +31,3 @@ trait Commentable
             ->orderBy('created_at', 'desc');
     }
 }
-
-
-
-
-

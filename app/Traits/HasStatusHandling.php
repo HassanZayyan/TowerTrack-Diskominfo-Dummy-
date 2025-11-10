@@ -20,8 +20,3 @@ trait HasStatusHandling
         }
     }
 }
-
-
-
-
-
