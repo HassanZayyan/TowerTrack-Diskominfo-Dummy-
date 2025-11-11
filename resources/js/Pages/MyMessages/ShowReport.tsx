@@ -22,7 +22,7 @@ type Report = {
   reporter_name?: string | null;
   reporter_phone?: string | null;
   user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null;
+  user?: { id: number; name: string; email: string; role?: string } | null;
   tower?: { id: number; site_name: string; alamat_menara?: string };
   images?: Array<{ id: number; file_path: string; file_type?: string }>;
   responses?: MessageResponseItem[];
@@ -115,16 +115,29 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
 
   const authUser = auth?.user;
   const isAuthenticated = Boolean(authUser);
-  const staffRoles = ['admin', 'operator', 'tower_owner', 'staff'];
   const normalizedRole =
     typeof authUser?.role === 'string' ? authUser.role.toLowerCase() : undefined;
-  const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
-  const isOwner =
-    isAuthenticated && report.user_id && Number(report.user_id) === Number(authUser.id);
-  const canGuestRespond = !isAuthenticated && (!!report.email || !!report.reporter_phone);
-  const canRespond = isStaff || isOwner || canGuestRespond;
+  const isAdmin = isAuthenticated && normalizedRole === 'admin';
+  const isOwner = Boolean(
+    isAuthenticated && report.user_id && authUser?.id && Number(report.user_id) === Number(authUser.id)
+  );
+  const hasReporter = Boolean(report.user_id);
+  
+  // Determine who can respond
+  let canRespond = false;
+  
+  if (hasReporter) {
+    // For authenticated reports: only admin and reporter can respond
+    canRespond = isAdmin || isOwner;
+  } else {
+    // For anonymous reports: staff and guest can respond
+    const staffRoles = ['admin', 'operator', 'tower_owner', 'staff'];
+    const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
+    const canGuestRespond = !isAuthenticated && (!!report.email || !!report.reporter_phone);
+    canRespond = isStaff || canGuestRespond;
+  }
 
-  const responseDescription = !isAuthenticated
+  const responseDescription = !isAuthenticated && !hasReporter
     ? 'Masukkan email dan nomor telepon yang digunakan saat mengirim laporan untuk memverifikasi bahwa Anda adalah pengirim asli.'
     : undefined;
 
@@ -458,4 +471,3 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
     </MainLayout>
   );
 }
-

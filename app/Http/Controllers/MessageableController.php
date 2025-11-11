@@ -76,7 +76,7 @@ abstract class MessageableController extends Controller
     {
         $relationships = [
             'tower:id,site_name,alamat_menara',
-            'user:id,name,email',
+            'user:id,name,email,role',
             $config['assets_relation'] => function($q) use ($config) {
                 $q->select($config['assets_select']);
             },
@@ -111,7 +111,7 @@ abstract class MessageableController extends Controller
     {
         $relationships = [
             'tower:id,site_name,alamat_menara',
-            'user:id,name,email',
+            'user:id,name,email,role',
             $config['assets_relation'] => function($q) use ($config) {
                 $q->select($config['assets_select']);
             },
@@ -153,6 +153,38 @@ abstract class MessageableController extends Controller
         $user = $request->user();
 
         if ($user) {
+            $isReporter = (int) $model->user_id === (int) $user->id;
+            $isAdmin = method_exists($user, 'isAdmin') && $user->isAdmin();
+            
+            // Admin can always reply
+            if ($isAdmin) {
+                return [
+                    'user_id' => $user->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $user->name,
+                    'sender_email' => $user->email,
+                    'sender_phone' => null,
+                ];
+            }
+            
+            // Reporter can always reply to their own report
+            if ($isReporter) {
+                return [
+                    'user_id' => $user->id,
+                    'sender_type' => 'reporter',
+                    'sender_name' => $user->name,
+                    'sender_email' => $user->email,
+                    'sender_phone' => $model->{$config['phone_field']} ?? null,
+                ];
+            }
+            
+            // For authenticated reports, only admin and reporter can reply
+            // (already checked above: admin at line 160, reporter at line 171)
+            if ($model->user_id) {
+                abort(403, 'Anda tidak memiliki akses untuk membalas pesan ini.');
+            }
+            
+            // For anonymous reports, staff can reply
             if (method_exists($user, 'isStaff') && $user->isStaff()) {
                 return [
                     'user_id' => $user->id,
@@ -163,17 +195,12 @@ abstract class MessageableController extends Controller
                 ];
             }
 
-            if ((int) $model->user_id === (int) $user->id) {
-                return [
-                    'user_id' => $user->id,
-                    'sender_type' => 'reporter',
-                    'sender_name' => $user->name,
-                    'sender_email' => $user->email,
-                    'sender_phone' => $model->{$config['phone_field']} ?? null,
-                ];
-            }
-
             abort(403, 'Anda tidak memiliki akses untuk membalas pesan ini.');
+        }
+
+        // Guest users can only reply to anonymous reports (no authenticated reporter)
+        if ($model->user_id) {
+            abort(403, 'Laporan ini dibuat oleh pengguna terautentikasi. Silakan login dengan akun Anda untuk membalas.');
         }
 
         $emailField = $config['email_field'] ?? 'email';
@@ -293,6 +320,3 @@ abstract class MessageableController extends Controller
         });
     }
 }
-
-
-
