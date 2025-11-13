@@ -33,12 +33,12 @@ interface CommentItemProps {
 
 export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }: CommentItemProps) {
   const isGuest = !comment.user;
-  const authorName = comment.user?.name || comment.guest_name || 'Guest';
+  const authorName = comment.user?.name || comment.guest_name || 'Tamu';
   
   // Get parent author name for reply indicator
   const getParentAuthorName = (): string | null => {
     if (!comment.parent) return null;
-    return comment.parent.user?.name || comment.parent.guest_name || 'Guest';
+    return comment.parent.user?.name || comment.parent.guest_name || 'Tamu';
   };
   
   const parentAuthorName = getParentAuthorName();
@@ -108,7 +108,7 @@ export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }:
               <h4 className="font-semibold text-gray-900">{authorName}</h4>
               {isGuest && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                  Guest
+                  Tamu
                 </span>
               )}
               <span className="text-xs text-gray-500">

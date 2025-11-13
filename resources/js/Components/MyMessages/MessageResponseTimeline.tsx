@@ -43,7 +43,7 @@ const defaultStatusResolver = (): StatusStyle => ({
 const senderTypeLabel: Record<string, string> = {
   staff: 'Admin',
   reporter: 'Pelapor',
-  guest: 'Guest',
+  guest: 'Tamu',
 };
 
 export default function MessageResponseTimeline({

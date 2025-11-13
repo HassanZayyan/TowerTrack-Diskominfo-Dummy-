@@ -573,7 +573,7 @@ export default function RouteDetail() {
 
         {/* Pagination */}
         {points.total > points.per_page && (
-          <div className="bg-white px-3 sm:px-4 py-3 border border-gray-200 rounded-lg sm:px-6">
+          <div className="bg-white px-3 sm:px-6 py-3 border border-gray-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex justify-between flex-1 sm:hidden">
                 {points.links[0].url && (

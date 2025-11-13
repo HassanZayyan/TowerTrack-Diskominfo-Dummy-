@@ -197,7 +197,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
                   </span>
                   {!feedback.user_id && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                      Guest
+                      Tamu
                     </span>
                   )}
                 </div>
