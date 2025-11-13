@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use App\Models\FoProvider;
 
 class FoRoute extends Model
 {
@@ -78,16 +80,116 @@ class FoRoute extends Model
 
     /**
      * Get the points that belong to this route.
+     * Uses route_name and area as primary relationship.
+     * This is a HasMany relationship for query builder compatibility.
+     * Note: For whereHas queries, area matching is handled in the closure.
      */
-    public function points()
+    public function points(): HasMany
     {
-        if (empty($this->point_ids)) {
+        return $this->hasMany(FoPoint::class, 'route_name', 'name')
+                    ->orderBy('sequence_number');
+    }
+
+    /**
+     * Get points collection (for backward compatibility).
+     * Uses route_name and area as primary relationship, with point_ids as fallback.
+     */
+    public function getPoints()
+    {
+        // Primary: Get points by route_name and area (more reliable)
+        $points = FoPoint::where('route_name', $this->name)
+                        ->where('area', $this->area)
+                        ->orderBy('sequence_number')
+                        ->get();
+        
+        // Fallback: If no points found and point_ids exists, use point_ids
+        if ($points->isEmpty() && !empty($this->point_ids)) {
+            $points = FoPoint::whereIn('id', $this->point_ids)
+                            ->orderBy('sequence_number')
+                            ->get();
+        }
+        
+        return $points;
+    }
+
+    /**
+     * Get providers through points in this route.
+     * Returns unique master providers that are associated with any point in this route.
+     */
+    public function providers()
+    {
+        $pointIds = $this->getPoints()->pluck('id')->toArray();
+        
+        if (empty($pointIds)) {
             return collect();
         }
         
-        return FoPoint::whereIn('id', $this->point_ids)
-                     ->orderBy('sequence_number')
-                     ->get();
+        // Query master providers through pivot table using whereExists
+        return FoProvider::whereExists(function($query) use ($pointIds) {
+                $query->select(DB::raw(1))
+                    ->from('fo_point_provider')
+                    ->whereColumn('fo_point_provider.fo_provider_id', 'fo_providers.id')
+                    ->whereIn('fo_point_provider.fo_point_id', $pointIds)
+                    ->where('fo_point_provider.is_active', true);
+            })
+            ->active()
+            ->orderBy('default_sort_order')
+            ->orderBy('name')
+            ->distinct()
+            ->get();
+    }
+
+    /**
+     * Legacy method for backward compatibility (deprecated).
+     * @deprecated Use providers() instead
+     */
+    public function owners()
+    {
+        return $this->providers();
+    }
+
+    /**
+     * Check if route has any providers.
+     */
+    public function hasProviders(): bool
+    {
+        return $this->providers()->isNotEmpty();
+    }
+
+    /**
+     * Legacy method for backward compatibility (deprecated).
+     * @deprecated Use hasProviders() instead
+     */
+    public function hasOwners(): bool
+    {
+        return $this->hasProviders();
+    }
+
+    /**
+     * Scope untuk filter routes yang memiliki providers.
+     */
+    public function scopeHasProviders($query)
+    {
+        return $query->whereHas('points', function($q) {
+            // Ensure area matches between route and points
+            $q->whereColumn('fo_points.area', 'fo_routes.area')
+              ->whereExists(function($subQuery) {
+                  // Query pivot table directly to check if point has active providers
+                  $subQuery->select(DB::raw(1))
+                      ->from('fo_point_provider')
+                      ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
+                      ->where('fo_point_provider.is_active', true);
+              });
+        });
+    }
+
+    /**
+     * Legacy scope for backward compatibility (deprecated).
+     * @deprecated Use hasProviders() instead
+     */
+    public function scopeHasOwners($query)
+    {
+        return $this->scopeHasProviders($query);
     }
 
     /**
@@ -170,7 +272,7 @@ class FoRoute extends Model
      */
     public function generatePathFromPoints()
     {
-        $points = $this->points()->orderBy('sequence_number')->get();
+        $points = $this->points()->where('fo_points.area', $this->area)->orderBy('sequence_number')->get();
         
         $pathCoordinates = $points->map(function ($point) {
             return [
@@ -217,8 +319,9 @@ class FoRoute extends Model
 
         $route->update(['total_distance' => $route->calculateDistance()]);
 
-        // Attach points to route
-        $route->points()->attach($points);
+        // Note: Points are linked via route_name and area, not through attach()
+        // This line is kept for backward compatibility but doesn't do anything
+        // as there's no pivot table between routes and points
 
         return $route;
     }

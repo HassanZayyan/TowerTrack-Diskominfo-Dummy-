@@ -50,6 +50,35 @@ class FoPoint extends Model
     }
 
     /**
+     * Many-to-many relationship with providers (master providers).
+     * One point can have multiple providers, one provider can be on multiple points.
+     */
+    public function providers(): BelongsToMany
+    {
+        return $this->belongsToMany(FoProvider::class, 'fo_point_provider')
+                    ->withPivot('is_active', 'sort_order')
+                    ->withTimestamps()
+                    ->orderByPivot('sort_order');
+    }
+
+    /**
+     * Get active providers for this point (where pivot is_active = true).
+     */
+    public function activeProviders(): BelongsToMany
+    {
+        return $this->providers()->wherePivot('is_active', true);
+    }
+
+    /**
+     * Legacy method for backward compatibility (deprecated).
+     * @deprecated Use providers() instead
+     */
+    public function owners()
+    {
+        return $this->providers();
+    }
+
+    /**
      * Scope untuk filter berdasarkan area.
      */
     public function scopeByArea($query, $area)

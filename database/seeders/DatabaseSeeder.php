@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
         // Seed FO points and routes from CSV/images
         $this->call([
             FoPointsFromCsvSeeder::class,
+            ProviderSeeder::class, // Create master providers and assign to points (must be after FoPointsFromCsvSeeder)
             FoRoutesFromPointsSeeder::class,
         ]);
         

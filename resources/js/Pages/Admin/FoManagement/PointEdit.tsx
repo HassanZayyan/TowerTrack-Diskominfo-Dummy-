@@ -24,12 +24,19 @@ interface AvailableRoute {
   area: string;
 }
 
+interface Provider {
+  id: number | string;
+  name: string;
+}
+
 interface PageProps {
   foPoint: FoPoint;
   availableAreas: string[];
   availableTypes: string[];
   availableStatuses: string[];
   availableRoutes: AvailableRoute[];
+  availableProviders?: Provider[];
+  currentProviders?: Provider[];
   fromRouteDetail?: boolean;
   parentRouteId?: number | null;
 }
@@ -39,7 +46,9 @@ export default function PointEdit({
   availableAreas, 
   availableTypes, 
   availableStatuses, 
-  availableRoutes, 
+  availableRoutes,
+  availableProviders = [],
+  currentProviders = [],
   fromRouteDetail,
   parentRouteId
 }: PageProps) {
@@ -56,6 +65,7 @@ export default function PointEdit({
     isp_image: foPoint.isp_image || '',
     pole_image: foPoint.pole_image || '',
     junction_box_image: foPoint.junction_box_image || '',
+    providers: currentProviders.map(p => p.name),
     from_route: fromRouteDetail ? 'detail' : null,
   });
 
@@ -331,6 +341,68 @@ export default function PointEdit({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <p className="text-sm font-medium">{errors.status}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Provider Selection */}
+                <div>
+                  <label htmlFor="providers" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Provider
+                    <span className="text-gray-500 text-xs ml-1">(Opsional - bisa pilih lebih dari satu)</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="providers"
+                      multiple
+                      value={data.providers || []}
+                      onChange={(e) => {
+                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                        setData('providers', selectedOptions);
+                      }}
+                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
+                        errors.providers 
+                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
+                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
+                      } focus:outline-none min-h-[120px]`}
+                      size={4}
+                    >
+                      {availableProviders && availableProviders.length > 0 ? (
+                        availableProviders.map((provider) => (
+                          <option 
+                            key={provider.id || provider.name} 
+                            value={provider.name}
+                            style={{ 
+                              backgroundColor: (data.providers || []).includes(provider.name) 
+                                ? '#E5E7EB' 
+                                : 'transparent'
+                            }}
+                          >
+                            {provider.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>Tidak ada provider tersedia</option>
+                      )}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-start pt-3 pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 Tip: Tahan Ctrl (Windows) atau Cmd (Mac) untuk memilih lebih dari satu provider
+                  </p>
+                  {errors.providers && (
+                    <div className="flex items-center mt-2 text-red-600">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-medium">{errors.providers}</p>
                     </div>
                   )}
                 </div>

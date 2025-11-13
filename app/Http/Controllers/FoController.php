@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\FoPoint;
 use App\Models\FoRoute;
+use App\Models\FoProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class FoController extends Controller
@@ -16,10 +18,38 @@ class FoController extends Controller
     public function index(Request $request)
     {
         $area = $request->get('area', 'ungaran'); // Default ke ungaran
+        $provider = $request->get('provider'); // Filter by provider
+        
+        // Build query for FO points
+        $pointsQuery = FoPoint::where('area', $area)
+            ->where('status', 'active');
+        
+        // Filter by provider if provided (provider can be ID or name)
+        if ($provider && $provider !== 'all') {
+            $pointsQuery->whereExists(function($query) use ($provider) {
+                $query->select(DB::raw(1))
+                    ->from('fo_point_provider')
+                    ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
+                    ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
+                    ->where('fo_point_provider.is_active', true);
+                
+                // Check if provider is numeric (ID) or string (name)
+                if (is_numeric($provider)) {
+                    $query->where('fo_providers.id', $provider);
+                } else {
+                    $query->where('fo_providers.name', $provider);
+                }
+            });
+        }
         
         // Get FO points by area with proper data formatting
-        $foPoints = FoPoint::where('area', $area)
-            ->where('status', 'active')
+                $foPoints = $pointsQuery
+                    ->with(['providers' => function($q) {
+                        $q->wherePivot('is_active', true)
+                          ->select('fo_providers.id', 'fo_providers.name', 'fo_providers.default_sort_order')
+                          ->orderBy('fo_providers.default_sort_order')
+                          ->orderBy('fo_providers.name');
+                    }])
             ->orderBy('route_name')
             ->orderBy('sequence_number')
             ->get()
@@ -41,16 +71,79 @@ class FoController extends Controller
                     'has_images' => !empty($point->isp_image) || !empty($point->pole_image) || !empty($point->junction_box_image),
                     'area' => $point->area,
                     'status' => $point->status,
+                                    'providers' => $point->providers->map(function($provider) {
+                                        return [
+                                            'id' => $provider->id,
+                                            'name' => $provider->name,
+                                        ];
+                                    })->toArray(),
                 ];
             });
 
+        // Build query for FO routes
+        $routesQuery = FoRoute::where('area', $area)
+            ->where('status', 'active');
+        
+        // Filter routes by provider if provided
+        if ($provider && $provider !== 'all') {
+            $routesQuery->whereHas('points', function($q) use ($provider) {
+                // Use whereExists to query pivot table directly
+                $q->whereColumn('fo_points.area', 'fo_routes.area')
+                  ->whereExists(function($subQuery) use ($provider) {
+                      $subQuery->select(DB::raw(1))
+                          ->from('fo_point_provider')
+                          ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
+                          ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
+                          ->where('fo_point_provider.is_active', true);
+                      
+                      // Check if provider is numeric (ID) or string (name)
+                      if (is_numeric($provider)) {
+                          $subQuery->where('fo_providers.id', $provider);
+                      } else {
+                          $subQuery->where('fo_providers.name', $provider);
+                      }
+                  });
+            });
+        } else {
+            // Only show routes that have at least one provider if no filter
+            $routesQuery->hasProviders();
+        }
+        
         // Get FO routes by area - WITHOUT heavy polyline data for initial load
         // Users can load specific route polylines via dropdown on-demand
-        $foRoutes = FoRoute::where('area', $area)
-            ->where('status', 'active')
+        $foRoutes = $routesQuery
             ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service')
             ->get()
             ->map(function ($route) {
+                // Get unique providers for this route through its points
+                $pointIds = FoPoint::where('route_name', $route->name)
+                    ->where('area', $route->area)
+                    ->pluck('id')
+                    ->toArray();
+                
+                // Query master providers through pivot table using whereExists
+                $providers = FoProvider::whereExists(function($query) use ($pointIds) {
+                        $query->select(DB::raw(1))
+                            ->from('fo_point_provider')
+                            ->whereColumn('fo_point_provider.fo_provider_id', 'fo_providers.id')
+                            ->whereIn('fo_point_provider.fo_point_id', $pointIds)
+                            ->where('fo_point_provider.is_active', true);
+                    })
+                    ->active()
+                    ->select('id', 'name', 'default_sort_order')
+                    ->orderBy('default_sort_order')
+                    ->orderBy('name')
+                    ->distinct()
+                    ->get()
+                    ->map(function($provider) {
+                        return [
+                            'id' => $provider->id,
+                            'name' => $provider->name,
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+                
                 return [
                     'id' => $route->id,
                     'name' => $route->name,
@@ -63,17 +156,35 @@ class FoController extends Controller
                     'area' => $route->area,
                     'status' => $route->status,
                     'routing_service' => $route->routing_service,
+                    'has_providers' => !empty($providers), // Flag untuk frontend
+                    'providers' => $providers,
                 ];
             });
 
         // Calculate map bounds
         $bounds = $this->calculateMapBounds($foPoints);
 
+        // Get available master providers for filter dropdown
+        $availableProviders = FoProvider::active()
+            ->select('id', 'name', 'default_sort_order')
+            ->orderBy('default_sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function($provider) {
+                return [
+                    'id' => $provider->id,
+                    'name' => $provider->name,
+                ];
+            })
+            ->toArray();
+
         return Inertia::render('DataFo/Index', [
             'foPoints' => $foPoints,
             'foRoutes' => $foRoutes,
             'currentArea' => $area,
             'availableAreas' => ['ungaran'],
+            'availableProviders' => $availableProviders,
+            'selectedProvider' => $provider ?? 'all',
             'mapData' => [
                 'points' => $foPoints,
                 'routes' => $foRoutes, // Now without polylines
@@ -292,14 +403,24 @@ class FoController extends Controller
             });
 
         // Get FO routes by area with polylines
+        // Only show routes that have at least one provider
         $foRoutes = FoRoute::where('area', $area)
             ->where('status', 'active')
+            ->hasProviders() // Only show routes with providers
             ->get()
             ->map(function ($route) {
                 // Use GeoJSON coordinates if available, otherwise fallback to path_coordinates
                 $polyline = $route->hasValidGeoJSON() 
                     ? $route->getGeoJSONCoordinates()
                     : $this->generateRoutePolyline($route->path_coordinates);
+                
+                // Get providers for this route
+                $providers = $route->providers()->map(function($provider) {
+                    return [
+                        'id' => $provider->id,
+                        'name' => $provider->name,
+                    ];
+                })->values()->toArray();
                 
                 return [
                     'id' => $route->id,
@@ -314,6 +435,8 @@ class FoController extends Controller
                     'has_geojson' => $route->hasValidGeoJSON(),
                     'routing_service' => $route->routing_service,
                     'polyline' => $polyline,
+                    'has_providers' => !empty($providers), // Flag untuk frontend
+                    'providers' => $providers,
                 ];
             });
 
@@ -338,7 +461,12 @@ class FoController extends Controller
     {
         try {
             if ($type === 'point') {
-                $point = FoPoint::findOrFail($id);
+                    $point = FoPoint::with(['providers' => function($q) {
+                        $q->wherePivot('is_active', true)
+                          ->select('fo_providers.id', 'fo_providers.name', 'fo_providers.default_sort_order')
+                          ->orderBy('fo_providers.default_sort_order')
+                          ->orderBy('fo_providers.name');
+                    }])->findOrFail($id);
                 
                 // Get related routes for this point
                 $relatedRoutes = $point->routes()->map(function ($route) {
@@ -372,6 +500,12 @@ class FoController extends Controller
                                 'junction_box' => $point->junction_box_image_url,
                             ],
                             'has_images' => !empty($point->isp_image) || !empty($point->pole_image) || !empty($point->junction_box_image),
+                            'providers' => $point->providers->map(function($provider) {
+                                return [
+                                    'id' => $provider->id,
+                                    'name' => $provider->name,
+                                ];
+                            })->toArray(),
                         ],
                         'related_routes' => $relatedRoutes,
                     ]
@@ -380,6 +514,8 @@ class FoController extends Controller
                 $route = FoRoute::findOrFail($id);
                 
                 $points = $route->points()
+                    ->where('fo_points.area', $route->area)
+                    ->get()
                     ->map(function ($point) {
                         return [
                             'id' => $point->id,
@@ -541,6 +677,8 @@ class FoController extends Controller
     public function getRouteDetails(FoRoute $foRoute)
     {
         $points = $foRoute->points()
+            ->where('fo_points.area', $foRoute->area)
+            ->get()
             ->map(function ($point) {
                 return [
                     'id' => $point->id,

@@ -105,6 +105,11 @@ const getIconByImages = (images: { isp: string | null; pole: string | null; junc
   return createCustomIcon('#6B7280', '?');
 };
 
+interface Provider {
+  id: string | number; // Can be string (MD5 hash) or number
+  name: string;
+}
+
 interface FoPoint {
   id: number;
   name: string;
@@ -120,6 +125,7 @@ interface FoPoint {
     junction_box: string | null;
   };
   has_images: boolean;
+  providers?: Provider[];
   // Legacy properties for compatibility
   area?: string;
   status?: string;
@@ -135,6 +141,7 @@ interface FoRoute {
   total_points: number;
   description: string;
   routing_service?: string | null;
+  providers?: Provider[];
   // Polyline data excluded from initial load - loaded on-demand
   path_coordinates?: Array<{ lat: number; lng: number }>;
   polyline?: Array<[number, number]>;
@@ -158,6 +165,8 @@ interface DataFoProps {
   foRoutes: FoRoute[];
   currentArea: string;
   availableAreas: string[];
+  availableProviders?: Provider[];
+  selectedProvider?: string;
   mapData?: MapData;
 }
 
@@ -183,6 +192,8 @@ export default function DataFoIndex({
   foRoutes = [],
   currentArea = 'ungaran',
   availableAreas = [],
+  availableProviders = [],
+  selectedProvider: initialProvider = 'all',
   mapData
 }: DataFoProps) {
   // Initialize from URL for shareable state
@@ -191,11 +202,13 @@ export default function DataFoIndex({
   const initSearch = initParams.get('search') || '';
   const initType = initParams.get('type') || 'all';
   const initStatus = initParams.get('status') || 'all';
+  const initProvider = initParams.get('provider') || initialProvider;
 
   const [selectedArea, setSelectedArea] = useState(initArea);
   const [searchTerm, setSearchTerm] = useState(initSearch);
   const [selectedType, setSelectedType] = useState(initType);
   const [selectedStatus, setSelectedStatus] = useState(initStatus);
+  const [selectedProvider, setSelectedProvider] = useState(initProvider);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedPoint, setSelectedPoint] = useState<any>(null);
@@ -323,7 +336,20 @@ export default function DataFoIndex({
       area,
       ...(searchTerm && { search: searchTerm }),
       ...(selectedType !== 'all' && { type: selectedType }),
-      ...(selectedStatus !== 'all' && { status: selectedStatus })
+      ...(selectedStatus !== 'all' && { status: selectedStatus }),
+      ...(selectedProvider !== 'all' && { provider: selectedProvider })
+    }, { preserveState: true, preserveScroll: true, replace: true });
+  };
+
+  const handleProviderChange = (provider: string) => {
+    setSelectedProvider(provider);
+    // Trigger server request with provider filter
+    router.get('/data-fo', { 
+      area: selectedArea,
+      ...(searchTerm && { search: searchTerm }),
+      ...(selectedType !== 'all' && { type: selectedType }),
+      ...(selectedStatus !== 'all' && { status: selectedStatus }),
+      ...(provider !== 'all' && { provider: provider })
     }, { preserveState: true, preserveScroll: true, replace: true });
   };
 
@@ -334,10 +360,11 @@ export default function DataFoIndex({
     if (searchTerm) params.set('search', searchTerm);
     if (selectedType !== 'all') params.set('type', selectedType);
     if (selectedStatus !== 'all') params.set('status', selectedStatus);
+    if (selectedProvider !== 'all') params.set('provider', selectedProvider);
     const query = params.toString();
     const newUrl = query ? `/data-fo?${query}` : '/data-fo';
     window.history.replaceState({}, '', newUrl);
-  }, [selectedArea, searchTerm, selectedType, selectedStatus]);
+  }, [selectedArea, searchTerm, selectedType, selectedStatus, selectedProvider]);
 
   // Export functionality
   const handleExport = () => {
@@ -818,6 +845,27 @@ export default function DataFoIndex({
 
               {/* Action Buttons Section - Responsive Button Layout */}
               <div className="flex flex-col sm:flex-row gap-2">
+                {/* Provider Filter Dropdown */}
+                <div className="w-full sm:w-auto">
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) => handleProviderChange(e.target.value)}
+                    className="w-full px-3 py-2 text-sm font-medium rounded-md border border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                    title="Filter berdasarkan provider"
+                    aria-label="Filter provider"
+                  >
+                    <option value="all">Semua Provider</option>
+                    {Array.isArray(availableProviders) && availableProviders.length > 0 ? (
+                      availableProviders.map((provider: Provider, index: number) => (
+                        <option key={provider?.id || provider?.name || `provider-${index}`} value={provider.name}>
+                          {provider.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>Tidak ada provider tersedia</option>
+                    )}
+                  </select>
+                </div>
                 <button 
                   onClick={() => setShowMarkers(!showMarkers)}
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2 w-full sm:w-auto ${
@@ -1057,6 +1105,22 @@ export default function DataFoIndex({
                               {routeData.has_geojson ? 'Routing Optimal' : 'Jalur Aktif'}
                             </span>
                           </div>
+                          {/* Providers */}
+                          {routeData.providers && routeData.providers.length > 0 && (
+                            <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
+                              <span className="text-xs text-gray-500">Provider:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {routeData.providers.map((provider: Provider) => (
+                                  <span
+                                    key={provider.id}
+                                    className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  >
+                                    {provider.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                      </Popup>
@@ -1103,6 +1167,22 @@ export default function DataFoIndex({
                               {point.type.charAt(0).toUpperCase() + point.type.slice(1)}
                             </span>
                           </div>
+                          {/* Providers */}
+                          {point.providers && point.providers.length > 0 && (
+                            <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
+                              <span className="text-xs text-gray-500">Provider:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {point.providers.map((provider) => (
+                                  <span
+                                    key={provider.id}
+                                    className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  >
+                                    {provider.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Images */}

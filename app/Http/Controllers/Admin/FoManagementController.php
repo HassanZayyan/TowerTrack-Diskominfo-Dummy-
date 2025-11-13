@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FoRoute;
 use App\Models\FoPoint;
+use App\Models\FoProvider;
 use App\Rules\GoogleDriveUrl;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -373,6 +374,29 @@ class FoManagementController extends Controller
                 ];
             });
 
+        // Get available master providers
+        $availableProviders = FoProvider::active()
+            ->select('id', 'name', 'default_sort_order')
+            ->orderBy('default_sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function($provider) {
+                return [
+                    'id' => $provider->id,
+                    'name' => $provider->name,
+                ];
+            })
+            ->toArray();
+
+        // Get current providers for this point (master provider IDs)
+        $currentProviders = $foPoint->providers()
+            ->wherePivot('is_active', true)
+            ->select('fo_providers.id', 'fo_providers.name')
+            ->orderByPivot('sort_order')
+            ->get()
+            ->pluck('id')
+            ->toArray();
+
         return Inertia::render('Admin/FoManagement/PointEdit', [
             'foPoint' => [
                 'id' => $foPoint->id,
@@ -393,6 +417,8 @@ class FoManagementController extends Controller
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'availableRoutes' => $availableRoutes,
+            'availableProviders' => $availableProviders,
+            'currentProviders' => $currentProviders,
             'fromRouteDetail' => $request->get('from_route'),
             'parentRouteId' => optional(FoRoute::where('name', $foPoint->route_name)
                 ->where('area', $foPoint->area)
@@ -419,12 +445,37 @@ class FoManagementController extends Controller
             'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
             'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
             'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
+            // Provider data - array of master provider IDs
+            'providers' => 'nullable|array',
+            'providers.*' => 'integer|exists:fo_providers,id',
         ]);
 
         $oldRouteName = $foPoint->route_name;
         $oldArea = $foPoint->area;
         
+        // Remove providers from validated data before updating point
+        $providers = $validated['providers'] ?? [];
+        unset($validated['providers']);
+        
         $foPoint->update($validated);
+
+        // Update providers using sync with master provider IDs
+        $providerIds = $providers ?? [];
+        
+        // Build sync data with sort_order from master providers
+        $syncData = [];
+        foreach ($providerIds as $index => $masterProviderId) {
+            $masterProvider = FoProvider::find($masterProviderId);
+            if ($masterProvider) {
+                $syncData[$masterProviderId] = [
+                    'is_active' => true,
+                    'sort_order' => $masterProvider->default_sort_order ?? $index,
+                ];
+            }
+        }
+        
+        // Sync providers (this will automatically remove old ones and add new ones)
+        $foPoint->providers()->sync($syncData);
 
         // Update route totals for old route if route changed
         if ($oldRouteName !== $validated['route_name'] || $oldArea !== $validated['area']) {
