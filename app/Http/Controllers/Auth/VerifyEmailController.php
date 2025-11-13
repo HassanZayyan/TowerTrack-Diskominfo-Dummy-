@@ -3,37 +3,30 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Traits\HandlesUserRedirects;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
 
 class VerifyEmailController extends Controller
 {
+    use HandlesUserRedirects;
+
     /**
      * Mark the authenticated user's email address as verified.
      */
     public function __invoke(EmailVerificationRequest $request): RedirectResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
-            $user = $request->user();
-            if (in_array($user->role, ['admin','operator','tower_owner'], true)) {
-                $dest = route('admin.dashboard', absolute: false);
-            } else {
-                $dest = route('dashboard', absolute: false);
-            }
-            return redirect()->intended($dest.'?verified=1');
-        }
-
-        if ($request->user()->markEmailAsVerified()) {
-            event(new Verified($request->user()));
-        }
-
         $user = $request->user();
-        if (in_array($user->role, ['admin','operator','tower_owner'], true)) {
-            $dest = route('admin.dashboard', absolute: false);
-        } else {
-            $dest = route('dashboard', absolute: false);
+
+        if ($user->hasVerifiedEmail()) {
+            return redirect()->intended($this->getRedirectDestination($user, true));
         }
-        return redirect()->intended($dest.'?verified=1');
+
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
+        }
+
+        return redirect()->intended($this->getRedirectDestination($user, true));
     }
 }
