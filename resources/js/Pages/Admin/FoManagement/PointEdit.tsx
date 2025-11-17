@@ -11,6 +11,7 @@ interface FoPoint {
   area: string;
   type: string;
   status: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
   route_name: string;
   sequence_number: number;
   description?: string;
@@ -83,6 +84,7 @@ export default function PointEdit({
     area: foPoint.area,
     type: foPoint.type,
     status: foPoint.status,
+    side_of_road: foPoint.side_of_road || 'unknown',
     route_name: foPoint.route_name,
     sequence_number: foPoint.sequence_number.toString(),
     description: foPoint.description || '',
@@ -380,6 +382,100 @@ export default function PointEdit({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <p className="text-sm font-medium">{errors.status}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Side of Road Picker */}
+                <div>
+                  <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Sisi Jalan
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setData('side_of_road', 'left')}
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                        data.side_of_road === 'left'
+                          ? 'border-blue-500 bg-blue-50 shadow-md'
+                          : 'border-gray-200 hover:border-blue-300 bg-white/50 backdrop-blur-sm'
+                      } focus:outline-none focus:ring-4 focus:ring-blue-100`}
+                    >
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className={`w-8 h-8 rounded-full border-3 flex items-center justify-center ${
+                          data.side_of_road === 'left'
+                            ? 'border-blue-500 bg-blue-100'
+                            : 'border-gray-300 bg-gray-100'
+                        }`}>
+                          <span className="text-xs font-bold text-blue-600">L</span>
+                        </div>
+                        <span className={`text-sm font-medium ${
+                          data.side_of_road === 'left' ? 'text-blue-700' : 'text-gray-600'
+                        }`}>
+                          Kiri
+                        </span>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setData('side_of_road', 'right')}
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                        data.side_of_road === 'right'
+                          ? 'border-red-500 bg-red-50 shadow-md'
+                          : 'border-gray-200 hover:border-red-300 bg-white/50 backdrop-blur-sm'
+                      } focus:outline-none focus:ring-4 focus:ring-red-100`}
+                    >
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className={`w-8 h-8 rounded-full border-3 flex items-center justify-center ${
+                          data.side_of_road === 'right'
+                            ? 'border-red-500 bg-red-100'
+                            : 'border-gray-300 bg-gray-100'
+                        }`}>
+                          <span className="text-xs font-bold text-red-600">R</span>
+                        </div>
+                        <span className={`text-sm font-medium ${
+                          data.side_of_road === 'right' ? 'text-red-700' : 'text-gray-600'
+                        }`}>
+                          Kanan
+                        </span>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setData('side_of_road', 'unknown')}
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                        data.side_of_road === 'unknown'
+                          ? 'border-gray-500 bg-gray-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-400 bg-white/50 backdrop-blur-sm'
+                      } focus:outline-none focus:ring-4 focus:ring-gray-100`}
+                    >
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className={`w-8 h-8 rounded-full border-3 flex items-center justify-center ${
+                          data.side_of_road === 'unknown'
+                            ? 'border-gray-500 bg-gray-100'
+                            : 'border-gray-300 bg-gray-100'
+                        }`}>
+                          <span className="text-xs font-bold text-gray-600">?</span>
+                        </div>
+                        <span className={`text-sm font-medium ${
+                          data.side_of_road === 'unknown' ? 'text-gray-700' : 'text-gray-600'
+                        }`}>
+                          Belum Diketahui
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                  {errors.side_of_road && (
+                    <div className="flex items-center mt-2 text-red-600">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-medium">{errors.side_of_road}</p>
                     </div>
                   )}
                 </div>

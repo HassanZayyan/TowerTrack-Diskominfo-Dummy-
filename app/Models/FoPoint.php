@@ -23,6 +23,7 @@ class FoPoint extends Model
         'description',
         'type',
         'status',
+        'side_of_road',
         'isp_image',
         'pole_image',
         'junction_box_image',
@@ -40,6 +41,19 @@ class FoPoint extends Model
         'properties' => 'array',
         'sequence_number' => 'integer',
     ];
+
+    /**
+     * Get label for side of road (for display).
+     */
+    public function getSideOfRoadLabelAttribute(): string
+    {
+        return match($this->side_of_road) {
+            'left' => 'Kiri',
+            'right' => 'Kanan',
+            'unknown' => 'Belum Diketahui',
+            default => 'Belum Diketahui'
+        };
+    }
 
     /**
      * Get the routes that include this point.

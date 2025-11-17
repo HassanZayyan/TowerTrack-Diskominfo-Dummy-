@@ -11,6 +11,90 @@ use Inertia\Inertia;
 
 class FoController extends Controller
 {
+    // Constants untuk validasi
+    private const VALID_SIDE_OF_ROAD = ['left', 'right', 'unknown'];
+
+    /**
+     * Apply provider filter to points query
+     */
+    private function applyProviderFilterToPoints($query, ?string $provider): void
+    {
+        if (!$provider || $provider === 'all') {
+            return;
+        }
+
+        $query->whereExists(function ($subQuery) use ($provider) {
+            $subQuery->select(DB::raw(1))
+                ->from('fo_point_provider')
+                ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
+                ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
+                ->where('fo_point_provider.is_active', true);
+
+            // Check if provider is numeric (ID) or string (name)
+            if (is_numeric($provider)) {
+                $subQuery->where('fo_providers.id', $provider);
+            } else {
+                $subQuery->where('fo_providers.name', $provider);
+            }
+        });
+    }
+
+    /**
+     * Apply side of road filter to points query
+     */
+    private function applySideOfRoadFilterToPoints($query, ?string $side): void
+    {
+        if ($this->isValidSideOfRoad($side)) {
+            $query->where('side_of_road', $side);
+        }
+    }
+
+    /**
+     * Apply all filters to points query (provider and side)
+     */
+    private function applyFiltersToPoints($pointsQuery, ?string $provider, ?string $side): void
+    {
+        $this->applyProviderFilterToPoints($pointsQuery, $provider);
+        $this->applySideOfRoadFilterToPoints($pointsQuery, $side);
+    }
+
+    /**
+     * Apply filters to routes query (provider and/or side)
+     */
+    private function applyFiltersToRoutes($routesQuery, ?string $provider, ?string $side): void
+    {
+        if ($provider && $provider !== 'all') {
+            $routesQuery->whereHas('points', function ($q) use ($provider, $side) {
+                $q->whereColumn('fo_points.area', 'fo_routes.area');
+                
+                // Apply provider filter
+                $this->applyProviderFilterToPoints($q, $provider);
+                
+                // Apply side filter if provided
+                if ($this->isValidSideOfRoad($side)) {
+                    $q->where('fo_points.side_of_road', $side);
+                }
+            });
+        } elseif ($this->isValidSideOfRoad($side)) {
+            // Only side filter (no provider)
+            $routesQuery->whereHas('points', function ($q) use ($side) {
+                $q->whereColumn('fo_points.area', 'fo_routes.area')
+                  ->where('fo_points.side_of_road', $side);
+            });
+        } else {
+            // No filters - only show routes with providers
+            $routesQuery->hasProviders();
+        }
+    }
+
+    /**
+     * Validate side of road value
+     */
+    private function isValidSideOfRoad(?string $side): bool
+    {
+        return $side && $side !== 'all' && in_array($side, self::VALID_SIDE_OF_ROAD);
+    }
+
     /**
      * Display the FO data page
      * Optimized: Route polylines excluded from initial load for better performance
@@ -19,28 +103,14 @@ class FoController extends Controller
     {
         $area = $request->get('area', 'ungaran'); // Default ke ungaran
         $provider = $request->get('provider'); // Filter by provider
+        $side = $request->get('side'); // Filter by side of road
 
         // Build query for FO points
         $pointsQuery = FoPoint::where('area', $area)
             ->where('status', 'active');
 
-        // Filter by provider if provided (provider can be ID or name)
-        if ($provider && $provider !== 'all') {
-            $pointsQuery->whereExists(function ($query) use ($provider) {
-                $query->select(DB::raw(1))
-                    ->from('fo_point_provider')
-                    ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
-                    ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
-                    ->where('fo_point_provider.is_active', true);
-
-                // Check if provider is numeric (ID) or string (name)
-                if (is_numeric($provider)) {
-                    $query->where('fo_providers.id', $provider);
-                } else {
-                    $query->where('fo_providers.name', $provider);
-                }
-            });
-        }
+        // Apply filters using helper methods
+        $this->applyFiltersToPoints($pointsQuery, $provider, $side);
 
         // Get FO points by area with proper data formatting
         $foPoints = $pointsQuery
@@ -63,6 +133,7 @@ class FoController extends Controller
                     'route_name' => $point->route_name,
                     'sequence_number' => $point->sequence_number,
                     'description' => $point->description,
+                    'side_of_road' => $point->side_of_road ?? 'unknown',
                     'images' => [
                         'isp' => $point->isp_image_url,
                         'pole' => $point->pole_image_url,
@@ -84,30 +155,8 @@ class FoController extends Controller
         $routesQuery = FoRoute::where('area', $area)
             ->where('status', 'active');
 
-        // Filter routes by provider if provided
-        if ($provider && $provider !== 'all') {
-            $routesQuery->whereHas('points', function ($q) use ($provider) {
-                // Use whereExists to query pivot table directly
-                $q->whereColumn('fo_points.area', 'fo_routes.area')
-                    ->whereExists(function ($subQuery) use ($provider) {
-                        $subQuery->select(DB::raw(1))
-                            ->from('fo_point_provider')
-                            ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
-                            ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
-                            ->where('fo_point_provider.is_active', true);
-
-                        // Check if provider is numeric (ID) or string (name)
-                        if (is_numeric($provider)) {
-                            $subQuery->where('fo_providers.id', $provider);
-                        } else {
-                            $subQuery->where('fo_providers.name', $provider);
-                        }
-                    });
-            });
-        } else {
-            // Only show routes that have at least one provider if no filter
-            $routesQuery->hasProviders();
-        }
+        // Apply filters using helper method
+        $this->applyFiltersToRoutes($routesQuery, $provider, $side);
 
         // Get FO routes by area - WITHOUT heavy polyline data for initial load
         // Users can load specific route polylines via dropdown on-demand
@@ -376,10 +425,18 @@ class FoController extends Controller
     public function getMapData(Request $request)
     {
         $area = $request->get('area', 'ungaran');
+        $provider = $request->get('provider');
+        $side = $request->get('side');
+
+        // Build query for FO points
+        $pointsQuery = FoPoint::where('area', $area)
+            ->where('status', 'active');
+
+        // Apply filters using helper methods
+        $this->applyFiltersToPoints($pointsQuery, $provider, $side);
 
         // Get FO points by area with image URLs
-        $foPoints = FoPoint::where('area', $area)
-            ->where('status', 'active')
+        $foPoints = $pointsQuery
             ->orderBy('route_name')
             ->orderBy('sequence_number')
             ->get()
@@ -393,6 +450,7 @@ class FoController extends Controller
                     'route_name' => $point->route_name,
                     'sequence_number' => $point->sequence_number,
                     'description' => $point->description,
+                    'side_of_road' => $point->side_of_road ?? 'unknown',
                     'images' => [
                         'isp' => $point->isp_image_url,
                         'pole' => $point->pole_image_url,
@@ -402,11 +460,15 @@ class FoController extends Controller
                 ];
             });
 
+        // Build query for FO routes
+        $routesQuery = FoRoute::where('area', $area)
+            ->where('status', 'active');
+
+        // Apply filters using helper method
+        $this->applyFiltersToRoutes($routesQuery, $provider, $side);
+
         // Get FO routes by area with polylines
-        // Only show routes that have at least one provider
-        $foRoutes = FoRoute::where('area', $area)
-            ->where('status', 'active')
-            ->hasProviders() // Only show routes with providers
+        $foRoutes = $routesQuery
             ->get()
             ->map(function ($route) {
                 // Use GeoJSON coordinates if available, otherwise fallback to path_coordinates

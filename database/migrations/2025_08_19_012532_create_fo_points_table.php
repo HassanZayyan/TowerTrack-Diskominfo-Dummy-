@@ -22,6 +22,9 @@ return new class extends Migration
             $table->string('area')->default('ungaran'); // Area: ungaran atau ambarawa
             $table->text('description')->nullable(); // Deskripsi titik
             $table->string('type')->default('pole'); // Jenis: pole, junction, hub, endpoint
+            $table->enum('side_of_road', ['left', 'right', 'unknown'])
+                  ->default('unknown')
+                  ->comment('Posisi tiang relatif terhadap arah jalan: left (kiri), right (kanan), atau unknown (belum diketahui)');
             $table->string('status')->default('active'); // Status: active, inactive, maintenance
             
             // Kolom untuk menyimpan path gambar
@@ -36,6 +39,7 @@ return new class extends Migration
             $table->index(['area', 'status']);
             $table->index(['latitude', 'longitude']);
             $table->index(['route_name', 'sequence_number']);
+            $table->index('side_of_road'); // Index untuk filtering berdasarkan sisi jalan
         });
     }
 

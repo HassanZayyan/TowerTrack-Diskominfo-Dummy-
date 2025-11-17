@@ -1086,6 +1086,7 @@ class FoManagementController extends Controller
             'area' => 'required|in:ungaran',
             'type' => 'required|in:pole,junction,hub,endpoint',
             'status' => 'required|in:active,inactive,maintenance',
+            'side_of_road' => 'nullable|in:left,right,unknown',
             'route_name' => 'required|string|max:255',
             'sequence_number' => 'required|integer|min:1',
             'description' => 'nullable|string|max:1000',

@@ -14,6 +14,7 @@ import FoStats from '@/Components/DataFo/FoStats';
 import FoFilters from '@/Components/DataFo/FoFilters';
 import FoTable from '@/Components/DataFo/FoTable';
 import FoDetailModal from '@/Components/DataFo/FoDetailModal';
+import { getIconByImagesAndSide } from '@/utils/foIconUtils';
 
 // Fix Leaflet default icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -31,79 +32,8 @@ const mapContainerStyle = {
   zIndex: 1
 };
 
-// Custom icons for different FO point types based on available images
-const createCustomIcon = (color: string, iconText: string) => {
-  const iconHtml = `
-    <div style="
-      background-color: ${color};
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8px;
-      color: white;
-      font-weight: bold;
-      font-family: Arial, sans-serif;
-    ">${iconText}</div>
-  `;
-  
-  return L.divIcon({
-    html: iconHtml,
-    className: 'custom-fo-icon',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
-  });
-};
-
-const getIconByImages = (images: { isp: string | null; pole: string | null; junction_box: string | null }) => {
-  // Cek apakah gambar benar-benar ada (bukan null, bukan "-", dan bukan string kosong)
-  const hasPole = !!images.pole && images.pole !== '-' && images.pole.trim() !== '';
-  const hasISP = !!images.isp && images.isp !== '-' && images.isp.trim() !== '';
-  const hasJunctionBox = !!images.junction_box && images.junction_box !== '-' && images.junction_box.trim() !== '';
-  
-  // 1. Ada tiang, ISP dan Joint Box -> pole ISP Joint Box (icon = PIJ) - Ungu
-  if (hasPole && hasISP && hasJunctionBox) {
-    return createCustomIcon('#8B5CF6', 'PIJ');
-  }
-  
-  // 2. Ada tiang dan ISP -> pole and ISP (icon = PI) - Hijau
-  if (hasPole && hasISP && !hasJunctionBox) {
-    return createCustomIcon('#10B981', 'PI');
-  }
-  
-  // 3. Ada tiang dan Joint Box -> Joint Box (icon = JB) - Orange
-  if (hasPole && !hasISP && hasJunctionBox) {
-    return createCustomIcon('#F59E0B', 'JB');
-  }
-  
-  // 4. Hanya ada gambar tiang -> pole (icon = P) - Biru
-  if (hasPole && !hasISP && !hasJunctionBox) {
-    return createCustomIcon('#3B82F6', 'P');
-  }
-  
-  // 5. Hanya ada ISP tanpa tiang -> ISP saja (icon = I) - Cyan
-  if (!hasPole && hasISP && !hasJunctionBox) {
-    return createCustomIcon('#06B6D4', 'I');
-  }
-  
-  // 6. Hanya ada Joint Box tanpa tiang -> JB saja (icon = J) - Amber
-  if (!hasPole && !hasISP && hasJunctionBox) {
-    return createCustomIcon('#F59E0B', 'J');
-  }
-  
-  // 7. Ada ISP dan Joint Box tanpa tiang -> ISP + JB (icon = IJ) - Pink
-  if (!hasPole && hasISP && hasJunctionBox) {
-    return createCustomIcon('#EC4899', 'IJ');
-  }
-  
-  // Default untuk kasus lain - Abu-abu
-  return createCustomIcon('#6B7280', '?');
-};
+// Note: Icon generation moved to foIconUtils.ts for better organization
+// Using getIconByImagesAndSide() which includes side_of_road indicator
 
 interface Provider {
   id: string | number; // Can be string (MD5 hash) or number
@@ -119,6 +49,7 @@ interface FoPoint {
   route_name: string;
   sequence_number: number;
   description?: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
   images: {
     isp: string | null;
     pole: string | null;
@@ -208,6 +139,7 @@ export default function DataFoIndex({
   const [searchTerm, setSearchTerm] = useState(initSearch);
   const [selectedType, setSelectedType] = useState(initType);
   const [selectedStatus, setSelectedStatus] = useState(initStatus);
+  const [selectedSide, setSelectedSide] = useState(initParams.get('side') || 'all');
   const [selectedProvider, setSelectedProvider] = useState(initProvider);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [showFilters, setShowFilters] = useState(true);
@@ -289,6 +221,9 @@ export default function DataFoIndex({
       }
     }
     
+    // Note: Side of road filtering is done server-side for better performance
+    // when combined with provider filter. Client-side filtering only for type and search.
+    
     return matchesSearch && matchesType;
   }).map(point => ({
     ...point,
@@ -329,28 +264,78 @@ export default function DataFoIndex({
     path_coordinates: undefined,
   })) || [];
 
+  // Helper function untuk build query params dengan semua filter
+  const buildQueryParams = (updates: {
+    area?: string;
+    provider?: string;
+    side?: string;
+    type?: string;
+    status?: string;
+    search?: string;
+  }) => {
+    const params: Record<string, string> = {};
+    
+    // Area (always required)
+    if (updates.area !== undefined) {
+      params.area = updates.area;
+    } else if (selectedArea) {
+      params.area = selectedArea;
+    }
+    
+    // Optional filters - only include if not 'all' or has value
+    const searchValue = updates.search !== undefined ? updates.search : searchTerm;
+    if (searchValue) {
+      params.search = searchValue;
+    }
+    
+    const typeValue = updates.type !== undefined ? updates.type : selectedType;
+    if (typeValue !== 'all') {
+      params.type = typeValue;
+    }
+    
+    const statusValue = updates.status !== undefined ? updates.status : selectedStatus;
+    if (statusValue !== 'all') {
+      params.status = statusValue;
+    }
+    
+    const providerValue = updates.provider !== undefined ? updates.provider : selectedProvider;
+    if (providerValue !== 'all') {
+      params.provider = providerValue;
+    }
+    
+    const sideValue = updates.side !== undefined ? updates.side : selectedSide;
+    if (sideValue !== 'all') {
+      params.side = sideValue;
+    }
+    
+    return params;
+  };
+
   const handleAreaChange = (area: string) => {
     setSelectedArea(area);
-    // Keep other filters in URL while performing a server request for area change
-    router.get('/data-fo', { 
-      area,
-      ...(searchTerm && { search: searchTerm }),
-      ...(selectedType !== 'all' && { type: selectedType }),
-      ...(selectedStatus !== 'all' && { status: selectedStatus }),
-      ...(selectedProvider !== 'all' && { provider: selectedProvider })
-    }, { preserveState: true, preserveScroll: true, replace: true });
+    router.get('/data-fo', buildQueryParams({ area }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
   };
 
   const handleProviderChange = (provider: string) => {
     setSelectedProvider(provider);
-    // Trigger server request with provider filter
-    router.get('/data-fo', { 
-      area: selectedArea,
-      ...(searchTerm && { search: searchTerm }),
-      ...(selectedType !== 'all' && { type: selectedType }),
-      ...(selectedStatus !== 'all' && { status: selectedStatus }),
-      ...(provider !== 'all' && { provider: provider })
-    }, { preserveState: true, preserveScroll: true, replace: true });
+    router.get('/data-fo', buildQueryParams({ provider }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
+  };
+
+  const handleSideChange = (side: string) => {
+    setSelectedSide(side);
+    router.get('/data-fo', buildQueryParams({ side }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
   };
 
   // Sync client-side filters to URL without triggering request
@@ -361,10 +346,11 @@ export default function DataFoIndex({
     if (selectedType !== 'all') params.set('type', selectedType);
     if (selectedStatus !== 'all') params.set('status', selectedStatus);
     if (selectedProvider !== 'all') params.set('provider', selectedProvider);
+    if (selectedSide !== 'all') params.set('side', selectedSide);
     const query = params.toString();
     const newUrl = query ? `/data-fo?${query}` : '/data-fo';
     window.history.replaceState({}, '', newUrl);
-  }, [selectedArea, searchTerm, selectedType, selectedStatus, selectedProvider]);
+  }, [selectedArea, searchTerm, selectedType, selectedStatus, selectedProvider, selectedSide]);
 
   // Export functionality
   const handleExport = () => {
@@ -833,6 +819,8 @@ export default function DataFoIndex({
             onTypeChange={setSelectedType}
             selectedStatus={selectedStatus}
             onStatusChange={setSelectedStatus}
+            selectedSide={selectedSide}
+            onSideChange={handleSideChange}
           />
         </StaggeredContainer>
 
@@ -1145,7 +1133,7 @@ export default function DataFoIndex({
                      <Marker
                        key={point.id}
                        position={[point.latitude, point.longitude]}
-                       icon={getIconByImages(point.images)}
+                       icon={getIconByImagesAndSide(point.images, point.side_of_road)}
                        eventHandlers={{
                          click: () => {
                            console.log('Point clicked:', point.name);
@@ -1171,6 +1159,15 @@ export default function DataFoIndex({
                             <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               {point.type.charAt(0).toUpperCase() + point.type.slice(1)}
                             </span>
+                            {point.side_of_road && point.side_of_road !== 'unknown' && (
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                point.side_of_road === 'left' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {point.side_of_road === 'left' ? '⬅️ Kiri' : '➡️ Kanan'}
+                              </span>
+                            )}
                           </div>
                           {/* Providers */}
                           {point.providers && point.providers.length > 0 && (
@@ -1236,6 +1233,32 @@ export default function DataFoIndex({
           {/* Map Legend */}
           <div className="p-4 bg-gray-50 border-t border-gray-200">
             <h4 className="text-sm font-medium text-gray-900 mb-3">Legenda Titik FO:</h4>
+            
+            {/* Side of Road Legend */}
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <h5 className="text-xs font-semibold text-gray-700 mb-2">Sisi Jalan:</h5>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-3 border-blue-500 flex items-center justify-center bg-blue-100">
+                    <span className="text-xs font-bold text-blue-600">L</span>
+                  </div>
+                  <span className="text-xs text-gray-700">Kiri</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-3 border-red-500 flex items-center justify-center bg-red-100">
+                    <span className="text-xs font-bold text-red-600">R</span>
+                  </div>
+                  <span className="text-xs text-gray-700">Kanan</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-3 border-gray-500 flex items-center justify-center bg-gray-100">
+                    <span className="text-xs font-bold text-gray-600">?</span>
+                  </div>
+                  <span className="text-xs text-gray-700">Belum Diketahui</span>
+                </div>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '7px' }}>PIJ</div>
