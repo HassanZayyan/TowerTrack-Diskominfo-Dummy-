@@ -6,6 +6,7 @@ use App\Models\Report;
 use App\Models\ReportAsset;
 use App\Models\Tower;
 use App\Services\LocationSecurityService;
+use App\Services\CaptchaService;
 use App\Http\Requests\StoreMessageResponseRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -77,7 +78,7 @@ class ComplaintController extends MessageableController
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
+            $rules = [
                 'nama' => 'nullable|string|max:255',
                 'telepon' => 'required|string|max:20', // Phone number is required for all users
                 'kategori' => 'required|string|max:100',
@@ -94,10 +95,30 @@ class ComplaintController extends MessageableController
                 'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
                 'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
                 'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
-            ]);
+            ];
+
+            // Only require CAPTCHA for guest users
+            if (!auth()->check()) {
+                $rules['cf-turnstile-response'] = 'required|string';
+            }
+
+            $validated = $request->validate($rules);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation error: ' . json_encode($e->errors()));
             return back()->withErrors($e->errors())->withInput();
+        }
+
+        // Verify CAPTCHA only for guest users
+        if (!auth()->check()) {
+            $captchaService = app(CaptchaService::class);
+            if (!$captchaService->verify(
+                $validated['cf-turnstile-response'],
+                $request->ip()
+            )) {
+                return back()->withErrors([
+                    'captcha' => 'Verifikasi CAPTCHA gagal. Silakan coba lagi.'
+                ])->withInput();
+            }
         }
 
         // Handle user ID and email for authenticated vs anonymous users

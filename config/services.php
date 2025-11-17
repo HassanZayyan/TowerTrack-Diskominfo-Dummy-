@@ -40,4 +40,12 @@ return [
         'base_url' => env('OPENROUTESERVICE_BASE_URL', 'https://api.openrouteservice.org'),
     ],
 
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+        // Test keys untuk development (selalu pass)
+        'test_site_key' => '1x00000000000000000000AA',
+        'test_secret_key' => '1x0000000000000000000000000000000AA',
+    ],
+
 ];

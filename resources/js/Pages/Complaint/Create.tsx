@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import MainLayout from '@/Layouts/MainLayout';
 
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
@@ -47,7 +48,7 @@ const INITIAL_VALIDATION_STATE = {
 };
 
 export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
-  const { auth } = usePage().props as any;
+  const { auth, turnstileSiteKey, errors } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
@@ -62,6 +63,21 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  
+  // CAPTCHA states
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+  const captchaRef = useRef<any>(null);
+  
+  // DEBUG: Cek nilai turnstileSiteKey
+  useEffect(() => {
+    console.log('🔍 CAPTCHA DEBUG:');
+    console.log('turnstileSiteKey:', turnstileSiteKey);
+    console.log('Type:', typeof turnstileSiteKey);
+    console.log('Is empty?', !turnstileSiteKey);
+    console.log('auth:', auth);
+    console.log('isAuthenticatedUser:', isAuthenticatedUser);
+    console.log('Should show CAPTCHA:', !isAuthenticatedUser && turnstileSiteKey);
+  }, [turnstileSiteKey, auth, isAuthenticatedUser]);
   
   // Redirect staff users immediately
   useEffect(() => {
@@ -191,6 +207,12 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     // Validate form
     if (!validateForm()) {
       showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi dengan benar');
+      return;
+    }
+
+    // Validate CAPTCHA for guest users
+    if (!isAuthenticatedUser && !captchaToken) {
+      showErrorDialog('Verifikasi Diperlukan', 'Mohon selesaikan verifikasi CAPTCHA terlebih dahulu.');
       return;
     }
     
@@ -353,6 +375,11 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         // Don't set email field for authenticated users - backend will use user's email automatically
       }
       
+      // Append CAPTCHA token only for guest users
+      if (!isAuthenticatedUser && captchaToken) {
+        formData.append('cf-turnstile-response', captchaToken);
+      }
+      
       // Append files
       files.forEach((file, index) => {
         formData.append(`foto[${index}]`, file);
@@ -362,16 +389,30 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       router.post('/complaint', formData, {
         onSuccess: () => {
           showSuccessDialog('Berhasil Dikirim', 'Keluhan Anda telah berhasil dikirimkan');
+          // Reset CAPTCHA after success
+          if (captchaRef.current) {
+            captchaRef.current.reset();
+            setCaptchaToken('');
+          }
           // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
           console.error('Form submission errors:', errors);
           
+          // Reset CAPTCHA if there's an error
+          if (captchaRef.current) {
+            captchaRef.current.reset();
+            setCaptchaToken('');
+          }
+          
           // Handle specific validation errors with user-friendly messages
           let errorTitle = 'Gagal Mengirim';
           let errorMessage = '';
           
-          if (errors.email && errors.email.includes('prohibited')) {
+          if (errors.captcha) {
+            errorTitle = 'Verifikasi Gagal';
+            errorMessage = errors.captcha;
+          } else if (errors.email && errors.email.includes('prohibited')) {
             errorTitle = 'Error Sistem';
             errorMessage = 'Terjadi kesalahan sistem. Silakan refresh halaman dan coba lagi.';
           } else if (errors.telepon) {
@@ -636,6 +677,47 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                 </p>
               </div>
               
+              {/* CAPTCHA widget - only for guest users */}
+              {!isAuthenticatedUser && (
+                <div className="mb-6">
+                  {turnstileSiteKey ? (
+                    <Turnstile
+                      ref={captchaRef}
+                      siteKey={turnstileSiteKey}
+                      onSuccess={(token) => {
+                        console.log('✅ CAPTCHA Success, token:', token);
+                        setCaptchaToken(token);
+                      }}
+                      onError={(error) => {
+                        console.error('❌ CAPTCHA Error:', error);
+                        setCaptchaToken('');
+                        showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
+                      }}
+                      onExpire={() => {
+                        console.log('⏰ CAPTCHA Expired');
+                        setCaptchaToken('');
+                      }}
+                      options={{
+                        theme: 'light',
+                        size: 'normal',
+                      }}
+                    />
+                  ) : (
+                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800 font-medium">
+                        ⚠️ Error: CAPTCHA tidak dapat dimuat. turnstileSiteKey = {String(turnstileSiteKey)}
+                      </p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Silakan refresh halaman atau hubungi administrator.
+                      </p>
+                    </div>
+                  )}
+                  {errors?.captcha && (
+                    <p className="mt-2 text-sm text-red-600">{errors.captcha}</p>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
                 <button
                   type="button"
@@ -648,7 +730,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                 <button
                   type="submit"
                   className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (!isAuthenticatedUser && !captchaToken)}
                 >
                   {isSubmitting ? 'Mengirim...' : 'Kirim Keluhan'}
                 </button>

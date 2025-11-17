@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import MainLayout from '@/Layouts/MainLayout';
 
 import FileUpload from '@/Components/FileUpload';
@@ -63,7 +64,7 @@ const MAX_MESSAGE_LENGTH = 1000;
 const MAX_DISTANCE_KM = 1;
 
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
-  const { errors, flash, auth } = usePage().props as any;
+  const { errors, flash, auth, turnstileSiteKey } = usePage().props as any;
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
   const isAuthenticatedUser = isComplainant || isTowerOwner;
@@ -80,6 +81,21 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const [isAutoFilled, setIsAutoFilled] = useState(false);
+  
+  // CAPTCHA states
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+  const captchaRef = useRef<any>(null);
+  
+  // DEBUG: Cek nilai turnstileSiteKey
+  useEffect(() => {
+    console.log('🔍 CAPTCHA DEBUG (Feedback):');
+    console.log('turnstileSiteKey:', turnstileSiteKey);
+    console.log('Type:', typeof turnstileSiteKey);
+    console.log('Is empty?', !turnstileSiteKey);
+    console.log('auth:', auth);
+    console.log('isAuthenticatedUser:', isAuthenticatedUser);
+    console.log('Should show CAPTCHA:', !isAuthenticatedUser && turnstileSiteKey);
+  }, [turnstileSiteKey, auth, isAuthenticatedUser]);
   
   // Dialog states
   const [showDialog, setShowDialog] = useState(false);
@@ -273,6 +289,11 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     }
     // For authenticated users, don't send email field - backend will use user's email automatically
     
+    // Append CAPTCHA token only for guest users
+    if (!isAuthenticatedUser && captchaToken) {
+      formData.append('cf-turnstile-response', captchaToken);
+    }
+    
     // Separate images and videos for better organization
     const images = files.filter(file => file.type.startsWith('image/'));
     const videos = files.filter(file => file.type.startsWith('video/'));
@@ -288,7 +309,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     });
     
     return formData;
-  }, [form, files, isAuthenticatedUser, auth?.user?.name, auth?.user?.email]);
+  }, [form, files, isAuthenticatedUser, auth?.user?.name, auth?.user?.email, captchaToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,6 +317,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     // Validate form
     if (!validateForm()) {
       showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi dengan benar');
+      return;
+    }
+
+    // Validate CAPTCHA for guest users
+    if (!isAuthenticatedUser && !captchaToken) {
+      showErrorDialog('Verifikasi Diperlukan', 'Mohon selesaikan verifikasi CAPTCHA terlebih dahulu.');
       return;
     }
     
@@ -441,16 +468,30 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       router.post('/feedback', formData, {
         onSuccess: () => {
           showSuccessDialog('Berhasil Dikirim', 'Masukan Anda telah berhasil dikirimkan');
+          // Reset CAPTCHA after success
+          if (captchaRef.current) {
+            captchaRef.current.reset();
+            setCaptchaToken('');
+          }
           // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
           console.error('Form submission errors:', errors);
           
+          // Reset CAPTCHA if there's an error
+          if (captchaRef.current) {
+            captchaRef.current.reset();
+            setCaptchaToken('');
+          }
+          
           // Handle specific validation errors with user-friendly messages
           let errorTitle = 'Gagal Mengirim';
           let errorMessage = '';
           
-          if (errors.email && errors.email.includes('prohibited')) {
+          if (errors.captcha) {
+            errorTitle = 'Verifikasi Gagal';
+            errorMessage = errors.captcha;
+          } else if (errors.email && errors.email.includes('prohibited')) {
             errorTitle = 'Error Sistem';
             errorMessage = 'Terjadi kesalahan sistem. Silakan refresh halaman dan coba lagi.';
           } else if (errors.sender_phone || errors.telepon) {
@@ -723,6 +764,47 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 </p>
               </div>
               
+              {/* CAPTCHA widget - only for guest users */}
+              {!isAuthenticatedUser && (
+                <div className="mb-6">
+                  {turnstileSiteKey ? (
+                    <Turnstile
+                      ref={captchaRef}
+                      siteKey={turnstileSiteKey}
+                      onSuccess={(token) => {
+                        console.log('✅ CAPTCHA Success, token:', token);
+                        setCaptchaToken(token);
+                      }}
+                      onError={(error) => {
+                        console.error('❌ CAPTCHA Error:', error);
+                        setCaptchaToken('');
+                        showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
+                      }}
+                      onExpire={() => {
+                        console.log('⏰ CAPTCHA Expired');
+                        setCaptchaToken('');
+                      }}
+                      options={{
+                        theme: 'light',
+                        size: 'normal',
+                      }}
+                    />
+                  ) : (
+                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800 font-medium">
+                        ⚠️ Error: CAPTCHA tidak dapat dimuat. turnstileSiteKey = {String(turnstileSiteKey)}
+                      </p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Silakan refresh halaman atau hubungi administrator.
+                      </p>
+                    </div>
+                  )}
+                  {errors?.captcha && (
+                    <p className="mt-2 text-sm text-red-600">{errors.captcha}</p>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
                 <button
                   type="button"
@@ -735,7 +817,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 <button
                   type="submit"
                   className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (!isAuthenticatedUser && !captchaToken)}
                 >
                   {isSubmitting ? 'Mengirim...' : 'Kirim Masukan'}
                 </button>

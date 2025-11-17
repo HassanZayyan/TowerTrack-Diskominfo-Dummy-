@@ -6,6 +6,7 @@ use App\Models\Feedback;
 use App\Models\FeedbackAsset;
 use App\Models\Tower;
 use App\Services\LocationSecurityService;
+use App\Services\CaptchaService;
 use App\Http\Requests\StoreMessageResponseRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,7 +77,7 @@ class FeedbackController extends MessageableController
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $rules = [
             'sender_phone' => 'required|string|max:20', // Phone number is required for all users
             'category' => 'required|string|max:100',
             'tower_id' => 'required|exists:towers,id',
@@ -93,7 +94,27 @@ class FeedbackController extends MessageableController
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
             'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
-        ]);
+        ];
+
+        // Only require CAPTCHA for guest users (not authenticated)
+        if (!auth()->check()) {
+            $rules['cf-turnstile-response'] = 'required|string';
+        }
+
+        $validated = $request->validate($rules);
+
+        // Verify CAPTCHA only for guest users
+        if (!auth()->check()) {
+            $captchaService = app(CaptchaService::class);
+            if (!$captchaService->verify(
+                $validated['cf-turnstile-response'],
+                $request->ip()
+            )) {
+                return back()->withErrors([
+                    'captcha' => 'Verifikasi CAPTCHA gagal. Silakan coba lagi.'
+                ])->withInput();
+            }
+        }
 
         // Handle user ID and email for authenticated vs anonymous users
         $userId = null;
