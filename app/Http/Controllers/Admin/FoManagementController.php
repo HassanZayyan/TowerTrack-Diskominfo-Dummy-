@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\FoRoute;
 use App\Models\FoPoint;
 use App\Models\FoProvider;
+use App\Models\FoRoute;
 use App\Rules\GoogleDriveUrl;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FoManagementController extends Controller
 {
@@ -19,16 +22,16 @@ class FoManagementController extends Controller
      * Display list of FO routes (main entry point)
      * Optimized: path_coordinates excluded to reduce payload size
      */
-    public function routesList(Request $request)
+    public function routesList(Request $request): Response
     {
         $area = $request->get('area', 'ungaran');
-        
+
         // Get FO Routes with pagination (excluding heavy path_coordinates field)
         $foRoutes = FoRoute::select([
-                'id', 'name', 'area', 'status', 'color', 'total_distance', 
-                'total_points', 'description', 'created_at', 'updated_at'
-            ])
-            ->when($area, fn($q) => $q->where('area', $area))
+            'id', 'name', 'area', 'status', 'color', 'total_distance',
+            'total_points', 'description', 'created_at', 'updated_at',
+        ])
+            ->when($area, fn ($q) => $q->where('area', $area))
             ->orderBy('name')
             ->paginate(50)
             ->through(function ($route) {
@@ -49,12 +52,12 @@ class FoManagementController extends Controller
 
         // Get comprehensive statistics for routes
         $stats = [
-            'total_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->count(),
-            'active_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_routes' => FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            'total_distance' => (float) FoRoute::when($area, fn($q) => $q->where('area', $area))->sum('total_distance'),
-            'total_points' => FoRoute::when($area, fn($q) => $q->where('area', $area))->sum('total_points'),
+            'total_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->count(),
+            'active_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count(),
+            'inactive_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
+            'maintenance_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
+            'total_distance' => (float) FoRoute::when($area, fn ($q) => $q->where('area', $area))->sum('total_distance'),
+            'total_points' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->sum('total_points'),
             'health_score' => $this->calculateHealthScore($area),
         ];
 
@@ -68,20 +71,20 @@ class FoManagementController extends Controller
 
     /**
      * Fetch GeoJSON data for a specific route (on-demand with persistent caching)
-     * 
+     *
      * CACHING STRATEGY:
      * - Cache duration: 24 hours (persists across page navigation)
      * - Cache key: route_id + updated_at timestamp (auto-invalidates on update)
      * - Cache hit: Returns immediately without API call (0 tokens consumed)
      * - Cache miss + has GeoJSON: Returns existing data (0 tokens consumed)
      * - Cache miss + no GeoJSON: Generates on-demand (1 token consumed)
-     * 
+     *
      * TOKEN CONSUMPTION:
      * - First-time access: 1 token (generates GeoJSON via OpenRouteService)
      * - Subsequent access (within 24h): 0 tokens (uses cache)
      * - After route update: 1 token (cache auto-invalidated, regenerates)
      * - Cross-page navigation: 0 tokens (cache persists in server)
-     * 
+     *
      * WORKFLOW:
      * 1. User clicks route → Check cache
      * 2. Cache hit? → Return immediately (FAST, no token)
@@ -90,20 +93,20 @@ class FoManagementController extends Controller
      * 5. Store in cache for 24 hours
      * 6. Subsequent clicks on same route → Cache hit (INSTANT)
      */
-    public function getRouteGeoJson(FoRoute $foRoute)
+    public function getRouteGeoJson(FoRoute $foRoute): JsonResponse
     {
         try {
             // Step 1: Build cache key (includes updated_at for auto-invalidation)
             $cacheKey = "fo_route_geojson_{$foRoute->id}_{$foRoute->updated_at->timestamp}";
-            
+
             // Step 2: Check if data is already in cache (fastest path)
             if (Cache::has($cacheKey)) {
-                \Log::info("✅ CACHE HIT - Serving from cache (0 tokens)", [
+                \Log::info('✅ CACHE HIT - Serving from cache (0 tokens)', [
                     'route_id' => $foRoute->id,
                     'route_name' => $foRoute->name,
-                    'cache_key' => $cacheKey
+                    'cache_key' => $cacheKey,
                 ]);
-                
+
                 return response()->json([
                     'success' => true,
                     'data' => Cache::get($cacheKey),
@@ -111,36 +114,36 @@ class FoManagementController extends Controller
                     'from_cache' => true,
                 ]);
             }
-            
+
             // Step 3: Cache miss - check if GeoJSON exists in database
             $hasGeoJSON = $foRoute->hasValidGeoJSON();
-            $needsGeneration = !$hasGeoJSON;
-            
+            $needsGeneration = ! $hasGeoJSON;
+
             if ($needsGeneration) {
-                \Log::info("🔄 CACHE MISS + NO GEOJSON - Generating on-demand (1 token will be consumed)", [
+                \Log::info('🔄 CACHE MISS + NO GEOJSON - Generating on-demand (1 token will be consumed)', [
                     'route_id' => $foRoute->id,
                     'route_name' => $foRoute->name,
                 ]);
-                
+
                 // Step 4: Generate GeoJSON on-demand (consumes 1 OpenRouteService token)
                 $routeService = app(\App\Services\FoRouteGenerationService::class);
                 $generated = $routeService->generateRouteFromPoints($foRoute);
-                
-                if (!$generated) {
-                    \Log::warning("⚠️ GeoJSON generation failed, using fallback polyline (0 tokens)", [
-                        'route_id' => $foRoute->id
+
+                if (! $generated) {
+                    \Log::warning('⚠️ GeoJSON generation failed, using fallback polyline (0 tokens)', [
+                        'route_id' => $foRoute->id,
                     ]);
                 }
-                
+
                 // Refresh the route model to get newly generated GeoJSON
                 $foRoute = $foRoute->fresh();
             } else {
-                \Log::info("💾 CACHE MISS + HAS GEOJSON - Loading from database (0 tokens)", [
+                \Log::info('💾 CACHE MISS + HAS GEOJSON - Loading from database (0 tokens)', [
                     'route_id' => $foRoute->id,
                     'route_name' => $foRoute->name,
                 ]);
             }
-            
+
             // Step 5: Build response data and store in cache for 24 hours
             $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration) {
                 // Get all points for this route ordered by sequence
@@ -175,10 +178,10 @@ class FoManagementController extends Controller
                 ];
             });
 
-            \Log::info("✅ Response cached for 24 hours - Next access will be instant", [
+            \Log::info('✅ Response cached for 24 hours - Next access will be instant', [
                 'route_id' => $foRoute->id,
                 'cache_key' => $cacheKey,
-                'tokens_consumed' => $needsGeneration ? 1 : 0
+                'tokens_consumed' => $needsGeneration ? 1 : 0,
             ]);
 
             return response()->json([
@@ -190,15 +193,15 @@ class FoManagementController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error("❌ Error fetching route GeoJSON", [
+            \Log::error('❌ Error fetching route GeoJSON', [
                 'route_id' => $foRoute->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data GeoJSON rute: ' . $e->getMessage()
+                'message' => 'Gagal memuat data GeoJSON rute: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -207,7 +210,7 @@ class FoManagementController extends Controller
      * Display detail of a specific FO route with its points
      * Optimized: path_coordinates loaded lazily via separate API call
      */
-    public function routeDetail(Request $request, FoRoute $foRoute)
+    public function routeDetail(Request $request, FoRoute $foRoute): Response
     {
         // Get points in this route with pagination
         $points = FoPoint::where('route_name', $foRoute->name)
@@ -286,7 +289,7 @@ class FoManagementController extends Controller
     /**
      * Show form to create a new point for a specific route
      */
-    public function createPoint(FoRoute $foRoute)
+    public function createPoint(FoRoute $foRoute): Response
     {
         // Get the next sequence number for this route
         $nextSequence = FoPoint::where('route_name', $foRoute->name)
@@ -306,40 +309,36 @@ class FoManagementController extends Controller
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'nextSequence' => $nextSequence ?: 1,
+            'availableProviders' => $this->getAvailableProviders(), // DRY: Use helper method
         ]);
     }
 
     /**
      * Store a newly created FO point
      */
-    public function storePoint(Request $request)
+    public function storePoint(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran',
-            'type' => 'required|in:pole,junction,hub,endpoint',
-            'status' => 'required|in:active,inactive,maintenance',
-            'route_name' => 'required|string|max:255',
-            'route_id' => 'required|exists:fo_routes,id',
-            'sequence_number' => 'required|integer|min:1',
-            'description' => 'nullable|string|max:1000',
-            // Optional Google Drive links for images - validated to ensure proper format
-            'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
-            'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
-            'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
-        ]);
+        $validated = $request->validate($this->getPointValidationRules(true, true)); // DRY: Use shared validation rules
 
-        // Remove route_id from validated data as it's not in the database
+        // Normalize image fields
+        $this->normalizeImageFields($validated); // DRY: Use helper method
+
+        // Extract providers and route_id
         $routeId = $validated['route_id'];
-        unset($validated['route_id']);
-        
+        $providers = $validated['providers'] ?? [];
+        unset($validated['route_id'], $validated['providers']);
+
         $point = FoPoint::create($validated);
+
+        // Sync providers if provided
+        if (! empty($providers)) {
+            $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
+            $point->providers()->sync($syncData);
+        }
 
         // Update route's total_points and path coordinates
         $this->updateRouteStatistics($routeId);
-        
+
         // Invalidate cache for this route since points changed
         // GeoJSON will be regenerated on-demand when user next selects this route
         $this->invalidateRouteCache($routeId);
@@ -348,7 +347,7 @@ class FoManagementController extends Controller
             'point_id' => $point->id,
             'route_id' => $routeId,
             'area' => $validated['area'],
-            'note' => 'GeoJSON generation deferred until user selects this route (saves 1 API token)'
+            'note' => 'GeoJSON generation deferred until user selects this route (saves 1 API token)',
         ]);
 
         return redirect()
@@ -359,7 +358,7 @@ class FoManagementController extends Controller
     /**
      * Show the form for editing the specified FO point
      */
-    public function editPoint(FoPoint $foPoint, Request $request)
+    public function editPoint(FoPoint $foPoint, Request $request): Response
     {
         // Get available routes for dropdown
         $availableRoutes = FoRoute::where('area', $foPoint->area)
@@ -373,29 +372,6 @@ class FoManagementController extends Controller
                     'area' => $route->area,
                 ];
             });
-
-        // Get available master providers
-        $availableProviders = FoProvider::active()
-            ->select('id', 'name', 'default_sort_order')
-            ->orderBy('default_sort_order')
-            ->orderBy('name')
-            ->get()
-            ->map(function($provider) {
-                return [
-                    'id' => $provider->id,
-                    'name' => $provider->name,
-                ];
-            })
-            ->toArray();
-
-        // Get current providers for this point (master provider IDs)
-        $currentProviders = $foPoint->providers()
-            ->wherePivot('is_active', true)
-            ->select('fo_providers.id', 'fo_providers.name')
-            ->orderByPivot('sort_order')
-            ->get()
-            ->pluck('id')
-            ->toArray();
 
         return Inertia::render('Admin/FoManagement/PointEdit', [
             'foPoint' => [
@@ -417,8 +393,8 @@ class FoManagementController extends Controller
             'availableTypes' => ['pole', 'junction', 'hub', 'endpoint'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
             'availableRoutes' => $availableRoutes,
-            'availableProviders' => $availableProviders,
-            'currentProviders' => $currentProviders,
+            'availableProviders' => $this->getAvailableProviders(), // DRY: Use helper method
+            'currentProviders' => $this->getCurrentProviders($foPoint), // DRY: Use helper method - Returns objects with id and name
             'fromRouteDetail' => $request->get('from_route'),
             'parentRouteId' => optional(FoRoute::where('name', $foPoint->route_name)
                 ->where('area', $foPoint->area)
@@ -429,52 +405,24 @@ class FoManagementController extends Controller
     /**
      * Update the specified FO point
      */
-    public function updatePoint(Request $request, FoPoint $foPoint)
+    public function updatePoint(Request $request, FoPoint $foPoint): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran',
-            'type' => 'required|in:pole,junction,hub,endpoint',
-            'status' => 'required|in:active,inactive,maintenance',
-            'route_name' => 'required|string|max:255',
-            'sequence_number' => 'required|integer|min:1',
-            'description' => 'nullable|string|max:1000',
-            // Optional Google Drive links for images - validated to ensure proper format
-            'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
-            'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
-            'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl()],
-            // Provider data - array of master provider IDs
-            'providers' => 'nullable|array',
-            'providers.*' => 'integer|exists:fo_providers,id',
-        ]);
+        $validated = $request->validate($this->getPointValidationRules(true)); // DRY: Use shared validation rules
+
+        // Normalize image fields
+        $this->normalizeImageFields($validated); // DRY: Use helper method
 
         $oldRouteName = $foPoint->route_name;
         $oldArea = $foPoint->area;
-        
-        // Remove providers from validated data before updating point
+
+        // Extract providers
         $providers = $validated['providers'] ?? [];
         unset($validated['providers']);
-        
+
         $foPoint->update($validated);
 
-        // Update providers using sync with master provider IDs
-        $providerIds = $providers ?? [];
-        
-        // Build sync data with sort_order from master providers
-        $syncData = [];
-        foreach ($providerIds as $index => $masterProviderId) {
-            $masterProvider = FoProvider::find($masterProviderId);
-            if ($masterProvider) {
-                $syncData[$masterProviderId] = [
-                    'is_active' => true,
-                    'sort_order' => $masterProvider->default_sort_order ?? $index,
-                ];
-            }
-        }
-        
-        // Sync providers (this will automatically remove old ones and add new ones)
+        // Sync providers
+        $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
         $foPoint->providers()->sync($syncData);
 
         // Update route totals for old route if route changed
@@ -493,7 +441,7 @@ class FoManagementController extends Controller
         if ($newRoute) {
             $this->updateRouteStatistics($newRoute->id);
             $this->invalidateRouteCache($newRoute->id);
-            
+
             // Redirect to route detail if we came from there
             if ($request->get('from_route') === 'detail') {
                 return redirect()
@@ -511,11 +459,11 @@ class FoManagementController extends Controller
     /**
      * Remove the specified FO point
      */
-    public function destroyPoint(FoPoint $foPoint)
+    public function destroyPoint(FoPoint $foPoint): RedirectResponse
     {
         $routeName = $foPoint->route_name;
         $area = $foPoint->area;
-        
+
         $foPoint->delete();
 
         // Update associated route's statistics
@@ -531,7 +479,7 @@ class FoManagementController extends Controller
     /**
      * Show the form for creating a new FO route
      */
-    public function createRoute()
+    public function createRoute(): Response
     {
         return Inertia::render('Admin/FoManagement/RouteCreate', [
             'availableAreas' => ['ungaran'],
@@ -542,7 +490,7 @@ class FoManagementController extends Controller
     /**
      * Store a newly created FO route
      */
-    public function storeRoute(Request $request)
+    public function storeRoute(Request $request): RedirectResponse
     {
         try {
             // Validate incoming data
@@ -555,7 +503,7 @@ class FoManagementController extends Controller
             ]);
 
             \Log::info('Creating new FO Route', [
-                'validated_data' => $validated
+                'validated_data' => $validated,
             ]);
 
             // Initialize with empty coordinates
@@ -570,7 +518,7 @@ class FoManagementController extends Controller
                 'route_id' => $route->id,
                 'name' => $route->name,
                 'total_distance' => 0,
-                'total_points' => 0
+                'total_points' => 0,
             ]);
 
             return redirect()
@@ -579,25 +527,25 @@ class FoManagementController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed for FO Route creation', [
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ]);
             throw $e;
         } catch (\Exception $e) {
             \Log::error('Error creating FO Route', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return back()
                 ->withInput()
-                ->with('error', 'Gagal menambahkan jalur FO: ' . $e->getMessage());
+                ->with('error', 'Gagal menambahkan jalur FO: '.$e->getMessage());
         }
     }
 
     /**
      * Show the form for editing the specified FO route
      */
-    public function editRoute(FoRoute $foRoute)
+    public function editRoute(FoRoute $foRoute): Response
     {
         return Inertia::render('Admin/FoManagement/RouteEdit', [
             'foRoute' => [
@@ -619,7 +567,7 @@ class FoManagementController extends Controller
     /**
      * Update the specified FO route
      */
-    public function updateRoute(Request $request, FoRoute $foRoute)
+    public function updateRoute(Request $request, FoRoute $foRoute): RedirectResponse
     {
         try {
             // Validate incoming data
@@ -633,7 +581,7 @@ class FoManagementController extends Controller
 
             \Log::info('Updating FO Route', [
                 'route_id' => $foRoute->id,
-                'validated_data' => $validated
+                'validated_data' => $validated,
             ]);
 
             // Store old route name and area for later comparison
@@ -650,20 +598,20 @@ class FoManagementController extends Controller
                     ->where('area', $oldArea)
                     ->update([
                         'route_name' => $validated['name'],
-                        'area' => $validated['area']
+                        'area' => $validated['area'],
                     ]);
 
                 // Update route statistics
                 $this->updateRouteStatistics($foRoute->id);
             }
-            
+
             // Always invalidate cache when route is updated
             $this->invalidateRouteCache($foRoute->id);
 
             \Log::info('FO Route updated successfully', [
                 'route_id' => $foRoute->id,
                 'total_distance' => $foRoute->total_distance,
-                'total_points' => $foRoute->total_points
+                'total_points' => $foRoute->total_points,
             ]);
 
             return redirect()
@@ -673,29 +621,29 @@ class FoManagementController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed for FO Route update', [
                 'route_id' => $foRoute->id,
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ]);
             throw $e;
         } catch (\Exception $e) {
             \Log::error('Error updating FO Route', [
                 'route_id' => $foRoute->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return back()
                 ->withInput()
-                ->with('error', 'Gagal memperbarui jalur FO: ' . $e->getMessage());
+                ->with('error', 'Gagal memperbarui jalur FO: '.$e->getMessage());
         }
     }
 
     /**
      * Remove the specified FO route
      */
-    public function destroyRoute(FoRoute $foRoute)
+    public function destroyRoute(FoRoute $foRoute): RedirectResponse
     {
         $routeId = $foRoute->id;
-        
+
         DB::transaction(function () use ($foRoute) {
             // Delete related FO points by route name and area
             FoPoint::where('route_name', $foRoute->name)
@@ -715,7 +663,7 @@ class FoManagementController extends Controller
     /**
      * Bulk actions for FO points
      */
-    public function bulkPointsAction(Request $request)
+    public function bulkPointsAction(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'action' => 'required|in:activate,deactivate,maintenance,delete',
@@ -726,7 +674,7 @@ class FoManagementController extends Controller
         // Get affected points first to determine which routes to invalidate
         $affectedPoints = FoPoint::whereIn('id', $validated['point_ids'])->get();
         $affectedRouteIds = [];
-        
+
         foreach ($affectedPoints as $point) {
             $route = FoRoute::where('name', $point->route_name)
                 ->where('area', $point->area)
@@ -735,7 +683,7 @@ class FoManagementController extends Controller
                 $affectedRouteIds[] = $route->id;
             }
         }
-        
+
         $affectedRouteIds = array_unique($affectedRouteIds);
 
         $points = FoPoint::whereIn('id', $validated['point_ids']);
@@ -768,7 +716,7 @@ class FoManagementController extends Controller
     /**
      * Bulk actions for FO routes
      */
-    public function bulkRoutesAction(Request $request)
+    public function bulkRoutesAction(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'action' => 'required|in:activate,deactivate,maintenance,delete',
@@ -822,7 +770,7 @@ class FoManagementController extends Controller
      */
     public function exportPoints(Request $request): StreamedResponse
     {
-        $fileName = 'fo_points_' . date('Ymd_His') . '.csv';
+        $fileName = 'fo_points_'.date('Ymd_His').'.csv';
 
         $query = FoPoint::query();
         if ($area = $request->get('area')) {
@@ -840,7 +788,7 @@ class FoManagementController extends Controller
 
         $columns = [
             'ID', 'Name', 'Latitude', 'Longitude', 'Area', 'Type', 'Status',
-            'Route Name', 'Sequence Number', 'Description', 'ISP Image', 'Pole Image', 'Junction Box Image', 'Created At', 'Updated At'
+            'Route Name', 'Sequence Number', 'Description', 'ISP Image', 'Pole Image', 'Junction Box Image', 'Created At', 'Updated At',
         ];
 
         return response()->streamDownload(function () use ($query, $columns) {
@@ -880,7 +828,7 @@ class FoManagementController extends Controller
      */
     public function exportRoutes(Request $request): StreamedResponse
     {
-        $fileName = 'fo_routes_' . date('Ymd_His') . '.csv';
+        $fileName = 'fo_routes_'.date('Ymd_His').'.csv';
 
         $query = FoRoute::query();
         if ($area = $request->get('area')) {
@@ -895,7 +843,7 @@ class FoManagementController extends Controller
 
         $columns = [
             'ID', 'Name', 'Area', 'Status', 'Color', 'Total Distance (km)',
-            'Total Points', 'Description', 'Created At', 'Updated At'
+            'Total Points', 'Description', 'Created At', 'Updated At',
         ];
 
         return response()->streamDownload(function () use ($query, $columns) {
@@ -929,18 +877,16 @@ class FoManagementController extends Controller
      * Invalidate cache for a specific route's GeoJSON data
      * Called when route or its points are modified
      */
-    private function invalidateRouteCache($routeId)
+    private function invalidateRouteCache(int $routeId): void
     {
         try {
             $route = FoRoute::find($routeId);
-            if (!$route) {
-                \Log::warning("Cannot invalidate cache - route not found", ['route_id' => $routeId]);
+            if (! $route) {
+                \Log::warning('Cannot invalidate cache - route not found', ['route_id' => $routeId]);
+
                 return;
             }
 
-            // Clear all cache entries for this route (regardless of timestamp)
-            $pattern = "fo_route_geojson_{$routeId}_*";
-            
             // For file/database cache drivers, we can use forget with the exact key
             // Since updated_at might have changed, we'll clear potential old entries
             // by iterating through a reasonable time range (last 30 days)
@@ -954,22 +900,24 @@ class FoManagementController extends Controller
             $currentKey = "fo_route_geojson_{$routeId}_{$route->updated_at->timestamp}";
             Cache::forget($currentKey);
 
-            \Log::info("Cache invalidated for route", [
+            \Log::info('Cache invalidated for route', [
                 'route_id' => $routeId,
-                'route_name' => $route->name
+                'route_name' => $route->name,
             ]);
         } catch (\Exception $e) {
-            \Log::error("Error invalidating route cache", [
+            \Log::error('Error invalidating route cache', [
                 'route_id' => $routeId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
 
     /**
      * Invalidate cache for multiple routes
+     *
+     * @param  array<int>  $routeIds
      */
-    private function invalidateMultipleRoutesCache(array $routeIds)
+    private function invalidateMultipleRoutesCache(array $routeIds): void
     {
         foreach ($routeIds as $routeId) {
             $this->invalidateRouteCache($routeId);
@@ -979,9 +927,9 @@ class FoManagementController extends Controller
     /**
      * Helper methods for labels and calculations
      */
-    private function getTypeLabel($type)
+    private function getTypeLabel(string $type): string
     {
-        return match($type) {
+        return match ($type) {
             'pole' => 'Tiang/Pole',
             'junction' => 'Junction Box',
             'hub' => 'Hub',
@@ -990,9 +938,12 @@ class FoManagementController extends Controller
         };
     }
 
-    private function getStatusLabel($status)
+    /**
+     * Get status label in Indonesian
+     */
+    private function getStatusLabel(string $status): string
     {
-        return match($status) {
+        return match ($status) {
             'active' => 'Aktif',
             'inactive' => 'Non-aktif',
             'maintenance' => 'Maintenance',
@@ -1000,72 +951,321 @@ class FoManagementController extends Controller
         };
     }
 
-    private function calculateCoveragePercentage($area)
+    /**
+     * Calculate coverage percentage for an area
+     */
+    private function calculateCoveragePercentage(?string $area): float
     {
         try {
-            $activeRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count();
-            $totalRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))->count();
-            
+            $activeRoutes = FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count();
+            $totalRoutes = FoRoute::when($area, fn ($q) => $q->where('area', $area))->count();
+
             return $totalRoutes > 0 ? round(($activeRoutes / $totalRoutes) * 100, 1) : 0.0;
         } catch (\Exception $e) {
-            \Log::warning('Error calculating coverage percentage: ' . $e->getMessage());
-            return 0.0;
-        }
-    }
+            \Log::warning('Error calculating coverage percentage: '.$e->getMessage());
 
-    private function calculateHealthScore($area)
-    {
-        try {
-            $activePoints = FoPoint::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count();
-            $totalPoints = FoPoint::when($area, fn($q) => $q->where('area', $area))->count();
-            $activeRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))->where('status', 'active')->count();
-            $totalRoutes = FoRoute::when($area, fn($q) => $q->where('area', $area))->count();
-            
-            if ($totalPoints == 0 && $totalRoutes == 0) return 100.0;
-            
-            $pointsHealth = $totalPoints > 0 ? ($activePoints / $totalPoints) * 100 : 100;
-            $routesHealth = $totalRoutes > 0 ? ($activeRoutes / $totalRoutes) * 100 : 100;
-            
-            return round(($pointsHealth + $routesHealth) / 2, 1);
-        } catch (\Exception $e) {
-            \Log::warning('Error calculating health score: ' . $e->getMessage());
             return 0.0;
         }
     }
 
     /**
+     * Calculate health score for an area
+     */
+    private function calculateHealthScore(?string $area): float
+    {
+        try {
+            $activePoints = FoPoint::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count();
+            $totalPoints = FoPoint::when($area, fn ($q) => $q->where('area', $area))->count();
+            $activeRoutes = FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count();
+            $totalRoutes = FoRoute::when($area, fn ($q) => $q->where('area', $area))->count();
+
+            if ($totalPoints == 0 && $totalRoutes == 0) {
+                return 100.0;
+            }
+
+            $pointsHealth = $totalPoints > 0 ? ($activePoints / $totalPoints) * 100 : 100;
+            $routesHealth = $totalRoutes > 0 ? ($activeRoutes / $totalRoutes) * 100 : 100;
+
+            return round(($pointsHealth + $routesHealth) / 2, 1);
+        } catch (\Exception $e) {
+            \Log::warning('Error calculating health score: '.$e->getMessage());
+
+            return 0.0;
+        }
+    }
+
+    /**
+     * Get available providers formatted for frontend
+     * DRY: Reusable method untuk menghindari duplikasi query
+     */
+    private function getAvailableProviders(): array
+    {
+        return FoProvider::active()
+            ->select('id', 'name', 'default_sort_order')
+            ->orderBy('default_sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($provider) {
+                return [
+                    'id' => $provider->id,
+                    'name' => $provider->name,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Get current providers for a point formatted for frontend
+     * DRY: Consistent format dengan availableProviders
+     */
+    private function getCurrentProviders(FoPoint $foPoint): array
+    {
+        return $foPoint->providers()
+            ->wherePivot('is_active', true)
+            ->select('fo_providers.id', 'fo_providers.name')
+            ->orderByPivot('sort_order')
+            ->get()
+            ->map(function ($provider) {
+                return [
+                    'id' => $provider->id,
+                    'name' => $provider->name,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Build sync data for provider pivot table
+     * DRY: Reusable method untuk sync providers
+     */
+    private function buildProviderSyncData(array $providerIds): array
+    {
+        $syncData = [];
+        foreach ($providerIds as $index => $providerId) {
+            $masterProvider = FoProvider::find($providerId);
+            if ($masterProvider) {
+                $syncData[$providerId] = [
+                    'is_active' => true,
+                    'sort_order' => $masterProvider->default_sort_order ?? $index,
+                ];
+            }
+        }
+
+        return $syncData;
+    }
+
+    /**
+     * Normalize image fields to null if empty, dash, or whitespace-only
+     * DRY: Handles edge cases for optional image fields
+     */
+    private function normalizeImageFields(array &$data): void
+    {
+        foreach (['isp_image', 'pole_image', 'junction_box_image'] as $field) {
+            if (isset($data[$field])) {
+                $value = is_string($data[$field]) ? trim($data[$field]) : $data[$field];
+                // Normalize empty strings, dashes, or whitespace-only strings to null
+                if ($value === '' || $value === '-' || $value === null) {
+                    $data[$field] = null;
+                } else {
+                    $data[$field] = $value;
+                }
+            }
+        }
+    }
+
+    /**
+     * Get validation rules for FO point
+     * DRY: Reusable validation rules untuk create dan update
+     */
+    private function getPointValidationRules(bool $includeProviders = false, bool $includeRouteId = false): array
+    {
+        $rules = [
+            'name' => 'required|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'area' => 'required|in:ungaran',
+            'type' => 'required|in:pole,junction,hub,endpoint',
+            'status' => 'required|in:active,inactive,maintenance',
+            'route_name' => 'required|string|max:255',
+            'sequence_number' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:1000',
+            'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl],
+            'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl],
+            'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl],
+        ];
+
+        if ($includeRouteId) {
+            $rules['route_id'] = 'required|exists:fo_routes,id';
+        }
+
+        if ($includeProviders) {
+            $rules['providers'] = 'nullable|array';
+            $rules['providers.*'] = 'integer|exists:fo_providers,id';
+        }
+
+        return $rules;
+    }
+
+    /**
      * Update route statistics based on its points
      */
-    private function updateRouteStatistics($routeId)
+    private function updateRouteStatistics(int $routeId): void
     {
         $route = FoRoute::findOrFail($routeId);
-        
+
         // Get all points for this route ordered by sequence
         $points = FoPoint::where('route_name', $route->name)
             ->where('area', $route->area)
             ->orderBy('sequence_number')
             ->get();
-        
+
         // Build coordinates array from points
         $coordinates = $points->map(function ($point) {
             return [
                 'lat' => (float) $point->latitude,
-                'lng' => (float) $point->longitude
+                'lng' => (float) $point->longitude,
             ];
         })->toArray();
-        
+
         // Calculate total distance if we have points
         $totalDistance = 0;
         if (count($coordinates) > 1 && method_exists($route, 'calculateDistance')) {
             $route->path_coordinates = $coordinates;
             $totalDistance = $route->calculateDistance();
         }
-        
+
         // Update route with new statistics
         $route->update([
             'total_points' => $points->count(),
             'path_coordinates' => $coordinates,
-            'total_distance' => $totalDistance
+            'total_distance' => $totalDistance,
+        ]);
+    }
+
+    /**
+     * Display a listing of providers
+     * DRY: Provider management methods consolidated in FoManagementController
+     */
+    public function indexProviders(Request $request): Response
+    {
+        $providers = FoProvider::orderBy('default_sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($provider) {
+                return [
+                    'id' => $provider->id,
+                    'name' => $provider->name,
+                    'description' => $provider->description,
+                    'default_sort_order' => $provider->default_sort_order,
+                    'is_active' => $provider->is_active,
+                    'created_at' => $provider->created_at->format('d M Y H:i'),
+                    'updated_at' => $provider->updated_at->format('d M Y H:i'),
+                ];
+            });
+
+        return Inertia::render('Admin/FoManagement/ProvidersIndex', [
+            'providers' => $providers,
+        ]);
+    }
+
+    /**
+     * Store a newly created provider
+     * DRY: Provider management methods consolidated in FoManagementController
+     */
+    public function storeProvider(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:fo_providers,name',
+            'description' => 'nullable|string|max:500',
+            'default_sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        // Get max sort order jika tidak disediakan
+        if (! isset($validated['default_sort_order'])) {
+            $maxSortOrder = FoProvider::max('default_sort_order') ?? 0;
+            $validated['default_sort_order'] = $maxSortOrder + 1;
+        }
+
+        $provider = FoProvider::create($validated);
+
+        return redirect()
+            ->route('admin.fo-management.providers.index')
+            ->with('success', 'Provider berhasil ditambahkan');
+    }
+
+    /**
+     * Update the specified provider
+     * DRY: Provider management methods consolidated in FoManagementController
+     */
+    public function updateProvider(Request $request, FoProvider $foProvider): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:fo_providers,name,'.$foProvider->id,
+            'description' => 'nullable|string|max:500',
+            'default_sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $foProvider->update($validated);
+
+        return redirect()
+            ->route('admin.fo-management.providers.index')
+            ->with('success', 'Provider berhasil diperbarui');
+    }
+
+    /**
+     * Remove the specified provider
+     * DRY: Provider management methods consolidated in FoManagementController
+     */
+    public function destroyProvider(FoProvider $foProvider): RedirectResponse
+    {
+        // Check if provider is used by any points
+        $pointsCount = $foProvider->foPoints()->count();
+
+        if ($pointsCount > 0) {
+            return back()->withErrors([
+                'provider' => "Provider tidak dapat dihapus karena masih digunakan oleh {$pointsCount} titik FO. Nonaktifkan provider terlebih dahulu.",
+            ]);
+        }
+
+        $foProvider->delete();
+
+        return redirect()
+            ->route('admin.fo-management.providers.index')
+            ->with('success', 'Provider berhasil dihapus');
+    }
+
+    /**
+     * Quick create provider from point form
+     * DRY: Reusable method untuk quick-add provider
+     * Returns Inertia response for proper CSRF handling
+     */
+    public function quickCreateProvider(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:fo_providers,name',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        // Get max sort order untuk menempatkan di akhir
+        $maxSortOrder = FoProvider::max('default_sort_order') ?? 0;
+
+        $provider = FoProvider::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'default_sort_order' => $maxSortOrder + 1,
+            'is_active' => true,
+        ]);
+
+        // Return back with success message and new provider data
+        // Inertia.js will handle the response properly
+        return back()->with([
+            'success' => 'Provider berhasil ditambahkan',
+            'newProvider' => [
+                'id' => $provider->id,
+                'name' => $provider->name,
+            ],
         ]);
     }
 }

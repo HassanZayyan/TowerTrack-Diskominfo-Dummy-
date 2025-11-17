@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import ProviderSelection from '@/Components/Admin/ProviderSelection';
 
 interface FoRoute {
   id: number;
@@ -13,15 +14,21 @@ interface FoRoute {
   description?: string;
 }
 
+interface Provider {
+  id: number;
+  name: string;
+}
+
 interface PageProps {
   foRoute: FoRoute;
   availableTypes: string[];
   availableStatuses: string[];
   nextSequence: number;
+  availableProviders?: Provider[];
 }
 
-export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence }: PageProps) {
-  const { data, setData, post, processing, errors } = useForm({
+export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence, availableProviders = [] }: PageProps) {
+  const { data, setData, post, processing, errors, transform } = useForm({
     name: '',
     latitude: '',
     longitude: '',
@@ -35,6 +42,22 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     isp_image: '',
     pole_image: '',
     junction_box_image: '',
+    providers: [] as number[], // Array of provider IDs
+  });
+
+  // Normalize image fields before submission: convert dash or whitespace to empty string
+  transform((data) => {
+    const normalizeImageField = (value: string): string => {
+      const trimmed = value?.trim() || '';
+      return trimmed === '-' ? '' : trimmed;
+    };
+    
+    return {
+      ...data,
+      isp_image: normalizeImageField(data.isp_image),
+      pole_image: normalizeImageField(data.pole_image),
+      junction_box_image: normalizeImageField(data.junction_box_image),
+    };
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -498,6 +521,16 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                 </div>
               </div>
             </div>
+
+            {/* Provider Selection - DRY: Using reusable component */}
+            <ProviderSelection
+              providers={data.providers || []}
+              availableProviders={availableProviders}
+              onChange={(selectedProviders) => setData('providers', selectedProviders)}
+              errors={errors.providers}
+              colorScheme="purple"
+              label="Pilih Provider"
+            />
 
             {/* Submit Buttons */}
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">

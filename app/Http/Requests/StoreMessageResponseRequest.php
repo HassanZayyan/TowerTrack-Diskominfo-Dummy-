@@ -36,3 +36,4 @@ class StoreMessageResponseRequest extends FormRequest
         return $rules;
     }
 }
+

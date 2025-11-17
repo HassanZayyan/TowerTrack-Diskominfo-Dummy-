@@ -287,11 +287,15 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::get('/fo-management/points/export', [FoManagementController::class, 'exportPoints'])->name('fo-management.points.export');
         Route::get('/fo-management/routes/export', [FoManagementController::class, 'exportRoutes'])->name('fo-management.routes.export');
 
-        // Master Provider Management (CRUD)
-        Route::get('/fo-management/providers', [\App\Http\Controllers\Admin\MasterFoProviderController::class, 'index'])->name('fo-management.providers.index');
-        Route::post('/fo-management/providers', [\App\Http\Controllers\Admin\MasterFoProviderController::class, 'store'])->name('fo-management.providers.store');
-        Route::put('/fo-management/providers/{foProvider}', [\App\Http\Controllers\Admin\MasterFoProviderController::class, 'update'])->name('fo-management.providers.update');
-        Route::delete('/fo-management/providers/{foProvider}', [\App\Http\Controllers\Admin\MasterFoProviderController::class, 'destroy'])->name('fo-management.providers.destroy');
+        // Master Provider Management (CRUD) - DRY: Consolidated in FoManagementController
+        Route::get('/fo-management/providers', [FoManagementController::class, 'indexProviders'])->name('fo-management.providers.index');
+        Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
+        Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
+        Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
+        
+        // Quick create provider from point form
+        Route::post('/fo-management/providers/quick-create', [FoManagementController::class, 'quickCreateProvider'])
+            ->name('fo-management.providers.quick-create');
 
     });
 

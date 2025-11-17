@@ -8,6 +8,31 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Models\FoProvider;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $slug
+ * @property string $area
+ * @property string|null $description
+ * @property array|null $path_coordinates
+ * @property array|null $geojson
+ * @property string|null $routing_profile
+ * @property bool|null $avoid_highways
+ * @property bool|null $avoid_tolls
+ * @property array|null $waypoints
+ * @property \Illuminate\Support\Carbon|null $geojson_generated_at
+ * @property string|null $routing_service
+ * @property float|null $actual_distance
+ * @property int|null $estimated_duration
+ * @property string $status
+ * @property string|null $color
+ * @property float|null $total_distance
+ * @property int|null $total_points
+ * @property array|null $point_ids
+ * @property array|null $properties
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class FoRoute extends Model
 {
     /**

@@ -467,38 +467,43 @@ export default function DataFoIndex({
     }
   };
 
-  // Handle detail functionality
-  const handleShowDetail = async (type: 'point' | 'route', item: any) => {
+  // Handle detail functionality using Inertia.js standard
+  const handleShowDetail = (type: 'point' | 'route', item: any) => {
     setDetailLoading(true);
     setShowDetailModal(true);
     
-    try {
-      const response = await fetch(`/fo-details/${type}/${item.id}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setDetailData(result);
-      } else {
+    // Use Inertia.js router.get to fetch details
+    router.get(route('fo.details', { type, id: item.id }), {}, {
+      preserveState: true,
+      preserveScroll: true,
+      only: ['detailData'], // Only fetch detailData prop
+      onSuccess: (page: any) => {
+        const detailData = page?.props?.detailData;
+        if (detailData && detailData.success) {
+          setDetailData(detailData);
+        } else {
+          setToast({
+            show: true,
+            type: 'error',
+            title: 'Error',
+            message: detailData?.message || 'Gagal memuat detail data'
+          });
+          setDetailData(null);
+        }
+        setDetailLoading(false);
+      },
+      onError: (errors: any) => {
+        console.error('Error fetching detail:', errors);
         setToast({
           show: true,
           type: 'error',
           title: 'Error',
-          message: result.message || 'Gagal memuat detail data'
+          message: 'Terjadi kesalahan saat memuat detail'
         });
         setDetailData(null);
-      }
-    } catch (error) {
-      console.error('Error fetching detail:', error);
-      setToast({
-        show: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Terjadi kesalahan saat memuat detail'
-      });
-      setDetailData(null);
-    } finally {
-      setDetailLoading(false);
-    }
+        setDetailLoading(false);
+      },
+    });
   };
 
   const handleCloseDetailModal = () => {

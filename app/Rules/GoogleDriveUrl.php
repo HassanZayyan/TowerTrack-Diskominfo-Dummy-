@@ -15,8 +15,8 @@ class GoogleDriveUrl implements Rule
      */
     public function passes($attribute, $value)
     {
-        // Allow empty or null values
-        if (empty($value)) {
+        // Allow empty, null, dash, or whitespace-only values
+        if (empty($value) || (is_string($value) && trim($value) === '') || (is_string($value) && trim($value) === '-')) {
             return true;
         }
 
@@ -93,4 +93,3 @@ class GoogleDriveUrl implements Rule
         return 'The :attribute must be a valid Google Drive URL. Supported formats: drive.google.com/file/d/{id}/view, drive.google.com/open?id={id}, or drive.google.com/uc?export=view&id={id}';
     }
 }
-
