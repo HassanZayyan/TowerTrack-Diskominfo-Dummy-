@@ -382,6 +382,7 @@ class FoManagementController extends Controller
                 'area' => $foPoint->area,
                 'type' => $foPoint->type,
                 'status' => $foPoint->status,
+                'side_of_road' => $foPoint->side_of_road,
                 'route_name' => $foPoint->route_name,
                 'sequence_number' => $foPoint->sequence_number,
                 'description' => $foPoint->description,
@@ -454,6 +455,62 @@ class FoManagementController extends Controller
         return redirect()
             ->route('admin.fo-management.routes.list')
             ->with('success', 'Titik FO berhasil diperbarui');
+    }
+
+    /**
+     * Update only coordinates for a point (for drag-and-drop functionality)
+     * Uses Opsi A: Auto-invalidate cache, regenerate on-demand
+     */
+    public function updatePointCoordinates(Request $request, FoPoint $foPoint): JsonResponse
+    {
+        $validated = $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ]);
+
+        $oldLatitude = $foPoint->latitude;
+        $oldLongitude = $foPoint->longitude;
+
+        // Update coordinates
+        $foPoint->update([
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+        ]);
+
+        // Get associated route
+        $route = FoRoute::where('name', $foPoint->route_name)
+                       ->where('area', $foPoint->area)
+                       ->first();
+
+        if ($route) {
+            // Touch route to update updated_at (triggers needsGeoJSONRegeneration check)
+            $route->touch();
+            
+            // Invalidate cache (GeoJSON will regenerate on-demand when route is loaded)
+            $this->invalidateRouteCache($route->id);
+            
+            // Update route statistics (total distance might change)
+            $this->updateRouteStatistics($route->id);
+
+            \Log::info('Point coordinates updated via drag - GeoJSON will regenerate on-demand', [
+                'point_id' => $foPoint->id,
+                'route_id' => $route->id,
+                'old_coords' => [$oldLatitude, $oldLongitude],
+                'new_coords' => [$validated['latitude'], $validated['longitude']],
+                'note' => 'GeoJSON regeneration deferred until route is loaded (saves API tokens)',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Koordinat berhasil diperbarui. GeoJSON akan di-regenerate saat route di-load.',
+            'data' => [
+                'id' => $foPoint->id,
+                'latitude' => $foPoint->latitude,
+                'longitude' => $foPoint->longitude,
+            ],
+            'needs_regeneration' => true,
+        ]);
     }
 
     /**
@@ -547,6 +604,45 @@ class FoManagementController extends Controller
      */
     public function editRoute(FoRoute $foRoute): Response
     {
+        // Get all points in this route (ordered by sequence)
+        $points = FoPoint::where('route_name', $foRoute->name)
+            ->where('area', $foRoute->area)
+            ->orderBy('sequence_number')
+            ->get()
+            ->map(function ($point) {
+                return [
+                    'id' => $point->id,
+                    'name' => $point->name,
+                    'latitude' => (float) $point->latitude,
+                    'longitude' => (float) $point->longitude,
+                    'sequence_number' => $point->sequence_number,
+                    'type' => $point->type,
+                    'status' => $point->status,
+                    'side_of_road' => $point->side_of_road,
+                    'images' => [
+                        'isp' => $point->isp_image,
+                        'pole' => $point->pole_image,
+                        'junction_box' => $point->junction_box_image,
+                    ],
+                ];
+            });
+
+        // Calculate map bounds
+        $bounds = null;
+        if ($points->isNotEmpty()) {
+            $lats = $points->pluck('latitude')->filter();
+            $lngs = $points->pluck('longitude')->filter();
+            
+            if ($lats->isNotEmpty() && $lngs->isNotEmpty()) {
+                $bounds = [
+                    'north' => $lats->max(),
+                    'south' => $lats->min(),
+                    'east' => $lngs->max(),
+                    'west' => $lngs->min(),
+                ];
+            }
+        }
+
         return Inertia::render('Admin/FoManagement/RouteEdit', [
             'foRoute' => [
                 'id' => $foRoute->id,
@@ -559,6 +655,8 @@ class FoManagementController extends Controller
                 'total_distance' => (float) ($foRoute->total_distance ?? 0),
                 'total_points' => (int) ($foRoute->total_points ?? 0),
             ],
+            'points' => $points, // Add points data
+            'mapBounds' => $bounds, // Add bounds for auto-fit
             'availableAreas' => ['ungaran'],
             'availableStatuses' => ['active', 'inactive', 'maintenance'],
         ]);

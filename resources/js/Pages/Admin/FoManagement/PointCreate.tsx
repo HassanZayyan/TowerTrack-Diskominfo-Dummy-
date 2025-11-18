@@ -2,6 +2,8 @@ import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import ProviderSelection from '@/Components/Admin/ProviderSelection';
+import { STATUS_LABELS, TYPE_LABELS, getStatusLabel, getTypeLabel } from '@/utils/foConstants';
+import { createImageFieldTransform } from '@/utils/foFormUtils';
 
 interface FoRoute {
   id: number;
@@ -46,19 +48,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
   });
 
   // Normalize image fields before submission: convert dash or whitespace to empty string
-  transform((data) => {
-    const normalizeImageField = (value: string): string => {
-      const trimmed = value?.trim() || '';
-      return trimmed === '-' ? '' : trimmed;
-    };
-    
-    return {
-      ...data,
-      isp_image: normalizeImageField(data.isp_image),
-      pole_image: normalizeImageField(data.pole_image),
-      junction_box_image: normalizeImageField(data.junction_box_image),
-    };
-  });
+  transform(createImageFieldTransform());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,18 +64,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     });
   };
 
-  const typeLabels: { [key: string]: string } = {
-    pole: 'Tiang/Pole',
-    junction: 'Junction Box',
-    hub: 'Hub',
-    endpoint: 'Endpoint'
-  };
-
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title={`Tambah Titik FO - ${foRoute.name}`}>
@@ -218,7 +197,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       >
                         {availableTypes.map((type) => (
                           <option key={type} value={type}>
-                            {typeLabels[type] || type}
+                            {getTypeLabel(type)}
                           </option>
                         ))}
                       </select>
@@ -252,7 +231,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       >
                         {availableStatuses.map((status) => (
                           <option key={status} value={status}>
-                            {statusLabels[status] || status}
+                            {getStatusLabel(status)}
                           </option>
                         ))}
                       </select>

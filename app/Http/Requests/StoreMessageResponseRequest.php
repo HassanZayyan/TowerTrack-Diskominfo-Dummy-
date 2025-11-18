@@ -37,3 +37,4 @@ class StoreMessageResponseRequest extends FormRequest
     }
 }
 
+

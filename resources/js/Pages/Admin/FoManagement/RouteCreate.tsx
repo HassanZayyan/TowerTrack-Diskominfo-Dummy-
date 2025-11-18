@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { STATUS_LABELS, getStatusLabel } from '@/utils/foConstants';
 
 interface PageProps {
   availableAreas: string[];
@@ -21,11 +22,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
     post(route('admin.fo-management.routes.store'));
   };
 
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title="Tambah Jalur FO">
@@ -199,7 +196,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         <option value="">Pilih Status</option>
                         {availableStatuses.map((status) => (
                           <option key={status} value={status}>
-                            {statusLabels[status] || status}
+                            {getStatusLabel(status)}
                           </option>
                         ))}
                       </select>

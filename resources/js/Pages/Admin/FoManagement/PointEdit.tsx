@@ -1,7 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import AdminLayout from '@/Layouts/AdminLayout';
 import ProviderSelection from '@/Components/Admin/ProviderSelection';
+import { getIconByImagesAndSide } from '@/utils/foIconUtils';
+import { STATUS_LABELS, TYPE_LABELS, getStatusLabel, getTypeLabel } from '@/utils/foConstants';
+import { createImageFieldTransform } from '@/utils/foFormUtils';
+import { useCoordinateUpdate } from '@/Hooks/useCoordinateUpdate';
+
+// Fix Leaflet default icons
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface FoPoint {
   id: number;
@@ -95,20 +110,43 @@ export default function PointEdit({
     from_route: fromRouteDetail ? 'detail' : null,
   });
 
-  // Normalize image fields before submission: convert dash or whitespace to empty string
-  transform((data) => {
-    const normalizeImageField = (value: string): string => {
-      const trimmed = value?.trim() || '';
-      return trimmed === '-' ? '' : trimmed;
-    };
-    
-    return {
-      ...data,
-      isp_image: normalizeImageField(data.isp_image),
-      pole_image: normalizeImageField(data.pole_image),
-      junction_box_image: normalizeImageField(data.junction_box_image),
-    };
+  // Map state
+  const [mapCenter, setMapCenter] = useState<[number, number]>([
+    foPoint.latitude,
+    foPoint.longitude
+  ]);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Use custom hook for coordinate updates
+  const { isUpdating: isUpdatingCoordinates, message: coordinateUpdateMessage, messageType, updateCoordinates } = useCoordinateUpdate({
+    routeUrl: route('admin.fo-management.points.update-coordinates', { foPoint: foPoint.id }),
   });
+
+  // Normalize image fields before submission: convert dash or whitespace to empty string
+  transform(createImageFieldTransform());
+
+  // Handler untuk drag marker
+  const handleMarkerDragEnd = async (e: any) => {
+    const { lat, lng } = e.target.getLatLng();
+    setIsDragging(false);
+
+    // Update form data
+    setData('latitude', lat.toString());
+    setData('longitude', lng.toString());
+    setMapCenter([lat, lng]);
+
+    // Use custom hook to update coordinates
+    await updateCoordinates(lat, lng);
+  };
+
+  // Sync map center dengan input manual
+  useEffect(() => {
+    const lat = parseFloat(data.latitude);
+    const lng = parseFloat(data.longitude);
+    if (!isNaN(lat) && !isNaN(lng) && !isDragging) {
+      setMapCenter([lat, lng]);
+    }
+  }, [data.latitude, data.longitude, isDragging]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,18 +167,7 @@ export default function PointEdit({
     }
   };
 
-  const typeLabels: { [key: string]: string } = {
-    pole: 'Pole',
-    junction: 'Junction Box',
-    hub: 'Hub',
-    endpoint: 'Endpoint'
-  };
-
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title={`Edit Titik FO: ${foPoint.name}`}>
@@ -325,7 +352,7 @@ export default function PointEdit({
                     >
                       {availableTypes.map((type) => (
                         <option key={type} value={type}>
-                          🔧 {typeLabels[type] || type}
+                          {getTypeLabel(type, true)}
                         </option>
                       ))}
                     </select>
@@ -366,7 +393,7 @@ export default function PointEdit({
                     >
                       {availableStatuses.map((status) => (
                         <option key={status} value={status}>
-                          {status === 'active' ? '✅' : status === 'inactive' ? '❌' : '🔧'} {statusLabels[status] || status}
+                          {getStatusLabel(status, true)}
                         </option>
                       ))}
                     </select>
@@ -505,9 +532,114 @@ export default function PointEdit({
                       <h3 className="text-lg sm:text-xl font-bold text-gray-900">Lokasi & Jalur</h3>
                     </div>
                     <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-                      Tentukan koordinat lokasi dan jalur yang akan dilalui titik ini
+                      Tentukan koordinat lokasi dan jalur yang akan dilalui titik ini. Drag marker di map untuk mengubah posisi.
                     </p>
                   </div>
+
+                {/* Interactive Map with Draggable Marker */}
+                <div className="mb-6">
+                  <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Posisi Titik (Drag marker untuk mengubah posisi)
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  
+                  {/* Status Message */}
+                  {coordinateUpdateMessage && (
+                    <div className={`mb-3 p-3 rounded-lg ${
+                      messageType === 'success'
+                        ? 'bg-green-50 text-green-800 border border-green-200' 
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {messageType === 'success' ? (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                        <p className="text-sm font-medium">{coordinateUpdateMessage}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Map Container */}
+                  <div className="relative rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg" style={{ height: '400px' }}>
+                    {isUpdatingCoordinates && (
+                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1000] flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                          <p className="text-sm font-medium text-gray-700">Memperbarui koordinat...</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <MapContainer
+                      center={mapCenter}
+                      zoom={15}
+                      style={{ height: '100%', width: '100%', zIndex: 1 }}
+                      scrollWheelZoom={true}
+                      doubleClickZoom={true}
+                      dragging={true}
+                      zoomControl={true}
+                      key={`map-${foPoint.id}-${mapCenter[0]}-${mapCenter[1]}`}
+                    >
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        maxZoom={19}
+                      />
+                      
+                      {/* Draggable Marker */}
+                      <Marker
+                        key={`marker-${foPoint.id}-${data.side_of_road}-${data.isp_image}-${data.pole_image}-${data.junction_box_image}`}
+                        position={mapCenter}
+                        draggable={true}
+                        icon={getIconByImagesAndSide(
+                          {
+                            isp: data.isp_image || null,
+                            pole: data.pole_image || null,
+                            junction_box: data.junction_box_image || null,
+                          },
+                          data.side_of_road || 'unknown'
+                        )}
+                        eventHandlers={{
+                          dragstart: (e) => {
+                            // Close popup before dragging to prevent interference
+                            if (e.target && typeof e.target.closePopup === 'function') {
+                              e.target.closePopup();
+                            }
+                            setIsDragging(true);
+                          },
+                          dragend: handleMarkerDragEnd,
+                        }}
+                      >
+                        <Popup closeOnClick={false} autoClose={false}>
+                          <div className="text-center">
+                            <p className="font-semibold text-sm">{foPoint.name}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {mapCenter[0].toFixed(6)}, {mapCenter[1].toFixed(6)}
+                            </p>
+                            <p className="text-xs text-blue-600 mt-2">
+                              {isUpdatingCoordinates 
+                                ? 'Memperbarui...' 
+                                : 'Lepaskan untuk menyimpan posisi'}
+                            </p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 Drag marker di map untuk mengubah posisi. Koordinat akan otomatis ter-update. GeoJSON akan di-regenerate saat route di-load.
+                  </p>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div>

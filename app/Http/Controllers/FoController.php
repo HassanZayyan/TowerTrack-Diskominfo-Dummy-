@@ -25,19 +25,19 @@ class FoController extends Controller
 
         $query->whereExists(function ($subQuery) use ($provider) {
             $subQuery->select(DB::raw(1))
-                ->from('fo_point_provider')
-                ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
-                ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
-                ->where('fo_point_provider.is_active', true);
+                    ->from('fo_point_provider')
+                    ->join('fo_providers', 'fo_point_provider.fo_provider_id', '=', 'fo_providers.id')
+                    ->whereColumn('fo_point_provider.fo_point_id', 'fo_points.id')
+                    ->where('fo_point_provider.is_active', true);
 
-            // Check if provider is numeric (ID) or string (name)
-            if (is_numeric($provider)) {
+                // Check if provider is numeric (ID) or string (name)
+                if (is_numeric($provider)) {
                 $subQuery->where('fo_providers.id', $provider);
-            } else {
+                } else {
                 $subQuery->where('fo_providers.name', $provider);
-            }
-        });
-    }
+                }
+            });
+        }
 
     /**
      * Apply side of road filter to points query

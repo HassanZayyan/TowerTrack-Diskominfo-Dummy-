@@ -280,6 +280,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/points', [FoManagementController::class, 'storePoint'])->name('fo-management.points.store');
         Route::get('/fo-management/points/{foPoint}/edit', [FoManagementController::class, 'editPoint'])->name('fo-management.points.edit');
         Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
+        Route::patch('/fo-management/points/{foPoint}/coordinates', [FoManagementController::class, 'updatePointCoordinates'])->name('fo-management.points.update-coordinates');
         Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
         Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
 
