@@ -10,6 +10,8 @@ interface FoFiltersProps {
   onTypeChange?: (type: string) => void;
   selectedStatus?: string;
   onStatusChange?: (status: string) => void;
+  selectedSide?: string;
+  onSideChange?: (side: string) => void;
 }
 
 export default function FoFilters({
@@ -20,7 +22,9 @@ export default function FoFilters({
   selectedType = 'all',
   onTypeChange,
   selectedStatus = 'all',
-  onStatusChange
+  onStatusChange,
+  selectedSide = 'all',
+  onSideChange
 }: FoFiltersProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +35,7 @@ export default function FoFilters({
     <div className="bg-white rounded-lg shadow p-4 mb-6">
       <h3 className="text-lg font-medium mb-4" style={{ color: '#212121' }}>Filter Data Fiber Optic</h3>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Area Selector */}
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Area</label>
@@ -115,6 +119,23 @@ export default function FoFilters({
               <option value="active">Aktif</option>
               <option value="inactive">Non-aktif</option>
               <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+        )}
+
+        {/* Side of Road Filter */}
+        {onSideChange && (
+          <div className="w-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Sisi Jalan</label>
+            <select
+              value={selectedSide}
+              onChange={(e) => onSideChange(e.target.value)}
+              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
+            >
+              <option value="all">Semua Sisi</option>
+              <option value="left">⬅️ Kiri</option>
+              <option value="right">➡️ Kanan</option>
+              <option value="unknown">❓ Belum Diketahui</option>
             </select>
           </div>
         )}

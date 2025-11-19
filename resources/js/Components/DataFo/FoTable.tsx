@@ -9,6 +9,7 @@ interface FoPoint {
   description?: string;
   type: string;
   status: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
   properties?: any;
 }
 
@@ -222,10 +223,11 @@ export default function FoTable({
           <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2 sm:w-2/5">Nama</th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Tipe</th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Status</th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Aksi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Tipe</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Sisi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Status</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 relative z-10">
@@ -243,6 +245,32 @@ export default function FoTable({
                   <td className="px-2 sm:px-4 py-3">
                     <div className="flex justify-center sm:justify-start">
                       {getTypeBadge(point.type)}
+                    </div>
+                  </td>
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {(() => {
+                        const side = point.side_of_road || 'unknown';
+                        if (side === 'left') {
+                          return (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                              <span className="mr-1">⬅️</span> Kiri
+                            </span>
+                          );
+                        } else if (side === 'right') {
+                          return (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                              <span className="mr-1">➡️</span> Kanan
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                              <span className="mr-1">❓</span> -
+                            </span>
+                          );
+                        }
+                      })()}
                     </div>
                   </td>
                   <td className="px-2 sm:px-4 py-3">
@@ -268,7 +296,7 @@ export default function FoTable({
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     Tidak ada titik FO ditemukan
                   </td>
                 </tr>
@@ -276,7 +304,7 @@ export default function FoTable({
               {/* Fill remaining space if needed */}
               {currentPoints.length < pointsPerPage && Array.from({ length: pointsPerPage - currentPoints.length }).map((_, index) => (
                 <tr key={`empty-${index}`} className="h-16">
-                  <td colSpan={4} className="px-4 py-4">&nbsp;</td>
+                  <td colSpan={5} className="px-4 py-4">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
@@ -362,7 +390,7 @@ export default function FoTable({
               {/* Fill remaining space if needed */}
               {currentRoutes.length < routesPerPage && Array.from({ length: routesPerPage - currentRoutes.length }).map((_, index) => (
                 <tr key={`empty-${index}`} className="h-16">
-                  <td colSpan={4} className="px-4 py-4">&nbsp;</td>
+                  <td colSpan={5} className="px-4 py-4">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
@@ -391,10 +419,11 @@ export default function FoTable({
           <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2 sm:w-2/5">Nama</th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Tipe</th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Status</th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/5">Aksi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Tipe</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Sisi</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Status</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6 sm:w-1/6">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 relative z-10">
@@ -412,6 +441,32 @@ export default function FoTable({
                   <td className="px-2 sm:px-4 py-3">
                     <div className="flex justify-center sm:justify-start">
                       {getTypeBadge(point.type)}
+                    </div>
+                  </td>
+                  <td className="px-2 sm:px-4 py-3">
+                    <div className="flex justify-center sm:justify-start">
+                      {(() => {
+                        const side = point.side_of_road || 'unknown';
+                        if (side === 'left') {
+                          return (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                              <span className="mr-1">⬅️</span> Kiri
+                            </span>
+                          );
+                        } else if (side === 'right') {
+                          return (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                              <span className="mr-1">➡️</span> Kanan
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                              <span className="mr-1">❓</span> -
+                            </span>
+                          );
+                        }
+                      })()}
                     </div>
                   </td>
                   <td className="px-2 sm:px-4 py-3">
@@ -437,7 +492,7 @@ export default function FoTable({
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     Tidak ada titik FO ditemukan
                   </td>
                 </tr>
@@ -445,7 +500,7 @@ export default function FoTable({
               {/* Fill remaining space if needed */}
               {currentPoints.length < pointsPerPage && Array.from({ length: pointsPerPage - currentPoints.length }).map((_, index) => (
                 <tr key={`empty-${index}`} className="h-16">
-                  <td colSpan={4} className="px-4 py-4">&nbsp;</td>
+                  <td colSpan={5} className="px-4 py-4">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
@@ -528,7 +583,7 @@ export default function FoTable({
               {/* Fill Pleasant space if needed */}
               {currentRoutes.length < routesPerPage && Array.from({ length: routesPerPage - currentRoutes.length }).map((_, index) => (
                 <tr key={`empty-${index}`} className="h-16">
-                  <td colSpan={4} className="px-4 py-4">&nbsp;</td>
+                  <td colSpan={5} className="px-4 py-4">&nbsp;</td>
                 </tr>
               ))}
             </tbody>

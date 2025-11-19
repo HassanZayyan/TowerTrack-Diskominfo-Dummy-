@@ -26,4 +26,3 @@ trait HandlesUserRedirects
         return $withVerifiedParam ? $destination . '?verified=1' : $destination;
     }
 }
-

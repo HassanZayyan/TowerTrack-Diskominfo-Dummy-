@@ -315,12 +315,23 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/points', [FoManagementController::class, 'storePoint'])->name('fo-management.points.store');
         Route::get('/fo-management/points/{foPoint}/edit', [FoManagementController::class, 'editPoint'])->name('fo-management.points.edit');
         Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
+        Route::patch('/fo-management/points/{foPoint}/coordinates', [FoManagementController::class, 'updatePointCoordinates'])->name('fo-management.points.update-coordinates');
         Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
         Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
 
         // FO Export (CSV downloads)
         Route::get('/fo-management/points/export', [FoManagementController::class, 'exportPoints'])->name('fo-management.points.export');
         Route::get('/fo-management/routes/export', [FoManagementController::class, 'exportRoutes'])->name('fo-management.routes.export');
+
+        // Master Provider Management (CRUD) - DRY: Consolidated in FoManagementController
+        Route::get('/fo-management/providers', [FoManagementController::class, 'indexProviders'])->name('fo-management.providers.index');
+        Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
+        Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
+        Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
+        
+        // Quick create provider from point form
+        Route::post('/fo-management/providers/quick-create', [FoManagementController::class, 'quickCreateProvider'])
+            ->name('fo-management.providers.quick-create');
 
     });
 

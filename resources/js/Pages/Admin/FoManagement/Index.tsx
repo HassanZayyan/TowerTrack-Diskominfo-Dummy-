@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import FoTable from '@/Components/DataFo/FoTable';
 
@@ -502,37 +502,32 @@ RecentActivity.displayName = 'RecentActivity';
 
 // Generate Routes Button Component
 function GenerateRoutesButton({ currentArea }: { currentArea: string }) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { post, processing: isGenerating } = useForm({
+    area: currentArea,
+  });
   
-  const handleGenerateRoutes = useCallback(async () => {
+  const handleGenerateRoutes = useCallback(() => {
     if (isGenerating) return;
     
-    setIsGenerating(true);
-    
-    try {
-      const response = await fetch('/api/fo-routes/generate-all', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-        body: JSON.stringify({ area: currentArea }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Berhasil generate ${data.success} jalur GeoJSON!${data.failed > 0 ? ` ${data.failed} gagal.` : ''}`);
+    post(route('api.fo.routes.generate-all'), {
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: (page: any) => {
+        // Check if response has success data
+        const response = page?.props?.flash?.generateResult || page?.props?.generateResult;
+        if (response) {
+          alert(`Berhasil generate ${response.success} jalur GeoJSON!${response.failed > 0 ? ` ${response.failed} gagal.` : ''}`);
+        } else {
+          alert('Berhasil generate jalur GeoJSON!');
+        }
         router.reload();
-      } else {
-        throw new Error('Network response was not ok');
-      }
-    } catch (error) {
-      console.error('Error generating routes:', error);
-      alert('Gagal generate jalur GeoJSON. Silakan coba lagi.');
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [isGenerating, currentArea]);
+      },
+      onError: (errors: any) => {
+        console.error('Error generating routes:', errors);
+        alert('Gagal generate jalur GeoJSON. Silakan coba lagi.');
+      },
+    });
+  }, [isGenerating, currentArea, post]);
   
   return (
     <button

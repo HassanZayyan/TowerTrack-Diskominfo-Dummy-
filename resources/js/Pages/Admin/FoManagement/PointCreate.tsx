@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import ProviderSelection from '@/Components/Admin/ProviderSelection';
+import { STATUS_LABELS, TYPE_LABELS, getStatusLabel, getTypeLabel } from '@/utils/foConstants';
+import { createImageFieldTransform } from '@/utils/foFormUtils';
 
 interface FoRoute {
   id: number;
@@ -13,15 +16,21 @@ interface FoRoute {
   description?: string;
 }
 
+interface Provider {
+  id: number;
+  name: string;
+}
+
 interface PageProps {
   foRoute: FoRoute;
   availableTypes: string[];
   availableStatuses: string[];
   nextSequence: number;
+  availableProviders?: Provider[];
 }
 
-export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence }: PageProps) {
-  const { data, setData, post, processing, errors } = useForm({
+export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence, availableProviders = [] }: PageProps) {
+  const { data, setData, post, processing, errors, transform } = useForm({
     name: '',
     latitude: '',
     longitude: '',
@@ -35,7 +44,11 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     isp_image: '',
     pole_image: '',
     junction_box_image: '',
+    providers: [] as number[], // Array of provider IDs
   });
+
+  // Normalize image fields before submission: convert dash or whitespace to empty string
+  transform(createImageFieldTransform());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,18 +64,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     });
   };
 
-  const typeLabels: { [key: string]: string } = {
-    pole: 'Tiang/Pole',
-    junction: 'Junction Box',
-    hub: 'Hub',
-    endpoint: 'Endpoint'
-  };
-
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title={`Tambah Titik FO - ${foRoute.name}`}>
@@ -195,7 +197,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       >
                         {availableTypes.map((type) => (
                           <option key={type} value={type}>
-                            {typeLabels[type] || type}
+                            {getTypeLabel(type)}
                           </option>
                         ))}
                       </select>
@@ -229,7 +231,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       >
                         {availableStatuses.map((status) => (
                           <option key={status} value={status}>
-                            {statusLabels[status] || status}
+                            {getStatusLabel(status)}
                           </option>
                         ))}
                       </select>
@@ -498,6 +500,16 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                 </div>
               </div>
             </div>
+
+            {/* Provider Selection - DRY: Using reusable component */}
+            <ProviderSelection
+              providers={data.providers || []}
+              availableProviders={availableProviders}
+              onChange={(selectedProviders) => setData('providers', selectedProviders)}
+              errors={errors.providers}
+              colorScheme="purple"
+              label="Pilih Provider"
+            />
 
             {/* Submit Buttons */}
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
