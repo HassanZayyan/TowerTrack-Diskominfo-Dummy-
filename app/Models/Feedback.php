@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Commentable;
+use App\Traits\HasGuestEmailVerification;
 
 class Feedback extends Model
 {
     use HasFactory;
     use Commentable;
+    use HasGuestEmailVerification;
     
     protected $table = 'feedbacks';
     
@@ -27,6 +29,11 @@ class Feedback extends Model
         'reporter_accuracy',
         'location_captured_at',
         'is_public',
+        'email_verified_at',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
     ];
     
     public function tower()
@@ -48,5 +55,6 @@ class Feedback extends Model
     {
         return $this->hasMany(FeedbackResponse::class);
     }
+
     
 }

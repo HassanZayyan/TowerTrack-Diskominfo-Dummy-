@@ -64,7 +64,7 @@ const MAX_MESSAGE_LENGTH = 1000;
 const MAX_DISTANCE_KM = 1;
 
 export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
-  const { errors, flash, auth, turnstileSiteKey } = usePage().props as any;
+  const { errors, auth, turnstileSiteKey } = usePage().props as any;
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
   const isAuthenticatedUser = isComplainant || isTowerOwner;
@@ -111,12 +111,6 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     setShowDialog(true);
   }, []);
 
-  const showSuccessDialog = useCallback((title: string, message: string) => {
-    setDialogType('success');
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setShowDialog(true);
-  }, []);
 
   const showWarningDialog = useCallback((title: string, message: string) => {
     setDialogType('warning');
@@ -249,11 +243,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
-    // If it was a success dialog, reset the form
-    if (dialogType === 'success') {
-      resetForm();
-    }
-  }, [dialogType, resetForm]);
+  }, []);
 
   const handleFileError = useCallback((message: string) => {
     showErrorDialog('Error Upload File', message);
@@ -419,12 +409,6 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
         }
-      } else if (userLocationResult.isFreshLocation) {
-        // Show success message for fresh location
-        showSuccessDialog(
-          'Lokasi Diperbarui', 
-          `Lokasi GPS telah diperbarui dengan akurasi ${userLocationResult.accuracy ? `±${Math.round(userLocationResult.accuracy)}m` : 'baik'}.`
-        );
       }
       
       if (towerHasCoordinates) {
@@ -467,13 +451,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       // Submit using Inertia router
       router.post('/feedback', formData, {
         onSuccess: () => {
-          showSuccessDialog('Berhasil Dikirim', 'Masukan Anda telah berhasil dikirimkan');
+          // Backend akan redirect ke halaman success (untuk authenticated) atau verifikasi (untuk guest)
           // Reset CAPTCHA after success
           if (captchaRef.current) {
             captchaRef.current.reset();
             setCaptchaToken('');
           }
-          // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
           console.error('Form submission errors:', errors);

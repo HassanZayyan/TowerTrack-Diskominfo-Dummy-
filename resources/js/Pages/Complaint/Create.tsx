@@ -100,12 +100,6 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     setShowDialog(true);
   }, []);
 
-  const showSuccessDialog = useCallback((title: string, message: string) => {
-    setDialogType('success');
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setShowDialog(true);
-  }, []);
 
   const showWarningDialog = useCallback((title: string, message: string) => {
     setDialogType('warning');
@@ -195,11 +189,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
-    // If it was a success dialog, reset the form
-    if (dialogType === 'success') {
-      resetForm();
-    }
-  }, [dialogType, resetForm]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,12 +292,6 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
         }
-      } else if (userLocationResult.isFreshLocation) {
-        // Show success message for fresh location
-        showSuccessDialog(
-          'Lokasi Diperbarui', 
-          `Lokasi GPS telah diperbarui dengan akurasi ${userLocationResult.accuracy ? `±${Math.round(userLocationResult.accuracy)}m` : 'baik'}.`
-        );
       }
       
       if (towerHasCoordinates) {
@@ -388,13 +372,12 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       // Submit using Inertia router
       router.post('/complaint', formData, {
         onSuccess: () => {
-          showSuccessDialog('Berhasil Dikirim', 'Keluhan Anda telah berhasil dikirimkan');
+          // Backend akan redirect ke halaman success (untuk authenticated) atau verifikasi (untuk guest)
           // Reset CAPTCHA after success
           if (captchaRef.current) {
             captchaRef.current.reset();
             setCaptchaToken('');
           }
-          // Don't reset form immediately, let user see the success message
         },
         onError: (errors: Record<string, string>) => {
           console.error('Form submission errors:', errors);

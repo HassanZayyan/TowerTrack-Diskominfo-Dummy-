@@ -179,14 +179,16 @@ class ComplaintController extends MessageableController
             $this->storeInitialAttachments($request, $report->id, $config);
         }
 
-        $message = auth()->check() 
-            ? 'Keluhan berhasil dikirim! Terima kasih atas laporan Anda.'
-            : 'Keluhan berhasil dikirim! ' . 
-              ($validated['is_public'] 
-                ? 'Keluhan Anda dapat dilihat di halaman pesan utama.' 
-                : 'Untuk melacak status keluhan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
+        // Send email verification for guest users
+        $verificationRedirect = $this->sendGuestEmailVerification($report, $email, 'complaint');
+        if ($verificationRedirect) {
+            return $verificationRedirect;
+        }
 
-        return redirect()->back()->with('success', $message);
+        // Untuk authenticated users, redirect ke halaman success
+        return redirect()->route('guest.submission.success', [
+            'type' => 'complaint'
+        ]);
     }
 
     /**

@@ -64,6 +64,11 @@ abstract class MessageableController extends Controller
         if ($model->email !== $email || $model->$phoneField !== $phone) {
             abort(403, 'Anda tidak memiliki akses ke pesan ini.');
         }
+
+        // For guest users (no user_id), require email verification
+        if (!$model->user_id && method_exists($model, 'hasVerifiedEmail') && !$model->hasVerifiedEmail()) {
+            abort(403, 'Email Anda belum diverifikasi. Silakan periksa email Anda dan klik link verifikasi yang telah dikirim, atau gunakan fitur "Kirim Ulang Verifikasi Email" untuk mendapatkan link baru.');
+        }
         
         return [$email, $phone];
     }
@@ -257,6 +262,43 @@ abstract class MessageableController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Send email verification for guest users and handle redirect.
+     * 
+     * @param mixed $model The messageable model (Report or Feedback)
+     * @param string|null $email The email address to verify
+     * @param string $type The message type ('complaint' or 'feedback')
+     * @return RedirectResponse|null Returns redirect response if guest user, null otherwise
+     */
+    protected function sendGuestEmailVerification($model, ?string $email, string $type): ?RedirectResponse
+    {
+        // Only send verification for guest users (not authenticated)
+        if (!auth()->check() && $email) {
+            try {
+                $verification = \App\Models\GuestEmailVerification::createFor($model, $email);
+                \Mail::to($email)->send(
+                    new \App\Mail\GuestEmailVerificationMail($verification, $type)
+                );
+                
+                // Redirect guest to verification notice page
+                return redirect()->route('guest.verification.notice', [
+                    'email' => $email,
+                    'type' => $type
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send guest email verification', [
+                    'error' => $e->getMessage(),
+                    'model_id' => $model->id,
+                    'model_type' => get_class($model),
+                    'email' => $email,
+                ]);
+                // Continue anyway - don't block the submission
+            }
+        }
+        
+        return null;
     }
 
     /**

@@ -52,6 +52,25 @@ Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.s
 Route::get('/complaint', [ComplaintController::class, 'index'])->name('complaint');
 Route::post('/complaint', [ComplaintController::class, 'store'])->name('complaint.store');
 
+// Guest email verification routes
+Route::get('/guest/verify-email', [\App\Http\Controllers\GuestEmailVerificationController::class, 'notice'])
+    ->name('guest.verification.notice');
+Route::get('/verify-guest-email/{token}', [\App\Http\Controllers\GuestEmailVerificationController::class, 'verify'])
+    ->name('guest.email.verify');
+Route::post('/resend-guest-verification', [\App\Http\Controllers\GuestEmailVerificationController::class, 'resend'])
+    ->name('guest.email.resend');
+
+// Guest submission success page
+Route::get('/submission-success', function (\Illuminate\Http\Request $request) {
+    $type = $request->query('type', 'complaint');
+    $message = $request->query('message');
+    
+    return Inertia::render('Guest/Success', [
+        'messageType' => $type,
+        'message' => $message,
+    ]);
+})->name('guest.submission.success');
+
 // User feedback list and details (authenticated or anonymous with email)
 Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
 Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');

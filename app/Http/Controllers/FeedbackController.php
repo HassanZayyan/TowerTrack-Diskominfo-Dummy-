@@ -172,14 +172,16 @@ class FeedbackController extends MessageableController
             $this->storeInitialAttachments($request, $feedback->id, $config);
         }
 
-        $message = auth()->check() 
-            ? 'Masukan berhasil dikirim! Terima kasih atas masukan Anda.'
-            : 'Masukan berhasil dikirim! ' . 
-              ($validated['is_public'] 
-                ? 'Masukan Anda dapat dilihat di halaman pesan utama.' 
-                : 'Untuk melacak status masukan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
+        // Send email verification for guest users
+        $verificationRedirect = $this->sendGuestEmailVerification($feedback, $email, 'feedback');
+        if ($verificationRedirect) {
+            return $verificationRedirect;
+        }
 
-        return redirect()->back()->with('success', $message);
+        // Untuk authenticated users, redirect ke halaman success
+        return redirect()->route('guest.submission.success', [
+            'type' => 'feedback'
+        ]);
     }
 
     /**
