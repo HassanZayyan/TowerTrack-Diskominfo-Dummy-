@@ -63,4 +63,3 @@ export const getTypeLabel = (type: string, withEmoji: boolean = false): string =
   
   return `🔧 ${label}`;
 };
-

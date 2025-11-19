@@ -107,4 +107,3 @@ export const useCoordinateUpdate = ({ routeUrl, onSuccess, onError }: UseCoordin
     clearMessage,
   };
 };
-
