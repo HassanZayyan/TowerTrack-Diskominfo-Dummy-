@@ -60,7 +60,3 @@ export default function GuestVerifyEmail({ email, type, status }: Props) {
         </GuestLayout>
     );
 }
-
-
-
-
