@@ -98,6 +98,20 @@ class GuestEmailVerification extends Model
     }
 
     /**
+     * Check if an email has been verified before (for any model).
+     * This allows users to skip verification if they've verified their email previously.
+     *
+     * @param string $email
+     * @return bool
+     */
+    public static function isEmailVerified(string $email): bool
+    {
+        return static::where('email', $email)
+            ->whereNotNull('verified_at')
+            ->exists();
+    }
+
+    /**
      * Clean up expired tokens (can be run via scheduled task).
      */
     public static function cleanupExpired(): int

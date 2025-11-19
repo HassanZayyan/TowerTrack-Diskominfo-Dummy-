@@ -276,6 +276,17 @@ abstract class MessageableController extends Controller
     {
         // Only send verification for guest users (not authenticated)
         if (!auth()->check() && $email) {
+            // Check if email has been verified before (for any previous submission)
+            if (\App\Models\GuestEmailVerification::isEmailVerified($email)) {
+                // Email already verified before, mark this model as verified and skip sending email
+                if (method_exists($model, 'markEmailAsVerified')) {
+                    $model->markEmailAsVerified();
+                }
+                // Return null to continue with normal flow (no redirect to verification page)
+                return null;
+            }
+            
+            // Email not verified before, create new verification token and send email
             try {
                 $verification = \App\Models\GuestEmailVerification::createFor($model, $email);
                 \Mail::to($email)->send(
