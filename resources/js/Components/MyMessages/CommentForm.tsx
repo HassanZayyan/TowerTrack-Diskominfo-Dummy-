@@ -5,6 +5,7 @@ import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import AnimatedButton from '@/Components/AnimatedButton';
+import { useGuestFormData } from '@/Hooks/useGuestData';
 
 interface CommentFormProps {
   type: 'report' | 'feedback';
@@ -26,12 +27,15 @@ export default function CommentForm({
   const { auth } = usePage().props as any;
   const isAuthenticated = !!auth?.user;
 
+  // Auto-fill from cookie if available (only for guest users)
+  const guestFormData = useGuestFormData();
+
   const { data, setData, post, processing, errors, reset } = useForm({
     message: '',
     parent_id: parentId,
-    guest_name: '',
-    guest_email: '',
-    guest_phone: '',
+    guest_name: guestFormData.name,
+    guest_email: guestFormData.email,
+    guest_phone: guestFormData.phone,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

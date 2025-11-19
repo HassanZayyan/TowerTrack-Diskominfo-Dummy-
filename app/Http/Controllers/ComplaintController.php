@@ -85,7 +85,7 @@ class ComplaintController extends MessageableController
                 'lokasi_tower' => 'required|string|max:255',
                 'tower_id' => 'required|exists:towers,id',
                 'pesan' => 'required|string|max:1000',
-                'email' => auth()->check() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
+                'email' => isAuthenticated() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
                     ? 'prohibited' // Email not allowed for authenticated users (both complainant and tower_owner)
                     : 'required|email|max:255', // Email required for anonymous users
                 'is_public' => 'required|boolean', // Visibility option
@@ -98,9 +98,7 @@ class ComplaintController extends MessageableController
             ];
 
             // Only require CAPTCHA for guest users
-            if (!auth()->check()) {
-                $rules['cf-turnstile-response'] = 'required|string';
-            }
+            $rules = $this->addCaptchaRuleForGuest($rules);
 
             $validated = $request->validate($rules);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -109,32 +107,13 @@ class ComplaintController extends MessageableController
         }
 
         // Verify CAPTCHA only for guest users
-        if (!auth()->check()) {
-            $captchaService = app(CaptchaService::class);
-            if (!$captchaService->verify(
-                $validated['cf-turnstile-response'],
-                $request->ip()
-            )) {
-                return back()->withErrors([
-                    'captcha' => 'Verifikasi CAPTCHA gagal. Silakan coba lagi.'
-                ])->withInput();
-            }
+        $captchaError = $this->validateCaptchaForGuest($validated, $request->ip());
+        if ($captchaError) {
+            return $captchaError;
         }
 
         // Handle user ID and email for authenticated vs anonymous users
-        $userId = null;
-        $email = null;
-        
-        if (auth()->check()) {
-            $userId = auth()->id();
-            // For authenticated users (both complainant and tower_owner), use their email automatically
-            if (auth()->user()->isComplainant() || auth()->user()->isTowerOwner()) {
-                $email = auth()->user()->email;
-            }
-        } else {
-            // For anonymous users, email is required
-            $email = $validated['email'] ?? null;
-        }
+        [$userId, $email] = $this->resolveUserAndEmail($validated);
 
         // Handle reporter coordinates - completely optional, never blocks submission
         $locationData = [];
@@ -157,7 +136,7 @@ class ComplaintController extends MessageableController
             'tower_id' => $validated['tower_id'],
             'user_id' => $userId,
             'email' => $email,
-            'reporter_name' => $validated['nama'] ?? (auth()->check() ? $request->user()->name : null),
+            'reporter_name' => $validated['nama'] ?? (isAuthenticated() ? $request->user()->name : null),
             'reporter_phone' => $validated['telepon'],
             'category' => $validated['kategori'],
             'message' => $validated['pesan'],
@@ -165,7 +144,7 @@ class ComplaintController extends MessageableController
             'status_id' => 1, // 1 = pending
             // Set email_verified_at based on user type
             // Authenticated users are auto-verified, guest users need email verification
-            'email_verified_at' => auth()->check() ? now() : null,
+            'email_verified_at' => isAuthenticated() ? now() : null,
         ];
 
         // Merge location data if available
@@ -180,6 +159,15 @@ class ComplaintController extends MessageableController
         // Handle file uploads only if files exist for faster response
         if ($this->hasInitialAttachments($request, $config)) {
             $this->storeInitialAttachments($request, $report->id, $config);
+        }
+
+        // Store guest contact data in cookie for auto-fill (only for guest users)
+        if (isGuest()) {
+            \App\Helpers\GuestCookieHelper::store([
+                'email' => $email,
+                'phone' => $validated['telepon'],
+                'name' => $validated['nama'] ?? null,
+            ]);
         }
 
         // Send email verification for guest users

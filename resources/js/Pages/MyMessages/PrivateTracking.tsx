@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Head, router, Link } from '@inertiajs/react';
+import { Head, router, Link, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import MessageTable from '@/Components/MyMessages/MessageTable';
 import MessageCard from '@/Components/MyMessages/MessageCard';
@@ -10,6 +10,10 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
+import { getStatusColor } from '@/utils/statusHelpers';
+import { formatDate } from '@/utils/dateHelpers';
+import { useGuestFormData } from '@/Hooks/useGuestData';
+import { useGuestAutoRedirect } from '@/Hooks/useGuestAutoRedirect';
 
 type PrivateTrackingProps = {
   reports?: ReportItem[];
@@ -140,8 +144,21 @@ export default function PrivateTracking({
   email = null,
   phone = null
 }: PrivateTrackingProps) {
-  const [inputEmail, setInputEmail] = useState(email || '');
-  const [inputPhone, setInputPhone] = useState(phone || '');
+  const { auth } = usePage().props as any;
+  const isAuthenticated = !!auth?.user;
+  
+  // Auto-fill from cookie if no query params provided
+  const guestFormData = useGuestFormData({ email: email || undefined, phone: phone || undefined });
+  const [inputEmail, setInputEmail] = useState(guestFormData.email);
+  const [inputPhone, setInputPhone] = useState(guestFormData.phone);
+
+  // Auto-redirect with query params from cookie if cookie exists and no query params
+  useGuestAutoRedirect({
+    email,
+    phone,
+    isAuthenticated,
+    currentPath: '/my-messages/private',
+  });
 
   const handleFormSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -150,39 +167,9 @@ export default function PrivateTracking({
     }
   }, [inputEmail, inputPhone]);
 
-  const getStatusColor = useCallback((status: string | undefined | null) => {
-    const statusConfig = {
-      pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
-      in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
-      responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
-      resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-      closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-    };
-    
-    if (!status) {
-      return { bg: '#F3F4F6', text: '#374151', label: 'Tidak diketahui' };
-    }
-    
-    return statusConfig[status as keyof typeof statusConfig] || 
-      { bg: '#F3F4F6', text: '#374151', label: status.replace ? status.replace('_', ' ') : status };
-  }, []);
-
-  const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Hari ini';
-    if (diffDays === 2) return 'Kemarin';
-    if (diffDays <= 7) return `${diffDays - 1} hari yang lalu`;
-    
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  }, []);
+  // Use utility functions for status and date formatting
+  const getStatusColorCallback = useCallback(getStatusColor, []);
+  const formatDateCallback = useCallback(formatDate, []);
 
   // Merge complaints and feedbacks into a single unified list
   const items: MessageItem[] = React.useMemo(() => {
@@ -327,8 +314,8 @@ export default function PrivateTracking({
                 <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
                   <MessageTable 
                     items={items}
-                    getStatusColor={getStatusColor}
-                    formatDate={formatDate}
+                    getStatusColor={getStatusColorCallback}
+                    formatDate={formatDateCallback}
                     onOpen={openDetail}
                   />
                 </StaggeredContainer>
@@ -344,8 +331,8 @@ export default function PrivateTracking({
                     >
                       <MessageCard
                         item={item}
-                        getStatusColor={getStatusColor}
-                        formatDate={formatDate}
+                        getStatusColor={getStatusColorCallback}
+                        formatDate={formatDateCallback}
                         onOpen={openDetail}
                       />
                     </StaggeredContainer>

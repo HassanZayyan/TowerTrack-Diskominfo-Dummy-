@@ -46,8 +46,8 @@ class PublicCommentController extends Controller
         $validated = $request->validate([
             'message' => 'required|string|max:1000',
             'parent_id' => 'nullable|integer|exists:public_comments,id',
-            'guest_name' => auth()->check() ? 'nullable' : 'required|string|max:255',
-            'guest_email' => auth()->check() ? 'nullable' : 'required|email|max:255',
+            'guest_name' => isAuthenticated() ? 'nullable' : 'required|string|max:255',
+            'guest_email' => isAuthenticated() ? 'nullable' : 'required|email|max:255',
             'guest_phone' => 'nullable|string|max:20',
         ]);
 
@@ -63,11 +63,11 @@ class PublicCommentController extends Controller
         }
 
         // Rate limiting
-        $key = auth()->check() 
+        $key = isAuthenticated() 
             ? 'comment:user:' . auth()->id()
             : 'comment:ip:' . $request->ip();
         
-        $maxAttempts = auth()->check() ? 10 : 5; // Authenticated users get more attempts
+        $maxAttempts = isAuthenticated() ? 10 : 5; // Authenticated users get more attempts
         $decaySeconds = 3600; // 1 hour
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
@@ -84,8 +84,8 @@ class PublicCommentController extends Controller
             'commentable_id' => $id,
             'parent_id' => $parentId,
             'user_id' => auth()->id(),
-            'guest_name' => auth()->check() ? null : $validated['guest_name'],
-            'guest_email' => auth()->check() ? null : $validated['guest_email'],
+            'guest_name' => isAuthenticated() ? null : $validated['guest_name'],
+            'guest_email' => isAuthenticated() ? null : $validated['guest_email'],
             'guest_phone' => $validated['guest_phone'] ?? null,
             'message' => trim($validated['message']), // Best practice: Trim whitespace
             'is_approved' => true, // Auto-approve (can be changed to false for moderation)

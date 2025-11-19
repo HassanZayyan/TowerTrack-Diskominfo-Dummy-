@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import AnimatedButton from '@/Components/AnimatedButton';
+import { useGuestFormData } from '@/Hooks/useGuestData';
 
 type MessageType = 'report' | 'feedback';
 
@@ -52,11 +53,18 @@ export default function MessageResponseForm({
 
   const requiresContact = showContactFields ?? !isAuthenticated;
 
+  // Auto-fill from cookie if available and no default values provided
+  const guestFormData = useGuestFormData({
+    name: defaultSenderName || undefined,
+    email: defaultEmail || undefined,
+    phone: defaultPhone || undefined,
+  });
+
   const { data, setData, post, processing, errors, reset, progress } = useForm<FormDataState>({
     message: '',
-    sender_name: defaultSenderName ?? '',
-    email: defaultEmail ?? '',
-    phone: defaultPhone ?? '',
+    sender_name: guestFormData.name,
+    email: guestFormData.email,
+    phone: guestFormData.phone,
     attachments: [],
   });
   const fieldErrors = errors as Record<string, string | undefined>;

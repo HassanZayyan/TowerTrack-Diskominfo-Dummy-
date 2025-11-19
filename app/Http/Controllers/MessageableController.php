@@ -265,6 +265,72 @@ abstract class MessageableController extends Controller
     }
 
     /**
+     * Resolve user ID and email based on authentication status.
+     * 
+     * @param array $validated Validated request data
+     * @return array [userId, email]
+     */
+    protected function resolveUserAndEmail(array $validated): array
+    {
+        $userId = null;
+        $email = null;
+        
+        if (isAuthenticated()) {
+            $userId = auth()->id();
+            // For authenticated users (complainant and tower_owner), use their email automatically
+            if (auth()->user()->isComplainant() || auth()->user()->isTowerOwner()) {
+                $email = auth()->user()->email;
+            }
+        } else {
+            // For anonymous users, email is required
+            $email = $validated['email'] ?? null;
+        }
+        
+        return [$userId, $email];
+    }
+
+    /**
+     * Validate and verify CAPTCHA for guest users.
+     * 
+     * @param array $validated Validated request data
+     * @param string $ipAddress Client IP address
+     * @return RedirectResponse|null Returns redirect response if CAPTCHA fails, null otherwise
+     */
+    protected function validateCaptchaForGuest(array $validated, string $ipAddress): ?RedirectResponse
+    {
+        if (!isGuest()) {
+            return null;
+        }
+
+        $captchaService = app(\App\Services\CaptchaService::class);
+        if (!$captchaService->verify(
+            $validated['cf-turnstile-response'] ?? '',
+            $ipAddress
+        )) {
+            return back()->withErrors([
+                'captcha' => 'Verifikasi CAPTCHA gagal. Silakan coba lagi.'
+            ])->withInput();
+        }
+
+        return null;
+    }
+
+    /**
+     * Add CAPTCHA validation rule for guest users.
+     * 
+     * @param array $rules Existing validation rules
+     * @return array Updated validation rules
+     */
+    protected function addCaptchaRuleForGuest(array $rules): array
+    {
+        if (isGuest()) {
+            $rules['cf-turnstile-response'] = 'required|string';
+        }
+        
+        return $rules;
+    }
+
+    /**
      * Send email verification for guest users and handle redirect.
      * 
      * @param mixed $model The messageable model (Report or Feedback)
@@ -275,7 +341,7 @@ abstract class MessageableController extends Controller
     protected function sendGuestEmailVerification($model, ?string $email, string $type): ?RedirectResponse
     {
         // Only send verification for guest users (not authenticated)
-        if (!auth()->check() && $email) {
+        if (isGuest() && $email) {
             // Check if email has been verified before (for any previous submission)
             if (\App\Models\GuestEmailVerification::isEmailVerified($email)) {
                 // Email already verified before, mark this model as verified and skip sending email

@@ -10,6 +10,8 @@ import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMes
 import MessageResponseForm from '@/Components/MyMessages/MessageResponseForm';
 import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { Comment } from '@/Components/MyMessages/CommentItem';
+import { getStatusColor } from '@/utils/statusHelpers';
+import { formatDateWithTime } from '@/utils/dateHelpers';
 
 type Report = {
   id: number;
@@ -65,34 +67,6 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
   const [isResponseModalOpen, setResponseModalOpen] = useState(false);
   const [isCommentModalOpen, setCommentModalOpen] = useState(false);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Hari ini';
-    if (diffDays === 2) return 'Kemarin';
-    if (diffDays <= 7) return `${diffDays - 1} hari yang lalu`;
-    
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-      pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
-      in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
-      responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
-      resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-      closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-    };
-    
-    return statusConfig[status] || { bg: '#F3F4F6', text: '#374151', label: status || 'Tidak diketahui' };
-  };
 
 
   const handleCommentSuccess = React.useCallback(() => {
@@ -142,12 +116,7 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
     : undefined;
 
   const responseStatusResolver = (statusValue: string | null | undefined) => {
-    const resolved = getStatusColor(statusValue ?? '');
-    return {
-      label: resolved.label,
-      bg: resolved.bg,
-      text: resolved.text,
-    };
+    return getStatusColor(statusValue ?? '');
   };
 
   return (
@@ -218,7 +187,7 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
               <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
                 <div className="text-xs font-medium text-teal-700 mb-1.5">Waktu Kirim</div>
                 <div className="font-semibold text-gray-900">
-                  {formatDate(report.created_at)} • {new Date(report.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  {formatDateWithTime(report.created_at)}
                 </div>
               </div>
             </div>

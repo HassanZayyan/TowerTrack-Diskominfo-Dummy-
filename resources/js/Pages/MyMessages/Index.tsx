@@ -10,6 +10,8 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
+import { getStatusColor } from '@/utils/statusHelpers';
+import { formatDate } from '@/utils/dateHelpers';
 
 type MyMessagesProps = {
   reports?: ReportItem[];
@@ -56,41 +58,6 @@ export default function MyMessagesIndex({
     }
   };
 
-  const getStatusColor = (status: string | undefined | null) => {
-    const statusConfig = {
-      pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
-      in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
-      responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
-      resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-      closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-    };
-    
-    // If status is undefined or null, return a default styling
-    if (!status) {
-      return { bg: '#F3F4F6', text: '#374151', label: 'Tidak diketahui' };
-    }
-    
-    // Check if the status exists in our config
-    return statusConfig[status as keyof typeof statusConfig] || 
-      { bg: '#F3F4F6', text: '#374151', label: status.replace ? status.replace('_', ' ') : status };
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Hari ini';
-    if (diffDays === 2) return 'Kemarin';
-    if (diffDays <= 7) return `${diffDays - 1} hari yang lalu`;
-    
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   // Merge complaints and feedbacks into a single unified list
   const allItems: MessageItem[] = React.useMemo(() => {
