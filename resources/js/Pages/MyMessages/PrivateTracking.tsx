@@ -9,57 +9,13 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
-
-type ReportItem = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null;
-  reporter_name?: string | null;
-  reporter_phone?: string | null;
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null;
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  responses?: Array<{ id: number; report_id: number; created_at: string }>;
-};
-
-type FeedbackItem = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null;
-  sender_name?: string | null;
-  sender_phone?: string | null;
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null;
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  responses?: Array<{ id: number; feedback_id: number; created_at: string }>;
-};
+import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
 
 type PrivateTrackingProps = {
   reports?: ReportItem[];
   feedbacks?: FeedbackItem[];
   email?: string | null;
   phone?: string | null;
-};
-
-type MessageItem = {
-  id: string;
-  type: 'Keluhan' | 'Masukan';
-  created_at: string;
-  towerName: string;
-  category: string;
-  status: string | undefined | null;
-  responsesCount: number;
-  senderName: string;
-  senderEmail: string;
-  isAnonymous: boolean;
 };
 
 // Email Input Form Component - Moved outside to prevent recreation on each render
@@ -238,6 +194,7 @@ export default function PrivateTracking({
       category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
       status: r.status || 'pending',
       responsesCount: r.responses?.length ?? 0,
+      commentsCount: r.comments_count ?? 0,
       // Extract sender info - prefer authenticated user info over anonymous info
       senderName: r.user?.name || r.reporter_name || 'Anonymous',
       senderEmail: r.user?.email || r.email || '-',
@@ -252,6 +209,7 @@ export default function PrivateTracking({
       category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
       status: f.status || 'pending',
       responsesCount: f.responses?.length ?? 0,
+      commentsCount: f.comments_count ?? 0,
       // Extract sender info - prefer authenticated user info over anonymous info
       senderName: f.user?.name || f.sender_name || 'Anonymous',
       senderEmail: f.user?.email || f.email || '-',

@@ -163,6 +163,9 @@ class ComplaintController extends MessageableController
             'message' => $validated['pesan'],
             'is_public' => $validated['is_public'] ?? false,
             'status_id' => 1, // 1 = pending
+            // Set email_verified_at based on user type
+            // Authenticated users are auto-verified, guest users need email verification
+            'email_verified_at' => auth()->check() ? now() : null,
         ];
 
         // Merge location data if available

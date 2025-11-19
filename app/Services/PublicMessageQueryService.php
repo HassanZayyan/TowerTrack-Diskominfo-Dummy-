@@ -33,7 +33,15 @@ class PublicMessageQueryService
                 },
                 'images:id,report_id,file_path,file_type',
             ])
+            ->withCount([
+                'comments as comments_count'
+            ])
             ->where('is_public', true)
+            // Only show verified records: authenticated users OR verified guest users
+            ->where(function($query) {
+                $query->whereNotNull('user_id')
+                      ->orWhereNotNull('email_verified_at');
+            })
             ->orderByDesc('created_at')
             ->get();
     }
@@ -66,7 +74,15 @@ class PublicMessageQueryService
                             ]);
                     },
                 ])
+                ->withCount([
+                    'comments as comments_count'
+                ])
                 ->where('is_public', true)
+                // Only show verified records: authenticated users OR verified guest users
+                ->where(function($query) {
+                    $query->whereNotNull('user_id')
+                          ->orWhereNotNull('email_verified_at');
+                })
                 ->orderByDesc('created_at')
                 ->get();
         } catch (\Throwable $exception) {

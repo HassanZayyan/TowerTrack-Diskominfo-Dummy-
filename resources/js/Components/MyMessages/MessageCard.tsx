@@ -9,6 +9,7 @@ interface MessageItem {
   category: string;
   status: string | undefined | null;
   responsesCount: number;
+  commentsCount: number;
   senderName: string;
   senderEmail: string;
   isAnonymous: boolean;
@@ -79,11 +80,19 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen, 
         
         {/* Actions Section */}
         <div className="flex items-center justify-between sm:justify-end gap-3">
-          <div className="flex items-center text-xs text-gray-600">
-            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span className="whitespace-nowrap">{item.responsesCount} balasan</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-xs text-gray-600">
+              <svg className="w-4 h-4 mr-1 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="whitespace-nowrap">{item.commentsCount || 0} komentar</span>
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <svg className="w-4 h-4 mr-1 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              <span className="whitespace-nowrap">{item.responsesCount || 0} balasan</span>
+            </div>
           </div>
           <button
             className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium whitespace-nowrap touch-manipulation transition-colors"

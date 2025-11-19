@@ -103,6 +103,9 @@ Route::get('/my-messages/my-posts', function () {
         },
         'images:id,report_id,file_path,file_type'
     ])
+    ->withCount([
+        'comments as comments_count'
+    ])
     ->where('user_id', auth()->id())
     ->orderByDesc('created_at')
     ->get();
@@ -119,6 +122,9 @@ Route::get('/my-messages/my-posts', function () {
                         $q->select('id','feedback_id','created_at','user_id','message','sender_type','sender_name','sender_email','sender_phone')
                           ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 }
+            ])
+            ->withCount([
+                'comments as comments_count'
             ])
             ->where('user_id', auth()->id())
             ->orderByDesc('created_at')
@@ -161,10 +167,15 @@ Route::get('/my-messages/private', function () {
         },
         'images:id,report_id,file_path,file_type'
     ])
+    ->withCount([
+        'comments as comments_count'
+    ])
     ->where('email', $email)
     ->where('reporter_phone', $phone)
     ->where('is_public', false) // Only private reports
     ->whereNull('user_id')
+    // Only show verified guest records
+    ->whereNotNull('email_verified_at')
     ->orderByDesc('created_at')
     ->get();
     
@@ -180,10 +191,15 @@ Route::get('/my-messages/private', function () {
                       ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                 }
             ])
+            ->withCount([
+                'comments as comments_count'
+            ])
             ->where('email', $email)
             ->where('sender_phone', $phone)
             ->where('is_public', false) // Only private feedbacks
             ->whereNull('user_id')
+            // Only show verified guest records
+            ->whereNotNull('email_verified_at')
             ->orderByDesc('created_at')
             ->get();
         }

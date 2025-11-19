@@ -83,6 +83,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 5.5,
             'location_captured_at' => now()->subDays(2),
             'is_public' => true,
+            'email_verified_at' => now()->subDays(2), // Guest user verified for seeder data
         ]);
 
         // 2. Report: Status Closed (Tertutup), Role Complainant, Public
@@ -117,6 +118,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 8.1,
             'location_captured_at' => now()->subDays(5),
             'is_public' => true,
+            'email_verified_at' => now()->subDays(5), // Guest user verified for seeder data
         ]);
 
         // 4. Report: Status Pending, Role Complainant, Private
@@ -151,6 +153,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 4.8,
             'location_captured_at' => now()->subDays(8),
             'is_public' => false,
+            'email_verified_at' => now()->subDays(8), // Guest user verified for seeder data
         ]);
 
         // 6. Report: Status In Progress, Role Guest, Public
@@ -168,6 +171,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 7.2,
             'location_captured_at' => now()->subHours(18),
             'is_public' => true,
+            'email_verified_at' => now()->subHours(18), // Guest user verified for seeder data
         ]);
 
         // ===== FEEDBACKS SEEDER =====
@@ -189,6 +193,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 4.3,
             'location_captured_at' => now()->subDays(3),
             'is_public' => true,
+            'email_verified_at' => now()->subDays(3), // Guest user verified for seeder data
         ]);
 
         // 2. Feedback: Status Closed, Role Complainant, Public
@@ -223,6 +228,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 7.2,
             'location_captured_at' => now()->subDays(7),
             'is_public' => true,
+            'email_verified_at' => now()->subDays(7), // Guest user verified for seeder data
         ]);
 
         // 4. Feedback: Status Responded, Role Complainant, Private
@@ -257,6 +263,7 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 6.1,
             'location_captured_at' => now()->subDays(12),
             'is_public' => true,
+            'email_verified_at' => now()->subDays(12), // Guest user verified for seeder data
         ]);
 
         // 6. Feedback: Status Pending, Role Complainant, Private
@@ -291,12 +298,14 @@ class ReportFeedbackSeeder extends Seeder
             'reporter_accuracy' => 5.3,
             'location_captured_at' => now()->subHours(8),
             'is_public' => true,
+            'email_verified_at' => now()->subHours(8), // Guest user verified for seeder data
         ]);
 
         $this->command->info('✓ Reports dan Feedbacks berhasil di-seed!');
         $this->command->info("  - 6 Reports dibuat dari tower yang ada di database");
         $this->command->info("  - 7 Feedbacks dibuat dari tower yang ada di database");
         $this->command->info("  - Semua data memiliki koordinat reporter sesuai flow asli");
+        $this->command->info("  - Guest users memiliki email_verified_at agar muncul di frontend");
         $this->command->info("  - Variasi: Status terbuka/tertutup, Guest/Complainant, Public/Private");
     }
 }

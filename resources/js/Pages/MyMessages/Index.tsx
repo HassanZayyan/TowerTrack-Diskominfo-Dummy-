@@ -9,38 +9,7 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
-
-type ReportItem = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null; // For anonymous users
-  reporter_name?: string | null; // For anonymous users
-  reporter_phone?: string | null; // For anonymous users
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null; // For authenticated users
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  responses?: Array<{ id: number; report_id: number; created_at: string }>;
-};
-
-type FeedbackItem = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null; // For anonymous users
-  sender_name?: string | null; // For anonymous users
-  sender_phone?: string | null; // For anonymous users
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null; // For authenticated users
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  responses?: Array<{ id: number; feedback_id: number; created_at: string }>;
-};
+import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
 
 type MyMessagesProps = {
   reports?: ReportItem[];
@@ -48,19 +17,6 @@ type MyMessagesProps = {
   showEmailInput?: boolean;
   isAnonymous?: boolean;
   isMyPosts?: boolean; // Flag to indicate if this is the "My Posts" view
-};
-
-type MessageItem = {
-  id: string;
-  type: 'Keluhan' | 'Masukan';
-  created_at: string;
-  towerName: string;
-  category: string;
-  status: string | undefined | null;
-  responsesCount: number;
-  senderName: string; // Display name (from user.name or reporter_name/sender_name)
-  senderEmail: string; // Display email (from user.email or email field)
-  isAnonymous: boolean; // Whether the sender is anonymous
 };
 
 export default function MyMessagesIndex({ 
@@ -146,6 +102,7 @@ export default function MyMessagesIndex({
       category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
       status: r.status || 'pending',
       responsesCount: r.responses?.length ?? 0,
+      commentsCount: r.comments_count ?? 0,
       // Extract sender info - prefer authenticated user info over anonymous info
       senderName: r.user?.name || r.reporter_name || 'Anonymous',
       senderEmail: r.user?.email || r.email || '-',
@@ -160,6 +117,7 @@ export default function MyMessagesIndex({
       category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
       status: f.status || 'pending',
       responsesCount: f.responses?.length ?? 0,
+      commentsCount: f.comments_count ?? 0,
       // Extract sender info - prefer authenticated user info over anonymous info
       senderName: f.user?.name || f.sender_name || 'Anonymous',
       senderEmail: f.user?.email || f.email || '-',
