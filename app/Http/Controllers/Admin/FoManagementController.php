@@ -7,6 +7,8 @@ use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
 use App\Rules\GoogleDriveUrl;
+use App\Traits\HasFoPointValidation;
+use App\Traits\HasFoRouteStatistics;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FoManagementController extends Controller
 {
+    use HasFoPointValidation, HasFoRouteStatistics;
     /**
      * Display list of FO routes (main entry point)
      * Optimized: path_coordinates excluded to reduce payload size
@@ -318,7 +321,8 @@ class FoManagementController extends Controller
      */
     public function storePoint(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->getPointValidationRules(true, true)); // DRY: Use shared validation rules
+        // DRY: Use reusable validation rules from trait
+        $validated = $request->validate($this->getFoPointValidationRules(includeProviders: true, includeRouteId: true, includeImages: true));
 
         // Normalize image fields
         $this->normalizeImageFields($validated); // DRY: Use helper method
@@ -336,8 +340,8 @@ class FoManagementController extends Controller
             $point->providers()->sync($syncData);
         }
 
-        // Update route's total_points and path coordinates
-        $this->updateRouteStatistics($routeId);
+        // DRY: Use reusable route statistics update from trait
+        $this->updateFoRouteStatistics($routeId);
 
         // Invalidate cache for this route since points changed
         // GeoJSON will be regenerated on-demand when user next selects this route
@@ -408,7 +412,8 @@ class FoManagementController extends Controller
      */
     public function updatePoint(Request $request, FoPoint $foPoint): RedirectResponse
     {
-        $validated = $request->validate($this->getPointValidationRules(true)); // DRY: Use shared validation rules
+        // DRY: Use reusable validation rules from trait
+        $validated = $request->validate($this->getFoPointValidationRules(includeProviders: true, includeRouteId: false, includeImages: true));
 
         // Normalize image fields
         $this->normalizeImageFields($validated); // DRY: Use helper method
@@ -430,7 +435,8 @@ class FoManagementController extends Controller
         if ($oldRouteName !== $validated['route_name'] || $oldArea !== $validated['area']) {
             $oldRoute = FoRoute::where('name', $oldRouteName)->where('area', $oldArea)->first();
             if ($oldRoute) {
-                $this->updateRouteStatistics($oldRoute->id);
+                // DRY: Use reusable route statistics update from trait
+                $this->updateFoRouteStatistics($oldRoute->id);
                 $this->invalidateRouteCache($oldRoute->id);
             }
         }
@@ -440,7 +446,8 @@ class FoManagementController extends Controller
             ->where('area', $validated['area'])
             ->first();
         if ($newRoute) {
-            $this->updateRouteStatistics($newRoute->id);
+            // DRY: Use reusable route statistics update from trait
+            $this->updateFoRouteStatistics($newRoute->id);
             $this->invalidateRouteCache($newRoute->id);
 
             // Redirect to route detail if we came from there
@@ -489,8 +496,8 @@ class FoManagementController extends Controller
             // Invalidate cache (GeoJSON will regenerate on-demand when route is loaded)
             $this->invalidateRouteCache($route->id);
             
-            // Update route statistics (total distance might change)
-            $this->updateRouteStatistics($route->id);
+            // DRY: Use reusable route statistics update from trait
+            $this->updateFoRouteStatistics($route->id);
 
             \Log::info('Point coordinates updated via drag - GeoJSON will regenerate on-demand', [
                 'point_id' => $foPoint->id,
@@ -526,7 +533,8 @@ class FoManagementController extends Controller
         // Update associated route's statistics
         $route = FoRoute::where('name', $routeName)->where('area', $area)->first();
         if ($route) {
-            $this->updateRouteStatistics($route->id);
+            // DRY: Use reusable route statistics update from trait
+            $this->updateFoRouteStatistics($route->id);
             $this->invalidateRouteCache($route->id);
         }
 
@@ -550,14 +558,10 @@ class FoManagementController extends Controller
     public function storeRoute(Request $request): RedirectResponse
     {
         try {
-            // Validate incoming data
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'area' => 'required|in:ungaran',
-                'description' => 'nullable|string|max:1000',
-                'status' => 'required|in:active,inactive,maintenance',
-                'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
-            ]);
+            // DRY: Use reusable validation rules from trait
+            $validated = $request->validate(
+                $this->getFoRouteValidationRules(includePathCoordinates: false)
+            );
 
             \Log::info('Creating new FO Route', [
                 'validated_data' => $validated,
@@ -668,14 +672,10 @@ class FoManagementController extends Controller
     public function updateRoute(Request $request, FoRoute $foRoute): RedirectResponse
     {
         try {
-            // Validate incoming data
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'area' => 'required|in:ungaran',
-                'description' => 'nullable|string|max:1000',
-                'status' => 'required|in:active,inactive,maintenance',
-                'color' => 'nullable|string|regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/',
-            ]);
+            // DRY: Use reusable validation rules from trait
+            $validated = $request->validate(
+                $this->getFoRouteValidationRules(includePathCoordinates: false)
+            );
 
             \Log::info('Updating FO Route', [
                 'route_id' => $foRoute->id,
@@ -699,8 +699,8 @@ class FoManagementController extends Controller
                         'area' => $validated['area'],
                     ]);
 
-                // Update route statistics
-                $this->updateRouteStatistics($foRoute->id);
+                // DRY: Use reusable route statistics update from trait
+                $this->updateFoRouteStatistics($foRoute->id);
             }
 
             // Always invalidate cache when route is updated
@@ -1171,75 +1171,6 @@ class FoManagementController extends Controller
         }
     }
 
-    /**
-     * Get validation rules for FO point
-     * DRY: Reusable validation rules untuk create dan update
-     */
-    private function getPointValidationRules(bool $includeProviders = false, bool $includeRouteId = false): array
-    {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran',
-            'type' => 'required|in:pole,junction,hub,endpoint',
-            'status' => 'required|in:active,inactive,maintenance',
-            'side_of_road' => 'nullable|in:left,right,unknown',
-            'route_name' => 'required|string|max:255',
-            'sequence_number' => 'required|integer|min:1',
-            'description' => 'nullable|string|max:1000',
-            'isp_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl],
-            'pole_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl],
-            'junction_box_image' => ['nullable', 'string', 'max:2048', new GoogleDriveUrl],
-        ];
-
-        if ($includeRouteId) {
-            $rules['route_id'] = 'required|exists:fo_routes,id';
-        }
-
-        if ($includeProviders) {
-            $rules['providers'] = 'nullable|array';
-            $rules['providers.*'] = 'integer|exists:fo_providers,id';
-        }
-
-        return $rules;
-    }
-
-    /**
-     * Update route statistics based on its points
-     */
-    private function updateRouteStatistics(int $routeId): void
-    {
-        $route = FoRoute::findOrFail($routeId);
-
-        // Get all points for this route ordered by sequence
-        $points = FoPoint::where('route_name', $route->name)
-            ->where('area', $route->area)
-            ->orderBy('sequence_number')
-            ->get();
-
-        // Build coordinates array from points
-        $coordinates = $points->map(function ($point) {
-            return [
-                'lat' => (float) $point->latitude,
-                'lng' => (float) $point->longitude,
-            ];
-        })->toArray();
-
-        // Calculate total distance if we have points
-        $totalDistance = 0;
-        if (count($coordinates) > 1 && method_exists($route, 'calculateDistance')) {
-            $route->path_coordinates = $coordinates;
-            $totalDistance = $route->calculateDistance();
-        }
-
-        // Update route with new statistics
-        $route->update([
-            'total_points' => $points->count(),
-            'path_coordinates' => $coordinates,
-            'total_distance' => $totalDistance,
-        ]);
-    }
 
     /**
      * Display a listing of providers

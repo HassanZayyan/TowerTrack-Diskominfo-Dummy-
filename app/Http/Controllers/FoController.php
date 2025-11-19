@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
+use App\Traits\HasFoPointValidation;
+use App\Traits\HasFoRouteStatistics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class FoController extends Controller
 {
+    use HasFoPointValidation, HasFoRouteStatistics;
     // Constants untuk validasi
     private const VALID_SIDE_OF_ROAD = ['left', 'right', 'unknown'];
 
@@ -248,15 +251,10 @@ class FoController extends Controller
      */
     public function storePoint(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'area' => 'required|in:ungaran',
-            'description' => 'nullable|string',
-            'type' => 'required|string|in:pole,junction,hub,endpoint',
-            'status' => 'required|string|in:active,inactive,maintenance',
-        ]);
+        // DRY: Use reusable validation rules from trait
+        $validated = $request->validate(
+            $this->getFoPointValidationRules(includeProviders: false, includeRouteId: false, includeImages: false)
+        );
 
         $foPoint = FoPoint::create($validated);
 
@@ -272,16 +270,10 @@ class FoController extends Controller
      */
     public function storeRoute(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'area' => 'required|in:ungaran',
-            'description' => 'nullable|string',
-            'path_coordinates' => 'required|array|min:2',
-            'path_coordinates.*.lat' => 'required|numeric|between:-90,90',
-            'path_coordinates.*.lng' => 'required|numeric|between:-180,180',
-            'color' => 'nullable|string|max:7',
-            'status' => 'required|string|in:active,inactive,maintenance',
-        ]);
+        // DRY: Use reusable validation rules from trait
+        $validated = $request->validate(
+            $this->getFoRouteValidationRules(includePathCoordinates: true)
+        );
 
         $foRoute = FoRoute::create($validated);
 
@@ -302,17 +294,10 @@ class FoController extends Controller
     public function updatePoint(Request $request, FoPoint $foPoint)
     {
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'latitude' => 'required|numeric|between:-90,90',
-                'longitude' => 'required|numeric|between:-180,180',
-                'area' => 'required|in:ungaran',
-                'description' => 'nullable|string|max:1000',
-                'type' => 'required|string|in:pole,junction,hub,endpoint',
-                'status' => 'required|string|in:active,inactive,maintenance',
-                'route_name' => 'required|string|max:255',
-                'sequence_number' => 'required|integer|min:1',
-            ]);
+            // DRY: Use reusable validation rules from trait
+            $validated = $request->validate(
+                $this->getFoPointValidationRules(includeProviders: false, includeRouteId: false, includeImages: false)
+            );
 
             $foPoint->update($validated);
 
@@ -342,36 +327,15 @@ class FoController extends Controller
     public function updateRoute(Request $request, FoRoute $foRoute)
     {
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'area' => 'required|in:ungaran',
-                'description' => 'nullable|string|max:1000',
-                'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
-                'status' => 'required|string|in:active,inactive,maintenance',
-            ]);
+            // DRY: Use reusable validation rules from trait
+            $validated = $request->validate(
+                $this->getFoRouteValidationRules(includePathCoordinates: false)
+            );
 
             $foRoute->update($validated);
 
-            // Recalculate total distance and points if needed
-            $points = FoPoint::where('route_name', $foRoute->name)
-                ->orderBy('sequence_number')
-                ->get();
-
-            if ($points->count() > 1) {
-                $totalDistance = 0;
-                for ($i = 0; $i < $points->count() - 1; $i++) {
-                    $totalDistance += $this->calculateDistance(
-                        $points[$i]->latitude,
-                        $points[$i]->longitude,
-                        $points[$i + 1]->latitude,
-                        $points[$i + 1]->longitude
-                    );
-                }
-                $foRoute->update([
-                    'total_distance' => $totalDistance,
-                    'total_points' => $points->count(),
-                ]);
-            }
+            // DRY: Use reusable route statistics update from trait
+            $this->updateFoRouteStatistics($foRoute->id);
 
             return response()->json([
                 'success' => true,
@@ -948,7 +912,8 @@ class FoController extends Controller
             $endLat = is_array($end) ? (isset($end['lat']) ? $end['lat'] : $end[1]) : $end;
 
             // Calculate distance to determine number of intermediate points
-            $distance = $this->calculateDistance(
+            // DRY: Use method from trait
+            $distance = $this->calculateHaversineDistance(
                 $startLat, $startLng,
                 $endLat, $endLng
             );
@@ -977,7 +942,8 @@ class FoController extends Controller
     private function generateIntermediatePoints($lat1, $lng1, $lat2, $lng2): array
     {
         $points = [];
-        $distance = $this->calculateDistance($lat1, $lng1, $lat2, $lng2);
+        // DRY: Use method from trait
+        $distance = $this->calculateHaversineDistance($lat1, $lng1, $lat2, $lng2);
 
         // Generate 2-5 intermediate points based on distance
         $numPoints = max(2, min(5, (int) ($distance * 5)));
@@ -1028,24 +994,6 @@ class FoController extends Controller
         return $points;
     }
 
-    /**
-     * Calculate distance between two coordinates in kilometers
-     */
-    private function calculateDistance($lat1, $lng1, $lat2, $lng2): float
-    {
-        $earthRadius = 6371; // Earth's radius in kilometers
-
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-             sin($dLng / 2) * sin($dLng / 2);
-
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
-    }
 
     /**
      * Calculate map bounds from points
