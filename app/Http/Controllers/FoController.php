@@ -595,8 +595,12 @@ class FoController extends Controller
 
         // Check if this is an Inertia.js request
         if ($request->header('X-Inertia')) {
-            // Return Inertia response with detailData
-            return back()->with('detailData', $detailData);
+            // FIX: Use Inertia::render() instead of back() to ensure detailData is available
+            // When using only: ['detailData'], Inertia needs the prop to exist in the response
+            // back() redirects to previous page which doesn't have detailData in its props
+            return Inertia::render('DataFo/Index', [
+                'detailData' => $detailData,
+            ]);
         }
 
         // Fallback to JSON response for non-Inertia requests (backwards compatibility)
