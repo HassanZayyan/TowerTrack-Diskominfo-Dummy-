@@ -99,6 +99,7 @@ interface DataFoProps {
   availableProviders?: Provider[];
   selectedProvider?: string;
   mapData?: MapData;
+  detailData?: any; // Add detailData prop for Inertia response
 }
 
 // Component to fit map bounds
@@ -125,7 +126,8 @@ export default function DataFoIndex({
   availableAreas = [],
   availableProviders = [],
   selectedProvider: initialProvider = 'all',
-  mapData
+  mapData,
+  detailData: propDetailData
 }: DataFoProps) {
   // Initialize from URL for shareable state
   const initParams = new URLSearchParams(window.location.search);
@@ -148,6 +150,15 @@ export default function DataFoIndex({
   const [detailData, setDetailData] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  
+  // Handle detailData from Inertia props (when using only: ['detailData'])
+  useEffect(() => {
+    if (propDetailData && propDetailData.success) {
+      setDetailData(propDetailData);
+      setShowDetailModal(true);
+      setDetailLoading(false);
+    }
+  }, [propDetailData]);
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'info' });
   const [loading, setLoading] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-7.1368, 110.4044]);
