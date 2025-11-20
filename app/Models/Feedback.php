@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\Commentable;
 use App\Traits\HasGuestEmailVerification;
+use App\Services\CacheService;
 
 class Feedback extends Model
 {
@@ -56,5 +57,29 @@ class Feedback extends Model
         return $this->hasMany(FeedbackResponse::class);
     }
 
-    
+    /**
+     * Boot the model and set up cache invalidation
+     */
+    protected static function booted(): void
+    {
+        static::created(function ($feedback) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_feedbacks:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+        });
+
+        static::updated(function ($feedback) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_feedbacks:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('feedbacks:*');
+        });
+
+        static::deleted(function ($feedback) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_feedbacks:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('feedbacks:*');
+        });
+    }
 }

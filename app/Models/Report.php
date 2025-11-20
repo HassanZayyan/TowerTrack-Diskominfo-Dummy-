@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Traits\Commentable;
 use App\Traits\HasGuestEmailVerification;
+use App\Services\CacheService;
 
 class Report extends Model
 {
@@ -84,4 +85,29 @@ class Report extends Model
         );
     }
 
+    /**
+     * Boot the model and set up cache invalidation
+     */
+    protected static function booted(): void
+    {
+        static::created(function ($report) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_reports:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+        });
+
+        static::updated(function ($report) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_reports:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('reports:*');
+        });
+
+        static::deleted(function ($report) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_reports:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('reports:*');
+        });
+    }
 }

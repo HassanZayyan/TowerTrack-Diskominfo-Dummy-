@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
+use App\Services\CacheService;
 use App\Traits\HasFoPointValidation;
 use App\Traits\HasFoRouteStatistics;
 use Illuminate\Http\Request;
@@ -115,44 +116,47 @@ class FoController extends Controller
         // Apply filters using helper methods
         $this->applyFiltersToPoints($pointsQuery, $provider, $side);
 
-        // Get FO points by area with proper data formatting
-        $foPoints = $pointsQuery
-            ->with(['providers' => function ($q) {
-                $q->wherePivot('is_active', true)
-                    ->select('fo_providers.id', 'fo_providers.name', 'fo_providers.default_sort_order')
-                    ->orderBy('fo_providers.default_sort_order')
-                    ->orderBy('fo_providers.name');
-            }])
-            ->orderBy('route_name')
-            ->orderBy('sequence_number')
-            ->get()
-            ->map(function ($point) {
-                return [
-                    'id' => $point->id,
-                    'name' => $point->name,
-                    'latitude' => (float) $point->latitude,
-                    'longitude' => (float) $point->longitude,
-                    'type' => $point->type,
-                    'route_name' => $point->route_name,
-                    'sequence_number' => $point->sequence_number,
-                    'description' => $point->description,
-                    'side_of_road' => $point->side_of_road ?? 'unknown',
-                    'images' => [
-                        'isp' => $point->isp_image_url,
-                        'pole' => $point->pole_image_url,
-                        'junction_box' => $point->junction_box_image_url,
-                    ],
-                    'has_images' => ! empty($point->isp_image) || ! empty($point->pole_image) || ! empty($point->junction_box_image),
-                    'area' => $point->area,
-                    'status' => $point->status,
-                    'providers' => $point->providers->map(function ($provider) {
-                        return [
-                            'id' => $provider->id,
-                            'name' => $provider->name,
-                        ];
-                    })->toArray(),
-                ];
-            });
+        // Cache FO points query
+        $cacheKey = CacheService::foPointsKey($area, $provider, $side);
+        $foPoints = CacheService::remember($cacheKey, function () use ($pointsQuery) {
+            return $pointsQuery
+                ->with(['providers' => function ($q) {
+                    $q->wherePivot('is_active', true)
+                        ->select('fo_providers.id', 'fo_providers.name', 'fo_providers.default_sort_order')
+                        ->orderBy('fo_providers.default_sort_order')
+                        ->orderBy('fo_providers.name');
+                }])
+                ->orderBy('route_name')
+                ->orderBy('sequence_number')
+                ->get()
+                ->map(function ($point) {
+                    return [
+                        'id' => $point->id,
+                        'name' => $point->name,
+                        'latitude' => (float) $point->latitude,
+                        'longitude' => (float) $point->longitude,
+                        'type' => $point->type,
+                        'route_name' => $point->route_name,
+                        'sequence_number' => $point->sequence_number,
+                        'description' => $point->description,
+                        'side_of_road' => $point->side_of_road ?? 'unknown',
+                        'images' => [
+                            'isp' => $point->isp_image_url,
+                            'pole' => $point->pole_image_url,
+                            'junction_box' => $point->junction_box_image_url,
+                        ],
+                        'has_images' => ! empty($point->isp_image) || ! empty($point->pole_image) || ! empty($point->junction_box_image),
+                        'area' => $point->area,
+                        'status' => $point->status,
+                        'providers' => $point->providers->map(function ($provider) {
+                            return [
+                                'id' => $provider->id,
+                                'name' => $provider->name,
+                            ];
+                        })->toArray(),
+                    ];
+                });
+        }, 3600); // Cache for 1 hour
 
         // Build query for FO routes
         $routesQuery = FoRoute::where('area', $area)
@@ -161,12 +165,20 @@ class FoController extends Controller
         // Apply filters using helper method
         $this->applyFiltersToRoutes($routesQuery, $provider, $side);
 
+        // Cache FO routes query
+        $routesCacheKey = CacheService::key('fo_routes', [
+            'area' => $area,
+            'provider' => $provider,
+            'side' => $side,
+        ]);
+        
         // Get FO routes by area - WITHOUT heavy polyline data for initial load
         // Users can load specific route polylines via dropdown on-demand
-        $foRoutes = $routesQuery
-            ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service')
-            ->get()
-            ->map(function ($route) {
+        $foRoutes = CacheService::remember($routesCacheKey, function () use ($routesQuery) {
+            return $routesQuery
+                ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service')
+                ->get()
+                ->map(function ($route) {
                 // Get unique providers for this route through its points
                 $pointIds = FoPoint::where('route_name', $route->name)
                     ->where('area', $route->area)
@@ -212,6 +224,7 @@ class FoController extends Controller
                     'providers' => $providers,
                 ];
             });
+        }, 3600); // Cache for 1 hour
 
         // Calculate map bounds
         $bounds = $this->calculateMapBounds($foPoints);

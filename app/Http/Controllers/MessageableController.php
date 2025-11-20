@@ -415,7 +415,16 @@ abstract class MessageableController extends Controller
                     ? ($directories['image'] ?? 'message-assets/images')
                     : ($directories['video'] ?? 'message-assets/videos');
 
-                $path = $file->store($directory, $disk);
+                // Use ImageOptimizationService for images, regular store for videos
+                if ($isImage) {
+                    $path = \App\Services\ImageOptimizationService::optimizeAndStore(
+                        $file,
+                        $directory,
+                        $disk
+                    );
+                } else {
+                    $path = $file->store($directory, $disk);
+                }
 
                 if (!$path) {
                     return;

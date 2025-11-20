@@ -17,6 +17,7 @@ use App\Http\Middleware\TowerOwnerMiddleware;
 use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
 use App\Http\Controllers\Admin\FoManagementController;
+use App\Http\Controllers\MyMessagesController;
 use App\Services\PublicMessageQueryService;
 
 Route::get('/', function () {
@@ -76,145 +77,13 @@ Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name(
 Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');
 
 // User reports page (messages) - accessible by authenticated users or anonymous
-Route::get('/my-messages', function (PublicMessageQueryService $messageQueryService) {
-    $isAuthenticated = auth()->check();
-
-    return Inertia::render('MyMessages/Index', [
-        'reports' => $messageQueryService->getPublicReports($isAuthenticated),
-        'feedbacks' => $messageQueryService->getPublicFeedbacks($isAuthenticated),
-        'showEmailInput' => false,
-        'isAnonymous' => !$isAuthenticated,
-    ]);
-})->name('my.messages');
+Route::get('/my-messages', [MyMessagesController::class, 'index'])->name('my.messages');
 
 // "Pesan Saya" route - Show user's own messages (both public and private)
-Route::get('/my-messages/my-posts', function () {
-    if (!auth()->check()) {
-        return redirect()->route('my.messages');
-    }
-    
-    // Get ALL user's reports (both public and private)
-    $reports = \App\Models\Report::with([
-        'tower:id,site_name,alamat_menara',
-        'user:id,name,email',
-        'responses' => function ($q) {
-            $q->select('id','report_id','message','created_at','user_id','sender_type','sender_name','sender_email','sender_phone')
-              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-        },
-        'images:id,report_id,file_path,file_type'
-    ])
-    ->withCount([
-        'comments as comments_count'
-    ])
-    ->where('user_id', auth()->id())
-    ->orderByDesc('created_at')
-    ->get();
+Route::get('/my-messages/my-posts', [MyMessagesController::class, 'myPosts'])->middleware('auth')->name('my.messages.myposts');
 
-    $feedbacks = collect();
-    
-    try {
-        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-            $feedbacks = \App\Models\Feedback::with([
-                'tower:id,site_name,alamat_menara',
-                'user:id,name,email',
-                'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message','sender_type','sender_name','sender_email','sender_phone')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                }
-            ])
-            ->withCount([
-                'comments as comments_count'
-            ])
-            ->where('user_id', auth()->id())
-            ->orderByDesc('created_at')
-            ->get();
-        }
-    } catch (\Exception $e) {
-        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-        $feedbacks = collect();
-    }
-    
-    return Inertia::render('MyMessages/Index', [
-        'reports' => $reports,
-        'feedbacks' => $feedbacks,
-        'showEmailInput' => false,
-        'isAnonymous' => false,
-        'isMyPosts' => true, // Flag to indicate this is "My Posts" view
-    ]);
-})->middleware('auth')->name('my.messages.myposts');
-
-// Guest private message tracking route - untuk melacak pesan private guest
-Route::get('/my-messages/private', function () {
-    $email = request()->query('email');
-    $phone = request()->query('phone');
-    
-    if (!$email || !$phone) {
-        return Inertia::render('MyMessages/PrivateTracking', [
-            'reports' => [],
-            'feedbacks' => [],
-            'email' => $email,
-            'phone' => $phone,
-        ]);
-    }
-    
-    // Get private reports for this email AND phone combination
-    $reports = \App\Models\Report::with([
-        'tower:id,site_name,alamat_menara', 
-        'responses' => function ($q) {
-            $q->select('id','report_id','message','created_at','user_id','sender_type','sender_name','sender_email','sender_phone')
-              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-        },
-        'images:id,report_id,file_path,file_type'
-    ])
-    ->withCount([
-        'comments as comments_count'
-    ])
-    ->where('email', $email)
-    ->where('reporter_phone', $phone)
-    ->where('is_public', false) // Only private reports
-    ->whereNull('user_id')
-    // Only show verified guest records
-    ->whereNotNull('email_verified_at')
-    ->orderByDesc('created_at')
-    ->get();
-    
-    // Get private feedbacks for this email AND phone combination
-    $feedbacks = collect();
-    try {
-        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-            $feedbacks = \App\Models\Feedback::with([
-                'tower:id,site_name,alamat_menara',
-                'assets:id,feedback_id,file_path,file_type',
-                'responses' => function ($q) {
-                    $q->select('id','feedback_id','created_at','user_id','message','sender_type','sender_name','sender_email','sender_phone')
-                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                }
-            ])
-            ->withCount([
-                'comments as comments_count'
-            ])
-            ->where('email', $email)
-            ->where('sender_phone', $phone)
-            ->where('is_public', false) // Only private feedbacks
-            ->whereNull('user_id')
-            // Only show verified guest records
-            ->whereNotNull('email_verified_at')
-            ->orderByDesc('created_at')
-            ->get();
-        }
-    } catch (\Exception $e) {
-        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-        $feedbacks = collect();
-    }
-    
-    return Inertia::render('MyMessages/PrivateTracking', [
-        'reports' => $reports,
-        'feedbacks' => $feedbacks,
-        'email' => $email,
-        'phone' => $phone,
-    ]);
-})->name('my.messages.private');
+// Guest private message tracking route
+Route::get('/my-messages/private', [MyMessagesController::class, 'privateTracking'])->name('my.messages.private');
 
 // Public detail pages for reports and feedbacks (with comments)
 Route::get('/my-messages/reports/{report}', [ComplaintController::class, 'showPublic'])
