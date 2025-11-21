@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { formatDateOnly } from '@/utils/dateHelpers';
+import { getFOStatusColor } from '@/utils/statusHelpers';
+import { getTypeLabel } from '@/utils/foConstants';
 
 interface FoPoint {
   id: number;
@@ -61,20 +63,7 @@ interface PageProps {
 
 // Route Header Component
 const RouteHeader = ({ foRoute, canEdit }: { foRoute: FoRoute; canEdit: boolean }) => {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'active':
-        return { bg: 'bg-green-100', text: 'text-green-800', label: 'Aktif' };
-      case 'inactive':
-        return { bg: 'bg-red-100', text: 'text-red-800', label: 'Non-aktif' };
-      case 'maintenance':
-        return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Maintenance' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Unknown' };
-    }
-  };
-
-  const statusConfig = getStatusConfig(foRoute.status);
+  const statusConfig = getFOStatusColor(foRoute.status);
 
   return (
     <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-4 sm:p-6">
@@ -242,29 +231,6 @@ const PointsTable = ({
   routeId: number;
   onShowDetail: (point: FoPoint) => void;
 }) => {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'active':
-        return { bg: 'bg-green-100', text: 'text-green-800', label: 'Aktif' };
-      case 'inactive':
-        return { bg: 'bg-red-100', text: 'text-red-800', label: 'Non-aktif' };
-      case 'maintenance':
-        return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Maintenance' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Unknown' };
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    const labels = {
-      'pole': 'Tiang/Pole',
-      'junction': 'Junction Box',
-      'hub': 'Hub',
-      'endpoint': 'Endpoint'
-    };
-    return labels[type as keyof typeof labels] || type;
-  };
-
   const allSelected = points.length > 0 && selectedPoints.length === points.length;
   const someSelected = selectedPoints.length > 0 && selectedPoints.length < points.length;
 
@@ -360,7 +326,7 @@ const PointsTable = ({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {points.map((point) => {
-                const statusConfig = getStatusConfig(point.status);
+                const statusConfig = getFOStatusColor(point.status);
                 const isSelected = selectedPoints.includes(point.id);
                 
                 return (
@@ -526,29 +492,6 @@ export default function RouteDetail() {
     setSelectedPointDetail(null);
   };
 
-  const getTypeLabel = (type: string) => {
-    const labels = {
-      'pole': 'Tiang/Pole',
-      'junction': 'Junction Box',
-      'hub': 'Hub',
-      'endpoint': 'Endpoint'
-    };
-    return labels[type as keyof typeof labels] || type;
-  };
-
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'active':
-        return { bg: 'bg-green-100', text: 'text-green-800', label: 'Aktif' };
-      case 'inactive':
-        return { bg: 'bg-red-100', text: 'text-red-800', label: 'Non-aktif' };
-      case 'maintenance':
-        return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Maintenance' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Unknown' };
-    }
-  };
-
   return (
     <AdminLayout title={`Detail Jalur - ${foRoute.name}`}>
       <Head title={`Detail Jalur - ${foRoute.name}`} />
@@ -674,8 +617,8 @@ export default function RouteDetail() {
                   <div>
                     <label className="text-sm font-medium text-gray-700">Status</label>
                     <div className="mt-1">
-                      <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${getStatusConfig(selectedPointDetail.status).bg} ${getStatusConfig(selectedPointDetail.status).text}`}>
-                        {getStatusConfig(selectedPointDetail.status).label}
+                      <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${getFOStatusColor(selectedPointDetail.status).bg} ${getFOStatusColor(selectedPointDetail.status).text}`}>
+                        {getFOStatusColor(selectedPointDetail.status).label}
                       </span>
                     </div>
                   </div>

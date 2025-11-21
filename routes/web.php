@@ -127,6 +127,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
         Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/restore', [\App\Http\Controllers\Admin\UserController::class, 'restore'])->name('users.restore');
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
     });
 

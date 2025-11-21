@@ -4,6 +4,8 @@
  * Provides consistent status color mapping and labels across the application.
  */
 
+import React from 'react';
+
 export type StatusConfig = {
   bg: string;
   text: string;
@@ -134,3 +136,37 @@ export function getStatusBadgeClass(status: string | undefined | null): string {
   return configs[status || ''] || 'bg-gray-100 text-gray-800 border-gray-300';
 }
 
+/**
+ * Get status label for message statuses (Reports/Feedbacks).
+ * 
+ * @param status Message status value
+ * @returns Status label in Indonesian
+ */
+export function getStatusLabel(status: string | undefined | null): string {
+  const labels: Record<string, string> = {
+    pending: 'BARU',
+    in_progress: 'PROGRESS',
+    closed: 'SELESAI',
+    responded: 'DIBALAS',
+    resolved: 'SELESAI',
+  };
+
+  return labels[status || ''] || 'TIDAK DIKETAHUI';
+}
+
+/**
+ * Render status badge JSX for message statuses (Reports/Feedbacks).
+ * 
+ * @param status Message status value
+ * @param className Additional CSS classes
+ * @returns JSX element for status badge
+ */
+export function renderMessageStatusBadge(status: string | undefined | null, className: string = ''): React.ReactElement {
+  const label = getStatusLabel(status);
+  const classes = getStatusBadgeClass(status);
+  return React.createElement(
+    'span',
+    { className: `inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${classes} ${className}` },
+    label
+  );
+}

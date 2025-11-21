@@ -1188,6 +1188,7 @@ class FoManagementController extends Controller
                     'description' => $provider->description,
                     'default_sort_order' => $provider->default_sort_order,
                     'is_active' => $provider->is_active,
+                    'points_count' => $provider->foPoints()->count(),
                     'created_at' => $provider->created_at->format('d M Y H:i'),
                     'updated_at' => $provider->updated_at->format('d M Y H:i'),
                 ];
@@ -1247,6 +1248,7 @@ class FoManagementController extends Controller
     /**
      * Remove the specified provider
      * DRY: Provider management methods consolidated in FoManagementController
+     * Best Practice: Soft delete (is_active = false) if still used, hard delete if not used
      */
     public function destroyProvider(FoProvider $foProvider): RedirectResponse
     {
@@ -1254,16 +1256,20 @@ class FoManagementController extends Controller
         $pointsCount = $foProvider->foPoints()->count();
 
         if ($pointsCount > 0) {
-            return back()->withErrors([
-                'provider' => "Provider tidak dapat dihapus karena masih digunakan oleh {$pointsCount} titik FO. Nonaktifkan provider terlebih dahulu.",
-            ]);
+            // Soft delete: set is_active = false instead of hard delete
+            $foProvider->update(['is_active' => false]);
+
+            return redirect()
+                ->route('admin.fo-management.providers.index')
+                ->with('success', "Provider '{$foProvider->name}' dinonaktifkan karena masih digunakan oleh {$pointsCount} titik FO. Data tetap tersimpan untuk keperluan audit.");
         }
 
+        // Hard delete if not used by any points
         $foProvider->delete();
 
         return redirect()
             ->route('admin.fo-management.providers.index')
-            ->with('success', 'Provider berhasil dihapus');
+            ->with('success', 'Provider berhasil dihapus permanen');
     }
 
     /**

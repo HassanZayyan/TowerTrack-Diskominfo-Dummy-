@@ -404,10 +404,6 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
   recentPoints: RecentPoint[]; 
   recentRoutes: RecentRoute[]; 
 }) => {
-  const getStatusBadge = (status: string) => {
-    return getFOStatusBadgeClass(status);
-  };
-
   const getTypeIcon = (type: string) => {
     const icons = {
       'pole': 'M8 12h.01M12 12h.01M16 12h.01',
@@ -443,7 +439,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
                     <div className="text-xs text-gray-500">{point.created_at ? formatDateOnly(point.created_at) : 'N/A'}</div>
                   </div>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(point.status || 'inactive')}`}>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getFOStatusBadgeClass(point.status || 'inactive')}`}>
                   {point.status === 'active' ? 'Aktif' : point.status === 'inactive' ? 'Non-aktif' : 'Maintenance'}
                 </span>
               </div>
@@ -476,7 +472,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
                     </div>
                   </div>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(route.status || 'inactive')}`}>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getFOStatusBadgeClass(route.status || 'inactive')}`}>
                   {route.status === 'active' ? 'Aktif' : route.status === 'inactive' ? 'Non-aktif' : 'Maintenance'}
                 </span>
               </div>
