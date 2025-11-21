@@ -2,6 +2,7 @@ import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import FoTable from '@/Components/DataFo/FoTable';
+import { getFOStatusBadgeClass } from '@/utils/statusHelpers';
 
 interface FoPoint {
   id: number;
@@ -407,12 +408,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
   recentRoutes: RecentRoute[]; 
 }) => {
   const getStatusBadge = (status: string) => {
-    const configs = {
-      'active': 'bg-green-100 text-green-800',
-      'inactive': 'bg-red-100 text-red-800',
-      'maintenance': 'bg-yellow-100 text-yellow-800'
-    };
-    return configs[status as keyof typeof configs] || 'bg-gray-100 text-gray-800';
+    return getFOStatusBadgeClass(status);
   };
 
   const getTypeIcon = (type: string) => {

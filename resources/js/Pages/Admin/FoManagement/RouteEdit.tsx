@@ -259,8 +259,8 @@ export default function RouteEdit({
                 <div className="space-y-6">
                   <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
@@ -376,21 +376,30 @@ export default function RouteEdit({
                           </svg>
                           Warna Jalur
                         </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="color"
-                            id="color"
-                            value={data.color}
-                            onChange={(e) => setData('color', e.target.value)}
-                            className="h-12 w-16 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-gray-300 transition-colors"
-                          />
-                          <input
-                            type="text"
-                            value={data.color}
-                            onChange={(e) => setData('color', e.target.value)}
-                            className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
-                            placeholder="#3B82F6"
-                          />
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <input
+                              type="color"
+                              id="color"
+                              value={data.color}
+                              onChange={(e) => setData('color', e.target.value)}
+                              className="h-12 w-20 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-red-300 transition-colors"
+                            />
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={data.color}
+                              onChange={(e) => setData('color', e.target.value)}
+                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
+                              placeholder="#3B82F6"
+                            />
+                          </div>
                         </div>
                         {errors.color && (
                           <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
@@ -442,8 +451,8 @@ export default function RouteEdit({
                   {/* Description */}
                   <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                         </svg>
                       </div>
@@ -485,8 +494,8 @@ export default function RouteEdit({
                   {/* Point Management */}
                   <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         </svg>
                       </div>
@@ -529,8 +538,8 @@ export default function RouteEdit({
                 <div className="mt-8 col-span-1 xl:col-span-2">
                   <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                         </svg>
                       </div>

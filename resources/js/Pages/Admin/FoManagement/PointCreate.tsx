@@ -502,14 +502,16 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
             </div>
 
             {/* Provider Selection - DRY: Using reusable component */}
-            <ProviderSelection
-              providers={data.providers || []}
-              availableProviders={availableProviders}
-              onChange={(selectedProviders) => setData('providers', selectedProviders)}
-              errors={errors.providers}
-              colorScheme="purple"
-              label="Pilih Provider"
-            />
+            <div className="mt-4 sm:mt-6">
+              <ProviderSelection
+                providers={data.providers || []}
+                availableProviders={availableProviders}
+                onChange={(selectedProviders) => setData('providers', selectedProviders)}
+                errors={errors.providers}
+                colorScheme="purple"
+                label="Pilih Provider"
+              />
+            </div>
 
             {/* Submit Buttons */}
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">

@@ -12,7 +12,10 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::query()->orderBy('name')->get(['id', 'name', 'email', 'role', 'created_at', 'banned']);
+        // Include soft deleted users
+        $users = User::withTrashed()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'role', 'created_at', 'banned', 'deleted_at']);
         return Inertia::render('Admin/Users', [
             'users' => $users,
         ]);
@@ -67,8 +70,28 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        $user->delete();
-        return back();
+        // Prevent self-deletion
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+        
+        $user->delete(); // Soft delete
+        
+        return back()->with('success', "User '{$user->name}' berhasil dinonaktifkan. User dapat diaktifkan kembali jika diperlukan.");
+    }
+
+    public function restore($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        
+        // Prevent self-restore if user is trying to restore themselves (edge case)
+        if ($user->id === auth()->id() && $user->trashed()) {
+            return back()->with('error', 'Anda tidak dapat mengaktifkan kembali akun Anda sendiri.');
+        }
+        
+        $user->restore();
+        
+        return back()->with('success', "User '{$user->name}' berhasil diaktifkan kembali.");
     }
 }
 

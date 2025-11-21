@@ -854,7 +854,7 @@ export default function DataFoIndex({
                   <select
                     value={selectedProvider}
                     onChange={(e) => handleProviderChange(e.target.value)}
-                    className="w-full px-3 py-2 text-sm font-medium rounded-md border border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm pr-8 bg-white hover:bg-gray-50 transition-colors"
                     title="Filter berdasarkan provider"
                     aria-label="Filter provider"
                   >

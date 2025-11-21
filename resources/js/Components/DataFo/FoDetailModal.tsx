@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface FoPoint {
   id: number;
@@ -56,97 +56,151 @@ export default function FoDetailModal({
   detailData, 
   loading
 }: FoDetailModalProps) {
+  
+  // Prevent body scroll saat modal terbuka
+  useEffect(() => {
+    if (isOpen) {
+      // Simpan scroll position
+      const scrollY = window.scrollY;
+      
+      // Lock body scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restore scroll position saat modal ditutup
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Modal Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden">
-          {/* Modal Header */}
-          <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-white bg-opacity-20 rounded-lg">
-                  {detailData?.type === 'point' ? (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+      {/* Modal Backdrop - Fixed, tidak boleh scroll */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-60 z-50 backdrop-blur-sm"
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          overflow: 'hidden' // Pastikan backdrop tidak bisa scroll
+        }}
+      >
+        {/* Modal Container - Centered dengan flex, tidak scroll */}
+        <div 
+          className="h-full flex items-center justify-center p-4"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            height: '100vh', // Gunakan viewport height, bukan min-height
+            overflow: 'hidden' // Pastikan container tidak scroll
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-white bg-opacity-20 rounded-lg">
+                    {detailData?.type === 'point' ? (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">
+                      Detail {detailData?.type === 'point' ? 'Titik FO' : 'Jalur FO'}
+                    </h3>
+                    <p className="text-red-100 text-sm mt-1">
+                      {detailData?.type === 'point' ? 'Informasi lengkap titik fiber optik' : 'Informasi lengkap jalur fiber optik'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all duration-200 group"
+                >
+                  <svg className="w-6 h-6 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content - Hanya area ini yang bisa scroll */}
+            <div 
+              className="p-6 overflow-y-auto flex-1 bg-white"
+              style={{
+                minHeight: 0, // Penting untuk flex scrolling
+                WebkitOverflowScrolling: 'touch', // Smooth scrolling di mobile
+                overscrollBehavior: 'contain' // Mencegah scroll chaining ke backdrop
+              }}
+            >
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+                  </div>
+                  <div className="mt-6 text-center">
+                    <p className="text-lg font-medium text-gray-700">Memuat detail...</p>
+                    <p className="text-sm text-gray-500 mt-1">Mohon tunggu sebentar</p>
+                  </div>
+                </div>
+              ) : detailData ? (
+                <div className="space-y-8">
+                  {detailData.type === 'point' ? (
+                    <PointDetails 
+                      point={detailData.data.point!} 
+                      relatedRoutes={detailData.data.related_routes || []}
+                    />
                   ) : (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
+                    <RouteDetails 
+                      route={detailData.data.route!}
+                      points={detailData.data.points || []}
+                    />
                   )}
                 </div>
-                <div>
-                  <h3 className="text-2xl font-bold">
-                    Detail {detailData?.type === 'point' ? 'Titik FO' : 'Jalur FO'}
-                  </h3>
-                  <p className="text-red-100 text-sm mt-1">
-                    {detailData?.type === 'point' ? 'Informasi lengkap titik fiber optik' : 'Informasi lengkap jalur fiber optik'}
-                  </p>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Tidak ada data untuk ditampilkan
                 </div>
-              </div>
+              )}
+            </div>
+            
+            {/* Modal Footer - Pastikan background solid dan tidak tembus */}
+            <div 
+              className="p-4 sm:p-6 border-t border-gray-200 flex justify-end bg-white flex-shrink-0"
+              style={{
+                paddingBottom: `max(1rem, calc(1.5rem + env(safe-area-inset-bottom)))`
+              }}
+            >
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all duration-200 group"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
               >
-                <svg className="w-6 h-6 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Tutup
               </button>
             </div>
           </div>
-          
-          {/* Modal Content */}
-          <div className="p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="relative">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
-                </div>
-                <div className="mt-6 text-center">
-                  <p className="text-lg font-medium text-gray-700">Memuat detail...</p>
-                  <p className="text-sm text-gray-500 mt-1">Mohon tunggu sebentar</p>
-                </div>
-              </div>
-            ) : detailData ? (
-              <div className="space-y-8">
-                {detailData.type === 'point' ? (
-                  <PointDetails 
-                    point={detailData.data.point!} 
-                    relatedRoutes={detailData.data.related_routes || []}
-                  />
-                ) : (
-                  <RouteDetails 
-                    route={detailData.data.route!}
-                    points={detailData.data.points || []}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                Tidak ada data untuk ditampilkan
-              </div>
-            )}
-          </div>
-          
-          {/* Modal Footer */}
-          <div className="p-6 border-t border-gray-200 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-            >
-              Tutup
-            </button>
-          </div>
         </div>
       </div>
-
-
     </>
   );
 }

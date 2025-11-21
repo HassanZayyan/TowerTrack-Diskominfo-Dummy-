@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
+import { getFOStatusColor } from '@/utils/statusHelpers';
 
 interface FoRoute {
   id: number;
@@ -132,20 +133,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
   canEdit: boolean; 
   onDelete: (route: FoRoute) => void;
 }) => {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'active':
-        return { bg: 'bg-green-100', text: 'text-green-800', label: 'Aktif' };
-      case 'inactive':
-        return { bg: 'bg-red-100', text: 'text-red-800', label: 'Non-aktif' };
-      case 'maintenance':
-        return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Maintenance' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Unknown' };
-    }
-  };
-
-  const statusConfig = getStatusConfig(foRoute.status);
+  const statusConfig = getFOStatusColor(foRoute.status);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-100">
@@ -323,22 +311,33 @@ export default function RoutesList() {
           align="left"
           actions={
             canEdit ? (
-              <Link
-                href={route('admin.fo-management.routes.create')}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors shadow-sm w-full sm:w-auto text-center"
-                style={{ 
-                  backgroundColor: '#FFD700', 
-                  color: '#B71C1C'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFC107';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFD700';
-                }}
-              >
-                <span className="text-center">+ Tambah Jalur Baru</span>
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  href={route('admin.fo-management.providers.index')}
+                  className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Kelola Provider
+                </Link>
+                <Link
+                  href={route('admin.fo-management.routes.create')}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors shadow-sm w-full sm:w-auto text-center"
+                  style={{ 
+                    backgroundColor: '#FFD700', 
+                    color: '#B71C1C'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFC107';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFD700';
+                  }}
+                >
+                  <span className="text-center">+ Tambah Jalur Baru</span>
+                </Link>
+              </div>
             ) : null
           }
         />

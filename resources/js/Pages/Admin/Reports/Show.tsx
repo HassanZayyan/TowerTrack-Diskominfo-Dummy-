@@ -5,7 +5,12 @@ import VideoThumbnail from '@/Components/VideoThumbnail';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMessages/MessageResponseTimeline';
+import MediaLightbox from '@/Components/MediaLightbox';
 import { PageProps } from '@/types';
+import { formatDateWithTime } from '@/utils/dateHelpers';
+import { renderMessageStatusBadge, getStatusColor } from '@/utils/statusHelpers';
+import { getMediaUrl, isImage, isVideo, validateMediaFile } from '@/utils/mediaHelpers';
+import { mapReportResponses } from '@/utils/responseMapper';
 
 interface ReportAsset {
   id: number;
@@ -90,12 +95,12 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       // Filter valid files (images, videos, max 5 files)
-      const validFiles = files.filter(file => {
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        const validSize = isImage ? file.size <= 5 * 1024 * 1024 : file.size <= 50 * 1024 * 1024;
-        return (isImage || isVideo) && validSize;
-      }).slice(0, 5);
+      const validFiles = files
+        .filter(file => {
+          const validation = validateMediaFile(file);
+          return validation.valid;
+        })
+        .slice(0, 5);
       
       setSelectedFiles(currentFiles => [...currentFiles, ...validFiles].slice(0, 5));
     }
@@ -172,84 +177,16 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
     setReplyStatus(newStatus);
   };
 
-  const mapReportResponses = (responses?: ReportResponse[]): MessageResponseItem[] => {
-    if (!responses || responses.length === 0) {
-      return [];
-    }
-
-    return responses.map((response) => ({
-      id: response.id,
-      message: response.message ?? '',
-      created_at: response.created_at,
-      sender_type: response.sender_type ?? (response.user_id ? 'staff' : 'reporter'),
-      sender_name: response.sender_name ?? response.user?.name ?? null,
-      sender_email: response.sender_email ?? null,
-      sender_phone: response.sender_phone ?? null,
-      user: response.user ? { id: response.user.id, name: response.user.name } : null,
-      assets:
-        response.assets?.map((asset) => ({
-          file_path: asset.file_path,
-          file_type: asset.file_type,
-        })) ?? [],
-    }));
-  };
-
   const mappedResponses = mapReportResponses(report.responses);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Use formatDateWithTime for detailed date display
+    return formatDateWithTime(dateString);
   };
   
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: 'bg-red-100 text-red-800 border-red-300',
-      in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
-      closed: 'bg-green-100 text-green-800 border-green-300'
-    };
-    
-    const labels = {
-      pending: 'BARU',
-      in_progress: 'PROGRESS',
-      closed: 'SELESAI'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors] || colors.pending}`}>
-        {labels[status as keyof typeof labels] || labels.pending}
-      </span>
-    );
-  };
 
   const resolveReportStatusStyle = (statusValue: string | null | undefined) => {
-    const normalized = (statusValue ?? 'pending').toLowerCase() as 'pending' | 'in_progress' | 'closed';
-    const map: Record<'pending' | 'in_progress' | 'closed', { label: string; bg: string; text: string }> = {
-      pending: { label: 'Menunggu', bg: '#FEF3C7', text: '#92400E' },
-      in_progress: { label: 'Sedang Diproses', bg: '#DBEAFE', text: '#1E40AF' },
-      closed: { label: 'Selesai', bg: '#D1FAE5', text: '#065F46' },
-    };
-    return map[normalized] ?? map.pending;
-  };
-
-  const getMediaUrl = (path: string) => {
-    if (path.startsWith('http')) return path;
-    return `/storage/${path}`;
-  };
-
-  const isImage = (path: string, type?: string) => {
-    if (type) return type === 'image' || type.startsWith('image/');
-    return /\.(jpg|jpeg|png|gif|webp)$/i.test(path);
-  };
-
-  const isVideo = (path: string, type?: string) => {
-    if (type) return type === 'video' || type.startsWith('video/');
-    return /\.(mp4|mov|avi|webm)$/i.test(path);
+    return getStatusColor(statusValue);
   };
 
   return (
@@ -301,7 +238,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-600 font-medium">Status:</span>
-                {getStatusBadge(report.status)}
+                {renderMessageStatusBadge(report.status)}
               </div>
             </div>
           </div>
@@ -323,37 +260,39 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                 <h3 className="text-lg font-bold text-gray-900">Informasi Pelapor</h3>
               </div>
               
-              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
-                <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg ring-4 ring-white">
-                  <span className="text-white font-bold text-2xl">
-                    {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {report.reporter_name || report.user?.name || 'Anonim'}
-                  </h2>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span className="font-medium break-all">{report.reporter_phone || '-'}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg ring-4 ring-white">
+                    <span className="text-white font-bold text-2xl">
+                      {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 truncate">
+                      {report.reporter_name || report.user?.name || 'Anonim'}
+                    </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span className="font-medium break-all">{report.reporter_phone || '-'}</span>
+                      </div>
+                      {(report.user?.email || (report as any).email) && (
+                        <>
+                          <span className="hidden sm:inline text-gray-400">•</span>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span className="font-medium break-all truncate">{(report as any).email || report.user?.email}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    {(report.user?.email || (report as any).email) && (
-                      <>
-                        <span className="hidden sm:inline text-gray-400">•</span>
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          <span className="font-medium break-all">{(report as any).email || report.user?.email}</span>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
-                <span className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-red-100 text-red-800 border border-red-200 shadow-sm">
+                <span className="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-red-100 text-red-800 border border-red-200 shadow-sm flex-shrink-0 self-start sm:self-center">
                   {report.category}
                 </span>
               </div>
@@ -394,9 +333,9 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                     <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-600 mb-1 font-medium">Nama Site</p>
-                      <p className="text-base font-bold text-gray-900">{report.tower.site_name}</p>
+                      <p className="text-base font-bold text-gray-900 break-words">{report.tower.site_name}</p>
                     </div>
                   </div>
                   {report.tower.alamat_menara && (
@@ -405,9 +344,9 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-xs text-gray-600 mb-1 font-medium">Alamat</p>
-                        <p className="text-sm text-gray-700">{report.tower.alamat_menara}</p>
+                        <p className="text-sm text-gray-700 break-words leading-relaxed">{report.tower.alamat_menara}</p>
                       </div>
                     </div>
                   )}
@@ -697,49 +636,13 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
       </StaggeredContainer>
 
       {/* Lightbox */}
-      {lightboxOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
-          onClick={() => setLightboxOpen(false)}
-        >
-          <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center">
-            {lightboxType === 'image' ? (
-              <img
-                src={lightboxSrc}
-                alt="Full size preview"
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-                onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
-              />
-            ) : (
-              <div className="relative">
-                <video 
-                  src={lightboxSrc}
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  controls
-                  autoPlay
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ maxHeight: '80vh' }}
-                />
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Video
-                </div>
-              </div>
-            )}
-            <button
-              className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-2"
-              onClick={() => setLightboxOpen(false)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      <MediaLightbox
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        src={lightboxSrc}
+        type={lightboxType}
+        alt="Full size preview"
+      />
     </AdminLayout>
   );
 };
