@@ -3,6 +3,8 @@ import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
 import FilterPanel from '@/Components/Admin/FilterPanel';
+import { formatDateForInput as formatDateForInputHelper } from '@/utils/dateHelpers';
+import { useDebounce } from '@/Hooks/useDebounce';
 
 interface Owner {
   id: number;
@@ -174,7 +176,9 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
   const [selectedOwners, setSelectedOwners] = useState<Record<number, { id: string; name: string; alamat: string }>>({});
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   
   // Advanced Filter State
   const [showFilters, setShowFilters] = useState(false);
@@ -401,19 +405,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
   // Helper function to format date for HTML date input (YYYY-MM-DD)
   const formatDateForInput = (dateValue: string | null | undefined): string => {
-    if (!dateValue) return '';
-    
-    try {
-      // Handle various date formats from backend
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) return '';
-      
-      // Format to YYYY-MM-DD for HTML date input
-      return date.toISOString().split('T')[0];
-    } catch (error) {
-      console.warn('Error formatting date:', dateValue, error);
-      return '';
-    }
+    return formatDateForInputHelper(dateValue);
   };
 
   const getEditValue = (tower: Tower, field: keyof Tower) => {
@@ -497,24 +489,12 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
   // Debounced realtime search similar to FO RoutesList
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (debouncedSearchTerm === appliedSearch) return;
 
-    if (searchTerm === appliedSearch) return;
-
-    searchTimeoutRef.current = setTimeout(() => {
-      const params = buildFilterParams({ page: 1 });
-      setAppliedSearch(searchTerm);
-      router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
-    }, 500);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchTerm, appliedSearch]);
+    const params = buildFilterParams({ page: 1 });
+    setAppliedSearch(debouncedSearchTerm);
+    router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
+  }, [debouncedSearchTerm, appliedSearch]);
 
   const updateFilter = (key: string, value: any) => {
     setFilters(prev => ({

@@ -1,4 +1,5 @@
 import React from 'react';
+import { getFOStatusColor } from '@/utils/statusHelpers';
 
 interface FoPoint {
   id: number;
@@ -199,16 +200,15 @@ function PointDetails({
               <div className="bg-white rounded-lg p-4 border border-gray-100">
                 <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Status</label>
                 <div className="mt-1">
-                  <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full ${
-                    point.status === 'active' 
-                      ? 'bg-green-100 text-green-800 border border-green-200' 
-                      : 'bg-red-100 text-red-800 border border-red-200'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                      point.status === 'active' ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    {point.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
-                  </span>
+                  {(() => {
+                    const statusConfig = getFOStatusColor(point.status);
+                    return (
+                      <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusConfig.dot}`}></div>
+                        {statusConfig.label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -397,16 +397,15 @@ function RouteDetails({
               <div className="bg-white rounded-lg p-4 border border-gray-100">
                 <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Status</label>
                 <div className="mt-1">
-                  <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full ${
-                    route.status === 'active' 
-                      ? 'bg-green-100 text-green-800 border border-green-200' 
-                      : 'bg-red-100 text-red-800 border border-red-200'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                      route.status === 'active' ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    {route.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
-                  </span>
+                  {(() => {
+                    const statusConfig = getFOStatusColor(route.status);
+                    return (
+                      <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusConfig.dot}`}></div>
+                        {statusConfig.label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

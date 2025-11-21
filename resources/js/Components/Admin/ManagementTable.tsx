@@ -1,68 +1,15 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import VideoThumbnail from '@/Components/VideoThumbnail';
+import { getStatusColor, getStatusBadgeClass } from '@/utils/statusHelpers';
+import { formatDateFull } from '@/utils/dateHelpers';
+import type { Report, Feedback, StatusItem } from '@/types/messages';
 
-interface MediaItem {
-  id: number;
-  file_path: string;
-  file_type?: string;
-  file_name?: string;
-}
-
-interface ResponseItem {
-  id: number;
-  message: string;
-  created_at?: string;
-  user?: { id?: number; name: string };
-  assets?: MediaItem[];
-}
-
-interface Tower {
-  id: number;
-  site_name: string;
-  alamat_menara?: string;
-}
-
-interface User {
-  id?: number;
-  name: string;
-  email?: string;
-}
-
-interface Status {
-  id: number;
-  name: string;
-  slug: string;
-  color: string;
-  icon: string;
-}
-
-interface BaseItem {
-  id: number;
-  user_id: number;
-  message: string;
-  status: string;
-  created_at?: string;
-  is_public?: boolean;
-  tower?: Tower;
-  user?: User;
-  responses?: ResponseItem[];
-  images?: MediaItem[];
-  assets?: MediaItem[];
-  // For reports
-  reporter_name?: string;
-  reporter_phone?: string;
-  category?: string;
-  // For feedbacks
-  sender_phone?: string;
-  sender_name?: string;
-  // Email field for guest users
-  email?: string;
-}
+type BaseItem = Report | Feedback;
 
 interface Props {
   items: BaseItem[];
-  statuses: Status[];
+  statuses: StatusItem[];
   title: string;
   type: 'complaints' | 'feedbacks';
   respondRoute: string;
@@ -93,49 +40,38 @@ const ManagementTable: React.FC<Props> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 5;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'in_progress':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'closed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+  const getStatusColorClass = (status: string) => {
+    const statusConfig = getStatusColor(status);
+    return `bg-[${statusConfig.bg}] text-[${statusConfig.text}] border-[${statusConfig.text}]40`;
   };
 
   const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: 'bg-red-100 text-red-800 border-red-300',
-      in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
-      closed: 'bg-green-100 text-green-800 border-green-300'
-    };
-    
-    const labels = {
+    const statusConfig = getStatusColor(status);
+    const statusLabels: Record<string, string> = {
       pending: 'BARU',
       in_progress: 'PROGRESS',
-      closed: 'SELESAI'
+      closed: 'SELESAI',
+      responded: 'DIBALAS',
+      resolved: 'SELESAI'
     };
 
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors] || colors.pending}`}>
-        {labels[status as keyof typeof labels] || labels.pending}
+      <span 
+        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+        style={{ 
+          backgroundColor: statusConfig.bg, 
+          color: statusConfig.text,
+          borderColor: statusConfig.text + '40'
+        }}
+      >
+        {statusLabels[status] || statusConfig.label.toUpperCase()}
       </span>
     );
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateFull(dateString);
   };
 
   const handleViewDetail = (item: BaseItem) => {

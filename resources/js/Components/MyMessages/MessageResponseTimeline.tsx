@@ -1,5 +1,6 @@
 import React from 'react';
 import AssetGrid from '@/Components/MyMessages/AssetGrid';
+import { formatDateTime as formatDateTimeHelper } from '@/utils/dateHelpers';
 
 export type MessageResponseAsset = {
   file_path: string;
@@ -108,8 +109,7 @@ export default function MessageResponseTimeline({
   };
 
   const formatDateTime = (value: string) => {
-    const date = new Date(value);
-    return `${date.toLocaleDateString('id-ID')} • ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+    return formatDateTimeHelper(value);
   };
 
   const renderVerticalTimeline = () => (

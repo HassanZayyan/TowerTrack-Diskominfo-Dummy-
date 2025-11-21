@@ -5,6 +5,8 @@ import VideoThumbnail from '@/Components/VideoThumbnail';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMessages/MessageResponseTimeline';
+import { getStatusColor } from '@/utils/statusHelpers';
+import { formatDateFull } from '@/utils/dateHelpers';
 import { PageProps } from '@/types';
 
 interface ReportAsset {
@@ -197,44 +199,35 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
   const mappedResponses = mapReportResponses(report.responses);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateFull(dateString);
   };
   
   const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: 'bg-red-100 text-red-800 border-red-300',
-      in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
-      closed: 'bg-green-100 text-green-800 border-green-300'
-    };
-    
-    const labels = {
+    const statusConfig = getStatusColor(status);
+    const statusLabels: Record<string, string> = {
       pending: 'BARU',
       in_progress: 'PROGRESS',
-      closed: 'SELESAI'
+      closed: 'SELESAI',
+      responded: 'DIBALAS',
+      resolved: 'SELESAI'
     };
 
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors] || colors.pending}`}>
-        {labels[status as keyof typeof labels] || labels.pending}
+      <span 
+        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+        style={{ 
+          backgroundColor: statusConfig.bg, 
+          color: statusConfig.text,
+          borderColor: statusConfig.text + '40'
+        }}
+      >
+        {statusLabels[status] || statusConfig.label.toUpperCase()}
       </span>
     );
   };
 
   const resolveReportStatusStyle = (statusValue: string | null | undefined) => {
-    const normalized = (statusValue ?? 'pending').toLowerCase() as 'pending' | 'in_progress' | 'closed';
-    const map: Record<'pending' | 'in_progress' | 'closed', { label: string; bg: string; text: string }> = {
-      pending: { label: 'Menunggu', bg: '#FEF3C7', text: '#92400E' },
-      in_progress: { label: 'Sedang Diproses', bg: '#DBEAFE', text: '#1E40AF' },
-      closed: { label: 'Selesai', bg: '#D1FAE5', text: '#065F46' },
-    };
-    return map[normalized] ?? map.pending;
+    return getStatusColor(statusValue);
   };
 
   const getMediaUrl = (path: string) => {

@@ -10,6 +10,15 @@ export type StatusConfig = {
   label: string;
 };
 
+export type FOStatusConfig = {
+  bg: string;
+  text: string;
+  light: string;
+  label: string;
+  border: string;
+  dot: string;
+};
+
 /**
  * Get status color configuration for message statuses (reports/feedbacks).
  * 
@@ -34,5 +43,94 @@ export function getStatusColor(status: string | undefined | null): StatusConfig 
     text: '#374151',
     label: status.replace(/_/g, ' ') || 'Tidak diketahui',
   };
+}
+
+/**
+ * Get status color configuration for FO (Fiber Optic) statuses.
+ * 
+ * @param status FO status value (active, inactive, maintenance)
+ * @returns FO status configuration with background color, text color, light background, border, dot, and label
+ */
+export function getFOStatusColor(status: string | undefined | null): FOStatusConfig {
+  const foStatusConfig: Record<string, FOStatusConfig> = {
+    active: { 
+      bg: 'bg-green-100', 
+      text: 'text-green-800', 
+      light: 'bg-green-50',
+      border: 'border-green-200',
+      dot: 'bg-green-500',
+      label: 'Aktif' 
+    },
+    inactive: { 
+      bg: 'bg-red-100', 
+      text: 'text-red-800', 
+      light: 'bg-red-50',
+      border: 'border-red-200',
+      dot: 'bg-red-500',
+      label: 'Non-aktif' 
+    },
+    maintenance: { 
+      bg: 'bg-yellow-100', 
+      text: 'text-yellow-800', 
+      light: 'bg-yellow-50',
+      border: 'border-yellow-200',
+      dot: 'bg-yellow-500',
+      label: 'Maintenance' 
+    },
+  };
+
+  if (!status) {
+    return { 
+      bg: 'bg-gray-100', 
+      text: 'text-gray-800', 
+      light: 'bg-gray-50',
+      border: 'border-gray-200',
+      dot: 'bg-gray-500',
+      label: 'Tidak diketahui' 
+    };
+  }
+
+  return foStatusConfig[status] || {
+    bg: 'bg-gray-100',
+    text: 'text-gray-800',
+    light: 'bg-gray-50',
+    border: 'border-gray-200',
+    dot: 'bg-gray-500',
+    label: status.replace(/_/g, ' ') || 'Tidak diketahui',
+  };
+}
+
+/**
+ * Get status badge class names for FO statuses (Tailwind CSS classes).
+ * 
+ * @param status FO status value
+ * @returns Tailwind CSS class string for badge styling
+ */
+export function getFOStatusBadgeClass(status: string | undefined | null): string {
+  const configs: Record<string, string> = {
+    active: 'bg-green-100 text-green-800',
+    inactive: 'bg-red-100 text-red-800',
+    maintenance: 'bg-yellow-100 text-yellow-800',
+  };
+
+  return configs[status || ''] || 'bg-gray-100 text-gray-800';
+}
+
+/**
+ * Get status badge class names for message statuses (Tailwind CSS classes).
+ * 
+ * @param status Message status value
+ * @returns Tailwind CSS class string for badge styling
+ */
+export function getStatusBadgeClass(status: string | undefined | null): string {
+  const configs: Record<string, string> = {
+    pending: 'bg-red-100 text-red-800 border-red-300',
+    in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
+    closed: 'bg-green-100 text-green-800 border-green-300',
+    responded: 'bg-green-100 text-green-800 border-green-300',
+    resolved: 'bg-green-100 text-green-800 border-green-300',
+  };
+
+  return configs[status || ''] || 'bg-gray-100 text-gray-800 border-gray-300';
 }
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getFOStatusColor } from '@/utils/statusHelpers';
 
 interface FoPoint {
   id: number;
@@ -179,17 +180,12 @@ export default function FoTable({
     );
   };
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { bg: 'bg-green-100', text: 'text-green-800', label: 'Aktif' },
-      inactive: { bg: 'bg-red-100', text: 'text-red-800', label: 'Non-aktif' },
-      maintenance: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Maintenance' }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
+    const statusConfig = getFOStatusColor(status);
     
     return (
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.bg} ${config.text}`}>
-        {config.label}
+      <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+        <div className={`w-2 h-2 rounded-full mr-2 ${statusConfig.dot}`}></div>
+        {statusConfig.label}
       </span>
     );
   };

@@ -2,6 +2,9 @@ import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import FoTable from '@/Components/DataFo/FoTable';
+import { getFOStatusColor, getFOStatusBadgeClass } from '@/utils/statusHelpers';
+import { formatDateOnly } from '@/utils/dateHelpers';
+import { useDebounce } from '@/Hooks/useDebounce';
 
 interface FoPoint {
   id: number;
@@ -352,11 +355,6 @@ PointTypesChart.displayName = 'PointTypesChart';
 
 // Route Status Chart Component
 const RouteStatusChart = memo(({ routeStatus }: { routeStatus: RouteStatus[] }) => {
-  const statusColors = {
-    'active': { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' },
-    'inactive': { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-50' },
-    'maintenance': { bg: 'bg-yellow-500', text: 'text-yellow-600', light: 'bg-yellow-50' }
-  };
   
   const total = (routeStatus || []).reduce((sum, status) => sum + (status.count || 0), 0);
   
@@ -369,17 +367,17 @@ const RouteStatusChart = memo(({ routeStatus }: { routeStatus: RouteStatus[] }) 
       <div className="space-y-4">
         {(routeStatus || []).map((status, index) => {
           const percentage = total > 0 ? ((status.count || 0) / total) * 100 : 0;
-          const colorConfig = statusColors[status.status as keyof typeof statusColors] || statusColors.active;
+          const colorConfig = getFOStatusColor(status.status);
           
           return (
-            <div key={status.status || `status-${index}`} className={`p-4 rounded-lg ${colorConfig?.light || 'bg-gray-50'}`}>
+            <div key={status.status || `status-${index}`} className={`p-4 rounded-lg ${colorConfig.light}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${colorConfig?.bg || 'bg-gray-400'}`} />
-                  <span className="font-medium text-gray-700">{status.label || 'Unknown Status'}</span>
+                  <div className={`w-3 h-3 rounded-full ${colorConfig.bg}`} />
+                  <span className="font-medium text-gray-700">{status.label || colorConfig.label}</span>
                 </div>
                 <div className="text-right">
-                  <div className={`text-lg font-bold ${colorConfig?.text || 'text-gray-600'}`}>{status.count || 0}</div>
+                  <div className={`text-lg font-bold ${colorConfig.text}`}>{status.count || 0}</div>
                   <div className="text-xs text-gray-500">{safeToFixed(percentage, 1)}%</div>
                 </div>
               </div>
@@ -407,12 +405,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
   recentRoutes: RecentRoute[]; 
 }) => {
   const getStatusBadge = (status: string) => {
-    const configs = {
-      'active': 'bg-green-100 text-green-800',
-      'inactive': 'bg-red-100 text-red-800',
-      'maintenance': 'bg-yellow-100 text-yellow-800'
-    };
-    return configs[status as keyof typeof configs] || 'bg-gray-100 text-gray-800';
+    return getFOStatusBadgeClass(status);
   };
 
   const getTypeIcon = (type: string) => {
@@ -447,7 +440,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
                   </svg>
                   <div>
                     <div className="text-sm font-medium text-gray-900">{point.name || 'Unnamed Point'}</div>
-                    <div className="text-xs text-gray-500">{point.created_at ? new Date(point.created_at).toLocaleDateString('id-ID') : 'N/A'}</div>
+                    <div className="text-xs text-gray-500">{point.created_at ? formatDateOnly(point.created_at) : 'N/A'}</div>
                   </div>
                 </div>
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(point.status || 'inactive')}`}>
@@ -479,7 +472,7 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
                   <div>
                     <div className="text-sm font-medium text-gray-900">{route.name || 'Unnamed Route'}</div>
                     <div className="text-xs text-gray-500">
-                      {safeToFixed(route.total_distance, 1)} km • {route.created_at ? new Date(route.created_at).toLocaleDateString('id-ID') : 'N/A'}
+                      {safeToFixed(route.total_distance, 1)} km • {route.created_at ? formatDateOnly(route.created_at) : 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -570,7 +563,7 @@ export default function FoManagementIndex() {
   
   // Debounced search state
   const [searchValue, setSearchValue] = useState('');
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedSearchValue = useDebounce(searchValue, 500);
 
   // Handle tab change with URL update
   const handleTabChange = useCallback((tab: string) => {
@@ -592,22 +585,10 @@ export default function FoManagementIndex() {
 
   // Debounced search effect
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    if (debouncedSearchValue !== filters.search) {
+      handleFilterChange({ ...filters, search: debouncedSearchValue });
     }
-    
-    searchTimeoutRef.current = setTimeout(() => {
-      if (searchValue !== filters.search) {
-        handleFilterChange({ ...filters, search: searchValue });
-      }
-    }, 500); // 500ms delay
-    
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchValue, filters, handleFilterChange]);
+  }, [debouncedSearchValue, filters, handleFilterChange]);
 
   // Filter data based on current filters  
   const filteredPoints = foPoints.data.map(point => ({

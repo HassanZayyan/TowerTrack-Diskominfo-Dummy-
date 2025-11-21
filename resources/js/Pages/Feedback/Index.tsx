@@ -2,6 +2,8 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import HeroSection from '@/Components/HeroSection';
+import { getStatusColor } from '@/utils/statusHelpers';
+import { formatDateFull } from '@/utils/dateHelpers';
 
 
 interface Feedback {
@@ -40,31 +42,23 @@ interface FeedbackIndexProps {
 }
 
 const getStatusBadge = (status: string) => {
-  const statusConfig = {
-    pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Menunggu' },
-    in_progress: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Diproses' },
-    responded: { bg: 'bg-green-100', text: 'text-green-800', label: 'Dibalas' },
-    resolved: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Selesai' },
-    closed: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Ditutup' },
-  };
-
-  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+  const statusConfig = getStatusColor(status);
   
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
-      {config.label}
+    <span 
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+      style={{ 
+        backgroundColor: statusConfig.bg, 
+        color: statusConfig.text
+      }}
+    >
+      {statusConfig.label}
     </span>
   );
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return formatDateFull(dateString);
 };
 
 export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {

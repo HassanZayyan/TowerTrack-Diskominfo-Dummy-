@@ -14,6 +14,7 @@ import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDate } from '@/utils/dateHelpers';
 import { useGuestFormData } from '@/Hooks/useGuestData';
 import { useGuestAutoRedirect } from '@/Hooks/useGuestAutoRedirect';
+import { useMemoized, useSorted } from '@/Hooks/useMemoized';
 
 type PrivateTrackingProps = {
   reports?: ReportItem[];
@@ -172,7 +173,7 @@ export default function PrivateTracking({
   const formatDateCallback = useCallback(formatDate, []);
 
   // Merge complaints and feedbacks into a single unified list
-  const items: MessageItem[] = React.useMemo(() => {
+  const mergedItems: MessageItem[] = useMemoized(() => {
     const complaintItems = (reports || []).map((r) => ({
       id: `report-${r.id}`,
       type: 'Keluhan' as const,
@@ -203,8 +204,13 @@ export default function PrivateTracking({
       isAnonymous: !f.user_id, // Anonymous if no user_id
     }));
 
-    return [...complaintItems, ...feedbackItems].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return [...complaintItems, ...feedbackItems];
   }, [reports, feedbacks]);
+
+  // Sort items by date (newest first)
+  const items = useSorted(mergedItems, (a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
   
   // Open detail page for private messages
   const openDetail = useCallback((it: MessageItem) => {

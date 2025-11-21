@@ -1,5 +1,6 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
+import { formatDateWithTime } from '@/utils/dateHelpers';
 
 interface MessageItem {
   id: string;
@@ -55,7 +56,7 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen, 
               <span className="font-medium">Tower:</span> {item.towerName ?? 'Tower tidak diketahui'}
             </p>
             <p className="text-xs text-gray-500">
-              {formatDate(item.created_at)} • {new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              {formatDateWithTime(item.created_at)}
             </p>
           </div>
         </div>

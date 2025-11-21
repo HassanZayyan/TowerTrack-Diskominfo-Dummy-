@@ -7,6 +7,7 @@ import AnimatedButton from '@/Components/AnimatedButton';
 import TowerDetailModal from '@/Components/TowerDetailModal';
 import AlertToast from '@/Components/AlertToast';
 import StaggeredContainer from '@/Components/StaggeredContainer';
+import { useDebounce } from '@/Hooks/useDebounce';
 
 import TowerStats from '@/Components/DataTower/TowerStats';
 import TowerMap from '@/Components/DataTower/TowerMap';
@@ -72,9 +73,11 @@ export default function DataTowerIndex({
   const [selectedTower, setSelectedTower] = useState<Tower | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
   const mapRef = useRef<any>(null);
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const initialSearchMountRef = useRef<boolean>(true);
   const lastAppliedSearchRef = useRef<string>(searchTerm);
+  
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 800);
 
   // Pretty toast alert for UX
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'warning' });
@@ -162,9 +165,6 @@ export default function DataTowerIndex({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
     // Trigger map measurement reset when searching
     setResetLinesCounter(c => c + 1);
     
@@ -181,28 +181,14 @@ export default function DataTowerIndex({
       return;
     }
 
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
+    // Avoid re-applying the same search
+    if (lastAppliedSearchRef.current === debouncedSearchTerm) return;
 
-    // Increased debounce delay from 500ms to 800ms for better performance
-    // Reduces unnecessary API calls while typing
-    searchDebounceRef.current = setTimeout(() => {
-      // Avoid re-applying the same search
-      if (lastAppliedSearchRef.current === searchTerm) return;
-
-      setResetLinesCounter(c => c + 1);
-      const params = buildFilterParams({ search: searchTerm, page: 1 });
-      lastAppliedSearchRef.current = searchTerm;
-      router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
-    }, 800);
-
-    return () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-    };
-  }, [searchTerm]);
+    setResetLinesCounter(c => c + 1);
+    const params = buildFilterParams({ search: debouncedSearchTerm, page: 1 });
+    lastAppliedSearchRef.current = debouncedSearchTerm;
+    router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
+  }, [debouncedSearchTerm]);
 
   const handleTowerClick = (tower: Tower) => {
     setSelectedTower(tower);

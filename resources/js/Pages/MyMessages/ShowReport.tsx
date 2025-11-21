@@ -12,32 +12,7 @@ import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { Comment } from '@/Components/MyMessages/CommentItem';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
-
-type Report = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null;
-  reporter_name?: string | null;
-  reporter_phone?: string | null;
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string; role?: string } | null;
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  images?: Array<{ id: number; file_path: string; file_type?: string }>;
-  responses?: MessageResponseItem[];
-  is_public?: boolean;
-  comments?: Array<{
-    id: number;
-    message: string;
-    created_at: string;
-    user?: { id: number; name: string; email?: string } | null;
-    guest_name?: string | null;
-    guest_email?: string | null;
-  }>;
-};
+import type { Report } from '@/types/messages';
 
 type PaginationLink = {
   url: string | null;

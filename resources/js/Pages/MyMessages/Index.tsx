@@ -12,6 +12,7 @@ import StaggeredContainer from '@/Components/StaggeredContainer';
 import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDate } from '@/utils/dateHelpers';
+import { useMemoized, useFiltered, useSorted } from '@/Hooks/useMemoized';
 
 type MyMessagesProps = {
   reports?: ReportItem[];
@@ -60,7 +61,7 @@ export default function MyMessagesIndex({
 
 
   // Merge complaints and feedbacks into a single unified list
-  const allItems: MessageItem[] = React.useMemo(() => {
+  const allItems: MessageItem[] = useMemoized(() => {
     const complaintItems = (reports || []).map((r) => ({
       id: `report-${r.id}`,
       type: 'Keluhan' as const,
@@ -91,18 +92,23 @@ export default function MyMessagesIndex({
       isAnonymous: !f.user_id, // Anonymous if no user_id
     }));
 
-    return [...complaintItems, ...feedbackItems].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return [...complaintItems, ...feedbackItems];
   }, [reports, feedbacks]);
 
+  // Sort items by date (newest first)
+  const sortedItems = useSorted(allItems, (a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
   // Extract unique categories for filter
-  const uniqueCategories = React.useMemo(() => {
-    const categories = allItems.map(item => item.category);
+  const uniqueCategories = useMemoized(() => {
+    const categories = sortedItems.map(item => item.category);
     return Array.from(new Set(categories)).sort();
-  }, [allItems]);
+  }, [sortedItems]);
 
   // Apply filters
-  const filteredItems = React.useMemo(() => {
-    let result = [...allItems];
+  const filteredItems = useMemoized(() => {
+    let result = [...sortedItems];
 
     // Filter by type
     if (filterType !== 'all') {
@@ -136,11 +142,11 @@ export default function MyMessagesIndex({
     }
 
     return result;
-  }, [allItems, filterType, filterStatus, filterCategory, searchQuery]);
+  }, [sortedItems, filterType, filterStatus, filterCategory, searchQuery, isMyPosts]);
 
   // Apply pagination
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  const paginatedItems = React.useMemo(() => {
+  const paginatedItems = useMemoized(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredItems.slice(startIndex, endIndex);

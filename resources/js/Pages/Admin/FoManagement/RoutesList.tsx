@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
+import { formatDateOnly } from '@/utils/dateHelpers';
+import { useDebounce } from '@/Hooks/useDebounce';
 
 interface FoRoute {
   id: number;
@@ -237,7 +239,7 @@ const RouteCard = ({ foRoute, canEdit, onDelete }: {
             Area: <span className="font-medium capitalize">{foRoute.area}</span>
           </div>
           <div className="text-xs text-gray-500">
-            {new Date(foRoute.updated_at).toLocaleDateString('id-ID')}
+            {formatDateOnly(foRoute.updated_at)}
           </div>
         </div>
       </div>
@@ -257,7 +259,7 @@ export default function RoutesList() {
   
   // Debounced search state
   const [searchValue, setSearchValue] = useState('');
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedSearchValue = useDebounce(searchValue, 500);
 
   const canEdit = ['admin', 'operator'].includes(auth.user.role);
 
@@ -272,22 +274,10 @@ export default function RoutesList() {
 
   // Debounced search effect
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    if (debouncedSearchValue !== filters.search) {
+      handleFilterChange({ ...filters, search: debouncedSearchValue });
     }
-    
-    searchTimeoutRef.current = setTimeout(() => {
-      if (searchValue !== filters.search) {
-        handleFilterChange({ ...filters, search: searchValue });
-      }
-    }, 500); // 500ms delay
-    
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchValue, filters, handleFilterChange]);
+  }, [debouncedSearchValue, filters, handleFilterChange]);
 
   // Handle route deletion
   const handleDelete = (routeToDelete: FoRoute) => {

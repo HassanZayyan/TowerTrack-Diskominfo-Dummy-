@@ -35,10 +35,6 @@ class MessageResponseService
 
         $response = $responseClass::create($data);
 
-        if (!empty($payload['status_id']) && method_exists($response, 'setStatus')) {
-            $response->setStatus($payload['status_id']);
-        }
-
         if (!empty($payload['attachments']) && is_iterable($payload['attachments'])) {
             $this->storeAttachments($response, $payload['attachments'], $config);
         }

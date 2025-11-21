@@ -1,19 +1,7 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
-
-interface MessageItem {
-  id: string;
-  type: 'Keluhan' | 'Masukan';
-  created_at: string;
-  towerName: string;
-  category: string;
-  status: string | undefined | null;
-  responsesCount: number;
-  commentsCount: number;
-  senderName: string;
-  senderEmail: string;
-  isAnonymous: boolean;
-}
+import { formatDateTimeSeparate } from '@/utils/dateHelpers';
+import type { MessageItem } from '@/types/messages';
 
 interface MessageTableProps {
   items: MessageItem[];
@@ -64,7 +52,7 @@ export default function MessageTable({ items, getStatusColor, formatDate, onOpen
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                     <div>
                       <div className="font-medium">{formatDate(item.created_at)}</div>
-                      <div className="text-xs text-gray-500">{new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                      <div className="text-xs text-gray-500">{formatDateTimeSeparate(item.created_at).time}</div>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-sm">

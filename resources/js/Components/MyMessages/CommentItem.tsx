@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatDateWithTime } from '@/utils/dateHelpers';
 
 export type Comment = {
   id: number;
@@ -45,20 +46,7 @@ export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }:
   const isReplyComment = !!comment.parent_id;
   
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Hari ini';
-    if (diffDays === 2) return 'Kemarin';
-    if (diffDays <= 7) return `${diffDays - 1} hari yang lalu`;
-    
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+    return formatDateWithTime(dateString);
   };
 
   const maxDepth = 3; // Limit nested depth

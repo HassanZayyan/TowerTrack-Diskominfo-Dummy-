@@ -2,6 +2,8 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import VideoThumbnail from '@/Components/VideoThumbnail';
+import { getStatusColor } from '@/utils/statusHelpers';
+import { formatDateFull } from '@/utils/dateHelpers';
 
 
 interface FeedbackAsset {
@@ -50,32 +52,23 @@ interface FeedbackShowProps {
 }
 
 const getStatusBadge = (status: string) => {
-  const statusConfig = {
-    pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Menunggu', icon: '⏳' },
-    in_progress: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Diproses', icon: '⚙️' },
-    responded: { bg: 'bg-green-100', text: 'text-green-800', label: 'Dibalas', icon: '💬' },
-    resolved: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Selesai', icon: '✅' },
-    closed: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Ditutup', icon: '🔒' },
-  };
-
-  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+  const statusConfig = getStatusColor(status);
   
   return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.text}`}>
-      <span className="mr-1">{config.icon}</span>
-      {config.label}
+    <span 
+      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+      style={{ 
+        backgroundColor: statusConfig.bg, 
+        color: statusConfig.text
+      }}
+    >
+      {statusConfig.label}
     </span>
   );
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return formatDateFull(dateString);
 };
 
 const MediaPreview = ({ asset }: { asset: FeedbackAsset }) => {

@@ -10,24 +10,7 @@ import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
 import { useGuestAutoRedirect } from '@/Hooks/useGuestAutoRedirect';
-
-type Report = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null;
-  reporter_name?: string | null;
-  reporter_phone?: string | null;
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null;
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  images?: Array<{ id: number; file_path: string; file_type?: string }>;
-  responses?: MessageResponseItem[];
-  is_public?: boolean;
-};
+import type { Report } from '@/types/messages';
 
 type ShowPrivateReportProps = {
   report: Report;

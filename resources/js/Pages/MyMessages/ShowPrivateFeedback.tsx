@@ -10,24 +10,7 @@ import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
 import { useGuestAutoRedirect } from '@/Hooks/useGuestAutoRedirect';
-
-type Feedback = {
-  id: number;
-  tower_id: number;
-  category: string;
-  message: string;
-  status: string;
-  created_at: string;
-  email?: string | null;
-  sender_name?: string | null;
-  sender_phone?: string | null;
-  user_id?: number | null;
-  user?: { id: number; name: string; email: string } | null;
-  tower?: { id: number; site_name: string; alamat_menara?: string };
-  assets?: Array<{ id: number; file_path: string; file_type?: string }>;
-  responses?: MessageResponseItem[];
-  is_public?: boolean;
-};
+import type { Feedback } from '@/types/messages';
 
 type ShowPrivateFeedbackProps = {
   feedback: Feedback;

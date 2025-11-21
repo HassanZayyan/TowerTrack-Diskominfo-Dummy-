@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatDateOnly } from '@/utils/dateHelpers';
 
 interface FoPoint {
   id: number;
@@ -118,8 +119,8 @@ const RouteHeader = ({ foRoute, canEdit }: { foRoute: FoRoute; canEdit: boolean 
           </div>
 
           <div className="mt-4 text-sm text-gray-500">
-            Dibuat: {new Date(foRoute.created_at).toLocaleDateString('id-ID')} • 
-            Diperbarui: {new Date(foRoute.updated_at).toLocaleDateString('id-ID')}
+            Dibuat: {formatDateOnly(foRoute.created_at)} • 
+            Diperbarui: {formatDateOnly(foRoute.updated_at)}
           </div>
         </div>
 

@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\ReportResponse;
 use App\Models\Status;
+use App\Traits\HasStatusHandling;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ComplaintController extends Controller
 {
+    use HasStatusHandling;
     public function index(Request $request)
     {
         $reports = Report::with([
@@ -23,17 +25,8 @@ class ComplaintController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        // Get statuses if the table exists, otherwise use default statuses
-        try {
-            $statuses = Status::all(['id', 'name', 'slug', 'color', 'icon']);
-        } catch (\Exception $e) {
-            // If table doesn't exist, use default statuses
-            $statuses = collect([
-                ['id' => 1, 'name' => 'Pending', 'slug' => 'pending', 'color' => 'red', 'icon' => 'clock'],
-                ['id' => 2, 'name' => 'In Progress', 'slug' => 'in_progress', 'color' => 'orange', 'icon' => 'refresh'],
-                ['id' => 3, 'name' => 'Closed', 'slug' => 'closed', 'color' => 'green', 'icon' => 'check'],
-            ]);
-        }
+        // Get statuses using trait method
+        $statuses = $this->getStatuses();
 
         return Inertia::render('Admin/Complaints', [
             'reports' => $reports,
@@ -112,11 +105,6 @@ class ComplaintController extends Controller
                     ]);
                 }
             }
-
-            // Set the status for this response if the method exists and response exists
-            if ($response && method_exists($response, 'setStatus')) {
-                $response->setStatus($validated['status_id']);
-            }
             
             // Update report status
             $report->update(['status_id' => $validated['status_id']]);
@@ -154,7 +142,7 @@ class ComplaintController extends Controller
 
             // Create a response if there's a message
             if ($request->has('message') && !empty($request->message)) {
-                $response = ReportResponse::create([
+                ReportResponse::create([
                     'report_id' => $report->id,
                     'user_id' => $request->user()->id,
                     'sender_type' => 'staff',
@@ -162,11 +150,6 @@ class ComplaintController extends Controller
                     'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
-
-                // Set the status for this response if the method exists
-                if (method_exists($response, 'setStatus')) {
-                    $response->setStatus($statusId);
-                }
             }
         } catch (\Exception $e) {
             // Log the error

@@ -3,77 +3,11 @@ import { Head, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import ManagementTable from '@/Components/Admin/ManagementTable';
 import HeroSection from '@/Components/HeroSection';
-
-interface MediaItem {
-  id: number;
-  file_path: string;
-  file_type?: string;
-  file_name?: string;
-}
-
-interface ResponseItem {
-  id: number;
-  message: string;
-  created_at?: string;
-  user?: { id?: number; name: string };
-  assets?: MediaItem[];
-}
-
-interface Tower {
-  id: number;
-  site_name: string;
-  alamat_menara?: string;
-}
-
-interface User {
-  id?: number;
-  name: string;
-  email?: string;
-}
-
-interface ReportItem {
-  id: number;
-  user_id: number;
-  reporter_name?: string;
-  reporter_phone?: string;
-  category?: string;
-  message: string;
-  status: string;
-  created_at?: string;
-  tower?: Tower;
-  user?: User;
-  responses?: ResponseItem[];
-  images?: MediaItem[];
-  email?: string;
- }
-
-interface FeedbackItem {
-  id: number;
-  user_id: number;
-  sender_name?: string;
-  sender_phone?: string;
-  category?: string;
-  message: string;
-  status: string;
-  created_at?: string;
-  tower?: Tower;
-  user?: User;
-  assets?: MediaItem[];
-  responses?: ResponseItem[];
-  email?: string;
-}
-
-interface StatusItem {
-  id: number;
-  name: string;
-  slug: string;
-  color: string;
-  icon: string;
-}
+import type { Report, Feedback, StatusItem } from '@/types/messages';
 
 type PageProps = {
-  reports: ReportItem[];
-  feedbacks: FeedbackItem[];
+  reports: Report[];
+  feedbacks: Feedback[];
   statuses: StatusItem[];
 };
 
