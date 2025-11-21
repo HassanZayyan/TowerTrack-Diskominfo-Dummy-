@@ -2,8 +2,9 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import VideoThumbnail from '@/Components/VideoThumbnail';
-import { getStatusColor } from '@/utils/statusHelpers';
+import { renderMessageStatusBadge } from '@/utils/statusHelpers';
 import { formatDateFull } from '@/utils/dateHelpers';
+import { getMediaUrl } from '@/utils/mediaHelpers';
 
 
 interface FeedbackAsset {
@@ -51,28 +52,8 @@ interface FeedbackShowProps {
   feedback: Feedback;
 }
 
-const getStatusBadge = (status: string) => {
-  const statusConfig = getStatusColor(status);
-  
-  return (
-    <span 
-      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-      style={{ 
-        backgroundColor: statusConfig.bg, 
-        color: statusConfig.text
-      }}
-    >
-      {statusConfig.label}
-    </span>
-  );
-};
-
-const formatDate = (dateString: string) => {
-  return formatDateFull(dateString);
-};
-
 const MediaPreview = ({ asset }: { asset: FeedbackAsset }) => {
-  const fileUrl = `/storage/${asset.file_path}`;
+  const fileUrl = getMediaUrl(asset.file_path);
   
   if (asset.file_type === 'image') {
     return (
@@ -135,9 +116,9 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                {getStatusBadge(feedback.status)}
+                {renderMessageStatusBadge(feedback.status, 'text-sm')}
                 <p className="text-sm mt-2" style={{ color: '#212121', opacity: 0.7 }}>
-                  {formatDate(feedback.created_at)}
+                  {formatDateFull(feedback.created_at)}
                 </p>
               </div>
               <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-10 w-10 sm:h-12 sm:w-12 hidden sm:block" />
@@ -164,9 +145,9 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
               <div className="p-6">
                 {/* Status Badge - Mobile */}
                 <div className="sm:hidden mb-6 text-center">
-                  {getStatusBadge(feedback.status)}
+                  {renderMessageStatusBadge(feedback.status, 'text-sm')}
                   <p className="text-sm text-gray-600 mt-2">
-                    {formatDate(feedback.created_at)}
+                    {formatDateFull(feedback.created_at)}
                   </p>
                 </div>
 
@@ -277,7 +258,7 @@ export default function FeedbackShow({ feedback }: FeedbackShowProps) {
                               <p className="text-sm text-gray-600">Tim Support</p>
                             </div>
                             <time className="text-sm text-gray-500">
-                              {formatDate(response.created_at)}
+                              {formatDateFull(response.created_at)}
                             </time>
                           </div>
                           

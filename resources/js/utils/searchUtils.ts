@@ -1,13 +1,6 @@
 // Utility functions untuk pencarian dan filtering tower yang dapat digunakan bersama
 
-export function normalizeText(text: string): string {
-  return text.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-    .replace(/[^\w\s]/g, ' ') // Replace special chars with space
-    .replace(/\s+/g, ' ') // Multiple spaces to single
-    .trim();
-}
+import { normalizeText } from '@/utils/stringUtils';
 
 export function calculateLevenshteinDistance(str1: string, str2: string): number {
   const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));

@@ -2,7 +2,7 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import HeroSection from '@/Components/HeroSection';
-import { getStatusColor } from '@/utils/statusHelpers';
+import { renderMessageStatusBadge } from '@/utils/statusHelpers';
 import { formatDateFull } from '@/utils/dateHelpers';
 
 
@@ -40,26 +40,6 @@ interface FeedbackIndexProps {
     total: number;
   };
 }
-
-const getStatusBadge = (status: string) => {
-  const statusConfig = getStatusColor(status);
-  
-  return (
-    <span 
-      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-      style={{ 
-        backgroundColor: statusConfig.bg, 
-        color: statusConfig.text
-      }}
-    >
-      {statusConfig.label}
-    </span>
-  );
-};
-
-const formatDate = (dateString: string) => {
-  return formatDateFull(dateString);
-};
 
 export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
   return (
@@ -121,13 +101,13 @@ export default function FeedbackIndex({ feedbacks }: FeedbackIndexProps) {
                             <h3 className="text-lg font-semibold text-gray-900 mr-3">
                               {feedback.tower.site_name}
                             </h3>
-                            {getStatusBadge(feedback.status)}
+                            {renderMessageStatusBadge(feedback.status, 'text-xs')}
                           </div>
                           <p className="text-sm text-gray-600 mb-2">
                             Kategori: <span className="font-medium">{feedback.category}</span>
                           </p>
                           <p className="text-sm text-gray-500">
-                            {formatDate(feedback.created_at)}
+                            {formatDateFull(feedback.created_at)}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2 ml-4">

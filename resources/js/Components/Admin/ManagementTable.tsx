@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import VideoThumbnail from '@/Components/VideoThumbnail';
-import { getStatusColor, getStatusBadgeClass } from '@/utils/statusHelpers';
+import { renderMessageStatusBadge } from '@/utils/statusHelpers';
 import { formatDateFull } from '@/utils/dateHelpers';
-import type { Report, Feedback, StatusItem } from '@/types/messages';
+import { getMediaUrl } from '@/utils/mediaHelpers';
+import type { Report, Feedback, StatusItem, MediaItem } from '@/types/messages';
 
 type BaseItem = Report | Feedback;
+
+// Type guard helpers
+const isReport = (item: BaseItem, itemType: 'complaints' | 'feedbacks'): item is Report => {
+  return itemType === 'complaints';
+};
+
+const isFeedback = (item: BaseItem, itemType: 'complaints' | 'feedbacks'): item is Feedback => {
+  return itemType === 'feedbacks';
+};
 
 interface Props {
   items: BaseItem[];
@@ -40,39 +50,6 @@ const ManagementTable: React.FC<Props> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 5;
 
-  const getStatusColorClass = (status: string) => {
-    const statusConfig = getStatusColor(status);
-    return `bg-[${statusConfig.bg}] text-[${statusConfig.text}] border-[${statusConfig.text}]40`;
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = getStatusColor(status);
-    const statusLabels: Record<string, string> = {
-      pending: 'BARU',
-      in_progress: 'PROGRESS',
-      closed: 'SELESAI',
-      responded: 'DIBALAS',
-      resolved: 'SELESAI'
-    };
-
-    return (
-      <span 
-        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
-        style={{ 
-          backgroundColor: statusConfig.bg, 
-          color: statusConfig.text,
-          borderColor: statusConfig.text + '40'
-        }}
-      >
-        {statusLabels[status] || statusConfig.label.toUpperCase()}
-      </span>
-    );
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    return formatDateFull(dateString);
-  };
 
   const handleViewDetail = (item: BaseItem) => {
     // Navigate to dedicated show page
@@ -123,7 +100,7 @@ const ManagementTable: React.FC<Props> = ({
   // Filter items
   const filteredItems = items.filter(item => {
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
-    const itemName = type === 'complaints' 
+    const itemName = isReport(item, type)
       ? (item.reporter_name || item.user?.name || '')
       : (item.sender_name || item.user?.name || '');
     const itemEmail = item.user?.email || '';
@@ -147,35 +124,41 @@ const ManagementTable: React.FC<Props> = ({
     setCurrentPage(1);
   }, [filterStatus, searchTerm]);
 
-  const getItemDisplayName = (item: BaseItem) => {
-    if (type === 'complaints') {
+  const getItemDisplayName = (item: BaseItem): string => {
+    if (isReport(item, type)) {
       return item.reporter_name || item.user?.name || 'Anonim';
     }
     return item.sender_name || item.user?.name || 'Anonim';
   };
 
-  const getItemPhone = (item: BaseItem) => {
-    if (type === 'complaints') {
+  const getItemPhone = (item: BaseItem): string => {
+    if (isReport(item, type)) {
       return item.reporter_phone || '-';
     }
     return item.sender_phone || '-';
   };
 
-  const getItemCategory = (item: BaseItem) => {
-  if (!item.category) return '-';
-  // Remove patterns like '[Dari: Someone]' that may be included in category
-  // Also remove any trailing/leading brackets and extra whitespace
-  return item.category.replace(/\[Dari:\s*[^\]]+\]/gi, '').replace(/[\[\]]/g, '').trim() || '-';
+  const getItemCategory = (item: BaseItem): string => {
+    if (!item.category) return '-';
+    // Remove patterns like '[Dari: Someone]' that may be included in category
+    // Also remove any trailing/leading brackets and extra whitespace
+    return item.category.replace(/\[Dari:\s*[^\]]+\]/gi, '').replace(/[\[\]]/g, '').trim() || '-';
   };
 
-  const getItemAssets = (item: BaseItem) => {
-    return item.images || item.assets || [];
+  const getItemAssets = (item: BaseItem): MediaItem[] => {
+    if (isReport(item, type)) {
+      return item.images || [];
+    }
+    return item.assets || [];
   };
 
-  const getItemEmail = (item: BaseItem) => {
+  const getItemEmail = (item: BaseItem): string => {
     // For guest users, check the email field directly
     // For registered users, use user.email
-    return (item as any).email || item.user?.email || '-';
+    if (isReport(item, type)) {
+      return item.email || item.user?.email || '-';
+    }
+    return item.email || item.user?.email || '-';
   };
 
   const getVisibilityBadge = (isPublic?: boolean) => {
@@ -405,7 +388,7 @@ const ManagementTable: React.FC<Props> = ({
                                 >
                                   {asset.file_type === 'video' || asset.file_path.toLowerCase().match(/\.(mp4|mov|avi|webm)$/i) ? (
                                     <VideoThumbnail
-                                      src={`/storage/${asset.file_path}`}
+                                      src={getMediaUrl(asset.file_path)}
                                       fileType="video"
                                       className="w-20 h-16"
                                       onClick={() => openPreview(asset)}
@@ -415,7 +398,7 @@ const ManagementTable: React.FC<Props> = ({
                                     />
                                   ) : (
                                     <img 
-                                      src={`/storage/${asset.file_path}`} 
+                                      src={getMediaUrl(asset.file_path)} 
                                       alt="Media"
                                       className="w-20 h-16 object-cover"
                                       onError={(e) => {
@@ -493,8 +476,14 @@ const ManagementTable: React.FC<Props> = ({
                       </td>
                       <td className="px-3 py-4 align-top">
                         <div className="text-sm text-gray-500">
-                          <div className="text-xs">{formatDate(item.created_at).split(',')[0]}</div>
-                          <div className="text-xs text-gray-400">{formatDate(item.created_at).split(',')[1]?.trim()}</div>
+                          {item.created_at ? (
+                            <>
+                              <div className="text-xs">{formatDateFull(item.created_at).split(',')[0]}</div>
+                              <div className="text-xs text-gray-400">{formatDateFull(item.created_at).split(',')[1]?.trim()}</div>
+                            </>
+                          ) : (
+                            <div className="text-xs">-</div>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-4 align-top">
@@ -585,7 +574,7 @@ const ManagementTable: React.FC<Props> = ({
                         >
                           {asset.file_type === 'video' || asset.file_path.toLowerCase().match(/\.(mp4|mov|avi|webm)$/i) ? (
                             <VideoThumbnail
-                              src={`/storage/${asset.file_path}`}
+                              src={getMediaUrl(asset.file_path)}
                               fileType="video"
                               className="w-20 h-16"
                               onClick={() => openPreview(asset)}
@@ -595,7 +584,7 @@ const ManagementTable: React.FC<Props> = ({
                             />
                           ) : (
                             <img 
-                              src={`/storage/${asset.file_path}`} 
+                              src={getMediaUrl(asset.file_path)} 
                               alt="Media"
                               className="w-20 h-16 object-cover"
                               onError={(e) => {
@@ -627,7 +616,7 @@ const ManagementTable: React.FC<Props> = ({
                   )}
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">{formatDate(item.created_at)}</span>
+                    <span className="text-xs text-gray-500">{item.created_at ? formatDateFull(item.created_at) : '-'}</span>
                     <button
                       onClick={() => handleViewDetail(item)}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 transition-colors"
@@ -652,7 +641,7 @@ const ManagementTable: React.FC<Props> = ({
           <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
             {previewAsset.file_type === 'video' ? (
               <video
-                src={`/storage/${previewAsset.file_path}`}
+                src={getMediaUrl(previewAsset.file_path)}
                 controls
                 autoPlay
                 className="max-w-full max-h-[90vh] object-contain"
@@ -660,7 +649,7 @@ const ManagementTable: React.FC<Props> = ({
               />
             ) : (
               <img 
-                src={`/storage/${previewAsset.file_path}`} 
+                src={getMediaUrl(previewAsset.file_path)} 
                 className="max-w-full max-h-[90vh] object-contain" 
                 onClick={(e) => e.stopPropagation()}
               />
