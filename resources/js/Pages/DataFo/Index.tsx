@@ -15,6 +15,8 @@ import FoFilters from '@/Components/DataFo/FoFilters';
 import FoTable from '@/Components/DataFo/FoTable';
 import FoDetailModal from '@/Components/DataFo/FoDetailModal';
 import { getIconByImagesAndSide } from '@/utils/foIconUtils';
+import { useRouteCache } from '@/Hooks/useRouteCache';
+import { getRouteCacheKey, formatTimestamp } from '@/utils/routeCacheUtils';
 
 // Fix Leaflet default icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -73,6 +75,7 @@ interface FoRoute {
   description: string;
   routing_service?: string | null;
   providers?: Provider[];
+  updated_at?: number | null; // Route updated_at timestamp for cache validation
   // Polyline data excluded from initial load - loaded on-demand
   path_coordinates?: Array<{ lat: number; lng: number }>;
   polyline?: Array<[number, number]>;
@@ -165,10 +168,16 @@ export default function DataFoIndex({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   
-  // Lazy loading state for routes
+  // Lazy loading state for routes - using custom hook for cache management
   const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
-  const [loadedRoutes, setLoadedRoutes] = useState<Map<number, any>>(new Map());
-  const [loadingRoutes, setLoadingRoutes] = useState<Set<number>>(new Set());
+  const {
+    loadedRoutes,
+    setLoadedRoutes,
+    loadingRoutes,
+    setLoadingRoutes,
+    validateMemoryCache,
+    validateSessionStorageCache,
+  } = useRouteCache({ foRoutes });
   
   // Marker visibility state - default true to show markers by default
   const [showMarkers, setShowMarkers] = useState<boolean>(true);
@@ -510,51 +519,37 @@ export default function DataFoIndex({
   };
 
   // Load route polyline on-demand with persistent sessionStorage cache
+  // DRY: Using custom hook and utilities for cache validation
   const loadRoutePolyline = async (routeId: number) => {
-    // Step 1: Check if already loaded in memory (fastest)
-    if (loadedRoutes.has(routeId)) {
-      console.log(`✅ Route ${routeId} already loaded from memory cache (0 tokens)`);
+    const route = foRoutes.find((r: FoRoute) => r.id === routeId);
+    
+    // Step 1: Check memory cache (validates automatically via hook)
+    if (validateMemoryCache(routeId)) {
+      const cachedData = loadedRoutes.get(routeId);
+      console.log(`✅ Route ${routeId} already loaded from memory cache (0 tokens)`, {
+        route_updated_at: route?.updated_at ? formatTimestamp(route.updated_at) : 'N/A',
+        cache_updated_at: cachedData?.updated_at ? formatTimestamp(cachedData.updated_at) : 'N/A',
+      });
       return;
     }
 
-    // Step 2: Check sessionStorage cache (fast, persists across page navigation)
-    try {
-      const cacheKey = `fo_route_cache_${routeId}`;
-      const cached = sessionStorage.getItem(cacheKey);
+    // Step 2: Check sessionStorage cache (validates automatically via hook)
+    const cachedData = validateSessionStorageCache(routeId);
+    if (cachedData) {
+      setLoadedRoutes(prev => {
+        const newMap = new Map(prev);
+        newMap.set(routeId, cachedData);
+        return newMap;
+      });
       
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        
-        // Check if cache is still valid (24 hours)
-        const age = Date.now() - timestamp;
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        
-        if (age < maxAge) {
-          // Restore from sessionStorage cache
-          setLoadedRoutes(prev => {
-            const newMap = new Map(prev);
-            newMap.set(routeId, data);
-            return newMap;
-          });
-          
-          console.log(`✅ Route ${routeId} restored from sessionStorage (age: ${Math.round(age / 1000 / 60)} minutes)`);
-          
-          setToast({
-            show: true,
-            type: 'success',
-            title: '⚡ Jalur Dimuat',
-            message: `Jalur "${data.name}" berhasil dimuat`
-          });
-          
-          return; // Don't fetch from API
-        } else {
-          // Cache expired, remove it
-          sessionStorage.removeItem(cacheKey);
-          console.log(`🗑️ Expired cache removed for route ${routeId}`);
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to check sessionStorage for route ${routeId}:`, e);
+      console.log(`✅ Route ${routeId} restored from sessionStorage`);
+      setToast({
+        show: true,
+        type: 'success',
+        title: '⚡ Jalur Dimuat',
+        message: `Jalur "${cachedData.name}" berhasil dimuat`
+      });
+      return;
     }
 
     // Step 3: Check if already loading
@@ -565,44 +560,37 @@ export default function DataFoIndex({
 
     // Step 4: Fetch from API (will generate if needed)
     try {
-      // Add to loading set
       setLoadingRoutes(prev => new Set(prev).add(routeId));
-
       console.log(`🌐 Loading polyline for route ${routeId} from API...`);
+      
       const response = await fetch(`/api/fo-routes/${routeId}/polyline`);
       const result = await response.json();
 
       if (result.success && result.data) {
-        // Add to loaded routes cache (persists in session)
         setLoadedRoutes(prev => {
           const newMap = new Map(prev);
           newMap.set(routeId, result.data);
           return newMap;
         });
 
-        // Also persist to sessionStorage for cross-page navigation
+        // Persist to sessionStorage
         try {
-          const cacheKey = `fo_route_cache_${routeId}`;
+          const cacheKey = getRouteCacheKey(routeId);
           sessionStorage.setItem(cacheKey, JSON.stringify({
             data: result.data,
             timestamp: Date.now(),
+            route_updated_at: result.data.updated_at || route?.updated_at || null,
           }));
         } catch (e) {
           console.warn('Failed to persist to sessionStorage:', e);
         }
 
-        console.log(`Route ${routeId} loaded successfully`, result.data);
-        
-        // Show different message based on generation status
         const wasGenerated = result.data.was_generated_on_demand || false;
-        
         setToast({
           show: true,
           type: 'success',
           title: wasGenerated ? '✅ Jalur Berhasil Dimuat' : '⚡ Jalur Dimuat',
-          message: wasGenerated 
-            ? `Jalur "${result.data.name}" berhasil dimuat`
-            : `Jalur "${result.data.name}" dimuat dengan cepat`
+          message: `Jalur "${result.data.name}" ${wasGenerated ? 'berhasil dimuat' : 'dimuat dengan cepat'}`
         });
       } else {
         console.error(`Failed to load route ${routeId}:`, result.message);
@@ -622,7 +610,6 @@ export default function DataFoIndex({
         message: 'Terjadi kesalahan saat memuat jalur'
       });
     } finally {
-      // Remove from loading set
       setLoadingRoutes(prev => {
         const newSet = new Set(prev);
         newSet.delete(routeId);
@@ -698,46 +685,7 @@ export default function DataFoIndex({
     }
   }, [currentMapData.bounds]);
 
-  // Restore cached routes from sessionStorage on mount (persists across page navigation)
-  useEffect(() => {
-    const restoreCache = () => {
-      const restoredRoutes = new Map<number, any>();
-      let restoredCount = 0;
-
-      // Try to restore each route from sessionStorage
-      currentMapData.routes.forEach((route: any) => {
-        try {
-          const cacheKey = `fo_route_cache_${route.id}`;
-          const cached = sessionStorage.getItem(cacheKey);
-          
-          if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            
-            // Check if cache is still valid (24 hours = 86400000 ms)
-            const age = Date.now() - timestamp;
-            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-            
-            if (age < maxAge) {
-              restoredRoutes.set(route.id, data);
-              restoredCount++;
-            } else {
-              // Cache expired, remove it
-              sessionStorage.removeItem(cacheKey);
-            }
-          }
-        } catch (e) {
-          console.warn(`Failed to restore cache for route ${route.id}:`, e);
-        }
-      });
-
-      if (restoredCount > 0) {
-        setLoadedRoutes(restoredRoutes);
-        console.log(`✅ Restored ${restoredCount} routes from sessionStorage cache (persists across page navigation)`);
-      }
-    };
-
-    restoreCache();
-  }, [currentMapData.routes]);
+  // Cache validation and restoration handled by useRouteCache hook (DRY)
 
   // Force map refresh when area changes
   useEffect(() => {

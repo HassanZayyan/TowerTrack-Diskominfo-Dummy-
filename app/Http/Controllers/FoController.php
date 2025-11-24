@@ -8,13 +8,15 @@ use App\Models\FoRoute;
 use App\Services\CacheService;
 use App\Traits\HasFoPointValidation;
 use App\Traits\HasFoRouteStatistics;
+use App\Traits\HasGeoJsonGeneration;
+use App\Traits\HasCacheInvalidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class FoController extends Controller
 {
-    use HasFoPointValidation, HasFoRouteStatistics;
+    use HasFoPointValidation, HasFoRouteStatistics, HasGeoJsonGeneration, HasCacheInvalidation;
     // Constants untuk validasi
     private const VALID_SIDE_OF_ROAD = ['left', 'right', 'unknown'];
 
@@ -176,7 +178,7 @@ class FoController extends Controller
         // Users can load specific route polylines via dropdown on-demand
         $foRoutes = CacheService::remember($routesCacheKey, function () use ($routesQuery) {
             return $routesQuery
-                ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service')
+                ->select('id', 'name', 'color', 'total_distance', 'actual_distance', 'total_points', 'description', 'area', 'status', 'routing_service', 'updated_at')
                 ->get()
                 ->map(function ($route) {
                 // Get unique providers for this route through its points
@@ -222,6 +224,7 @@ class FoController extends Controller
                     'routing_service' => $route->routing_service,
                     'has_providers' => ! empty($providers), // Flag untuk frontend
                     'providers' => $providers,
+                    'updated_at' => $route->updated_at ? $route->updated_at->timestamp : null, // For cache validation
                 ];
             });
         }, 3600); // Cache for 1 hour
@@ -645,37 +648,11 @@ class FoController extends Controller
         try {
             $foRoute = FoRoute::findOrFail($routeId);
 
-            // Check if GeoJSON exists in database
-            $hasGeoJSON = $foRoute->hasValidGeoJSON();
-            $needsGeneration = ! $hasGeoJSON;
-
-            if ($needsGeneration) {
-                \Log::info('🔄 PUBLIC - Generating GeoJSON on-demand (1 token will be consumed)', [
-                    'route_id' => $foRoute->id,
-                    'route_name' => $foRoute->name,
-                    'endpoint' => 'public',
-                    'user_ip' => request()->ip(),
-                ]);
-
-                // Generate GeoJSON on-demand (consumes 1 OpenRouteService token)
-                $routeService = app(\App\Services\FoRouteGenerationService::class);
-                $generated = $routeService->generateRouteFromPoints($foRoute);
-
-                if (! $generated) {
-                    \Log::warning('⚠️ PUBLIC - GeoJSON generation failed, using fallback polyline (0 tokens)', [
-                        'route_id' => $foRoute->id,
-                    ]);
-                }
-
-                // Refresh the route model to get newly generated GeoJSON
-                $foRoute = $foRoute->fresh();
-            } else {
-                \Log::info('✅ PUBLIC - Loading existing GeoJSON from database (0 tokens)', [
-                    'route_id' => $foRoute->id,
-                    'route_name' => $foRoute->name,
-                    'user_ip' => request()->ip(),
-                ]);
-            }
+            // Ensure GeoJSON exists and is up-to-date
+            // DRY: Use reusable method to check and generate GeoJSON if needed
+            $geoJsonResult = $this->ensureGeoJsonForRoute($foRoute, 'public');
+            $needsGeneration = $geoJsonResult['needs_generation'];
+            $foRoute = $geoJsonResult['route'];
 
             // Use GeoJSON coordinates if available, otherwise enhanced polyline
             $polyline = $foRoute->hasValidGeoJSON()
@@ -707,6 +684,7 @@ class FoController extends Controller
                     'area' => $foRoute->area,
                     'status' => $foRoute->status,
                     'was_generated_on_demand' => $needsGeneration,
+                    'updated_at' => $foRoute->updated_at ? $foRoute->updated_at->timestamp : null, // For cache validation
                 ],
                 'tokens_consumed' => $needsGeneration ? 1 : 0,
             ]);
@@ -729,6 +707,11 @@ class FoController extends Controller
      */
     public function getRouteDetails(FoRoute $foRoute)
     {
+        // Ensure GeoJSON exists and is up-to-date
+        // DRY: Use reusable method to check and generate GeoJSON if needed
+        $geoJsonResult = $this->ensureGeoJsonForRoute($foRoute, 'public');
+        $foRoute = $geoJsonResult['route'];
+
         $points = $foRoute->points()
             ->where('fo_points.area', $foRoute->area)
             ->get()

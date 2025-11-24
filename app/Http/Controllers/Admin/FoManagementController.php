@@ -10,6 +10,8 @@ use App\Rules\GoogleDriveUrl;
 use App\Services\CacheService;
 use App\Traits\HasFoPointValidation;
 use App\Traits\HasFoRouteStatistics;
+use App\Traits\HasGeoJsonGeneration;
+use App\Traits\HasCacheInvalidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +23,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FoManagementController extends Controller
 {
-    use HasFoPointValidation, HasFoRouteStatistics;
+    use HasFoPointValidation, HasFoRouteStatistics, HasGeoJsonGeneration, HasCacheInvalidation;
     /**
      * Display list of FO routes (main entry point)
      * Optimized: path_coordinates excluded to reduce payload size
@@ -119,34 +121,11 @@ class FoManagementController extends Controller
                 ]);
             }
 
-            // Step 3: Cache miss - check if GeoJSON exists in database
-            $hasGeoJSON = $foRoute->hasValidGeoJSON();
-            $needsGeneration = ! $hasGeoJSON;
-
-            if ($needsGeneration) {
-                \Log::info('🔄 CACHE MISS + NO GEOJSON - Generating on-demand (1 token will be consumed)', [
-                    'route_id' => $foRoute->id,
-                    'route_name' => $foRoute->name,
-                ]);
-
-                // Step 4: Generate GeoJSON on-demand (consumes 1 OpenRouteService token)
-                $routeService = app(\App\Services\FoRouteGenerationService::class);
-                $generated = $routeService->generateRouteFromPoints($foRoute);
-
-                if (! $generated) {
-                    \Log::warning('⚠️ GeoJSON generation failed, using fallback polyline (0 tokens)', [
-                        'route_id' => $foRoute->id,
-                    ]);
-                }
-
-                // Refresh the route model to get newly generated GeoJSON
-                $foRoute = $foRoute->fresh();
-            } else {
-                \Log::info('💾 CACHE MISS + HAS GEOJSON - Loading from database (0 tokens)', [
-                    'route_id' => $foRoute->id,
-                    'route_name' => $foRoute->name,
-                ]);
-            }
+            // Step 3: Cache miss - ensure GeoJSON exists and is up-to-date
+            // DRY: Use reusable method to check and generate GeoJSON if needed
+            $geoJsonResult = $this->ensureGeoJsonForRoute($foRoute, 'admin');
+            $needsGeneration = $geoJsonResult['needs_generation'];
+            $foRoute = $geoJsonResult['route'];
 
             // Step 5: Build response data and store in cache for 24 hours
             $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration) {
@@ -179,6 +158,7 @@ class FoManagementController extends Controller
                     'has_geojson' => $foRoute->hasValidGeoJSON(),
                     'was_generated_on_demand' => $needsGeneration,
                     'cached_at' => now()->toISOString(),
+                    'updated_at' => $foRoute->updated_at ? $foRoute->updated_at->timestamp : null, // For cache validation
                 ];
             });
 
@@ -341,12 +321,9 @@ class FoManagementController extends Controller
             $point->providers()->sync($syncData);
         }
 
-        // DRY: Use reusable route statistics update from trait
-        $this->updateFoRouteStatistics($routeId);
-
-        // Invalidate cache for this route since points changed
+        // Best Practice: Touch route and invalidate cache (ensures cache key changes)
         // GeoJSON will be regenerated on-demand when user next selects this route
-        $this->invalidateRouteCache($routeId);
+        $this->touchRouteAndInvalidateCache($routeId);
 
         // Invalidate FO points cache for data-fo page
         $this->invalidateFoPointsCache($validated['area']);
@@ -445,9 +422,8 @@ class FoManagementController extends Controller
         if ($oldRouteName !== $validated['route_name'] || $oldArea !== $validated['area']) {
             $oldRoute = FoRoute::where('name', $oldRouteName)->where('area', $oldArea)->first();
             if ($oldRoute) {
-                // DRY: Use reusable route statistics update from trait
-                $this->updateFoRouteStatistics($oldRoute->id);
-                $this->invalidateRouteCache($oldRoute->id);
+                // Best Practice: Touch route and invalidate cache (ensures cache key changes)
+                $this->touchRouteAndInvalidateCache($oldRoute);
             }
         }
 
@@ -456,9 +432,8 @@ class FoManagementController extends Controller
             ->where('area', $validated['area'])
             ->first();
         if ($newRoute) {
-            // DRY: Use reusable route statistics update from trait
-            $this->updateFoRouteStatistics($newRoute->id);
-            $this->invalidateRouteCache($newRoute->id);
+            // Best Practice: Touch route and invalidate cache (ensures cache key changes)
+            $this->touchRouteAndInvalidateCache($newRoute);
 
             // Redirect to route detail if we came from there
             if ($request->get('from_route') === 'detail') {
@@ -503,14 +478,9 @@ class FoManagementController extends Controller
                        ->first();
 
         if ($route) {
-            // Touch route to update updated_at (triggers needsGeoJSONRegeneration check)
-            $route->touch();
-            
-            // Invalidate cache (GeoJSON will regenerate on-demand when route is loaded)
-            $this->invalidateRouteCache($route->id);
-            
-            // DRY: Use reusable route statistics update from trait
-            $this->updateFoRouteStatistics($route->id);
+            // Best Practice: Touch route and invalidate cache (ensures cache key changes)
+            // GeoJSON will regenerate on-demand when route is loaded
+            $this->touchRouteAndInvalidateCache($route);
 
             \Log::info('Point coordinates updated via drag - GeoJSON will regenerate on-demand', [
                 'point_id' => $foPoint->id,
@@ -549,9 +519,8 @@ class FoManagementController extends Controller
         // Update associated route's statistics
         $route = FoRoute::where('name', $routeName)->where('area', $area)->first();
         if ($route) {
-            // DRY: Use reusable route statistics update from trait
-            $this->updateFoRouteStatistics($route->id);
-            $this->invalidateRouteCache($route->id);
+            // Best Practice: Touch route and invalidate cache (ensures cache key changes)
+            $this->touchRouteAndInvalidateCache($route);
         }
 
         return back()->with('success', 'Titik FO berhasil dihapus');
@@ -719,8 +688,8 @@ class FoManagementController extends Controller
                 $this->updateFoRouteStatistics($foRoute->id);
             }
 
-            // Always invalidate cache when route is updated
-            $this->invalidateRouteCache($foRoute->id);
+            // Best Practice: Touch route and invalidate cache (ensures cache key changes)
+            $this->touchRouteAndInvalidateCache($foRoute, updateStatistics: false);
 
             \Log::info('FO Route updated successfully', [
                 'route_id' => $foRoute->id,
@@ -768,8 +737,22 @@ class FoManagementController extends Controller
             $foRoute->delete();
         });
 
-        // Invalidate cache for deleted route
-        $this->invalidateRouteCache($routeId);
+        // Invalidate cache for deleted route (route already deleted, just clear cache)
+        // Note: No need to touch route since it's already deleted
+        try {
+            // Clear all possible cache keys for this route
+            for ($i = 0; $i < 30; $i++) {
+                $timestamp = now()->subDays($i)->timestamp;
+                $cacheKey = "fo_route_geojson_{$routeId}_{$timestamp}";
+                Cache::forget($cacheKey);
+            }
+            \Log::info('Cache invalidated for deleted route', ['route_id' => $routeId]);
+        } catch (\Exception $e) {
+            \Log::error('Error invalidating cache for deleted route', [
+                'route_id' => $routeId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return back()->with('success', 'Jalur FO dan titik-titik terkait berhasil dihapus');
     }
@@ -987,100 +970,7 @@ class FoManagementController extends Controller
         ]);
     }
 
-    /**
-     * Invalidate cache for a specific route's GeoJSON data
-     * Called when route or its points are modified
-     */
-    private function invalidateRouteCache(int $routeId): void
-    {
-        try {
-            $route = FoRoute::find($routeId);
-            if (! $route) {
-                \Log::warning('Cannot invalidate cache - route not found', ['route_id' => $routeId]);
-
-                return;
-            }
-
-            // For file/database cache drivers, we can use forget with the exact key
-            // Since updated_at might have changed, we'll clear potential old entries
-            // by iterating through a reasonable time range (last 30 days)
-            for ($i = 0; $i < 30; $i++) {
-                $timestamp = now()->subDays($i)->timestamp;
-                $cacheKey = "fo_route_geojson_{$routeId}_{$timestamp}";
-                Cache::forget($cacheKey);
-            }
-
-            // Also clear the current timestamp key
-            $currentKey = "fo_route_geojson_{$routeId}_{$route->updated_at->timestamp}";
-            Cache::forget($currentKey);
-
-            \Log::info('Cache invalidated for route', [
-                'route_id' => $routeId,
-                'route_name' => $route->name,
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Error invalidating route cache', [
-                'route_id' => $routeId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Invalidate cache for multiple routes
-     *
-     * @param  array<int>  $routeIds
-     */
-    private function invalidateMultipleRoutesCache(array $routeIds): void
-    {
-        foreach ($routeIds as $routeId) {
-            $this->invalidateRouteCache($routeId);
-        }
-    }
-
-    /**
-     * Invalidate FO points cache for data-fo page
-     * This ensures changes to points are reflected immediately
-     * 
-     * @param string $area Area name
-     * @return void
-     */
-    private function invalidateFoPointsCache(string $area): void
-    {
-        try {
-            // Invalidate all possible cache keys for this area
-            // Since we don't know which filters were used, we invalidate common patterns
-            $patterns = [
-                CacheService::foPointsKey($area, null, null), // No filters
-                CacheService::foPointsKey($area, 'all', null), // Provider: all
-                CacheService::foPointsKey($area, null, 'all'), // Side: all
-                CacheService::foPointsKey($area, 'all', 'all'), // Both: all
-            ];
-
-            // Also invalidate routes cache for this area
-            $routesCacheKey = CacheService::key('fo_routes', [
-                'area' => $area,
-            ]);
-            Cache::forget($routesCacheKey);
-
-            // Invalidate with common filter combinations
-            foreach (['all', null] as $provider) {
-                foreach (['all', null] as $side) {
-                    $key = CacheService::foPointsKey($area, $provider, $side);
-                    Cache::forget($key);
-                }
-            }
-
-            \Log::info('FO points cache invalidated', [
-                'area' => $area,
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Error invalidating FO points cache', [
-                'area' => $area,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
+    // Cache invalidation methods moved to HasCacheInvalidation trait (DRY)
 
     /**
      * Helper methods for labels and calculations
