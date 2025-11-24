@@ -6,6 +6,7 @@ import { PageProps as AppPageProps } from './';
 declare global {
     interface Window {
         axios: AxiosInstance;
+        updateCsrfToken?: (token?: string) => void;
     }
 
     /* eslint-disable no-var */

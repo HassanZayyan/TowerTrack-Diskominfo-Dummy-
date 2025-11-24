@@ -48,6 +48,7 @@ interface PageProps {
   mapBounds?: MapBounds;
   availableAreas: string[];
   availableStatuses: string[];
+  csrfToken: string;
 }
 
 // Component untuk auto-fit bounds

@@ -110,5 +110,3 @@ abstract class BaseController extends Controller
         QueryCacheService::invalidateModelCache($modelName);
     }
 }
-
-

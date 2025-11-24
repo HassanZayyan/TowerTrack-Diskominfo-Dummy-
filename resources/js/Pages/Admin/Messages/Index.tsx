@@ -9,6 +9,7 @@ type PageProps = {
   reports: Report[];
   feedbacks: Feedback[];
   statuses: StatusItem[];
+  csrfToken: string;
 };
 
 const MessagesIndexPage: React.FC = () => {

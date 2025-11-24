@@ -116,5 +116,3 @@ class QueryCacheService
         CacheService::invalidateByPattern("{$modelName}:*");
     }
 }
-
-

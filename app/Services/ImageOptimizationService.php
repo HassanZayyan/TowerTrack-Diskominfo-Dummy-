@@ -199,5 +199,3 @@ class ImageOptimizationService
         return $url;
     }
 }
-
-

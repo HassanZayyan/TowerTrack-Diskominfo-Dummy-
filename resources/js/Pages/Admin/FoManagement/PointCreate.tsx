@@ -27,6 +27,7 @@ interface PageProps {
   availableStatuses: string[];
   nextSequence: number;
   availableProviders?: Provider[];
+  csrfToken: string;
 }
 
 export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence, availableProviders = [] }: PageProps) {

@@ -49,6 +49,7 @@ interface PageProps {
   stats: Stats;
   currentArea: string;
   availableAreas: string[];
+  csrfToken: string;
   [key: string]: any;
 }
 

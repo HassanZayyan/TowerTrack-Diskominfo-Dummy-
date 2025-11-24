@@ -58,6 +58,7 @@ interface PageProps {
     maintenance_points: number;
     points_by_type: { type: string; count: number; label: string }[];
   };
+  csrfToken: string;
   [key: string]: any;
 }
 

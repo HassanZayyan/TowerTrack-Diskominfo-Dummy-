@@ -62,4 +62,5 @@ export type PageProps<
     auth: {
         user: User;
     };
+    csrfToken: string;
 };

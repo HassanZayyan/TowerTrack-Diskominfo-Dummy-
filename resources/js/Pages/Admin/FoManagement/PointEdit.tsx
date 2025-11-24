@@ -56,6 +56,7 @@ interface PageProps {
   currentProviders?: Provider[];
   fromRouteDetail?: boolean;
   parentRouteId?: number | null;
+  csrfToken: string;
 }
 
 export default function PointEdit({ 

@@ -31,6 +31,7 @@ interface PageProps {
   errors?: {
     provider?: string;
   };
+  csrfToken: string;
   [key: string]: any;
 }
 

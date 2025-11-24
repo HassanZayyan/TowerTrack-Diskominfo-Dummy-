@@ -6,6 +6,7 @@ import { STATUS_LABELS, getStatusLabel } from '@/utils/foConstants';
 interface PageProps {
   availableAreas: string[];
   availableStatuses: string[];
+  csrfToken: string;
 }
 
 export default function RouteCreate({ availableAreas, availableStatuses }: PageProps) {

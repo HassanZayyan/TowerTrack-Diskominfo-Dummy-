@@ -111,6 +111,7 @@ interface PageProps {
   currentArea: string;
   availableAreas: string[];
   activeTab: string;
+  csrfToken: string;
   [key: string]: any; // Index signature to satisfy constraint
 }
 

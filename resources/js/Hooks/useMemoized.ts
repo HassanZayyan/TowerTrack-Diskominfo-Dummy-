@@ -43,5 +43,3 @@ export function useSorted<T>(
 ): T[] {
   return useMemoized(() => [...items].sort(sortFn), [items, ...deps]);
 }
-
-
