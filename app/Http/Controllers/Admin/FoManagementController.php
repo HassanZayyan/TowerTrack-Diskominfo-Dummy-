@@ -7,6 +7,7 @@ use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
 use App\Rules\GoogleDriveUrl;
+use App\Services\CacheService;
 use App\Traits\HasFoPointValidation;
 use App\Traits\HasFoRouteStatistics;
 use Illuminate\Http\JsonResponse;
@@ -347,6 +348,9 @@ class FoManagementController extends Controller
         // GeoJSON will be regenerated on-demand when user next selects this route
         $this->invalidateRouteCache($routeId);
 
+        // Invalidate FO points cache for data-fo page
+        $this->invalidateFoPointsCache($validated['area']);
+
         \Log::info('FO point added successfully - GeoJSON will be regenerated on-demand', [
             'point_id' => $point->id,
             'route_id' => $routeId,
@@ -431,6 +435,12 @@ class FoManagementController extends Controller
         $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
         $foPoint->providers()->sync($syncData);
 
+        // Invalidate FO points cache for data-fo page
+        $this->invalidateFoPointsCache($validated['area']);
+        if ($oldArea !== $validated['area']) {
+            $this->invalidateFoPointsCache($oldArea);
+        }
+
         // Update route totals for old route if route changed
         if ($oldRouteName !== $validated['route_name'] || $oldArea !== $validated['area']) {
             $oldRoute = FoRoute::where('name', $oldRouteName)->where('area', $oldArea)->first();
@@ -484,6 +494,9 @@ class FoManagementController extends Controller
             'longitude' => $validated['longitude'],
         ]);
 
+        // Invalidate FO points cache for data-fo page
+        $this->invalidateFoPointsCache($foPoint->area);
+
         // Get associated route
         $route = FoRoute::where('name', $foPoint->route_name)
                        ->where('area', $foPoint->area)
@@ -529,6 +542,9 @@ class FoManagementController extends Controller
         $area = $foPoint->area;
 
         $foPoint->delete();
+
+        // Invalidate FO points cache for data-fo page
+        $this->invalidateFoPointsCache($area);
 
         // Update associated route's statistics
         $route = FoRoute::where('name', $routeName)->where('area', $area)->first();
@@ -1019,6 +1035,50 @@ class FoManagementController extends Controller
     {
         foreach ($routeIds as $routeId) {
             $this->invalidateRouteCache($routeId);
+        }
+    }
+
+    /**
+     * Invalidate FO points cache for data-fo page
+     * This ensures changes to points are reflected immediately
+     * 
+     * @param string $area Area name
+     * @return void
+     */
+    private function invalidateFoPointsCache(string $area): void
+    {
+        try {
+            // Invalidate all possible cache keys for this area
+            // Since we don't know which filters were used, we invalidate common patterns
+            $patterns = [
+                CacheService::foPointsKey($area, null, null), // No filters
+                CacheService::foPointsKey($area, 'all', null), // Provider: all
+                CacheService::foPointsKey($area, null, 'all'), // Side: all
+                CacheService::foPointsKey($area, 'all', 'all'), // Both: all
+            ];
+
+            // Also invalidate routes cache for this area
+            $routesCacheKey = CacheService::key('fo_routes', [
+                'area' => $area,
+            ]);
+            Cache::forget($routesCacheKey);
+
+            // Invalidate with common filter combinations
+            foreach (['all', null] as $provider) {
+                foreach (['all', null] as $side) {
+                    $key = CacheService::foPointsKey($area, $provider, $side);
+                    Cache::forget($key);
+                }
+            }
+
+            \Log::info('FO points cache invalidated', [
+                'area' => $area,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error invalidating FO points cache', [
+                'area' => $area,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
