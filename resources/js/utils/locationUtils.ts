@@ -2,11 +2,7 @@
  * Utility functions for location-based operations
  */
 
-// Interface for coordinates
-export interface Coordinates {
-  latitude: number;
-  longitude: number;
-}
+import type { Coordinates } from '@/types';
 
 // Interface for geolocation result
 export interface LocationResult {

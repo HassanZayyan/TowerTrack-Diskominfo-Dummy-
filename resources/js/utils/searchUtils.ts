@@ -1,33 +1,7 @@
 // Utility functions untuk pencarian dan filtering tower yang dapat digunakan bersama
 
-import { normalizeText } from '@/utils/stringUtils';
-
-export function calculateLevenshteinDistance(str1: string, str2: string): number {
-  const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-  
-  for (let i = 0; i <= str1.length; i += 1) matrix[0][i] = i;
-  for (let j = 0; j <= str2.length; j += 1) matrix[j][0] = j;
-  
-  for (let j = 1; j <= str2.length; j += 1) {
-    for (let i = 1; i <= str1.length; i += 1) {
-      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[j][i] = Math.min(
-        matrix[j][i - 1] + 1, // deletion
-        matrix[j - 1][i] + 1, // insertion
-        matrix[j - 1][i - 1] + indicator // substitution
-      );
-    }
-  }
-  
-  return matrix[str2.length][str1.length];
-}
-
-export function getSimilarityScore(text: string, query: string): number {
-  const maxLen = Math.max(text.length, query.length);
-  if (maxLen === 0) return 1.0;
-  const distance = calculateLevenshteinDistance(text, query);
-  return 1.0 - distance / maxLen;
-}
+import { normalizeText, getSimilarityScore } from '@/utils/stringUtils';
+import type { Tower } from '@/types';
 
 // Function to find match positions for highlighting
 export function findMatchPositions(text: string, query: string) {
@@ -106,14 +80,16 @@ export function findMatchPositions(text: string, query: string) {
   return mergedMatches;
 }
 
-export interface Tower {
-  id: number;
-  site_name: string;
-  alamat_menara?: string;
-}
-
-// Fungsi filtering tower yang akurat dengan fuzzy search
-export function filterTowers(towers: Tower[], searchTerm: string) {
+/**
+ * Core filtering function for towers with fuzzy search
+ * This is the single source of truth for tower filtering logic
+ * Used by both filterTowers utility and useTowerFilter hook
+ * 
+ * @param towers Array of towers to filter
+ * @param searchTerm Search query string
+ * @returns Array of filtered towers (max 15 results, sorted by relevance)
+ */
+export function filterTowers(towers: Tower[], searchTerm: string): Tower[] {
   const query = searchTerm.trim();
   if (!query || query.length === 0) return [];
 
@@ -273,3 +249,9 @@ export function filterTowers(towers: Tower[], searchTerm: string) {
   // Return maksimal 15 hasil teratas
   return results.slice(0, 15).map(result => result.tower);
 }
+
+/**
+ * Re-export Tower type for backward compatibility
+ * @deprecated Use Tower from '@/types' instead
+ */
+export type { Tower };
