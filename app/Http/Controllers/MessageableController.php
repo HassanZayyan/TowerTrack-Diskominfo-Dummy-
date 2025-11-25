@@ -189,8 +189,10 @@ abstract class MessageableController extends Controller
                 abort(403, 'Anda tidak memiliki akses untuk membalas pesan ini.');
             }
             
-            // For anonymous reports, staff can reply
-            if (method_exists($user, 'isStaff') && $user->isStaff()) {
+            // For anonymous reports, only admin and operator can reply
+            // Tower owner cannot reply to anonymous reports (same as complainant)
+            $isOperator = $user->role === 'operator';
+            if ($isOperator) {
                 return [
                     'user_id' => $user->id,
                     'sender_type' => 'staff',

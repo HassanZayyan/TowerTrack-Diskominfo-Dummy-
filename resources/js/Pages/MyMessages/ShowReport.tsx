@@ -12,6 +12,7 @@ import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { Comment } from '@/Components/MyMessages/CommentItem';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
+import { useCanRespond } from '@/Hooks/useCanRespond';
 import type { Report } from '@/types/messages';
 
 type PaginationLink = {
@@ -46,7 +47,7 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
 
   const handleCommentSuccess = React.useCallback(() => {
     setReplyingTo(null);
-    router.reload({ only: ['report'] });
+    router.reload({ only: ['report', 'comments'] });
   }, [router]);
 
   const handleResponseSuccess = React.useCallback(() => {
@@ -64,31 +65,14 @@ export default function ShowReport({ report, statuses = [], comments }: ShowRepo
 
   const authUser = auth?.user;
   const isAuthenticated = Boolean(authUser);
-  const normalizedRole =
-    typeof authUser?.role === 'string' ? authUser.role.toLowerCase() : undefined;
-  const isAdmin = isAuthenticated && normalizedRole === 'admin';
-  const isOwner = Boolean(
-    isAuthenticated && report.user_id && authUser?.id && Number(report.user_id) === Number(authUser.id)
-  );
-  const hasReporter = Boolean(report.user_id);
   
-  // Determine who can respond
-  let canRespond = false;
-  
-  if (hasReporter) {
-    // For authenticated reports: only admin and reporter can respond
-    canRespond = isAdmin || isOwner;
-  } else {
-    // For anonymous reports: staff and guest can respond
-    const staffRoles = ['admin', 'operator', 'tower_owner', 'staff'];
-    const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
-    const canGuestRespond = !isAuthenticated && (!!report.email || !!report.reporter_phone);
-    canRespond = isStaff || canGuestRespond;
-  }
-
-  const responseDescription = !isAuthenticated && !hasReporter
-    ? 'Masukkan email dan nomor telepon yang digunakan saat mengirim laporan untuk memverifikasi bahwa Anda adalah pengirim asli.'
-    : undefined;
+  const { canRespond, responseDescription } = useCanRespond({
+    user_id: report.user_id,
+    email: report.email,
+    phone: report.reporter_phone,
+    phoneField: 'reporter_phone',
+    messageType: 'report',
+  });
 
   const responseStatusResolver = (statusValue: string | null | undefined) => {
     return getStatusColor(statusValue ?? '');

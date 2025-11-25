@@ -12,6 +12,7 @@ import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { Comment } from '@/Components/MyMessages/CommentItem';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
+import { useCanRespond } from '@/Hooks/useCanRespond';
 import type { Feedback } from '@/types/messages';
 
 type PaginationLink = {
@@ -46,7 +47,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
 
   const handleCommentSuccess = React.useCallback(() => {
     setReplyingTo(null);
-    router.reload({ only: ['feedback'] });
+    router.reload({ only: ['feedback', 'comments'] });
   }, [router]);
 
   const handleResponseSuccess = React.useCallback(() => {
@@ -64,18 +65,14 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
 
   const authUser = auth?.user;
   const isAuthenticated = Boolean(authUser);
-  const staffRoles = ['admin', 'operator', 'tower_owner', 'staff'];
-  const normalizedRole =
-    typeof authUser?.role === 'string' ? authUser.role.toLowerCase() : undefined;
-  const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
-  const isOwner =
-    isAuthenticated && feedback.user_id && Number(feedback.user_id) === Number(authUser.id);
-  const canGuestRespond = !isAuthenticated && (!!feedback.email || !!feedback.sender_phone);
-  const canRespond = isStaff || isOwner || canGuestRespond;
-
-  const responseDescription = !isAuthenticated
-    ? 'Masukkan email dan nomor telepon yang digunakan saat mengirim masukan untuk memverifikasi bahwa Anda adalah pengirim asli.'
-    : undefined;
+  
+  const { canRespond, responseDescription } = useCanRespond({
+    user_id: feedback.user_id,
+    email: feedback.email,
+    phone: feedback.sender_phone,
+    phoneField: 'sender_phone',
+    messageType: 'feedback',
+  });
 
   const responseStatusResolver = (statusValue: string | null | undefined) => {
     return getStatusColor(statusValue ?? '');
