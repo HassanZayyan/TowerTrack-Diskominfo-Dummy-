@@ -177,40 +177,42 @@ class FeedbackController extends MessageableController
 
     /**
      * Show feedback list for regular users
+     * Redirect to MyMessages for consistency with Complaint
      */
     public function userFeedbacks()
     {
-        $feedbacks = Feedback::with(['tower:id,site_name', 'assets', 'responses.user:id,name'])
-            ->where('user_id', auth()->id())
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        return Inertia::render('Feedback/Index', [
-            'feedbacks' => $feedbacks,
-        ]);
+        // Redirect authenticated users to their posts page
+        if (auth()->check()) {
+            return redirect()->route('my.messages.myposts');
+        }
+        
+        // For guests, redirect to public messages
+        return redirect()->route('my.messages');
     }
 
     /**
      * Show single feedback detail for user
+     * Redirect to MyMessages for consistency with Complaint
      */
     public function show(Feedback $feedback)
     {
-        // Ensure user can only see their own feedback
-        if ($feedback->user_id !== auth()->id() && !auth()->user()->isStaff()) {
-            abort(403);
+        // Check if feedback is public or private
+        if ($feedback->is_public) {
+            // Redirect to public show page (with comments)
+            return redirect()->route('public.feedbacks.show', $feedback);
+        } else {
+            // For private feedbacks, check access
+            if (auth()->check() && $feedback->user_id === auth()->id()) {
+                // Authenticated user viewing their own private feedback
+                return redirect()->route('public.feedbacks.show', $feedback);
+            } else {
+                // Redirect to private tracking page
+                return redirect()->route('my.messages.private', [
+                    'email' => $feedback->email,
+                    'phone' => $feedback->sender_phone,
+                ]);
+            }
         }
-
-        $feedback->load([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email',
-            'assets',
-            'responses.user:id,name',
-            'responses.assets'
-        ]);
-
-        return Inertia::render('Feedback/Show', [
-            'feedback' => $feedback,
-        ]);
     }
 
     /**
@@ -219,12 +221,13 @@ class FeedbackController extends MessageableController
     public function showPublic(Feedback $feedback): Response
     {
         $this->validatePublicAccess($feedback, 'Pesan');
-        $comments = $this->loadPublicRelationships($feedback, $this->getConfig());
+        $commentData = $this->loadPublicRelationships($feedback, $this->getConfig());
 
         return Inertia::render('MyMessages/ShowFeedback', [
             'feedback' => $feedback,
             'statuses' => $this->getStatuses(),
-            'comments' => $comments,
+            'comments' => $commentData['comments'] ?? null,
+            'commentCount' => $commentData['commentCount'] ?? null,
         ]);
     }
 

@@ -34,7 +34,7 @@ class PublicMessageQueryService
                 'images:id,report_id,file_path,file_type',
             ])
             ->withCount([
-                'comments as comments_count'
+                'allComments as comments_count'
             ])
             ->where('is_public', true)
             // Only show verified records: authenticated users OR verified guest users
@@ -75,7 +75,7 @@ class PublicMessageQueryService
                     },
                 ])
                 ->withCount([
-                    'comments as comments_count'
+                    'allComments as comments_count'
                 ])
                 ->where('is_public', true)
                 // Only show verified records: authenticated users OR verified guest users

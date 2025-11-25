@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
-import TextInput from '@/Components/TextInput';
-import InputLabel from '@/Components/InputLabel';
-import InputError from '@/Components/InputError';
 import AnimatedButton from '@/Components/AnimatedButton';
 import { useGuestFormData } from '@/Hooks/useGuestData';
+import FormCard from '@/Components/Forms/FormCard';
+import FormHeader from '@/Components/Forms/FormHeader';
+import ContactFields from '@/Components/Forms/ContactFields';
+import TextareaWithCounter from '@/Components/Forms/TextareaWithCounter';
 
 interface CommentFormProps {
   type: 'report' | 'feedback';
@@ -89,15 +90,16 @@ export default function CommentForm({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <FormCard>
+      <FormHeader
+        icon={
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-        </div>
-        <h3 className="text-lg font-bold text-gray-900">Tulis Komentar</h3>
-      </div>
+        }
+        title="Tulis Komentar"
+        iconBgColor="blue"
+      />
 
       <form onSubmit={submit} className="space-y-4">
         {/* Reply indicator */}
@@ -120,67 +122,36 @@ export default function CommentForm({
         
         {/* Guest fields - only show if not authenticated */}
         {!isAuthenticated && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <InputLabel htmlFor="guest_name" value="Nama *" />
-              <TextInput
-                id="guest_name"
-                type="text"
-                value={data.guest_name}
-                onChange={(e) => setData('guest_name', e.target.value)}
-                className="mt-1 block w-full"
-                required={!isAuthenticated}
-                placeholder="Masukkan nama Anda"
-              />
-              <InputError message={errors.guest_name} className="mt-1" />
-            </div>
-
-            <div>
-              <InputLabel htmlFor="guest_email" value="Email *" />
-              <TextInput
-                id="guest_email"
-                type="email"
-                value={data.guest_email}
-                onChange={(e) => setData('guest_email', e.target.value)}
-                className="mt-1 block w-full"
-                required={!isAuthenticated}
-                placeholder="contoh@email.com"
-              />
-              <InputError message={errors.guest_email} className="mt-1" />
-            </div>
-
-            <div className="sm:col-span-2">
-              <InputLabel htmlFor="guest_phone" value="No. Telepon (Opsional)" />
-              <TextInput
-                id="guest_phone"
-                type="tel"
-                value={data.guest_phone}
-                onChange={(e) => setData('guest_phone', e.target.value)}
-                className="mt-1 block w-full"
-                placeholder="08xx-xxxx-xxxx"
-              />
-              <InputError message={errors.guest_phone} className="mt-1" />
-            </div>
-          </div>
+          <ContactFields
+            nameField="guest_name"
+            emailField="guest_email"
+            phoneField="guest_phone"
+            nameValue={data.guest_name}
+            emailValue={data.guest_email}
+            phoneValue={data.guest_phone}
+            onNameChange={(value) => setData('guest_name', value)}
+            onEmailChange={(value) => setData('guest_email', value)}
+            onPhoneChange={(value) => setData('guest_phone', value)}
+            nameError={errors.guest_name}
+            emailError={errors.guest_email}
+            phoneError={errors.guest_phone}
+            showBackground={false}
+          />
         )}
 
         {/* Comment message */}
-        <div>
-          <InputLabel htmlFor="message" value="Komentar *" />
-          <textarea
-            id="message"
-            value={data.message}
-            onChange={(e) => setData('message', e.target.value)}
-            className="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
-            rows={4}
-            required
-            placeholder="Tulis komentar Anda di sini..."
-          />
-          <InputError message={errors.message} className="mt-1" />
-          <p className="mt-1 text-sm text-gray-500">
-            {data.message.length}/1000 karakter
-          </p>
-        </div>
+        <TextareaWithCounter
+          id="message"
+          label="Komentar *"
+          value={data.message}
+          onChange={(value) => setData('message', value)}
+          error={errors.message}
+          maxLength={1000}
+          rows={4}
+          placeholder="Tulis komentar Anda di sini..."
+          required
+          focusColor="blue"
+        />
 
         {/* Submit button */}
         <div className="flex justify-end gap-3">
@@ -200,7 +171,7 @@ export default function CommentForm({
           </AnimatedButton>
         </div>
       </form>
-    </div>
+    </FormCard>
   );
 }
 

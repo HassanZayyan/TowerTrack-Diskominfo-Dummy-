@@ -61,6 +61,7 @@ export type ReportItem = {
   tower?: { id: number; site_name: string; alamat_menara?: string };
   responses?: Array<{ id: number; report_id: number; created_at: string }>;
   comments_count?: number; // Count of approved top-level comments
+  is_public?: boolean; // Visibility flag for filtering
 };
 
 // Extended Report type (for Admin pages and detail pages)
@@ -93,6 +94,7 @@ export type FeedbackItem = {
   tower?: { id: number; site_name: string; alamat_menara?: string };
   responses?: Array<{ id: number; feedback_id: number; created_at: string }>;
   comments_count?: number; // Count of approved top-level comments
+  is_public?: boolean; // Visibility flag for filtering
 };
 
 // Extended Feedback type (for Admin pages and detail pages)
@@ -122,5 +124,6 @@ export type MessageItem = {
   senderName: string; // Display name (from user.name or reporter_name/sender_name)
   senderEmail: string; // Display email (from user.email or email field)
   isAnonymous: boolean; // Whether the sender is anonymous
+  isPublic?: boolean; // Visibility flag for filtering (public/private)
 };
 

@@ -188,12 +188,13 @@ class ComplaintController extends MessageableController
     public function showPublic(Report $report): Response
     {
         $this->validatePublicAccess($report, 'Pesan');
-        $comments = $this->loadPublicRelationships($report, $this->getConfig());
+        $commentData = $this->loadPublicRelationships($report, $this->getConfig());
 
         return Inertia::render('MyMessages/ShowReport', [
             'report' => $report,
             'statuses' => $this->getStatuses(),
-            'comments' => $comments,
+            'comments' => $commentData['comments'] ?? null,
+            'commentCount' => $commentData['commentCount'] ?? null,
         ]);
     }
 

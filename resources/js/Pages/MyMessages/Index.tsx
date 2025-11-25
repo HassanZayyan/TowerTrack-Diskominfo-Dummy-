@@ -14,9 +14,20 @@ import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDate } from '@/utils/dateHelpers';
 import { useMemoized, useFiltered, useSorted } from '@/Hooks/useMemoized';
 
+// Pagination type for Laravel LengthAwarePaginator
+type PaginationData<T> = {
+  data: T[];
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+  links: Array<{ url: string | null; label: string; active: boolean }>;
+};
+
 type MyMessagesProps = {
-  reports?: ReportItem[];
-  feedbacks?: FeedbackItem[];
+  // Support both array (for public messages) and pagination object (for my posts)
+  reports?: ReportItem[] | PaginationData<ReportItem>;
+  feedbacks?: FeedbackItem[] | PaginationData<FeedbackItem>;
   showEmailInput?: boolean;
   isAnonymous?: boolean;
   isMyPosts?: boolean; // Flag to indicate if this is the "My Posts" view
@@ -43,6 +54,7 @@ export default function MyMessagesIndex({
   const [filterStatus, setFilterStatus] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
+  const [filterVisibility, setFilterVisibility] = React.useState<'all' | 'public' | 'private'>('all');
 
   React.useEffect(() => {
     if (isStaff) {
@@ -62,7 +74,17 @@ export default function MyMessagesIndex({
 
   // Merge complaints and feedbacks into a single unified list
   const allItems: MessageItem[] = useMemoized(() => {
-    const complaintItems = (reports || []).map((r) => ({
+    // Extract data from pagination object or use array directly
+    // Handle both array (public messages) and pagination object (my posts)
+    const reportsData = Array.isArray(reports) 
+      ? reports 
+      : (reports && 'data' in reports ? reports.data : []);
+    
+    const feedbacksData = Array.isArray(feedbacks)
+      ? feedbacks
+      : (feedbacks && 'data' in feedbacks ? feedbacks.data : []);
+    
+    const complaintItems = (reportsData || []).map((r) => ({
       id: `report-${r.id}`,
       type: 'Keluhan' as const,
       created_at: r.created_at,
@@ -75,9 +97,10 @@ export default function MyMessagesIndex({
       senderName: r.user?.name || r.reporter_name || 'Anonymous',
       senderEmail: r.user?.email || r.email || '-',
       isAnonymous: !r.user_id, // Anonymous if no user_id
+      isPublic: r.is_public ?? false, // Extract visibility flag
     }));
 
-    const feedbackItems = (feedbacks || []).map((f) => ({
+    const feedbackItems = (feedbacksData || []).map((f) => ({
       id: `feedback-${f.id}`,
       type: 'Masukan' as const,
       created_at: f.created_at,
@@ -90,6 +113,7 @@ export default function MyMessagesIndex({
       senderName: f.user?.name || f.sender_name || 'Anonymous',
       senderEmail: f.user?.email || f.email || '-',
       isAnonymous: !f.user_id, // Anonymous if no user_id
+      isPublic: f.is_public ?? false, // Extract visibility flag
     }));
 
     return [...complaintItems, ...feedbackItems];
@@ -125,6 +149,15 @@ export default function MyMessagesIndex({
       result = result.filter(item => item.category === filterCategory);
     }
 
+    // Filter by visibility (only for my posts page)
+    if (isMyPosts && filterVisibility !== 'all') {
+      if (filterVisibility === 'public') {
+        result = result.filter(item => item.isPublic === true);
+      } else if (filterVisibility === 'private') {
+        result = result.filter(item => item.isPublic === false);
+      }
+    }
+
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -142,7 +175,7 @@ export default function MyMessagesIndex({
     }
 
     return result;
-  }, [sortedItems, filterType, filterStatus, filterCategory, searchQuery, isMyPosts]);
+  }, [sortedItems, filterType, filterStatus, filterCategory, filterVisibility, searchQuery, isMyPosts]);
 
   // Apply pagination
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -155,7 +188,7 @@ export default function MyMessagesIndex({
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filterType, filterStatus, filterCategory, searchQuery, itemsPerPage]);
+  }, [filterType, filterStatus, filterCategory, filterVisibility, searchQuery, itemsPerPage]);
   
   // Navigate to detail page for public messages
   const openDetail = React.useCallback((it: MessageItem) => {
@@ -459,7 +492,7 @@ export default function MyMessagesIndex({
                       className="pl-10 pr-20 block w-full"
                       placeholder={isMyPosts ? "Cari berdasarkan tower, kategori, nama, atau email..." : "Cari berdasarkan tower, kategori, atau nama..."}
                     />
-                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all') && (
+                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || (isMyPosts && filterVisibility !== 'all')) && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                         <button
                           type="button"
@@ -467,6 +500,7 @@ export default function MyMessagesIndex({
                             setFilterType('all');
                             setFilterStatus('all');
                             setFilterCategory('all');
+                            setFilterVisibility('all');
                             setSearchQuery('');
                           }}
                           className="text-gray-400 hover:text-gray-600 focus:outline-none"
@@ -511,6 +545,23 @@ export default function MyMessagesIndex({
                     <option value="resolved">Selesai</option>
                   </select>
                 </div>
+
+                {/* Visibility Filter - Only show for My Posts page */}
+                {isMyPosts && (
+                  <div>
+                    <InputLabel htmlFor="filterVisibility" value="Visibilitas" />
+                    <select
+                      id="filterVisibility"
+                      value={filterVisibility}
+                      onChange={(e) => setFilterVisibility(e.target.value as 'all' | 'public' | 'private')}
+                      className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
+                    >
+                      <option value="all">Semua (Publik & Privat)</option>
+                      <option value="public">Publik</option>
+                      <option value="private">Privat</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Category Filter - Full width on second row */}
@@ -534,7 +585,7 @@ export default function MyMessagesIndex({
               {/* Results count and active filters */}
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || searchQuery) && (
+                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || (isMyPosts && filterVisibility !== 'all') || searchQuery) && (
                     <>
                       <span className="text-sm text-gray-600">Filter aktif:</span>
                       {filterType !== 'all' && (
@@ -569,6 +620,19 @@ export default function MyMessagesIndex({
                           <button
                             onClick={() => setFilterCategory('all')}
                             className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-purple-200"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </span>
+                      )}
+                      {isMyPosts && filterVisibility !== 'all' && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Visibilitas: {filterVisibility === 'public' ? 'Publik' : 'Privat'}
+                          <button
+                            onClick={() => setFilterVisibility('all')}
+                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-green-200"
                           >
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -620,6 +684,7 @@ export default function MyMessagesIndex({
                       setFilterType('all');
                       setFilterStatus('all');
                       setFilterCategory('all');
+                      setFilterVisibility('all');
                       setSearchQuery('');
                     }}
                     icon={

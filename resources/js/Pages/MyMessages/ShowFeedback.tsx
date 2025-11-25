@@ -34,9 +34,10 @@ type ShowFeedbackProps = {
   feedback: Feedback;
   statuses?: Array<{ id: number; name: string; slug: string; color: string; icon: string }>;
   comments?: PaginationData;
+  commentCount?: number;
 };
 
-export default function ShowFeedback({ feedback, statuses = [], comments }: ShowFeedbackProps) {
+export default function ShowFeedback({ feedback, statuses = [], comments, commentCount }: ShowFeedbackProps) {
   const { auth } = usePage().props as any;
   const [previewAsset, setPreviewAsset] = useState<{ file_path: string; file_type?: string } | null>(null);
   const [replyingTo, setReplyingTo] = useState<{ id: number; name: string } | null>(null);
@@ -47,7 +48,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
 
   const handleCommentSuccess = React.useCallback(() => {
     setReplyingTo(null);
-    router.reload({ only: ['feedback', 'comments'] });
+    router.reload({ only: ['feedback', 'comments', 'commentCount'] });
   }, [router]);
 
   const handleResponseSuccess = React.useCallback(() => {
@@ -364,6 +365,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
               comments={comments?.data || feedback.comments || []} 
               onReply={handleReply}
               pagination={comments}
+              commentCount={commentCount}
             />
           </div>
         </StaggeredContainer>

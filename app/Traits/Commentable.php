@@ -14,6 +14,15 @@ trait Commentable
             ->where('is_approved', true)
             ->orderBy('created_at', 'desc');
     }
+
+    /**
+     * Get all approved comments (top-level + replies).
+     */
+    public function allComments()
+    {
+        return $this->morphMany(\App\Models\PublicComment::class, 'commentable')
+            ->where('is_approved', true);
+    }
     
     /**
      * Get all comments with their replies.

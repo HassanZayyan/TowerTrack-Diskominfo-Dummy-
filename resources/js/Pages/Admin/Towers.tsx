@@ -5,6 +5,7 @@ import HeroSection from '@/Components/HeroSection';
 import FilterPanel from '@/Components/Admin/FilterPanel';
 import { formatDateForInput as formatDateForInputHelper } from '@/utils/dateHelpers';
 import { useDebounce } from '@/Hooks/useDebounce';
+import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface Owner {
   id: number;
@@ -147,12 +148,6 @@ interface OptionType {
   value: string;
   label: string;
 }
-
-const SITE_TYPE_OPTIONS: OptionType[] = [
-  { value: 'GF', label: 'GF' },
-  { value: 'IBS', label: 'IBS' },
-  { value: 'RT', label: 'RT' }
-];
 
 const PERMIT_TYPE_OPTIONS: OptionType[] = [
   { value: 'IMB', label: 'IMB' },

@@ -6,6 +6,8 @@ import MainLayout from '@/Layouts/MainLayout';
 import FileUpload from '@/Components/FileUpload';
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
 import AlertDialog from '@/Components/AlertDialog';
+import PageHeader from '@/Components/PageHeader';
+import AnimatedButton from '@/Components/AnimatedButton';
 
 import { validatePhoneNumber } from '@/utils/validationUtils';
 import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
@@ -528,27 +530,11 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       <Head title="Form Masukan" />
       
       <div className="p-4 sm:p-6">
-        <div 
-          className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" 
-          style={{ backgroundColor: '#FFF8E1' }}
-        >
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              {isAuthenticatedUser ? 'Form Masukan - Sampaikan Masukan Anda' : 'Guest Feedback - Sampaikan Masukan Anda'}
-            </h1>
-            <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              {isAuthenticatedUser 
-                ? 'Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi'
-                : 'Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi'
-              }
-            </p>
-          </div>
-          <img 
-            src="/images/kab-smg-logo.png" 
-            alt="Kabupaten Semarang" 
-            className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" 
-          />
-        </div>
+        <PageHeader
+          title={isAuthenticatedUser ? 'Form Masukan - Sampaikan Masukan Anda' : 'Guest Feedback - Sampaikan Masukan Anda'}
+          description="Silakan isi form di bawah ini untuk menyampaikan masukan atau saran terkait tower telekomunikasi"
+          showLogo
+        />
         
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-4 sm:p-6">
@@ -806,21 +792,31 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
               )}
 
               <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
-                <button
+                <AnimatedButton
                   type="button"
+                  variant="secondary"
+                  size="md"
+                  animation="scale"
                   onClick={resetForm}
-                  className="px-6 py-3 border border-gray-400 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
                   disabled={isSubmitting}
                 >
                   Reset
-                </button>
-                <button
+                </AnimatedButton>
+                <AnimatedButton
                   type="submit"
-                  className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                  variant="primary"
+                  size="md"
+                  animation="scale"
+                  loading={isSubmitting}
                   disabled={isSubmitting || (!isAuthenticatedUser && !captchaToken)}
+                  icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  }
                 >
                   {isSubmitting ? 'Mengirim...' : 'Kirim Masukan'}
-                </button>
+                </AnimatedButton>
               </div>
             </form>
           </div>

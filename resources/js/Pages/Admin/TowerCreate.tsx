@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface Owner {
   id: number;
@@ -353,17 +354,19 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Site Type</label>
                   <FormInput 
                     field="site_type" 
-                    options={[
-                      { value: 'macro', label: 'Macro' },
-                      { value: 'micro', label: 'Micro' },
-                      { value: 'indoor', label: 'Indoor' },
-                      { value: 'outdoor', label: 'Outdoor' }
-                    ]} 
+                    options={SITE_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))} 
                     placeholder="Pilih site type" 
                     value={formData.site_type}
                     onChange={updateField}
                     error={errors.site_type}
                   />
+                  <div className="text-xs text-gray-500 mt-1 space-y-1">
+                    {SITE_TYPE_OPTIONS.map((option) => (
+                      <p key={option.value}>
+                        <span className="font-medium">{option.label}:</span> {option.description}
+                      </p>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>

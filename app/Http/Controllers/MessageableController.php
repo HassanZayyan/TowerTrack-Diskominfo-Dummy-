@@ -77,7 +77,7 @@ abstract class MessageableController extends Controller
      * Load common relationships for public messages.
      * Returns paginated comments separately to avoid redundancy.
      */
-    protected function loadPublicRelationships($model, array $config): LengthAwarePaginator
+    protected function loadPublicRelationships($model, array $config): array
     {
         $relationships = [
             'tower:id,site_name,alamat_menara',
@@ -106,7 +106,16 @@ abstract class MessageableController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
         
-        return $comments;
+        // Count all comments including replies
+        $commentCount = PublicComment::where('commentable_type', get_class($model))
+            ->where('commentable_id', $model->id)
+            ->where('is_approved', true)
+            ->count();
+
+        return [
+            'comments' => $comments,
+            'commentCount' => $commentCount,
+        ];
     }
     
     /**

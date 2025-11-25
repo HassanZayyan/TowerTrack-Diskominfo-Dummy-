@@ -36,6 +36,7 @@ class Report extends Model
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_public' => 'boolean',
     ];
     
     public function tower()

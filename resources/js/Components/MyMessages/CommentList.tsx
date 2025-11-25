@@ -20,10 +20,11 @@ interface CommentListProps {
   comments: Comment[];
   onReply?: (commentId: number, authorName: string) => void;
   pagination?: PaginationData;
+  commentCount?: number;
 }
 
-export default function CommentList({ comments, onReply, pagination }: CommentListProps) {
-  const totalComments = pagination?.total ?? comments.length;
+export default function CommentList({ comments, onReply, pagination, commentCount }: CommentListProps) {
+  const totalComments = commentCount ?? pagination?.total ?? comments.length;
   
   if (comments.length === 0) {
     return (

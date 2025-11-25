@@ -76,7 +76,7 @@ class MyMessagesController extends BaseController
                     },
                     'images:id,report_id,file_path,file_type'
                 ])
-                    ->withCount(['comments as comments_count'])
+                    ->withCount(['allComments as comments_count'])
                     ->where('user_id', $userId)
                     ->orderByDesc('created_at');
             },
@@ -101,7 +101,7 @@ class MyMessagesController extends BaseController
                                     ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                             }
                         ])
-                            ->withCount(['comments as comments_count'])
+                            ->withCount(['allComments as comments_count'])
                             ->where('user_id', $userId)
                             ->orderByDesc('created_at');
                     },
@@ -158,8 +158,8 @@ class MyMessagesController extends BaseController
                         ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
                 },
                 'images:id,report_id,file_path,file_type'
-            ])
-                ->withCount(['comments as comments_count'])
+                ])
+                ->withCount(['allComments as comments_count'])
                 ->where('email', $email)
                 ->where('reporter_phone', $phone)
                 ->where('is_public', false)
@@ -180,7 +180,7 @@ class MyMessagesController extends BaseController
                                 ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
                         }
                     ])
-                        ->withCount(['comments as comments_count'])
+                        ->withCount(['allComments as comments_count'])
                         ->where('email', $email)
                         ->where('sender_phone', $phone)
                         ->where('is_public', false)
