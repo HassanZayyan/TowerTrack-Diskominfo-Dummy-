@@ -121,7 +121,7 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = React.memo<AnimatedButtonP
 
   // Button classes - simplified without useMemo overhead
   const buttonClasses = [
-    'inline-flex items-center justify-center rounded-lg font-medium',
+    'relative inline-flex items-center justify-center rounded-lg font-medium',
     currentVariant.base,
     currentVariant.hover,
     currentVariant.active,
@@ -158,8 +158,8 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = React.memo<AnimatedButtonP
     </svg>
   );
 
-  // Icon rendering
-  const iconElement = loading ? loadingSpinner : icon ? (
+  // Icon rendering - hide icon when loading (spinner shown as overlay instead)
+  const iconElement = !loading && icon ? (
     <span className={`${currentSize.icon} ${iconPosition === 'right' ? 'ml-2' : 'mr-2'}`}>
       {icon}
     </span>
