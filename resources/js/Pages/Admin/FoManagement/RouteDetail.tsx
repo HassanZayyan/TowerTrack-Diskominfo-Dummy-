@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { getFOStatusColor } from '@/utils/statusHelpers';
@@ -464,7 +465,27 @@ export default function RouteDetail() {
   const [selectedPoints, setSelectedPoints] = useState<number[]>([]);
   const [selectedPointDetail, setSelectedPointDetail] = useState<FoPoint | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [pointToDelete, setPointToDelete] = useState<FoPoint | null>(null);
   const canEdit = ['admin', 'operator'].includes(auth.user.role);
+
+  // Prevent body scroll saat modal terbuka (Detail atau Delete)
+  useEffect(() => {
+    if (showDetailDialog || showDeleteDialog) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showDetailDialog, showDeleteDialog]);
 
   const handleSelectPoint = (pointId: number) => {
     setSelectedPoints(prev =>
@@ -479,16 +500,30 @@ export default function RouteDetail() {
   };
 
   const handleDeletePoint = (point: FoPoint) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus titik "${point.name}"?`)) {
-      router.delete(route('admin.fo-management.points.destroy', { foPoint: point.id }), {
-        onSuccess: () => {
-          setSelectedPoints(prev => prev.filter(id => id !== point.id));
-        },
-        onError: () => {
-          alert('Terjadi kesalahan saat menghapus titik.');
-        }
-      });
-    }
+    setPointToDelete(point);
+    setShowDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setPointToDelete(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!pointToDelete) return;
+
+    router.delete(route('admin.fo-management.points.destroy', { foPoint: pointToDelete.id }), {
+      onSuccess: () => {
+        setSelectedPoints(prev => prev.filter(id => id !== pointToDelete.id));
+        setShowDeleteDialog(false);
+        setPointToDelete(null);
+      },
+      onError: () => {
+        alert('Terjadi kesalahan saat menghapus titik.');
+        setShowDeleteDialog(false);
+        setPointToDelete(null);
+      }
+    });
   };
 
   const handleShowDetail = (point: FoPoint) => {
@@ -599,11 +634,29 @@ export default function RouteDetail() {
           </div>
         )}
 
-        {/* Detail Dialog */}
-        {showDetailDialog && selectedPointDetail && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
+        {/* Detail Dialog - Using Portal to render outside AdminLayout DOM structure */}
+        {showDetailDialog && selectedPointDetail && typeof window !== 'undefined' && createPortal(
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+            style={{ 
+              overflow: 'hidden',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh'
+            }}
+            onClick={(e) => {
+              // Close modal when clicking on backdrop
+              if (e.target === e.currentTarget) {
+                handleCloseDetail();
+              }
+            }}
+          >
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="p-6 flex-shrink-0">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">Detail Titik FO</h3>
                   <button
@@ -615,7 +668,16 @@ export default function RouteDetail() {
                     </svg>
                   </button>
                 </div>
-                
+              </div>
+              
+              <div 
+                className="px-6 overflow-y-auto flex-1 min-h-0"
+                style={{
+                  maxHeight: 'calc(100vh - 12rem)',
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'contain'
+                }}
+              >
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">Nama Titik</label>
@@ -684,8 +746,10 @@ export default function RouteDetail() {
                     </p>
                   </div>
                 </div>
-                
-                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+              </div>
+              
+              <div className="p-6 pt-4 border-t border-gray-200 flex-shrink-0">
+                <div className="flex gap-3">
                   {canEdit && (
                     <Link
                       href={route('admin.fo-management.points.edit', { foPoint: selectedPointDetail.id, from_route: 'detail' })}
@@ -706,7 +770,77 @@ export default function RouteDetail() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Delete Confirmation Dialog - Using Portal */}
+        {showDeleteDialog && pointToDelete && typeof window !== 'undefined' && createPortal(
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+            style={{ 
+              overflow: 'hidden',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh'
+            }}
+            onClick={(e) => {
+              // Close modal when clicking on backdrop
+              if (e.target === e.currentTarget) {
+                handleCloseDeleteDialog();
+              }
+            }}
+          >
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Konfirmasi Hapus Titik FO</h3>
+                  <p className="text-sm text-gray-600">Titik: <span className="font-semibold">{pointToDelete.name}</span></p>
+                </div>
+              </div>
+
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">
+                      Apakah Anda yakin ingin menghapus titik FO ini?
+                    </p>
+                    <p className="text-xs text-red-700 mt-1">
+                      Data akan dihapus permanen dan tidak dapat dikembalikan. Tindakan ini akan mempengaruhi urutan titik pada jalur ini.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                <button
+                  onClick={handleCloseDeleteDialog}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Hapus Permanen
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     </AdminLayout>

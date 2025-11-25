@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState, useEffect } from 'react';
 import AnimatedButton from '@/Components/AnimatedButton';
 import Modal from '@/Components/Modal';
 
@@ -64,6 +64,29 @@ export default function MessageActionDialog({
     onClose?.();
   };
 
+  // Prevent body scroll saat modal terbuka
+  useEffect(() => {
+    if (resolvedOpen) {
+      // Simpan scroll position
+      const scrollY = window.scrollY;
+      
+      // Lock body scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restore scroll position saat modal ditutup
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [resolvedOpen]);
+
   return (
     <>
       {showTrigger && (
@@ -83,15 +106,15 @@ export default function MessageActionDialog({
 
       <Modal show={resolvedOpen} onClose={handleClose} maxWidth={maxWidth}>
         <div className="flex h-full flex-col bg-white">
-          <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white/95 px-6 py-4 backdrop-blur">
-            <div>
+          <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white/95 px-4 sm:px-6 py-4 backdrop-blur flex-shrink-0">
+            <div className="min-w-0 flex-1 pr-4">
               <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
               {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
             </div>
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 flex-shrink-0"
               aria-label="Tutup dialog"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,7 +123,15 @@ export default function MessageActionDialog({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-6 sm:max-h-[70vh]">
+          <div 
+            className="flex-1 overflow-y-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-12 sm:pb-6"
+            style={{
+              minHeight: 0, // Penting untuk flex scrolling
+              maxHeight: 'calc(100vh - 8rem)', // Mobile: kurangi untuk header dan padding
+              WebkitOverflowScrolling: 'touch', // Smooth scrolling di mobile
+              overscrollBehavior: 'contain' // Mencegah scroll chaining ke backdrop
+            }}
+          >
             {children(handleClose)}
           </div>
         </div>

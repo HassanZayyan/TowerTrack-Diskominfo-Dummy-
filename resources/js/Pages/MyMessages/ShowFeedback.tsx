@@ -253,31 +253,32 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
           <StaggeredContainer delay={340} animationType="fadeInUp" duration={400}>
             <div className="mb-6">
               <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-indigo-200 p-6 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm flex-shrink-0">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <h3 className="text-lg font-bold text-gray-900">Balas Masukan</h3>
                       <p className="text-sm text-gray-600">
                         Perbarui status atau kirim jawaban resmi untuk pengirim masukan ini.
                       </p>
                     </div>
                   </div>
-                  <MessageActionDialog
-                    triggerLabel="Kirim Balasan"
-                    triggerIcon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m7 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    }
-                    triggerVariant="primary"
-                    triggerSize="md"
-                    triggerFullWidth={false}
-                    triggerClassName="whitespace-nowrap"
+                  <div className="w-full sm:w-auto sm:flex-shrink-0">
+                    <MessageActionDialog
+                      triggerLabel="Kirim Balasan"
+                      triggerIcon={
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m7 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      }
+                      triggerVariant="primary"
+                      triggerSize="md"
+                      triggerFullWidth={true}
+                      triggerClassName="w-full sm:w-auto whitespace-nowrap"
                     title="Kirim Balasan"
                     description={responseDescription}
                     maxWidth="3xl"
@@ -303,6 +304,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments }: Show
                       />
                     )}
                   </MessageActionDialog>
+                  </div>
                 </div>
 
                 <div className="rounded-lg border border-indigo-100 bg-white/70 px-4 py-3 text-sm text-indigo-700 shadow-sm">

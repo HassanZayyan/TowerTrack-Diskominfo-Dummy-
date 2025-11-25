@@ -31,6 +31,24 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Prevent body scroll saat modal terbuka
+  useEffect(() => {
+    if (showModal) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showModal]);
+
   // Validasi email saat nilai berubah
   useEffect(() => {
     if (form.email) {
@@ -632,7 +650,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
 
       {/* Modal untuk tambah/edit user */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ overflow: 'hidden' }}>
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden my-4">
             <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -661,7 +679,15 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                 </svg>
               </button>
             </div>
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
+            <div 
+              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+              style={{
+                minHeight: 0,
+                maxHeight: 'calc(100vh - 12rem)',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain'
+              }}
+            >
               <form onSubmit={submit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">

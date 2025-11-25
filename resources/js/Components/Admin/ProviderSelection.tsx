@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { router, useForm } from '@inertiajs/react';
 
 interface Provider {
@@ -40,6 +41,24 @@ export default function ProviderSelection({
     name: '',
     description: '',
   });
+
+  // Prevent body scroll saat dialog terbuka
+  useEffect(() => {
+    if (showProviderDialog) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showProviderDialog]);
 
   // Handle checkbox change
   const handleProviderCheckboxChange = (providerId: number, checked: boolean) => {
@@ -205,10 +224,20 @@ export default function ProviderSelection({
         </div>
       </div>
 
-      {/* Quick Create Provider Dialog */}
-      {showProviderDialog && (
+      {/* Quick Create Provider Dialog - Using Portal */}
+      {showProviderDialog && typeof window !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+          style={{ 
+            overflow: 'hidden',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh'
+          }}
           onClick={() => {
             if (!isCreatingProvider) {
               setShowProviderDialog(false);
@@ -260,7 +289,6 @@ export default function ProviderSelection({
                     providerFormErrors.name ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-purple-500'
                   } ${colors.focusRing} focus:ring-4 focus:outline-none transition-all`}
                   placeholder="Contoh: Telkomsel, XL, dll"
-                  autoFocus
                   disabled={isCreatingProvider}
                 />
                 {providerFormErrors.name && (
@@ -327,7 +355,8 @@ export default function ProviderSelection({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
