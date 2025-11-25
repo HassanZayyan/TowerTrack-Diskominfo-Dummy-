@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { router, useForm } from '@inertiajs/react';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 
 interface Provider {
   id: number;
@@ -43,22 +46,7 @@ export default function ProviderSelection({
   });
 
   // Prevent body scroll saat dialog terbuka
-  useEffect(() => {
-    if (showProviderDialog) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [showProviderDialog]);
+  useBodyScrollLock(showProviderDialog);
 
   // Handle checkbox change
   const handleProviderCheckboxChange = (providerId: number, checked: boolean) => {
@@ -226,28 +214,21 @@ export default function ProviderSelection({
 
       {/* Quick Create Provider Dialog - Using Portal */}
       {showProviderDialog && typeof window !== 'undefined' && createPortal(
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-          style={{ 
-            overflow: 'hidden',
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            height: '100vh'
-          }}
+        <ModalBackdrop
           onClick={() => {
             if (!isCreatingProvider) {
               setShowProviderDialog(false);
               resetProviderForm();
             }
           }}
+          opacity={50}
+          zIndex={100}
         >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" 
+          <ModalContainer 
+            maxWidth="md" 
+            maxHeight="90vh"
             onClick={(e) => e.stopPropagation()}
+            className="p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">Tambah Provider Baru</h3>
@@ -354,8 +335,8 @@ export default function ProviderSelection({
                 </button>
               </div>
             </div>
-          </div>
-        </div>,
+          </ModalContainer>
+        </ModalBackdrop>,
         document.body
       )}
     </>

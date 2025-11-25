@@ -1,10 +1,13 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { formatDateOnly } from '@/utils/dateHelpers';
 import { getFOStatusColor } from '@/utils/statusHelpers';
 import { getTypeLabel } from '@/utils/foConstants';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 
 interface FoPoint {
   id: number;
@@ -462,22 +465,7 @@ export default function RouteDetail() {
   const canEdit = ['admin', 'operator'].includes(auth.user.role);
 
   // Prevent body scroll saat modal terbuka (Detail atau Delete)
-  useEffect(() => {
-    if (showDetailDialog || showDeleteDialog) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [showDetailDialog, showDeleteDialog]);
+  useBodyScrollLock(showDetailDialog || showDeleteDialog);
 
   const handleSelectPoint = (pointId: number) => {
     setSelectedPoints(prev =>
@@ -617,26 +605,17 @@ export default function RouteDetail() {
 
         {/* Detail Dialog - Using Portal to render outside AdminLayout DOM structure */}
         {showDetailDialog && selectedPointDetail && typeof window !== 'undefined' && createPortal(
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-            style={{ 
-              overflow: 'hidden',
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100vw',
-              height: '100vh'
-            }}
+          <ModalBackdrop
             onClick={(e) => {
               // Close modal when clicking on backdrop
-              if (e.target === e.currentTarget) {
+              if (e && e.target === e.currentTarget) {
                 handleCloseDetail();
               }
             }}
+            opacity={50}
+            zIndex={100}
           >
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <ModalContainer maxWidth="md" maxHeight="90vh" onClick={(e) => e.stopPropagation()}>
               <div className="p-6 flex-shrink-0">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">Detail Titik FO</h3>
@@ -750,33 +729,19 @@ export default function RouteDetail() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>,
+            </ModalContainer>
+          </ModalBackdrop>,
           document.body
         )}
 
         {/* Delete Confirmation Dialog - Using Portal */}
         {showDeleteDialog && pointToDelete && typeof window !== 'undefined' && createPortal(
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-            style={{ 
-              overflow: 'hidden',
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100vw',
-              height: '100vh'
-            }}
-            onClick={(e) => {
-              // Close modal when clicking on backdrop
-              if (e.target === e.currentTarget) {
-                handleCloseDeleteDialog();
-              }
-            }}
+          <ModalBackdrop
+            onClick={() => handleCloseDeleteDialog()}
+            opacity={50}
+            zIndex={100}
           >
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <ModalContainer maxWidth="md" maxHeight="90vh" className="p-6" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -819,8 +784,8 @@ export default function RouteDetail() {
                   Hapus Permanen
                 </button>
               </div>
-            </div>
-          </div>,
+            </ModalContainer>
+          </ModalBackdrop>,
           document.body
         )}
       </div>

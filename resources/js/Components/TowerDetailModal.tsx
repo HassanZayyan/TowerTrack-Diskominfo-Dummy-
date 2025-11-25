@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 
 interface TowerDetailProps {
   isOpen: boolean;
@@ -18,27 +21,7 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
   const [selectedDetail, setSelectedDetail] = useState<string>('-- Pilih Detail --');
   
   // Prevent body scroll saat modal terbuka
-  useEffect(() => {
-    if (isOpen) {
-      // Simpan scroll position
-      const scrollY = window.scrollY;
-      
-      // Lock body scroll
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        // Restore scroll position saat modal ditutup
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
   
   if (!isOpen || !tower) return null;
   
@@ -111,31 +94,16 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
 
   return (
     <>
-      {/* Modal Backdrop - Fixed, tidak boleh scroll */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-60 z-50 backdrop-blur-sm"
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: 'hidden' // Pastikan backdrop tidak bisa scroll
-        }}
-        role="dialog" 
-        aria-modal="true"
-      >
-        {/* Modal Container - Centered dengan flex, tidak scroll */}
+      <ModalBackdrop onClick={onClose} opacity={60} blur zIndex={50}>
         <div 
           className="h-full flex items-center justify-center p-3 sm:p-4"
           onClick={(e) => e.stopPropagation()}
           style={{
-            height: '100vh', // Gunakan viewport height, bukan min-height
-            overflow: 'hidden' // Pastikan container tidak scroll
+            height: '100vh',
+            overflow: 'hidden'
           }}
         >
-          <div className="bg-white rounded-xl shadow-2xl w-full sm:max-w-xl lg:max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+          <ModalContainer maxWidth="2xl" maxHeight="90vh" className="w-full sm:max-w-xl lg:max-w-2xl">
             {/* Header */}
             <div className="text-white p-4 sm:p-6 flex items-center flex-shrink-0" style={{ backgroundColor: '#B71C1C' }}>
               <span className="material-icons-outlined mr-2" style={{ color: '#FFD700' }}>info</span>
@@ -276,9 +244,9 @@ const TowerDetailModal: React.FC<TowerDetailProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          </ModalContainer>
         </div>
-      </div>
+      </ModalBackdrop>
     </>
   );
 };

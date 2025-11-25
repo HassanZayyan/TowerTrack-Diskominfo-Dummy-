@@ -1,6 +1,7 @@
-import React, { ReactNode, useMemo, useState, useEffect } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import AnimatedButton from '@/Components/AnimatedButton';
 import Modal from '@/Components/Modal';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
 
 type MessageActionDialogProps = {
   readonly triggerLabel: string;
@@ -65,27 +66,7 @@ export default function MessageActionDialog({
   };
 
   // Prevent body scroll saat modal terbuka
-  useEffect(() => {
-    if (resolvedOpen) {
-      // Simpan scroll position
-      const scrollY = window.scrollY;
-      
-      // Lock body scroll
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        // Restore scroll position saat modal ditutup
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [resolvedOpen]);
+  useBodyScrollLock(resolvedOpen);
 
   return (
     <>

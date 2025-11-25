@@ -1,4 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 import { getFOStatusColor } from '@/utils/statusHelpers';
 
 interface FoPoint {
@@ -59,55 +62,22 @@ export default function FoDetailModal({
 }: FoDetailModalProps) {
   
   // Prevent body scroll saat modal terbuka
-  useEffect(() => {
-    if (isOpen) {
-      // Simpan scroll position
-      const scrollY = window.scrollY;
-      
-      // Lock body scroll
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        // Restore scroll position saat modal ditutup
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Modal Backdrop - Fixed, tidak boleh scroll */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-60 z-50 backdrop-blur-sm"
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: 'hidden' // Pastikan backdrop tidak bisa scroll
-        }}
-      >
-        {/* Modal Container - Centered dengan flex, tidak scroll */}
+      <ModalBackdrop onClick={onClose} opacity={60} blur zIndex={50}>
         <div 
           className="h-full flex items-center justify-center p-4"
           onClick={(e) => e.stopPropagation()}
           style={{
-            height: '100vh', // Gunakan viewport height, bukan min-height
-            overflow: 'hidden' // Pastikan container tidak scroll
+            height: '100vh',
+            overflow: 'hidden'
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+          <ModalContainer maxWidth="5xl" maxHeight="90vh" className="w-full sm:max-h-[90vh]">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -199,9 +169,9 @@ export default function FoDetailModal({
                 Tutup
               </button>
             </div>
-          </div>
+          </ModalContainer>
         </div>
-      </div>
+      </ModalBackdrop>
     </>
   );
 }

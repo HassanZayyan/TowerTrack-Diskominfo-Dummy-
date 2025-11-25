@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 
 interface Provider {
   id: number;
@@ -63,22 +66,8 @@ export default function ProvidersIndex() {
   const canEdit = ['admin', 'operator'].includes(auth.user.role);
 
   // Prevent body scroll saat modal terbuka
-  useEffect(() => {
-    if (showEditModal || showDetailModal || showCreateModal || showDeleteModal || showRestoreModal) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [showEditModal, showDetailModal, showCreateModal, showDeleteModal, showRestoreModal]);
+  const isAnyModalOpen = Boolean(showEditModal || showDetailModal || showCreateModal || showDeleteModal || showRestoreModal);
+  useBodyScrollLock(isAnyModalOpen);
 
   // Filter providers
   const filteredProviders = providers.filter(provider => {
@@ -572,11 +561,15 @@ export default function ProvidersIndex() {
 
       {/* Create Provider Modal */}
       {showCreateModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          style={{ overflow: 'hidden' }}
+        <ModalBackdrop
+          onClick={() => {
+            setShowCreateModal(false);
+            setCreateForm({ name: '', description: '', default_sort_order: 0, is_active: true });
+          }}
+          opacity={50}
+          zIndex={50}
         >
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-4">
+          <ModalContainer maxWidth="2xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
             <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -690,17 +683,21 @@ export default function ProvidersIndex() {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
 
       {/* Edit Provider Modal */}
       {showEditModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          style={{ overflow: 'hidden' }}
+        <ModalBackdrop
+          onClick={() => {
+            setShowEditModal(null);
+            setEditForm({ name: '', description: '', default_sort_order: 0, is_active: true });
+          }}
+          opacity={50}
+          zIndex={50}
         >
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-4">
+          <ModalContainer maxWidth="2xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
             <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -814,17 +811,14 @@ export default function ProvidersIndex() {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
 
       {/* Restore Confirmation Modal */}
       {showRestoreModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          style={{ overflow: 'hidden' }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <ModalBackdrop onClick={() => setShowRestoreModal(null)} opacity={50} zIndex={50}>
+          <ModalContainer maxWidth="md" maxHeight="90vh" className="p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -869,17 +863,14 @@ export default function ProvidersIndex() {
                 Aktifkan Provider
               </button>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          style={{ overflow: 'hidden' }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <ModalBackdrop onClick={() => setShowDeleteModal(null)} opacity={50} zIndex={50}>
+          <ModalContainer maxWidth="md" maxHeight="90vh" className="p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -934,17 +925,14 @@ export default function ProvidersIndex() {
                 {showDeleteModal.isUsed ? 'Nonaktifkan Provider' : 'Hapus Permanen'}
               </button>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
 
       {/* Detail Modal - Mobile Only - Untuk lihat kolom tersembunyi */}
       {showDetailModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 md:hidden"
-          style={{ overflow: 'hidden' }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full max-h-[85vh] flex flex-col overflow-hidden">
+        <ModalBackdrop onClick={() => setShowDetailModal(null)} opacity={50} zIndex={50} className="md:hidden">
+          <ModalContainer maxWidth="sm" maxHeight="85vh" onClick={(e) => e.stopPropagation()}>
             <div className="px-4 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1017,8 +1005,8 @@ export default function ProvidersIndex() {
                 Tutup
               </button>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
     </AdminLayout>
   );

@@ -4,6 +4,9 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import BanUserConfirmDialog from '@/Components/BanUserConfirmDialog';
 import DeleteUserConfirmDialog from '@/Components/DeleteUserConfirmDialog';
 import HeroSection from '@/Components/HeroSection';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 
 interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null }
 
@@ -32,22 +35,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Prevent body scroll saat modal terbuka
-  useEffect(() => {
-    if (showModal) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [showModal]);
+  useBodyScrollLock(showModal);
 
   // Validasi email saat nilai berubah
   useEffect(() => {
@@ -650,8 +638,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
 
       {/* Modal untuk tambah/edit user */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ overflow: 'hidden' }}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden my-4">
+        <ModalBackdrop onClick={() => setShowModal(false)} opacity={50} zIndex={50}>
+          <ModalContainer maxWidth="4xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
             <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -848,8 +836,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
 
       {/* Ban User Confirmation Dialog */}
