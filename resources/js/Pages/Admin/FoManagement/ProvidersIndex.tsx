@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
@@ -61,6 +61,24 @@ export default function ProvidersIndex() {
   });
 
   const canEdit = ['admin', 'operator'].includes(auth.user.role);
+
+  // Prevent body scroll saat modal terbuka
+  useEffect(() => {
+    if (showEditModal || showDetailModal || showCreateModal || showDeleteModal || showRestoreModal) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showEditModal, showDetailModal, showCreateModal, showDeleteModal, showRestoreModal]);
 
   // Filter providers
   const filteredProviders = providers.filter(provider => {
@@ -554,7 +572,10 @@ export default function ProvidersIndex() {
 
       {/* Create Provider Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          style={{ overflow: 'hidden' }}
+        >
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-4">
             <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -575,7 +596,14 @@ export default function ProvidersIndex() {
                 </svg>
               </button>
             </div>
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
+            <div 
+              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+              style={{
+                maxHeight: 'calc(100vh - 12rem)',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain'
+              }}
+            >
               <form onSubmit={(e) => {
                 e.preventDefault();
                 router.post(route('admin.fo-management.providers.store'), createForm, {
@@ -668,7 +696,10 @@ export default function ProvidersIndex() {
 
       {/* Edit Provider Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          style={{ overflow: 'hidden' }}
+        >
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-4">
             <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -689,7 +720,14 @@ export default function ProvidersIndex() {
                 </svg>
               </button>
             </div>
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
+            <div 
+              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+              style={{
+                maxHeight: 'calc(100vh - 12rem)',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain'
+              }}
+            >
               <form onSubmit={(e) => {
                 e.preventDefault();
                 router.put(route('admin.fo-management.providers.update', showEditModal.id), editForm, {
@@ -782,7 +820,10 @@ export default function ProvidersIndex() {
 
       {/* Restore Confirmation Modal */}
       {showRestoreModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          style={{ overflow: 'hidden' }}
+        >
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -834,7 +875,10 @@ export default function ProvidersIndex() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          style={{ overflow: 'hidden' }}
+        >
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -896,7 +940,10 @@ export default function ProvidersIndex() {
 
       {/* Detail Modal - Mobile Only - Untuk lihat kolom tersembunyi */}
       {showDetailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 md:hidden">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 md:hidden"
+          style={{ overflow: 'hidden' }}
+        >
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full max-h-[85vh] flex flex-col overflow-hidden">
             <div className="px-4 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -914,7 +961,14 @@ export default function ProvidersIndex() {
                 </svg>
               </button>
             </div>
-            <div className="p-4 overflow-y-auto flex-1 min-h-0">
+            <div 
+              className="p-4 overflow-y-auto flex-1 min-h-0"
+              style={{
+                maxHeight: 'calc(100vh - 12rem)',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain'
+              }}
+            >
               <div className="space-y-4">
                 {/* Nama Provider */}
                 <div>

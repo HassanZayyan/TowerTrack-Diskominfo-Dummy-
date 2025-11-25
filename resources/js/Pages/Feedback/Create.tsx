@@ -85,6 +85,19 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   // CAPTCHA states
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const captchaRef = useRef<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // DEBUG: Cek nilai turnstileSiteKey
   useEffect(() => {
@@ -749,29 +762,33 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
               
               {/* CAPTCHA widget - only for guest users */}
               {!isAuthenticatedUser && (
-                <div className="mb-6">
+                <div className="mb-6 w-full overflow-hidden">
                   {turnstileSiteKey ? (
-                    <Turnstile
-                      ref={captchaRef}
-                      siteKey={turnstileSiteKey}
-                      onSuccess={(token) => {
-                        console.log('✅ CAPTCHA Success, token:', token);
-                        setCaptchaToken(token);
-                      }}
-                      onError={(error) => {
-                        console.error('❌ CAPTCHA Error:', error);
-                        setCaptchaToken('');
-                        showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
-                      }}
-                      onExpire={() => {
-                        console.log('⏰ CAPTCHA Expired');
-                        setCaptchaToken('');
-                      }}
-                      options={{
-                        theme: 'light',
-                        size: 'normal',
-                      }}
-                    />
+                    <div className="w-full flex justify-center sm:justify-start">
+                      <div className="w-full max-w-[300px] sm:max-w-none" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                        <Turnstile
+                          ref={captchaRef}
+                          siteKey={turnstileSiteKey}
+                          onSuccess={(token) => {
+                            console.log('✅ CAPTCHA Success, token:', token);
+                            setCaptchaToken(token);
+                          }}
+                          onError={(error) => {
+                            console.error('❌ CAPTCHA Error:', error);
+                            setCaptchaToken('');
+                            showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
+                          }}
+                          onExpire={() => {
+                            console.log('⏰ CAPTCHA Expired');
+                            setCaptchaToken('');
+                          }}
+                          options={{
+                            theme: 'light',
+                            size: isMobile ? 'compact' : 'normal',
+                          }}
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
                       <p className="text-sm text-red-800 font-medium">

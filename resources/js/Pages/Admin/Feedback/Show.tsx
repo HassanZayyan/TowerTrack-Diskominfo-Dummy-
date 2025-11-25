@@ -185,30 +185,30 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       </StaggeredContainer>
 
       <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
-        <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50 border border-blue-100">
+        <div className="relative rounded-xl shadow-lg mb-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50 border border-blue-100">
           {/* Decorative elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
           
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md flex-shrink-0">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                   </svg>
                 </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-700 to-blue-600 bg-clip-text text-transparent">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-700 to-blue-600 bg-clip-text text-transparent break-words">
                     Detail Masukan #{feedback.id}
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
                     Dikirim: {formatDateWithTime(feedback.created_at)}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 font-medium">Status:</span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-gray-600 font-medium hidden sm:inline">Status:</span>
                 {renderMessageStatusBadge(feedback.status)}
               </div>
             </div>
@@ -221,9 +221,9 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
         <div className="lg:col-span-2 space-y-6">
           <StaggeredContainer delay={200} animationType="fadeInUp" duration={500}>
             {/* Sender Information Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-md">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-200 shadow-md">
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md flex-shrink-0">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -239,26 +239,23 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 truncate">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 break-words">
                       {feedback.sender_name || feedback.user?.name || extractSenderName(feedback.category).name || 'Pengguna'}
                     </h2>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex flex-col gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <svg className="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
                         <span className="font-medium break-all">{feedback.sender_phone || '-'}</span>
                       </div>
                       {(feedback.user?.email || feedback.email) && (
-                        <>
-                          <span className="hidden sm:inline text-gray-400">•</span>
-                          <div className="flex items-center gap-1 min-w-0">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <span className="font-medium break-all truncate">{feedback.email || feedback.user?.email}</span>
-                          </div>
-                        </>
+                        <div className="flex items-start gap-1.5 min-w-0">
+                          <svg className="w-4 h-4 flex-shrink-0 text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className="font-medium break-all text-gray-700">{feedback.email || feedback.user?.email}</span>
+                        </div>
                       )}
                     </div>
                   </div>

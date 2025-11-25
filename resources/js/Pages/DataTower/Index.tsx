@@ -201,7 +201,7 @@ export default function DataTowerIndex({
   };
 
   const handleViewMap = (tower: Tower) => {
-    setDetailModalOpen(false);
+    // Modal sudah ditutup dari TowerDetailModal, jadi tidak perlu setDetailModalOpen(false) lagi
     
     // Find the map center point for the tower
     const lat = Number(tower.latitude);
@@ -211,13 +211,25 @@ export default function DataTowerIndex({
 
     // If valid coordinates, programmatically focus on the tower
     if (hasValidCoords) {
+      // Pastikan body position sudah direstore (safety check)
+      if (document.body.style.position === 'fixed') {
+        const scrollY = document.body.style.top ? -parseInt(document.body.style.top) : window.scrollY;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      }
+      
+      // Focus ke peta
       if (mapRef.current && typeof mapRef.current.flyTo === 'function') {
         mapRef.current.flyTo([lat, lng], 17);
       }
-      // Scroll to the map section only when we actually focus the map
+      
+      // Scroll to the map section - sekarang sudah aman karena body position sudah direstore
       const mapElement = document.getElementById('map-section');
       if (mapElement) {
-        mapElement.scrollIntoView({ behavior: 'smooth' });
+        mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else {
       setToast({
