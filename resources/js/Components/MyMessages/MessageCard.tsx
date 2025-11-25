@@ -1,4 +1,6 @@
 import React from 'react';
+import { router } from '@inertiajs/react';
+import { formatDateWithTime } from '@/utils/dateHelpers';
 
 interface MessageItem {
   id: string;
@@ -8,6 +10,7 @@ interface MessageItem {
   category: string;
   status: string | undefined | null;
   responsesCount: number;
+  commentsCount: number;
   senderName: string;
   senderEmail: string;
   isAnonymous: boolean;
@@ -18,9 +21,10 @@ interface MessageCardProps {
   getStatusColor: (status: string | undefined | null) => { bg: string; text: string; label: string };
   formatDate: (dateString: string) => string;
   onOpen?: (item: MessageItem) => void;
+  hideEmail?: boolean; // Flag to hide email for privacy
 }
 
-export default function MessageCard({ item, getStatusColor, formatDate, onOpen }: MessageCardProps) {
+export default function MessageCard({ item, getStatusColor, formatDate, onOpen, hideEmail = false }: MessageCardProps) {
   const statusConfig = getStatusColor(item.status);
   
   return (
@@ -47,12 +51,12 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen }
           
           {/* Contact and Location Info */}
           <div className="space-y-1">
-            <p className="text-xs text-gray-500 truncate">{item.senderEmail}</p>
+            {!hideEmail && <p className="text-xs text-gray-500 truncate">{item.senderEmail}</p>}
             <p className="text-xs text-gray-500 truncate">
               <span className="font-medium">Tower:</span> {item.towerName ?? 'Tower tidak diketahui'}
             </p>
             <p className="text-xs text-gray-500">
-              {formatDate(item.created_at)} • {new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              {formatDateWithTime(item.created_at)}
             </p>
           </div>
         </div>
@@ -77,15 +81,36 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen }
         
         {/* Actions Section */}
         <div className="flex items-center justify-between sm:justify-end gap-3">
-          <div className="flex items-center text-xs text-gray-600">
-            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span className="whitespace-nowrap">{item.responsesCount} balasan</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-xs text-gray-600">
+              <svg className="w-4 h-4 mr-1 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="whitespace-nowrap">{item.commentsCount || 0} komentar</span>
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <svg className="w-4 h-4 mr-1 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              <span className="whitespace-nowrap">{item.responsesCount || 0} balasan</span>
+            </div>
           </div>
           <button
-            className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium whitespace-nowrap touch-manipulation"
-            onClick={() => onOpen && onOpen(item)}
+            className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium whitespace-nowrap touch-manipulation transition-colors"
+            onClick={() => {
+              if (onOpen) {
+                onOpen(item);
+              } else {
+                // Fallback to public routes if onOpen not provided
+                const [type, raw] = item.id.split('-');
+                const id = Number(raw);
+                if (type === 'report') {
+                  router.visit(`/my-messages/reports/${id}`);
+                } else if (type === 'feedback') {
+                  router.visit(`/my-messages/feedbacks/${id}`);
+                }
+              }
+            }}
           >
             Lihat
           </button>

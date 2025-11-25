@@ -14,6 +14,9 @@ import FoStats from '@/Components/DataFo/FoStats';
 import FoFilters from '@/Components/DataFo/FoFilters';
 import FoTable from '@/Components/DataFo/FoTable';
 import FoDetailModal from '@/Components/DataFo/FoDetailModal';
+import { getIconByImagesAndSide } from '@/utils/foIconUtils';
+import { useRouteCache } from '@/Hooks/useRouteCache';
+import { getRouteCacheKey, formatTimestamp } from '@/utils/routeCacheUtils';
 
 // Fix Leaflet default icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -31,79 +34,13 @@ const mapContainerStyle = {
   zIndex: 1
 };
 
-// Custom icons for different FO point types based on available images
-const createCustomIcon = (color: string, iconText: string) => {
-  const iconHtml = `
-    <div style="
-      background-color: ${color};
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8px;
-      color: white;
-      font-weight: bold;
-      font-family: Arial, sans-serif;
-    ">${iconText}</div>
-  `;
-  
-  return L.divIcon({
-    html: iconHtml,
-    className: 'custom-fo-icon',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
-  });
-};
+// Note: Icon generation moved to foIconUtils.ts for better organization
+// Using getIconByImagesAndSide() which includes side_of_road indicator
 
-const getIconByImages = (images: { isp: string | null; pole: string | null; junction_box: string | null }) => {
-  // Cek apakah gambar benar-benar ada (bukan null, bukan "-", dan bukan string kosong)
-  const hasPole = !!images.pole && images.pole !== '-' && images.pole.trim() !== '';
-  const hasISP = !!images.isp && images.isp !== '-' && images.isp.trim() !== '';
-  const hasJunctionBox = !!images.junction_box && images.junction_box !== '-' && images.junction_box.trim() !== '';
-  
-  // 1. Ada tiang, ISP dan Joint Box -> pole ISP Joint Box (icon = PIJ) - Ungu
-  if (hasPole && hasISP && hasJunctionBox) {
-    return createCustomIcon('#8B5CF6', 'PIJ');
-  }
-  
-  // 2. Ada tiang dan ISP -> pole and ISP (icon = PI) - Hijau
-  if (hasPole && hasISP && !hasJunctionBox) {
-    return createCustomIcon('#10B981', 'PI');
-  }
-  
-  // 3. Ada tiang dan Joint Box -> Joint Box (icon = JB) - Orange
-  if (hasPole && !hasISP && hasJunctionBox) {
-    return createCustomIcon('#F59E0B', 'JB');
-  }
-  
-  // 4. Hanya ada gambar tiang -> pole (icon = P) - Biru
-  if (hasPole && !hasISP && !hasJunctionBox) {
-    return createCustomIcon('#3B82F6', 'P');
-  }
-  
-  // 5. Hanya ada ISP tanpa tiang -> ISP saja (icon = I) - Cyan
-  if (!hasPole && hasISP && !hasJunctionBox) {
-    return createCustomIcon('#06B6D4', 'I');
-  }
-  
-  // 6. Hanya ada Joint Box tanpa tiang -> JB saja (icon = J) - Amber
-  if (!hasPole && !hasISP && hasJunctionBox) {
-    return createCustomIcon('#F59E0B', 'J');
-  }
-  
-  // 7. Ada ISP dan Joint Box tanpa tiang -> ISP + JB (icon = IJ) - Pink
-  if (!hasPole && hasISP && hasJunctionBox) {
-    return createCustomIcon('#EC4899', 'IJ');
-  }
-  
-  // Default untuk kasus lain - Abu-abu
-  return createCustomIcon('#6B7280', '?');
-};
+interface Provider {
+  id: string | number; // Can be string (MD5 hash) or number
+  name: string;
+}
 
 interface FoPoint {
   id: number;
@@ -114,12 +51,14 @@ interface FoPoint {
   route_name: string;
   sequence_number: number;
   description?: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
   images: {
     isp: string | null;
     pole: string | null;
     junction_box: string | null;
   };
   has_images: boolean;
+  providers?: Provider[];
   // Legacy properties for compatibility
   area?: string;
   status?: string;
@@ -135,6 +74,8 @@ interface FoRoute {
   total_points: number;
   description: string;
   routing_service?: string | null;
+  providers?: Provider[];
+  updated_at?: number | null; // Route updated_at timestamp for cache validation
   // Polyline data excluded from initial load - loaded on-demand
   path_coordinates?: Array<{ lat: number; lng: number }>;
   polyline?: Array<[number, number]>;
@@ -158,7 +99,10 @@ interface DataFoProps {
   foRoutes: FoRoute[];
   currentArea: string;
   availableAreas: string[];
+  availableProviders?: Provider[];
+  selectedProvider?: string;
   mapData?: MapData;
+  detailData?: any; // Add detailData prop for Inertia response
 }
 
 // Component to fit map bounds
@@ -183,7 +127,10 @@ export default function DataFoIndex({
   foRoutes = [],
   currentArea = 'ungaran',
   availableAreas = [],
-  mapData
+  availableProviders = [],
+  selectedProvider: initialProvider = 'all',
+  mapData,
+  detailData: propDetailData
 }: DataFoProps) {
   // Initialize from URL for shareable state
   const initParams = new URLSearchParams(window.location.search);
@@ -191,11 +138,14 @@ export default function DataFoIndex({
   const initSearch = initParams.get('search') || '';
   const initType = initParams.get('type') || 'all';
   const initStatus = initParams.get('status') || 'all';
+  const initProvider = initParams.get('provider') || initialProvider;
 
   const [selectedArea, setSelectedArea] = useState(initArea);
   const [searchTerm, setSearchTerm] = useState(initSearch);
   const [selectedType, setSelectedType] = useState(initType);
   const [selectedStatus, setSelectedStatus] = useState(initStatus);
+  const [selectedSide, setSelectedSide] = useState(initParams.get('side') || 'all');
+  const [selectedProvider, setSelectedProvider] = useState(initProvider);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedPoint, setSelectedPoint] = useState<any>(null);
@@ -203,16 +153,34 @@ export default function DataFoIndex({
   const [detailData, setDetailData] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  
+  // Handle detailData from Inertia props (when using only: ['detailData'])
+  useEffect(() => {
+    if (propDetailData && propDetailData.success) {
+      setDetailData(propDetailData);
+      setShowDetailModal(true);
+      setDetailLoading(false);
+    }
+  }, [propDetailData]);
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'info' });
   const [loading, setLoading] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-7.1368, 110.4044]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   
-  // Lazy loading state for routes
+  // Lazy loading state for routes - using custom hook for cache management
   const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
-  const [loadedRoutes, setLoadedRoutes] = useState<Map<number, any>>(new Map());
-  const [loadingRoutes, setLoadingRoutes] = useState<Set<number>>(new Set());
+  const {
+    loadedRoutes,
+    setLoadedRoutes,
+    loadingRoutes,
+    setLoadingRoutes,
+    validateMemoryCache,
+    validateSessionStorageCache,
+  } = useRouteCache({ foRoutes });
+  
+  // Marker visibility state - default true to show markers by default
+  const [showMarkers, setShowMarkers] = useState<boolean>(true);
 
   // Use data from Inertia props with fallback
   const currentMapData = mapData || {
@@ -273,6 +241,9 @@ export default function DataFoIndex({
       }
     }
     
+    // Note: Side of road filtering is done server-side for better performance
+    // when combined with provider filter. Client-side filtering only for type and search.
+    
     return matchesSearch && matchesType;
   }).map(point => ({
     ...point,
@@ -313,15 +284,78 @@ export default function DataFoIndex({
     path_coordinates: undefined,
   })) || [];
 
+  // Helper function untuk build query params dengan semua filter
+  const buildQueryParams = (updates: {
+    area?: string;
+    provider?: string;
+    side?: string;
+    type?: string;
+    status?: string;
+    search?: string;
+  }) => {
+    const params: Record<string, string> = {};
+    
+    // Area (always required)
+    if (updates.area !== undefined) {
+      params.area = updates.area;
+    } else if (selectedArea) {
+      params.area = selectedArea;
+    }
+    
+    // Optional filters - only include if not 'all' or has value
+    const searchValue = updates.search !== undefined ? updates.search : searchTerm;
+    if (searchValue) {
+      params.search = searchValue;
+    }
+    
+    const typeValue = updates.type !== undefined ? updates.type : selectedType;
+    if (typeValue !== 'all') {
+      params.type = typeValue;
+    }
+    
+    const statusValue = updates.status !== undefined ? updates.status : selectedStatus;
+    if (statusValue !== 'all') {
+      params.status = statusValue;
+    }
+    
+    const providerValue = updates.provider !== undefined ? updates.provider : selectedProvider;
+    if (providerValue !== 'all') {
+      params.provider = providerValue;
+    }
+    
+    const sideValue = updates.side !== undefined ? updates.side : selectedSide;
+    if (sideValue !== 'all') {
+      params.side = sideValue;
+    }
+    
+    return params;
+  };
+
   const handleAreaChange = (area: string) => {
     setSelectedArea(area);
-    // Keep other filters in URL while performing a server request for area change
-    router.get('/data-fo', { 
-      area,
-      ...(searchTerm && { search: searchTerm }),
-      ...(selectedType !== 'all' && { type: selectedType }),
-      ...(selectedStatus !== 'all' && { status: selectedStatus })
-    }, { preserveState: true, preserveScroll: true, replace: true });
+    router.get('/data-fo', buildQueryParams({ area }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
+  };
+
+  const handleProviderChange = (provider: string) => {
+    setSelectedProvider(provider);
+    router.get('/data-fo', buildQueryParams({ provider }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
+  };
+
+  const handleSideChange = (side: string) => {
+    setSelectedSide(side);
+    router.get('/data-fo', buildQueryParams({ side }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
   };
 
   // Sync client-side filters to URL without triggering request
@@ -331,10 +365,12 @@ export default function DataFoIndex({
     if (searchTerm) params.set('search', searchTerm);
     if (selectedType !== 'all') params.set('type', selectedType);
     if (selectedStatus !== 'all') params.set('status', selectedStatus);
+    if (selectedProvider !== 'all') params.set('provider', selectedProvider);
+    if (selectedSide !== 'all') params.set('side', selectedSide);
     const query = params.toString();
     const newUrl = query ? `/data-fo?${query}` : '/data-fo';
     window.history.replaceState({}, '', newUrl);
-  }, [selectedArea, searchTerm, selectedType, selectedStatus]);
+  }, [selectedArea, searchTerm, selectedType, selectedStatus, selectedProvider, selectedSide]);
 
   // Export functionality
   const handleExport = () => {
@@ -437,38 +473,43 @@ export default function DataFoIndex({
     }
   };
 
-  // Handle detail functionality
-  const handleShowDetail = async (type: 'point' | 'route', item: any) => {
+  // Handle detail functionality using Inertia.js standard
+  const handleShowDetail = (type: 'point' | 'route', item: any) => {
     setDetailLoading(true);
     setShowDetailModal(true);
     
-    try {
-      const response = await fetch(`/fo-details/${type}/${item.id}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setDetailData(result);
-      } else {
+    // Use Inertia.js router.get to fetch details
+    router.get(route('fo.details', { type, id: item.id }), {}, {
+      preserveState: true,
+      preserveScroll: true,
+      only: ['detailData'], // Only fetch detailData prop
+      onSuccess: (page: any) => {
+        const detailData = page?.props?.detailData;
+        if (detailData && detailData.success) {
+          setDetailData(detailData);
+        } else {
+          setToast({
+            show: true,
+            type: 'error',
+            title: 'Error',
+            message: detailData?.message || 'Gagal memuat detail data'
+          });
+          setDetailData(null);
+        }
+        setDetailLoading(false);
+      },
+      onError: (errors: any) => {
+        console.error('Error fetching detail:', errors);
         setToast({
           show: true,
           type: 'error',
           title: 'Error',
-          message: result.message || 'Gagal memuat detail data'
+          message: 'Terjadi kesalahan saat memuat detail'
         });
         setDetailData(null);
-      }
-    } catch (error) {
-      console.error('Error fetching detail:', error);
-      setToast({
-        show: true,
-        type: 'error',
-        title: 'Error',
-        message: 'Terjadi kesalahan saat memuat detail'
-      });
-      setDetailData(null);
-    } finally {
-      setDetailLoading(false);
-    }
+        setDetailLoading(false);
+      },
+    });
   };
 
   const handleCloseDetailModal = () => {
@@ -478,51 +519,37 @@ export default function DataFoIndex({
   };
 
   // Load route polyline on-demand with persistent sessionStorage cache
+  // DRY: Using custom hook and utilities for cache validation
   const loadRoutePolyline = async (routeId: number) => {
-    // Step 1: Check if already loaded in memory (fastest)
-    if (loadedRoutes.has(routeId)) {
-      console.log(`✅ Route ${routeId} already loaded from memory cache (0 tokens)`);
+    const route = foRoutes.find((r: FoRoute) => r.id === routeId);
+    
+    // Step 1: Check memory cache (validates automatically via hook)
+    if (validateMemoryCache(routeId)) {
+      const cachedData = loadedRoutes.get(routeId);
+      console.log(`✅ Route ${routeId} already loaded from memory cache (0 tokens)`, {
+        route_updated_at: route?.updated_at ? formatTimestamp(route.updated_at) : 'N/A',
+        cache_updated_at: cachedData?.updated_at ? formatTimestamp(cachedData.updated_at) : 'N/A',
+      });
       return;
     }
 
-    // Step 2: Check sessionStorage cache (fast, persists across page navigation)
-    try {
-      const cacheKey = `fo_route_cache_${routeId}`;
-      const cached = sessionStorage.getItem(cacheKey);
+    // Step 2: Check sessionStorage cache (validates automatically via hook)
+    const cachedData = validateSessionStorageCache(routeId);
+    if (cachedData) {
+      setLoadedRoutes(prev => {
+        const newMap = new Map(prev);
+        newMap.set(routeId, cachedData);
+        return newMap;
+      });
       
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        
-        // Check if cache is still valid (24 hours)
-        const age = Date.now() - timestamp;
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        
-        if (age < maxAge) {
-          // Restore from sessionStorage cache
-          setLoadedRoutes(prev => {
-            const newMap = new Map(prev);
-            newMap.set(routeId, data);
-            return newMap;
-          });
-          
-          console.log(`✅ Route ${routeId} restored from sessionStorage (age: ${Math.round(age / 1000 / 60)} minutes)`);
-          
-          setToast({
-            show: true,
-            type: 'success',
-            title: '⚡ Jalur Dimuat',
-            message: `Jalur "${data.name}" berhasil dimuat`
-          });
-          
-          return; // Don't fetch from API
-        } else {
-          // Cache expired, remove it
-          sessionStorage.removeItem(cacheKey);
-          console.log(`🗑️ Expired cache removed for route ${routeId}`);
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to check sessionStorage for route ${routeId}:`, e);
+      console.log(`✅ Route ${routeId} restored from sessionStorage`);
+      setToast({
+        show: true,
+        type: 'success',
+        title: '⚡ Jalur Dimuat',
+        message: `Jalur "${cachedData.name}" berhasil dimuat`
+      });
+      return;
     }
 
     // Step 3: Check if already loading
@@ -533,44 +560,37 @@ export default function DataFoIndex({
 
     // Step 4: Fetch from API (will generate if needed)
     try {
-      // Add to loading set
       setLoadingRoutes(prev => new Set(prev).add(routeId));
-
       console.log(`🌐 Loading polyline for route ${routeId} from API...`);
+      
       const response = await fetch(`/api/fo-routes/${routeId}/polyline`);
       const result = await response.json();
 
       if (result.success && result.data) {
-        // Add to loaded routes cache (persists in session)
         setLoadedRoutes(prev => {
           const newMap = new Map(prev);
           newMap.set(routeId, result.data);
           return newMap;
         });
 
-        // Also persist to sessionStorage for cross-page navigation
+        // Persist to sessionStorage
         try {
-          const cacheKey = `fo_route_cache_${routeId}`;
+          const cacheKey = getRouteCacheKey(routeId);
           sessionStorage.setItem(cacheKey, JSON.stringify({
             data: result.data,
             timestamp: Date.now(),
+            route_updated_at: result.data.updated_at || route?.updated_at || null,
           }));
         } catch (e) {
           console.warn('Failed to persist to sessionStorage:', e);
         }
 
-        console.log(`Route ${routeId} loaded successfully`, result.data);
-        
-        // Show different message based on generation status
         const wasGenerated = result.data.was_generated_on_demand || false;
-        
         setToast({
           show: true,
           type: 'success',
           title: wasGenerated ? '✅ Jalur Berhasil Dimuat' : '⚡ Jalur Dimuat',
-          message: wasGenerated 
-            ? `Jalur "${result.data.name}" berhasil dimuat`
-            : `Jalur "${result.data.name}" dimuat dengan cepat`
+          message: `Jalur "${result.data.name}" ${wasGenerated ? 'berhasil dimuat' : 'dimuat dengan cepat'}`
         });
       } else {
         console.error(`Failed to load route ${routeId}:`, result.message);
@@ -590,7 +610,6 @@ export default function DataFoIndex({
         message: 'Terjadi kesalahan saat memuat jalur'
       });
     } finally {
-      // Remove from loading set
       setLoadingRoutes(prev => {
         const newSet = new Set(prev);
         newSet.delete(routeId);
@@ -666,46 +685,7 @@ export default function DataFoIndex({
     }
   }, [currentMapData.bounds]);
 
-  // Restore cached routes from sessionStorage on mount (persists across page navigation)
-  useEffect(() => {
-    const restoreCache = () => {
-      const restoredRoutes = new Map<number, any>();
-      let restoredCount = 0;
-
-      // Try to restore each route from sessionStorage
-      currentMapData.routes.forEach((route: any) => {
-        try {
-          const cacheKey = `fo_route_cache_${route.id}`;
-          const cached = sessionStorage.getItem(cacheKey);
-          
-          if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            
-            // Check if cache is still valid (24 hours = 86400000 ms)
-            const age = Date.now() - timestamp;
-            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-            
-            if (age < maxAge) {
-              restoredRoutes.set(route.id, data);
-              restoredCount++;
-            } else {
-              // Cache expired, remove it
-              sessionStorage.removeItem(cacheKey);
-            }
-          }
-        } catch (e) {
-          console.warn(`Failed to restore cache for route ${route.id}:`, e);
-        }
-      });
-
-      if (restoredCount > 0) {
-        setLoadedRoutes(restoredRoutes);
-        console.log(`✅ Restored ${restoredCount} routes from sessionStorage cache (persists across page navigation)`);
-      }
-    };
-
-    restoreCache();
-  }, [currentMapData.routes]);
+  // Cache validation and restoration handled by useRouteCache hook (DRY)
 
   // Force map refresh when area changes
   useEffect(() => {
@@ -798,6 +778,8 @@ export default function DataFoIndex({
             onTypeChange={setSelectedType}
             selectedStatus={selectedStatus}
             onStatusChange={setSelectedStatus}
+            selectedSide={selectedSide}
+            onSideChange={handleSideChange}
           />
         </StaggeredContainer>
 
@@ -815,6 +797,54 @@ export default function DataFoIndex({
 
               {/* Action Buttons Section - Responsive Button Layout */}
               <div className="flex flex-col sm:flex-row gap-2">
+                {/* Provider Filter Dropdown */}
+                <div className="w-full sm:w-auto">
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) => handleProviderChange(e.target.value)}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm pr-8 bg-white hover:bg-gray-50 transition-colors"
+                    title="Filter berdasarkan provider"
+                    aria-label="Filter provider"
+                  >
+                    <option value="all">Semua Provider</option>
+                    {Array.isArray(availableProviders) && availableProviders.length > 0 ? (
+                      availableProviders.map((provider: Provider, index: number) => (
+                        <option key={provider?.id || provider?.name || `provider-${index}`} value={provider.name}>
+                          {provider.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>Tidak ada provider tersedia</option>
+                    )}
+                  </select>
+                </div>
+                <button 
+                  onClick={() => setShowMarkers(!showMarkers)}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2 w-full sm:w-auto ${
+                    showMarkers 
+                      ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' 
+                      : 'text-white hover:opacity-90'
+                  }`}
+                  style={showMarkers ? {} : { backgroundColor: '#B71C1C' }}
+                  title={showMarkers ? "Sembunyikan marker untuk melihat jalur dengan jelas" : "Tampilkan marker"}
+                  aria-label={showMarkers ? "Sembunyikan marker" : "Tampilkan marker"}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    {showMarkers ? (
+                      <>
+                        {/* Eye icon - markers visible */}
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </>
+                    ) : (
+                      <>
+                        {/* Eye-off icon - markers hidden */}
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </>
+                    )}
+                  </svg>
+                  {showMarkers ? 'Sembunyikan Marker' : 'Tampilkan Marker'}
+                </button>
                 <button 
                   onClick={handleExport}
                   className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
@@ -1027,6 +1057,22 @@ export default function DataFoIndex({
                               {routeData.has_geojson ? 'Routing Optimal' : 'Jalur Aktif'}
                             </span>
                           </div>
+                          {/* Providers */}
+                          {routeData.providers && routeData.providers.length > 0 && (
+                            <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
+                              <span className="text-xs text-gray-500">Provider:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {routeData.providers.map((provider: Provider) => (
+                                  <span
+                                    key={provider.id}
+                                    className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  >
+                                    {provider.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                      </Popup>
@@ -1034,8 +1080,8 @@ export default function DataFoIndex({
                    );
                  })}
                 
-                 {/* Render FO Points (Markers) */}
-                 {filteredPoints.map((point) => {
+                 {/* Render FO Points (Markers) - Only render if showMarkers is true */}
+                 {showMarkers && filteredPoints.map((point) => {
                    // Validate point coordinates before rendering
                    if (typeof point.latitude !== 'number' || typeof point.longitude !== 'number' ||
                        isNaN(point.latitude) || isNaN(point.longitude)) {
@@ -1046,7 +1092,7 @@ export default function DataFoIndex({
                      <Marker
                        key={point.id}
                        position={[point.latitude, point.longitude]}
-                       icon={getIconByImages(point.images)}
+                       icon={getIconByImagesAndSide(point.images, point.side_of_road)}
                        eventHandlers={{
                          click: () => {
                            console.log('Point clicked:', point.name);
@@ -1072,7 +1118,32 @@ export default function DataFoIndex({
                             <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               {point.type.charAt(0).toUpperCase() + point.type.slice(1)}
                             </span>
+                            {point.side_of_road && point.side_of_road !== 'unknown' && (
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                point.side_of_road === 'left' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {point.side_of_road === 'left' ? '⬅️ Kiri' : '➡️ Kanan'}
+                              </span>
+                            )}
                           </div>
+                          {/* Providers */}
+                          {point.providers && point.providers.length > 0 && (
+                            <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
+                              <span className="text-xs text-gray-500">Provider:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {point.providers.map((provider) => (
+                                  <span
+                                    key={provider.id}
+                                    className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  >
+                                    {provider.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Images */}
@@ -1121,6 +1192,32 @@ export default function DataFoIndex({
           {/* Map Legend */}
           <div className="p-4 bg-gray-50 border-t border-gray-200">
             <h4 className="text-sm font-medium text-gray-900 mb-3">Legenda Titik FO:</h4>
+            
+            {/* Side of Road Legend */}
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <h5 className="text-xs font-semibold text-gray-700 mb-2">Sisi Jalan:</h5>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-3 border-blue-500 flex items-center justify-center bg-blue-100">
+                    <span className="text-xs font-bold text-blue-600">L</span>
+                  </div>
+                  <span className="text-xs text-gray-700">Kiri</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-3 border-red-500 flex items-center justify-center bg-red-100">
+                    <span className="text-xs font-bold text-red-600">R</span>
+                  </div>
+                  <span className="text-xs text-gray-700">Kanan</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-3 border-gray-500 flex items-center justify-center bg-gray-100">
+                    <span className="text-xs font-bold text-gray-600">?</span>
+                  </div>
+                  <span className="text-xs text-gray-700">Belum Diketahui</span>
+                </div>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '7px' }}>PIJ</div>

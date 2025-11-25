@@ -27,6 +27,20 @@ export default function Register() {
         <GuestLayout title="Daftar" subtitle="Silakan daftar untuk melanjutkan">
             <Head title="Daftar" />
 
+            {/* Information notice */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Informasi Penting:</p>
+                        <p>Form pendaftaran ini hanya untuk <strong>pengguna umum (complainant)</strong> yang ingin melaporkan masalah menara.</p>
+                        <p className="mt-1">Jika Anda adalah <strong>pemilik menara (tower owner)</strong>, silakan hubungi administrator untuk mendapatkan akun login.</p>
+                    </div>
+                </div>
+            </div>
+
             <form onSubmit={submit} className="space-y-6">
                 <div className="space-y-2">
                     <InputLabel htmlFor="name" value="Nama Lengkap" className="text-sm font-medium" />

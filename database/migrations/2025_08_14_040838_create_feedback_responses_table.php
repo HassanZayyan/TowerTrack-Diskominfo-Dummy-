@@ -14,7 +14,11 @@ return new class extends Migration
         Schema::create('feedback_responses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('feedback_id')->constrained('feedbacks')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // admin/operator/tower_owner yang membalas
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete(); // admin/operator/tower_owner yang membalas
+            $table->enum('sender_type', ['staff', 'reporter', 'guest'])->default('staff');
+            $table->string('sender_name')->nullable();
+            $table->string('sender_email')->nullable();
+            $table->string('sender_phone')->nullable();
             $table->text('message');
             $table->timestamps();
         });

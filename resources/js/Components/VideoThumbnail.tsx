@@ -155,12 +155,12 @@ export default function VideoThumbnail({
   }
 
   return (
-    <div className="relative cursor-pointer group" onClick={handleClick}>
+    <div className="relative cursor-pointer group bg-gray-100" onClick={handleClick}>
       {/* Thumbnail Image */}
       <img
         src={thumbnailSrc}
         alt={alt}
-        className={`${className} object-cover transition-all duration-200 group-hover:scale-105`}
+        className={`${className} object-contain transition-all duration-200 group-hover:scale-105`}
         loading={loading}
         onError={() => setHasError(true)}
       />
@@ -168,7 +168,7 @@ export default function VideoThumbnail({
       {/* Play Button Overlay */}
       {showPlayButton && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-10 group-hover:bg-opacity-20 transition-all duration-200">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200 border border-gray-300">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg transition-transform duration-200 border border-gray-300">
             <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M8 5v10l8-5-8-5z"/>
             </svg>

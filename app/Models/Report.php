@@ -5,10 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Traits\Commentable;
+use App\Traits\HasGuestEmailVerification;
+use App\Services\CacheService;
 
 class Report extends Model
 {
     use HasFactory;
+    use Commentable;
+    use HasGuestEmailVerification;
     
     protected $fillable = [
         'tower_id',
@@ -24,9 +29,15 @@ class Report extends Model
         'reporter_accuracy',
         'location_captured_at',
         'is_public',
+        'email_verified_at',
     ];
     
     protected $appends = ['status'];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'is_public' => 'boolean',
+    ];
     
     public function tower()
     {
@@ -73,5 +84,31 @@ class Report extends Model
                 return $statusMap[$this->status_id] ?? 'pending';
             }
         );
+    }
+
+    /**
+     * Boot the model and set up cache invalidation
+     */
+    protected static function booted(): void
+    {
+        static::created(function ($report) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_reports:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+        });
+
+        static::updated(function ($report) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_reports:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('reports:*');
+        });
+
+        static::deleted(function ($report) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_reports:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('reports:*');
+        });
     }
 }

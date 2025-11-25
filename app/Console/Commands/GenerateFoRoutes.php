@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\FoRouteGenerationService;
 use Illuminate\Console\Command;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 class GenerateFoRoutes extends Command
 {
@@ -60,7 +61,7 @@ class GenerateFoRoutes extends Command
         
         if ($results['failed'] > 0) {
             $this->warn("Warning: {$results['failed']} routes failed to generate. Check logs for details.");
-            return Command::FAILURE;
+            return SymfonyCommand::FAILURE;
         }
         
         if ($results['success'] === 0 && $results['skipped'] === $results['total']) {
@@ -69,6 +70,6 @@ class GenerateFoRoutes extends Command
             $this->line("✅ Successfully generated {$results['success']} GeoJSON routes!");
         }
         
-        return Command::SUCCESS;
+        return SymfonyCommand::SUCCESS;
     }
 }

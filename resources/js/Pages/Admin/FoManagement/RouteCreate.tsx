@@ -1,10 +1,13 @@
 import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import AnimatedButton from '@/Components/AnimatedButton';
+import { STATUS_LABELS, getStatusLabel } from '@/utils/foConstants';
 
 interface PageProps {
   availableAreas: string[];
   availableStatuses: string[];
+  csrfToken: string;
 }
 
 export default function RouteCreate({ availableAreas, availableStatuses }: PageProps) {
@@ -21,11 +24,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
     post(route('admin.fo-management.routes.store'));
   };
 
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title="Tambah Jalur FO">
@@ -122,11 +121,6 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         }`}
                         placeholder="Contoh: Jalur Utama Ungaran - Semarang"
                       />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
                     </div>
                     {errors.name && (
                       <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
@@ -150,11 +144,18 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         id="area"
                         value={data.area}
                         onChange={(e) => setData('area', e.target.value)}
-                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none appearance-none bg-white ${
+                        className={`block w-full px-4 py-3 pr-10 rounded-xl border-2 transition-all duration-200 focus:outline-none appearance-none ${
                           errors.area 
-                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-red-50' 
+                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100' 
                             : 'border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-gray-300'
                         }`}
+                        style={{
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none',
+                          appearance: 'none',
+                          backgroundImage: 'none',
+                          background: errors.area ? '#FEF2F2' : 'white'
+                        }}
                       >
                         {availableAreas.map((area) => (
                           <option key={area} value={area}>
@@ -162,7 +163,7 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                           </option>
                         ))}
                       </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none z-10">
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -190,20 +191,27 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                         id="status"
                         value={data.status}
                         onChange={(e) => setData('status', e.target.value)}
-                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none appearance-none bg-white ${
+                        className={`block w-full px-4 py-3 pr-10 rounded-xl border-2 transition-all duration-200 focus:outline-none appearance-none ${
                           errors.status 
-                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-red-50' 
+                            ? 'border-red-300 focus:border-green-500 focus:ring-4 focus:ring-green-100' 
                             : 'border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-gray-300'
                         }`}
+                        style={{
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none',
+                          appearance: 'none',
+                          backgroundImage: 'none',
+                          background: errors.status ? '#FEF2F2' : 'white'
+                        }}
                       >
                         <option value="">Pilih Status</option>
                         {availableStatuses.map((status) => (
                           <option key={status} value={status}>
-                            {statusLabels[status] || status}
+                            {getStatusLabel(status)}
                           </option>
                         ))}
                       </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none z-10">
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -376,28 +384,20 @@ export default function RouteCreate({ availableAreas, availableStatuses }: PageP
                     </svg>
                     Batal
                   </Link>
-                  <button
+                  <AnimatedButton
                     type="submit"
-                    disabled={processing}
-                    className="px-6 sm:px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-red-200 transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    variant="primary"
+                    size="lg"
+                    animation="scale"
+                    loading={processing}
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    }
                   >
-                    {processing ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Menyimpan...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Simpan Jalur
-                      </>
-                    )}
-                  </button>
+                    {processing ? 'Menyimpan...' : 'Simpan Jalur'}
+                  </AnimatedButton>
                 </div>
               </div>
             </div>

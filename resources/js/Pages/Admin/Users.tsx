@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import BanUserConfirmDialog from '@/Components/BanUserConfirmDialog';
+import DeleteUserConfirmDialog from '@/Components/DeleteUserConfirmDialog';
 import HeroSection from '@/Components/HeroSection';
+import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
+import ModalBackdrop from '@/Components/ModalBackdrop';
+import ModalContainer from '@/Components/ModalContainer';
 
-interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; created_at?: string; banned?: boolean }
+interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null }
 
 interface Props { users: User[] }
 
@@ -22,6 +26,16 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     userId: number;
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteDialogData, setDeleteDialogData] = useState<{
+    userId: number;
+    userName: string;
+    userEmail: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Prevent body scroll saat modal terbuka
+  useBodyScrollLock(showModal);
 
   // Validasi email saat nilai berubah
   useEffect(() => {
@@ -119,10 +133,42 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
       return;
     }
     
-    const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus user "${user.name}"?`);
-    if (confirmed) {
-      router.delete(route('admin.users.destroy', { user: user.id }));
-    }
+    setDeleteDialogData({
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+    });
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteDialogData) return;
+    
+    setIsDeleting(true);
+    router.delete(route('admin.users.destroy', { user: deleteDialogData.userId }), {
+      onSuccess: () => {
+        setShowDeleteDialog(false);
+        setDeleteDialogData(null);
+        setIsDeleting(false);
+      },
+      onError: () => {
+        setIsDeleting(false);
+      }
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+    setDeleteDialogData(null);
+    setIsDeleting(false);
+  };
+
+  const handleRestore = (user: User) => {
+    router.post(route('admin.users.restore', user.id), {}, {
+      onSuccess: () => {
+        // Success handled by flash message
+      }
+    });
   };
 
   const handleBanConfirm = () => {
@@ -311,6 +357,14 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                                 Anda
                               </span>
                             )}
+                            {u.deleted_at && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-300">
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                                Dinonaktifkan
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -350,51 +404,65 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button 
-                          className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
-                          onClick={() => {
-                            // Untuk complainant users atau tower_owner, preserve original name dan email
-                            if (u.role === 'complainant' || u.role === 'tower_owner') {
-                              setForm({ 
-                                id: u.id, 
-                                name: u.name, 
-                                email: u.email, 
-                                role: u.role, 
-                                banned: u.banned || false,
-                                password: undefined // Reset password field
-                              });
-                            } else {
-                              setForm({ 
-                                id: u.id, 
-                                name: u.name, 
-                                email: u.email, 
-                                role: u.role, 
-                                banned: u.banned || false 
-                              });
-                            }
-                            setShowModal(true);
-                          }}
-                        >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          Edit
-                        </button>
-                        <button 
-                          className={`inline-flex items-center px-3 py-2 border rounded-lg text-xs font-medium transition-colors ${
-                            u.id === auth.user.id
-                              ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
-                              : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
-                          }`}
-                          onClick={() => handleDelete(u)}
-                          disabled={u.id === auth.user.id}
-                          title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Hapus user'}
-                        >
-                          <svg className={`w-4 h-4 mr-1 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Hapus'}
-                        </button>
+                        {!u.deleted_at && (
+                          <button 
+                            className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
+                            onClick={() => {
+                              // Untuk complainant users atau tower_owner, preserve original name dan email
+                              if (u.role === 'complainant' || u.role === 'tower_owner') {
+                                setForm({ 
+                                  id: u.id, 
+                                  name: u.name, 
+                                  email: u.email, 
+                                  role: u.role, 
+                                  banned: u.banned || false,
+                                  password: undefined // Reset password field
+                                });
+                              } else {
+                                setForm({ 
+                                  id: u.id, 
+                                  name: u.name, 
+                                  email: u.email, 
+                                  role: u.role, 
+                                  banned: u.banned || false 
+                                });
+                              }
+                              setShowModal(true);
+                            }}
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                        )}
+                        {u.deleted_at ? (
+                          <button 
+                            className="inline-flex items-center px-3 py-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors text-xs font-medium"
+                            onClick={() => handleRestore(u)}
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Aktifkan Kembali
+                          </button>
+                        ) : (
+                          <button 
+                            className={`inline-flex items-center px-3 py-2 border rounded-lg text-xs font-medium transition-colors ${
+                              u.id === auth.user.id
+                                ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                                : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
+                            }`}
+                            onClick={() => handleDelete(u)}
+                            disabled={u.id === auth.user.id}
+                            title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Nonaktifkan user'}
+                          >
+                            <svg className={`w-4 h-4 mr-1 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Nonaktifkan'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -437,7 +505,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                         </div>
                       </div>
                       <div className="ml-3">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap">
                           <div className="text-sm font-medium text-gray-900">{u.name}</div>
                           {u.id === auth.user.id && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
@@ -445,6 +513,14 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
                               Anda
+                            </span>
+                          )}
+                          {u.deleted_at && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-300">
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              </svg>
+                              Dinonaktifkan
                             </span>
                           )}
                         </div>
@@ -493,51 +569,65 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col space-y-2">
-                    <button 
-                      className="w-full inline-flex items-center justify-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-sm font-medium"
-                      onClick={() => {
-                        // Untuk complainant users atau tower_owner, preserve original name dan email
-                        if (u.role === 'complainant' || u.role === 'tower_owner') {
-                          setForm({ 
-                            id: u.id, 
-                            name: u.name, 
-                            email: u.email, 
-                            role: u.role, 
-                            banned: u.banned || false,
-                            password: undefined // Reset password field
-                          });
-                        } else {
-                          setForm({ 
-                            id: u.id, 
-                            name: u.name, 
-                            email: u.email, 
-                            role: u.role, 
-                            banned: u.banned || false 
-                          });
-                        }
-                        setShowModal(true);
-                      }}
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Edit User
-                    </button>
-                    <button 
-                      className={`w-full inline-flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                        u.id === auth.user.id
-                          ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
-                          : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
-                      }`}
-                      onClick={() => handleDelete(u)}
-                      disabled={u.id === auth.user.id}
-                      title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Hapus user'}
-                    >
-                      <svg className={`w-4 h-4 mr-2 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Hapus User'}
-                    </button>
+                    {!u.deleted_at && (
+                      <button 
+                        className="w-full inline-flex items-center justify-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-sm font-medium"
+                        onClick={() => {
+                          // Untuk complainant users atau tower_owner, preserve original name dan email
+                          if (u.role === 'complainant' || u.role === 'tower_owner') {
+                            setForm({ 
+                              id: u.id, 
+                              name: u.name, 
+                              email: u.email, 
+                              role: u.role, 
+                              banned: u.banned || false,
+                              password: undefined // Reset password field
+                            });
+                          } else {
+                            setForm({ 
+                              id: u.id, 
+                              name: u.name, 
+                              email: u.email, 
+                              role: u.role, 
+                              banned: u.banned || false 
+                            });
+                          }
+                          setShowModal(true);
+                        }}
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit User
+                      </button>
+                    )}
+                    {u.deleted_at ? (
+                      <button 
+                        className="w-full inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors text-sm font-medium"
+                        onClick={() => handleRestore(u)}
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Aktifkan Kembali
+                      </button>
+                    ) : (
+                      <button 
+                        className={`w-full inline-flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                          u.id === auth.user.id
+                            ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                            : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
+                        }`}
+                        onClick={() => handleDelete(u)}
+                        disabled={u.id === auth.user.id}
+                        title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Nonaktifkan user'}
+                      >
+                        <svg className={`w-4 h-4 mr-2 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Nonaktifkan User'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -548,9 +638,9 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
 
       {/* Modal untuk tambah/edit user */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center">
+        <ModalBackdrop onClick={() => setShowModal(false)} opacity={50} zIndex={50}>
+          <ModalContainer maxWidth="4xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {form.id ? (
@@ -570,14 +660,22 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
               </h3>
               <button 
                 onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="p-6">
+            <div 
+              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+              style={{
+                minHeight: 0,
+                maxHeight: 'calc(100vh - 12rem)',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain'
+              }}
+            >
               <form onSubmit={submit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -703,7 +801,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                       )}
                       <button
                         type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 pr-3 flex items-center justify-center"
                         onClick={() => setShowPassword(!showPassword)}
                         disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner'))}
                       >
@@ -721,16 +819,16 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end pt-4 space-x-3">
+                <div className="flex flex-col sm:flex-row justify-end pt-4 space-y-2 sm:space-y-0 sm:space-x-3">
                   <button 
                     type="button"
-                    className="px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="w-full sm:w-auto px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                     onClick={() => setShowModal(false)}
                   >
                     Batal
                   </button>
                   <button 
-                    className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
+                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
                     type="submit"
                   >
                     {form.id ? 'Update User' : 'Tambah User'}
@@ -738,8 +836,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+          </ModalContainer>
+        </ModalBackdrop>
       )}
 
       {/* Ban User Confirmation Dialog */}
@@ -752,6 +850,18 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
           userEmail={banDialogData.userEmail}
           isBanning={banDialogData.isBanning}
           loading={isProcessing}
+        />
+      )}
+
+      {/* Delete User Confirmation Dialog */}
+      {deleteDialogData && (
+        <DeleteUserConfirmDialog
+          show={showDeleteDialog}
+          onClose={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+          userName={deleteDialogData.userName}
+          userEmail={deleteDialogData.userEmail}
+          loading={isDeleting}
         />
       )}
     </AdminLayout>

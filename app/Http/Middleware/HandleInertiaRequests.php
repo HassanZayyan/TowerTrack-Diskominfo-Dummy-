@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Services\CaptchaService;
+use App\Helpers\GuestCookieHelper;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -29,11 +31,19 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $captchaService = app(CaptchaService::class);
+
+        // Get guest cookie data for auto-fill (only for unauthenticated users)
+        $guestData = isGuest() ? GuestCookieHelper::retrieve() : null;
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user() ? $request->user()->only(['id','name','email','role','avatar']) : null,
             ],
+            'guestData' => $guestData, // Guest contact data from cookie for auto-fill
+            'turnstileSiteKey' => $captchaService->getSiteKey(),
+            'csrfToken' => csrf_token(), // CSRF token for axios requests (updates after session regeneration)
         ];
     }
 }

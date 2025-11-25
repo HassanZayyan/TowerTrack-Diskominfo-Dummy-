@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('tower_id')->constrained('towers')->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // Made nullable for anonymous users
             $table->string('email')->nullable(); // For anonymous users
+            $table->timestamp('email_verified_at')->nullable();
             $table->string('reporter_name')->nullable();
             $table->string('reporter_phone')->nullable();
             $table->string('category');

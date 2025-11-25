@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import ProviderSelection from '@/Components/Admin/ProviderSelection';
+import AnimatedButton from '@/Components/AnimatedButton';
+import { STATUS_LABELS, TYPE_LABELS, getStatusLabel, getTypeLabel } from '@/utils/foConstants';
+import { createImageFieldTransform } from '@/utils/foFormUtils';
 
 interface FoRoute {
   id: number;
@@ -13,21 +17,29 @@ interface FoRoute {
   description?: string;
 }
 
+interface Provider {
+  id: number;
+  name: string;
+}
+
 interface PageProps {
   foRoute: FoRoute;
   availableTypes: string[];
   availableStatuses: string[];
   nextSequence: number;
+  availableProviders?: Provider[];
+  csrfToken: string;
 }
 
-export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence }: PageProps) {
-  const { data, setData, post, processing, errors } = useForm({
+export default function PointCreate({ foRoute, availableTypes, availableStatuses, nextSequence, availableProviders = [] }: PageProps) {
+  const { data, setData, post, processing, errors, transform } = useForm({
     name: '',
     latitude: '',
     longitude: '',
     area: foRoute.area,
     type: 'pole',
     status: 'active',
+    side_of_road: 'unknown',
     route_name: foRoute.name,
     route_id: foRoute.id,
     sequence_number: nextSequence.toString(),
@@ -35,7 +47,11 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     isp_image: '',
     pole_image: '',
     junction_box_image: '',
+    providers: [] as number[], // Array of provider IDs
   });
+
+  // Normalize image fields before submission: convert dash or whitespace to empty string
+  transform(createImageFieldTransform());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,18 +67,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
     });
   };
 
-  const typeLabels: { [key: string]: string } = {
-    pole: 'Tiang/Pole',
-    junction: 'Junction Box',
-    hub: 'Hub',
-    endpoint: 'Endpoint'
-  };
-
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title={`Tambah Titik FO - ${foRoute.name}`}>
@@ -195,7 +200,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       >
                         {availableTypes.map((type) => (
                           <option key={type} value={type}>
-                            {typeLabels[type] || type}
+                            {getTypeLabel(type)}
                           </option>
                         ))}
                       </select>
@@ -229,7 +234,7 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       >
                         {availableStatuses.map((status) => (
                           <option key={status} value={status}>
-                            {statusLabels[status] || status}
+                            {getStatusLabel(status)}
                           </option>
                         ))}
                       </select>
@@ -239,6 +244,38 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           {errors.status}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="side_of_road" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m-6-6l6 6 6-6" />
+                        </svg>
+                        Sisi Jalan
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="side_of_road"
+                        value={data.side_of_road}
+                        onChange={(e) => setData('side_of_road', e.target.value)}
+                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 appearance-none bg-white ${
+                          errors.side_of_road 
+                            ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
+                            : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
+                        } focus:outline-none`}
+                      >
+                        <option value="unknown">Tidak Diketahui</option>
+                        <option value="left">Kiri</option>
+                        <option value="right">Kanan</option>
+                      </select>
+                      {errors.side_of_road && (
+                        <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {errors.side_of_road}
                         </div>
                       )}
                     </div>
@@ -274,6 +311,18 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Provider Selection - DRY: Using reusable component */}
+                <div className="mt-4 sm:mt-6">
+                  <ProviderSelection
+                    providers={data.providers || []}
+                    availableProviders={availableProviders}
+                    onChange={(selectedProviders) => setData('providers', selectedProviders)}
+                    errors={errors.providers}
+                    colorScheme="purple"
+                    label="Pilih Provider"
+                  />
                 </div>
               </div>
 
@@ -511,29 +560,22 @@ export default function PointCreate({ foRoute, availableTypes, availableStatuses
                   </svg>
                   Batal
                 </Link>
-                <button
+                <AnimatedButton
                   type="submit"
-                  disabled={processing}
-                  className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200 text-sm sm:text-base"
+                  variant="primary"
+                  size="lg"
+                  animation="scale"
+                  loading={processing}
+                  fullWidth={false}
+                  className="w-full sm:w-auto"
+                  icon={
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  }
                 >
-                  {processing ? (
-                    <>
-                      <svg className="animate-spin w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Simpan Titik</span>
-                    </>
-                  )}
-                  <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                </button>
+                  {processing ? 'Menyimpan...' : 'Simpan Titik'}
+                </AnimatedButton>
               </div>
             </div>
           </form>

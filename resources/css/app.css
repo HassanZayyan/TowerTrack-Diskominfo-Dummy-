@@ -201,6 +201,32 @@
 }
 
 /* ===================================
+   SELECT DROPDOWN FIX - Remove default browser arrow
+   =================================== */
+/* Remove default select arrow on all browsers including mobile */
+select.appearance-none,
+select[class*="appearance-none"] {
+  /* Standard property first (for modern browsers) */
+  appearance: none !important;
+  /* Vendor prefixes for older browsers */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: none !important;
+  background: white !important;
+}
+
+/* Additional fix for iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  select.appearance-none,
+  select[class*="appearance-none"] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-image: none !important;
+    background: white !important;
+  }
+}
+
+/* ===================================
    HERO SECTION ANIMATIONS
    Performance optimized - moved from inline styles
    =================================== */

@@ -49,10 +49,12 @@ class FoPointsFromCsvSeeder extends Seeder
                 continue;
             }
 
-            // Normalize row values
+            // Normalize row values: replace "-" with empty string
             $row = array_map(function ($v) {
                 if ($v === null) return '';
                 $v = trim((string) $v);
+                // Replace "-" with empty string
+                if ($v === '-') return '';
                 return $v;
             }, $row);
 
@@ -98,6 +100,19 @@ class FoPointsFromCsvSeeder extends Seeder
             $hasJbLink = $this->isValidUrl($linkJb);
             $type = ($hasJbImage || $hasJbLink) ? 'junction' : 'pole';
 
+            // Random side_of_road: 50% left, 50% right
+            $sideOfRoad = (rand(0, 1) === 0) ? 'left' : 'right';
+
+            // Normalize image fields: replace "-" with empty string
+            $ispImageFinal = ($linkIsp !== '' ? $linkIsp : $ispRel);
+            $poleImageFinal = ($linkPole !== '' ? $linkPole : $poleRel);
+            $jbImageFinal = ($linkJb !== '' ? $linkJb : $jbRel);
+            
+            // Replace "-" with empty string
+            if ($ispImageFinal === '-') $ispImageFinal = '';
+            if ($poleImageFinal === '-') $poleImageFinal = '';
+            if ($jbImageFinal === '-') $jbImageFinal = '';
+
             FoPoint::create([
                 'sequence_number' => $sequenceNumber,
                 'name' => $name ?: ('Titik #' . $sequenceNumber),
@@ -108,11 +123,13 @@ class FoPointsFromCsvSeeder extends Seeder
                 'area' => 'ungaran',
                 'description' => null,
                 'type' => $type,
+                'side_of_road' => $sideOfRoad,
                 'status' => 'active',
                 // Store link if provided, otherwise fallback to relative path if resolved
-                'isp_image' => ($linkIsp !== '' ? $linkIsp : $ispRel),
-                'pole_image' => ($linkPole !== '' ? $linkPole : $poleRel),
-                'junction_box_image' => ($linkJb !== '' ? $linkJb : $jbRel),
+                // "-" has been replaced with empty string
+                'isp_image' => $ispImageFinal,
+                'pole_image' => $poleImageFinal,
+                'junction_box_image' => $jbImageFinal,
                 'properties' => [
                     'source' => 'csv',
                     'csv_line' => $currentLine,

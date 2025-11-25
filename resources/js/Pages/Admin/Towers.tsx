@@ -3,6 +3,9 @@ import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
 import FilterPanel from '@/Components/Admin/FilterPanel';
+import { formatDateForInput as formatDateForInputHelper } from '@/utils/dateHelpers';
+import { useDebounce } from '@/Hooks/useDebounce';
+import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface Owner {
   id: number;
@@ -146,12 +149,6 @@ interface OptionType {
   label: string;
 }
 
-const SITE_TYPE_OPTIONS: OptionType[] = [
-  { value: 'GF', label: 'GF' },
-  { value: 'IBS', label: 'IBS' },
-  { value: 'RT', label: 'RT' }
-];
-
 const PERMIT_TYPE_OPTIONS: OptionType[] = [
   { value: 'IMB', label: 'IMB' },
   { value: 'PBG', label: 'PBG' },
@@ -174,7 +171,9 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
   const [selectedOwners, setSelectedOwners] = useState<Record<number, { id: string; name: string; alamat: string }>>({});
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   
   // Advanced Filter State
   const [showFilters, setShowFilters] = useState(false);
@@ -198,22 +197,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
     
     // Handle owner selection
     if (key === 'owner_id') {
-      if (value === 'new') {
-        // Set up for new owner creation
-        setSelectedOwners(prev => ({
-          ...prev,
-          [id]: { id: 'new', name: '', alamat: '' }
-        }));
-        setEditing(prev => ({ 
-          ...prev, 
-          [id]: { 
-            ...prev[id], 
-            owner_id: 'new',
-            owner_name: '',
-            owner_alamat: ''
-          } 
-        }));
-      } else if (value === '') {
+      if (value === '') {
         // Clear owner selection
         setSelectedOwners(prev => {
           const newState = { ...prev };
@@ -356,15 +340,9 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
       // Ensure owner data is properly included
       const selectedOwner = selectedOwners[id];
       if (selectedOwner) {
-        if (selectedOwner.id === 'new') {
-          editData.owner_id = 'new';
-          editData.owner_name = editData.owner_name || '';
-          editData.owner_alamat = editData.owner_alamat || '';
-        } else {
-          editData.owner_id = selectedOwner.id.toString();
-          editData.owner_name = selectedOwner.name;
-          editData.owner_alamat = selectedOwner.alamat;
-        }
+        editData.owner_id = selectedOwner.id.toString();
+        editData.owner_name = selectedOwner.name;
+        editData.owner_alamat = selectedOwner.alamat;
       }
       
       router.put(route('admin.towers.update', { tower: id }), editData, {
@@ -422,19 +400,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
   // Helper function to format date for HTML date input (YYYY-MM-DD)
   const formatDateForInput = (dateValue: string | null | undefined): string => {
-    if (!dateValue) return '';
-    
-    try {
-      // Handle various date formats from backend
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) return '';
-      
-      // Format to YYYY-MM-DD for HTML date input
-      return date.toISOString().split('T')[0];
-    } catch (error) {
-      console.warn('Error formatting date:', dateValue, error);
-      return '';
-    }
+    return formatDateForInputHelper(dateValue);
   };
 
   const getEditValue = (tower: Tower, field: keyof Tower) => {
@@ -518,24 +484,12 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
   // Debounced realtime search similar to FO RoutesList
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (debouncedSearchTerm === appliedSearch) return;
 
-    if (searchTerm === appliedSearch) return;
-
-    searchTimeoutRef.current = setTimeout(() => {
-      const params = buildFilterParams({ page: 1 });
-      setAppliedSearch(searchTerm);
-      router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
-    }, 500);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchTerm, appliedSearch]);
+    const params = buildFilterParams({ page: 1 });
+    setAppliedSearch(debouncedSearchTerm);
+    router.get(route('admin.towers.index'), params, { preserveState: true, preserveScroll: true, replace: true });
+  }, [debouncedSearchTerm, appliedSearch]);
 
   const updateFilter = (key: string, value: any) => {
     setFilters(prev => ({
@@ -1196,39 +1150,13 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             error={getFieldError(tower.id, 'owner_id')}
                             options={[
                               { value: '', label: 'Pilih Owner' },
-                              ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name })),
-                              { value: 'new', label: '+ Tambah Owner Baru' }
+                              ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))
                             ]}
                             placeholder="Pilih owner"
                             disabled={!isEditing(tower.id)}
                           />
                         </div>
-                        {selectedOwners[tower.id]?.id === 'new' && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Owner Baru</label>
-                              <FormInput 
-                                value={getEditValue(tower, 'owner_name') || ''}
-                                onChange={(value) => updateField(tower.id, 'owner_name', value)}
-                                error={getFieldError(tower.id, 'owner_name')}
-                                placeholder="Masukkan nama owner baru"
-                                disabled={!isEditing(tower.id)}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner Baru</label>
-                              <FormInput 
-                                value={getEditValue(tower, 'owner_alamat') || ''}
-                                onChange={(value) => updateField(tower.id, 'owner_alamat', value)}
-                                error={getFieldError(tower.id, 'owner_alamat')}
-                                rows={3}
-                                placeholder="Alamat lengkap owner baru"
-                                disabled={!isEditing(tower.id)}
-                              />
-                            </div>
-                          </>
-                        )}
-                        {selectedOwners[tower.id] && selectedOwners[tower.id].id !== 'new' && (
+                        {selectedOwners[tower.id] && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
                             <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">

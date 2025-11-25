@@ -6,13 +6,45 @@ use App\Models\Feedback;
 use App\Models\FeedbackAsset;
 use App\Models\Tower;
 use App\Services\LocationSecurityService;
+use App\Services\CaptchaService;
+use App\Http\Requests\StoreMessageResponseRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class FeedbackController extends Controller
+class FeedbackController extends MessageableController
 {
+    /**
+     * Configuration for Feedback model.
+     */
+    protected function getConfig(): array
+    {
+        return [
+            'assets_relation' => 'assets',
+            'assets_select' => ['id', 'feedback_id', 'file_path', 'file_type'],
+            'responses_select' => ['id', 'feedback_id', 'created_at', 'user_id', 'message', 'sender_type', 'sender_name', 'sender_email', 'sender_phone'],
+            'response_assets_relation' => 'assets:id,feedback_response_id,file_path,file_type',
+            'phone_field' => 'sender_phone',
+            'email_field' => 'email',
+            'name_field' => 'sender_name',
+            'response_model' => \App\Models\FeedbackResponse::class,
+            'response_foreign_key' => 'feedback_id',
+            'response_assets_relation_name' => 'assets',
+            'response_attachment_disk' => 'public',
+            'response_attachment_directories' => [
+                'image' => 'feedback-response-photos',
+                'video' => 'feedback-response-videos',
+            ],
+            'asset_model' => FeedbackAsset::class,
+            'asset_foreign_key' => 'feedback_id',
+            'asset_disk' => 'public',
+            'asset_directories' => [
+                'image' => 'feedback-photos',
+                'video' => 'feedback-videos',
+            ],
+            'asset_fields' => ['assets', 'foto', 'video'],
+        ];
+    }
     /**
      * Show feedback form with towers from database.
      */
@@ -45,53 +77,52 @@ class FeedbackController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $rules = [
             'sender_phone' => 'required|string|max:20', // Phone number is required for all users
             'category' => 'required|string|max:100',
             'tower_id' => 'required|exists:towers,id',
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100',
-            'email' => auth()->check() && auth()->user()->isComplainant() 
-                ? 'prohibited' // Email not allowed for authenticated complainant users
+            'email' => isAuthenticated() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
+                ? 'prohibited' // Email not allowed for authenticated users (complainant and tower_owner)
                 : 'required|email|max:255', // Email now required for anonymous users
             'is_public' => 'required|boolean', // Visibility option
-            'reporter_latitude' => 'nullable|numeric|between:-90,90',
-            'reporter_longitude' => 'nullable|numeric|between:-180,180',
-            'reporter_accuracy' => 'nullable|numeric|min:0|max:10000',
+            'reporter_latitude' => 'nullable|numeric',
+            'reporter_longitude' => 'nullable|numeric',
+            'reporter_accuracy' => 'nullable|numeric',
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
             'video.*' => 'nullable|file|mimes:mp4,mov,avi,mkv|max:102400',
-        ]);
+        ];
 
-        // Handle user ID and email for authenticated vs anonymous users
-        $userId = null;
-        $email = null;
-        
-        if (auth()->check()) {
-            $userId = auth()->id();
-            // For authenticated complainant users, use their email automatically
-            if (auth()->user()->isComplainant()) {
-                $email = auth()->user()->email;
-            }
-        } else {
-            // For anonymous users, email is optional
-            $email = $validated['email'] ?? null;
+        // Only require CAPTCHA for guest users (not authenticated)
+        $rules = $this->addCaptchaRuleForGuest($rules);
+
+        $validated = $request->validate($rules);
+
+        // Verify CAPTCHA only for guest users
+        $captchaError = $this->validateCaptchaForGuest($validated, $request->ip());
+        if ($captchaError) {
+            return $captchaError;
         }
 
-        // Handle reporter coordinates if provided
+        // Handle user ID and email for authenticated vs anonymous users
+        [$userId, $email] = $this->resolveUserAndEmail($validated);
+
+        // Handle reporter coordinates - completely optional, never blocks submission
         $locationData = [];
         if (!empty($validated['reporter_latitude']) && !empty($validated['reporter_longitude'])) {
-            try {
-                $locationData = LocationSecurityService::validateCoordinates(
-                    (float) $validated['reporter_latitude'],
-                    (float) $validated['reporter_longitude'],
-                    isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
-                );
-            } catch (\InvalidArgumentException $e) {
-                \Log::warning('Invalid coordinates provided: ' . $e->getMessage());
-                // Continue without coordinates rather than failing the request
+            $coordinatesResult = LocationSecurityService::validateCoordinates(
+                (float) $validated['reporter_latitude'],
+                (float) $validated['reporter_longitude'],
+                isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
+            );
+            
+            if ($coordinatesResult !== null) {
+                $locationData = $coordinatesResult;
             }
+            // Always continue - coordinates are completely optional
         }
 
         $feedbackData = [
@@ -104,6 +135,9 @@ class FeedbackController extends Controller
             'message' => $validated['message'],
             'is_public' => $validated['is_public'] ?? false,
             'status' => 'pending',
+            // Set email_verified_at based on user type
+            // Authenticated users are auto-verified, guest users need email verification
+            'email_verified_at' => isAuthenticated() ? now() : null,
         ];
 
         // Merge location data if available
@@ -111,90 +145,115 @@ class FeedbackController extends Controller
             $feedbackData = array_merge($feedbackData, $locationData);
         }
 
+        $config = $this->getConfig();
+
         $feedback = Feedback::create($feedbackData);
 
-        // Handle file uploads from any accepted key: assets, foto, or video
-        $files = collect();
-        if ($request->hasFile('assets')) {
-            $files = $files->merge($request->file('assets'));
-        }
-        if ($request->hasFile('foto')) {
-            $files = $files->merge($request->file('foto'));
-        }
-        if ($request->hasFile('video')) {
-            $files = $files->merge($request->file('video'));
+        // Handle file uploads only if files exist for faster response
+        if ($this->hasInitialAttachments($request, $config)) {
+            $this->storeInitialAttachments($request, $feedback->id, $config);
         }
 
-        foreach ($files as $file) {
-            try {
-                $mime = $file->getMimeType();
-                $isImage = str_starts_with($mime, 'image/');
-                $dir = $isImage ? 'feedback-photos' : 'feedback-videos';
-                $path = $file->store($dir, 'public');
-                if (!$path) {
-                    \Log::error('Failed to store feedback asset: ' . $file->getClientOriginalName());
-                    continue;
-                }
-
-                FeedbackAsset::create([
-                    'feedback_id' => $feedback->id,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $isImage ? 'image' : 'video',
-                    'mime_type' => $mime,
-                    'file_size' => $file->getSize(),
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('Error uploading feedback asset: ' . $e->getMessage());
-                continue;
-            }
+        // Store guest contact data in cookie for auto-fill (only for guest users)
+        if (isGuest()) {
+            \App\Helpers\GuestCookieHelper::store([
+                'email' => $email,
+                'phone' => $validated['sender_phone'],
+                'name' => $validated['sender_name'],
+            ]);
         }
 
-        $message = auth()->check() 
-            ? 'Masukan berhasil dikirim! Terima kasih atas masukan Anda.'
-            : 'Masukan berhasil dikirim! ' . 
-              ($validated['is_public'] 
-                ? 'Masukan Anda dapat dilihat di halaman pesan utama.' 
-                : 'Untuk melacak status masukan pribadi, gunakan fitur "Lacak Pesan Pribadi" dengan email dan nomor telepon Anda.');
+        // Send email verification for guest users
+        $verificationRedirect = $this->sendGuestEmailVerification($feedback, $email, 'feedback');
+        if ($verificationRedirect) {
+            return $verificationRedirect;
+        }
 
-        return redirect()->back()->with('success', $message);
+        // Untuk authenticated users, redirect ke halaman success
+        return redirect()->route('guest.submission.success', [
+            'type' => 'feedback'
+        ]);
     }
 
     /**
      * Show feedback list for regular users
+     * Redirect to MyMessages for consistency with Complaint
      */
     public function userFeedbacks()
     {
-        $feedbacks = Feedback::with(['tower:id,site_name', 'assets', 'responses.user:id,name'])
-            ->where('user_id', auth()->id())
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        return Inertia::render('Feedback/Index', [
-            'feedbacks' => $feedbacks,
-        ]);
+        // Redirect authenticated users to their posts page
+        if (auth()->check()) {
+            return redirect()->route('my.messages.myposts');
+        }
+        
+        // For guests, redirect to public messages
+        return redirect()->route('my.messages');
     }
 
     /**
      * Show single feedback detail for user
+     * Redirect to MyMessages for consistency with Complaint
      */
     public function show(Feedback $feedback)
     {
-        // Ensure user can only see their own feedback
-        if ($feedback->user_id !== auth()->id() && !auth()->user()->isStaff()) {
-            abort(403);
+        // Check if feedback is public or private
+        if ($feedback->is_public) {
+            // Redirect to public show page (with comments)
+            return redirect()->route('public.feedbacks.show', $feedback);
+        } else {
+            // For private feedbacks, check access
+            if (auth()->check() && $feedback->user_id === auth()->id()) {
+                // Authenticated user viewing their own private feedback
+                return redirect()->route('public.feedbacks.show', $feedback);
+            } else {
+                // Redirect to private tracking page
+                return redirect()->route('my.messages.private', [
+                    'email' => $feedback->email,
+                    'phone' => $feedback->sender_phone,
+                ]);
+            }
         }
+    }
 
-        $feedback->load([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email',
-            'assets',
-            'responses.user:id,name',
-            'responses.assets'
-        ]);
+    /**
+     * Display a public feedback detail page with comments.
+     */
+    public function showPublic(Feedback $feedback): Response
+    {
+        $this->validatePublicAccess($feedback, 'Pesan');
+        $commentData = $this->loadPublicRelationships($feedback, $this->getConfig());
 
-        return Inertia::render('Feedback/Show', [
+        return Inertia::render('MyMessages/ShowFeedback', [
             'feedback' => $feedback,
+            'statuses' => $this->getStatuses(),
+            'comments' => $commentData['comments'] ?? null,
+            'commentCount' => $commentData['commentCount'] ?? null,
         ]);
     }
+
+    /**
+     * Display a private feedback detail page (without comments).
+     */
+    public function showPrivate(Feedback $feedback, Request $request): Response
+    {
+        $config = $this->getConfig();
+        [$email, $phone] = $this->validatePrivateAccess($feedback, $request, $config['phone_field']);
+        $this->loadPrivateRelationships($feedback, $config);
+
+        return Inertia::render('MyMessages/ShowPrivateFeedback', [
+            'feedback' => $feedback,
+            'statuses' => $this->getStatuses(),
+            'email' => $email,
+            'phone' => $phone,
+        ]);
+    }
+
+    /**
+     * Store a response from feedback sender or staff.
+     */
+    public function storeResponse(StoreMessageResponseRequest $request, Feedback $feedback)
+    {
+        return $this->handleResponseSubmission($request, $feedback, $this->getConfig());
+    }
+
 }

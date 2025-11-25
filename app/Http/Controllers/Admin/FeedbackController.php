@@ -7,11 +7,13 @@ use App\Models\Feedback;
 use App\Models\FeedbackResponse;
 use App\Models\FeedbackResponseAsset;
 use App\Models\Status;
+use App\Traits\HasStatusHandling;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class FeedbackController extends Controller
 {
+    use HasStatusHandling;
     /**
      * Display a listing of feedbacks for admin
      */
@@ -52,17 +54,8 @@ class FeedbackController extends Controller
         
         $feedbacks = $query->get();
 
-        // Get statuses if the table exists, otherwise use default statuses
-        try {
-            $statuses = Status::all(['id', 'name', 'slug', 'color', 'icon']);
-        } catch (\Exception $e) {
-            // If table doesn't exist, use default statuses
-            $statuses = collect([
-                ['id' => 1, 'name' => 'Pending', 'slug' => 'pending', 'color' => 'red', 'icon' => 'clock'],
-                ['id' => 2, 'name' => 'In Progress', 'slug' => 'in_progress', 'color' => 'orange', 'icon' => 'refresh'],
-                ['id' => 3, 'name' => 'Closed', 'slug' => 'closed', 'color' => 'green', 'icon' => 'check']
-            ]);
-        }
+        // Get statuses using trait method
+        $statuses = $this->getStatuses();
 
         return Inertia::render('Admin/Feedback/Index', [
             'feedbacks' => $feedbacks,
@@ -83,17 +76,8 @@ class FeedbackController extends Controller
             'responses.assets'
         ]);
 
-        // Get statuses if the table exists, otherwise use default statuses
-        try {
-            $statuses = Status::all(['id', 'name', 'slug', 'color', 'icon']);
-        } catch (\Exception $e) {
-            // If table doesn't exist, use default statuses
-            $statuses = collect([
-                ['id' => 1, 'name' => 'Pending', 'slug' => 'pending', 'color' => 'red', 'icon' => 'clock'],
-                ['id' => 2, 'name' => 'In Progress', 'slug' => 'in_progress', 'color' => 'orange', 'icon' => 'refresh'],
-                ['id' => 3, 'name' => 'Closed', 'slug' => 'closed', 'color' => 'green', 'icon' => 'check']
-            ]);
-        }
+        // Get statuses using trait method
+        $statuses = $this->getStatuses();
 
         return Inertia::render('Admin/Feedback/Show', [
             'feedback' => $feedback,
@@ -119,7 +103,10 @@ class FeedbackController extends Controller
             if (!empty($validated['message'])) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $validated['message'],
                 ]);
             }
@@ -184,7 +171,10 @@ class FeedbackController extends Controller
             if (!isset($response) && !empty($validated['message'])) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $validated['message'],
                 ]);
             }
@@ -222,7 +212,10 @@ class FeedbackController extends Controller
             if ($request->has('message') && !empty($request->message)) {
                 $response = FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
             }
@@ -234,7 +227,10 @@ class FeedbackController extends Controller
             if ($request->has('message') && !empty($request->message)) {
                 FeedbackResponse::create([
                     'feedback_id' => $feedback->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()->id,
+                    'sender_type' => 'staff',
+                    'sender_name' => $request->user()->name,
+                    'sender_email' => $request->user()->email,
                     'message' => $request->message,
                 ]);
             }

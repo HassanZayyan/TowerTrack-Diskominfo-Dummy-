@@ -62,4 +62,26 @@ export type PageProps<
     auth: {
         user: User;
     };
+    csrfToken: string;
 };
+
+/**
+ * Tower interface - used across the application for tower data
+ * Note: latitude and longitude can be string or number because backend may return either
+ */
+export interface Tower {
+    id: number;
+    site_name: string;
+    alamat_menara?: string;
+    latitude?: number | string;
+    longitude?: number | string;
+    [key: string]: any;
+}
+
+/**
+ * Coordinates interface - used for location-based operations
+ */
+export interface Coordinates {
+    latitude: number;
+    longitude: number;
+}

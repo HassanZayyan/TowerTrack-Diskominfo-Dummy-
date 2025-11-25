@@ -200,6 +200,11 @@ class FoRouteGenerationService
     
     /**
      * Get route dari koordinat menggunakan OpenRouteService
+     * 
+     * Routing Strategy:
+     * - Uses 'shortest' preference (not 'fastest') to ensure routes follow main roads
+     * - Prevents zig-zagging through residential areas
+     * - Stable for fiber optic infrastructure deployment
      */
     private function getRouteFromCoordinates(array $coordinates, array $parameters = []): ?array
     {
@@ -211,13 +216,17 @@ class FoRouteGenerationService
         try {
             $profile = $this->mapProfileToORS($parameters['profile'] ?? 'driving');
 
-            // Build a clean ORS request. Use 'preference' => 'fastest' to bias for fastest/straight routes.
+            // Build a clean ORS request optimized for fiber optic infrastructure
+            // Use 'shortest' preference to get more direct routes that follow main roads
             $requestData = [
                 'coordinates' => $coordinates,
                 'format' => 'geojson',
                 'instructions' => false,
-                'preference' => 'fastest',
+                'preference' => 'shortest', // Changed from 'fastest' to get straighter routes
             ];
+            
+            // Configure routing options for fiber optic infrastructure
+            $options = [];
             
             // Add avoid options jika diperlukan
             if (!empty($parameters['avoid_highways']) || !empty($parameters['avoid_tolls'])) {
@@ -225,7 +234,11 @@ class FoRouteGenerationService
                 if ($parameters['avoid_highways']) $avoid[] = 'highways';
                 if ($parameters['avoid_tolls']) $avoid[] = 'tollways';
                 
-                $requestData['options'] = ['avoid_features' => $avoid];
+                $options['avoid_features'] = $avoid;
+            }
+            
+            if (!empty($options)) {
+                $requestData['options'] = $options;
             }
             
             Log::info('Making OpenRouteService API call', [
@@ -319,12 +332,13 @@ class FoRouteGenerationService
     
     /**
      * Map internal profile names to OpenRouteService profiles
-     * For fiber optic routes, we use foot-walking as it follows roads more closely
-     * and allows access to areas where cars cannot go
+     * For fiber optic routes, we use driving-car with 'shortest' preference
+     * to ensure routes follow main roads and infrastructure
      */
     private function mapProfileToORS(string $profile): string
     {
-        // Use driving-car for FO planning so routes follow main roads and avoid zig-zagging through footpaths.
+        // Use driving-car for FO planning so routes follow main roads and avoid zig-zagging
+        // Combined with 'shortest' preference, this ensures stable routes along major infrastructure
         $mapping = [
             'driving' => 'driving-car',
             'walking' => 'foot-walking',

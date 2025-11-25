@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface Owner {
   id: number;
@@ -102,7 +103,6 @@ const FormInput: React.FC<{
 
 const TowerCreatePage: React.FC<Props> = ({ owners }) => {
   const [activeTab, setActiveTab] = useState('basic');
-  const [isNewOwner, setIsNewOwner] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     site_name: '',
     site_id: '',
@@ -131,18 +131,35 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateField = useCallback((field: keyof FormData, value: string) => {
+    // Handle coordinate formatting
+    if (field === 'latitude' || field === 'longitude') {
+      // Remove any non-numeric characters except decimal point and minus sign
+      const cleanedValue = value.replace(/[^0-9.-]/g, '');
+      
+      // Ensure only one decimal point
+      const parts = cleanedValue.split('.');
+      if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
+      } else {
+        value = cleanedValue;
+      }
+      
+      // Limit decimal places to 8
+      if (value.includes('.')) {
+        const [integer, decimal] = value.split('.');
+        if (decimal && decimal.length > 8) {
+          value = integer + '.' + decimal.substring(0, 8);
+        }
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Handle owner selection
     if (field === 'owner_id') {
-      if (value === 'new') {
-        setIsNewOwner(true);
-        setFormData(prev => ({ ...prev, owner_name: '', owner_alamat: '' }));
-      } else if (value === '') {
-        setIsNewOwner(false);
+      if (value === '') {
         setFormData(prev => ({ ...prev, owner_name: '', owner_alamat: '' }));
       } else {
-        setIsNewOwner(false);
         const selectedOwner = owners.find(owner => owner.id.toString() === value);
         if (selectedOwner) {
           setFormData(prev => ({ 
@@ -171,12 +188,27 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
       newErrors.alamat_menara = 'Alamat menara wajib diisi';
     }
 
-    // Validate coordinates if provided
-    if (formData.latitude && (isNaN(Number(formData.latitude)) || Number(formData.latitude) < -90 || Number(formData.latitude) > 90)) {
-      newErrors.latitude = 'Latitude harus antara -90 dan 90';
+    // Enhanced coordinate validation
+    if (formData.latitude) {
+      const latValue = Number(formData.latitude);
+      if (isNaN(latValue)) {
+        newErrors.latitude = 'Latitude harus berupa angka yang valid';
+      } else if (latValue < -90 || latValue > 90) {
+        newErrors.latitude = 'Latitude harus antara -90 dan 90';
+      } else if (formData.latitude.includes('.') && formData.latitude.split('.')[1] && formData.latitude.split('.')[1].length > 8) {
+        newErrors.latitude = 'Latitude maksimal 8 digit desimal';
+      }
     }
-    if (formData.longitude && (isNaN(Number(formData.longitude)) || Number(formData.longitude) < -180 || Number(formData.longitude) > 180)) {
-      newErrors.longitude = 'Longitude harus antara -180 dan 180';
+    
+    if (formData.longitude) {
+      const lngValue = Number(formData.longitude);
+      if (isNaN(lngValue)) {
+        newErrors.longitude = 'Longitude harus berupa angka yang valid';
+      } else if (lngValue < -180 || lngValue > 180) {
+        newErrors.longitude = 'Longitude harus antara -180 dan 180';
+      } else if (formData.longitude.includes('.') && formData.longitude.split('.')[1] && formData.longitude.split('.')[1].length > 8) {
+        newErrors.longitude = 'Longitude maksimal 8 digit desimal';
+      }
     }
 
     // Validate numeric fields if provided
@@ -272,7 +304,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
                     </svg>
                     <span className="text-center leading-tight">{tab.label}</span>
@@ -322,58 +354,32 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Site Type</label>
                   <FormInput 
                     field="site_type" 
-                    options={[
-                      { value: 'macro', label: 'Macro' },
-                      { value: 'micro', label: 'Micro' },
-                      { value: 'indoor', label: 'Indoor' },
-                      { value: 'outdoor', label: 'Outdoor' }
-                    ]} 
+                    options={SITE_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))} 
                     placeholder="Pilih site type" 
                     value={formData.site_type}
                     onChange={updateField}
                     error={errors.site_type}
                   />
+                  <div className="text-xs text-gray-500 mt-1 space-y-1">
+                    {SITE_TYPE_OPTIONS.map((option) => (
+                      <p key={option.value}>
+                        <span className="font-medium">{option.label}:</span> {option.description}
+                      </p>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
                   <FormInput 
                     field="owner_id" 
-                    options={[
-                      ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name })),
-                      { value: 'new', label: '+ Tambah Owner Baru' }
-                    ]} 
-                    placeholder="Pilih atau tambah owner" 
+                    options={owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))} 
+                    placeholder="Pilih owner" 
                     value={formData.owner_id}
                     onChange={updateField}
                     error={errors.owner_id}
                   />
                 </div>
-                {isNewOwner && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Nama Owner Baru</label>
-                      <FormInput 
-                        field="owner_name" 
-                        placeholder="Masukkan nama owner" 
-                        value={formData.owner_name}
-                        onChange={updateField}
-                        error={errors.owner_name}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
-                      <FormInput 
-                        field="owner_alamat" 
-                        rows={3} 
-                        placeholder="Alamat lengkap owner" 
-                        value={formData.owner_alamat}
-                        onChange={updateField}
-                        error={errors.owner_alamat}
-                      />
-                    </div>
-                  </>
-                )}
-                {!isNewOwner && formData.owner_id && formData.owner_id !== 'new' && (
+                {formData.owner_id && (
                   <div className="sm:col-span-2">
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Detail Owner</h4>
@@ -388,7 +394,9 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
             {activeTab === 'location' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Longitude <span className="text-gray-500 text-xs">(X-axis)</span>
+                  </label>
                   <FormInput 
                     field="longitude" 
                     type="number" 
@@ -397,9 +405,12 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                     onChange={updateField}
                     error={errors.longitude}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Range: -180° hingga 180°, maksimal 8 digit desimal</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Latitude <span className="text-gray-500 text-xs">(Y-axis)</span>
+                  </label>
                   <FormInput 
                     field="latitude" 
                     type="number" 
@@ -408,6 +419,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
                     onChange={updateField}
                     error={errors.latitude}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Range: -90° hingga 90°, maksimal 8 digit desimal</p>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara <span className="text-red-500">*</span></label>

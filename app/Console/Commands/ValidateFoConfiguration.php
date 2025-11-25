@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\FoRouteGenerationService;
 use Illuminate\Console\Command;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 class ValidateFoConfiguration extends Command
 {
@@ -80,6 +81,6 @@ class ValidateFoConfiguration extends Command
             $this->line('4. Run: php artisan config:cache (if using config cache)');
         }
 
-        return Command::SUCCESS;
+        return SymfonyCommand::SUCCESS;
     }
 }

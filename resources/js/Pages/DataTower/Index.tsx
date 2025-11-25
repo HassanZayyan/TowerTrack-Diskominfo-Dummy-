@@ -7,6 +7,7 @@ import AnimatedButton from '@/Components/AnimatedButton';
 import TowerDetailModal from '@/Components/TowerDetailModal';
 import AlertToast from '@/Components/AlertToast';
 import StaggeredContainer from '@/Components/StaggeredContainer';
+import { useDebounce } from '@/Hooks/useDebounce';
 
 import TowerStats from '@/Components/DataTower/TowerStats';
 import TowerMap from '@/Components/DataTower/TowerMap';
@@ -33,6 +34,7 @@ interface DataTowerProps {
   perPage: number;
   total: number;
   lastPage: number; // Total number of pages
+  totalActiveTowers: number; // Total active towers count
 }
 
 export default function DataTowerIndex({ 
@@ -42,7 +44,8 @@ export default function DataTowerIndex({
   currentPage = 1, 
   perPage = 10, 
   total = 0,
-  lastPage = 1
+  lastPage = 1,
+  totalActiveTowers = 0
 }: DataTowerProps) {
   const [searchTerm, setSearchTerm] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,9 +73,11 @@ export default function DataTowerIndex({
   const [selectedTower, setSelectedTower] = useState<Tower | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
   const mapRef = useRef<any>(null);
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const initialSearchMountRef = useRef<boolean>(true);
   const lastAppliedSearchRef = useRef<string>(searchTerm);
+  
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 800);
 
   // Pretty toast alert for UX
   const [toast, setToast] = useState<{ show: boolean; type: 'info' | 'success' | 'warning' | 'error'; title?: string; message?: string }>({ show: false, type: 'warning' });
@@ -160,9 +165,6 @@ export default function DataTowerIndex({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
     // Trigger map measurement reset when searching
     setResetLinesCounter(c => c + 1);
     
@@ -179,28 +181,14 @@ export default function DataTowerIndex({
       return;
     }
 
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
+    // Avoid re-applying the same search
+    if (lastAppliedSearchRef.current === debouncedSearchTerm) return;
 
-    // Increased debounce delay from 500ms to 800ms for better performance
-    // Reduces unnecessary API calls while typing
-    searchDebounceRef.current = setTimeout(() => {
-      // Avoid re-applying the same search
-      if (lastAppliedSearchRef.current === searchTerm) return;
-
-      setResetLinesCounter(c => c + 1);
-      const params = buildFilterParams({ search: searchTerm, page: 1 });
-      lastAppliedSearchRef.current = searchTerm;
-      router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
-    }, 800);
-
-    return () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-    };
-  }, [searchTerm]);
+    setResetLinesCounter(c => c + 1);
+    const params = buildFilterParams({ search: debouncedSearchTerm, page: 1 });
+    lastAppliedSearchRef.current = debouncedSearchTerm;
+    router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
+  }, [debouncedSearchTerm]);
 
   const handleTowerClick = (tower: Tower) => {
     setSelectedTower(tower);
@@ -213,7 +201,7 @@ export default function DataTowerIndex({
   };
 
   const handleViewMap = (tower: Tower) => {
-    setDetailModalOpen(false);
+    // Modal sudah ditutup dari TowerDetailModal, jadi tidak perlu setDetailModalOpen(false) lagi
     
     // Find the map center point for the tower
     const lat = Number(tower.latitude);
@@ -223,13 +211,25 @@ export default function DataTowerIndex({
 
     // If valid coordinates, programmatically focus on the tower
     if (hasValidCoords) {
+      // Pastikan body position sudah direstore (safety check)
+      if (document.body.style.position === 'fixed') {
+        const scrollY = document.body.style.top ? -parseInt(document.body.style.top) : window.scrollY;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      }
+      
+      // Focus ke peta
       if (mapRef.current && typeof mapRef.current.flyTo === 'function') {
         mapRef.current.flyTo([lat, lng], 17);
       }
-      // Scroll to the map section only when we actually focus the map
+      
+      // Scroll to the map section - sekarang sudah aman karena body position sudah direstore
       const mapElement = document.getElementById('map-section');
       if (mapElement) {
-        mapElement.scrollIntoView({ behavior: 'smooth' });
+        mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else {
       setToast({
@@ -252,9 +252,9 @@ export default function DataTowerIndex({
       <HeroSection
         title={<>
           Selamat datang di TowerTrack
-          <span className="block sm:inline sm:ml-2">Monitoring Tower Kabupaten Semarang</span>
+          <span className="block sm:inline sm:ml-2">Monitoring Infrastruktur Kabupaten Semarang</span>
         </>}
-        subtitle="Pantau persebaran tower, jangkauan, dan data penting lainnya dalam satu tempat."
+        subtitle="Pantau persebaran infrastruktur, jangkauan, dan data penting lainnya dalam satu tempat."
         variant="brand"
         align="center"
         backgroundImage="/images/hero-section.png"
@@ -308,6 +308,7 @@ export default function DataTowerIndex({
                 towers={towers}
                 mapMarkersCount={markers.length}
                 ownerFilter={ownerFilter}
+                totalActiveTowers={totalActiveTowers}
               />
 
               {/* Map Section */}

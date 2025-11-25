@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import MainLayout from '@/Layouts/MainLayout';
 
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
 import FileUpload from '@/Components/FileUpload';
 import AlertDialog from '@/Components/AlertDialog';
+import PageHeader from '@/Components/PageHeader';
+import AnimatedButton from '@/Components/AnimatedButton';
 import { Tower as BaseTower } from '@/utils/searchUtils';
-import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates } from '@/utils/locationUtils';
+import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
 
 interface Tower extends BaseTower {
   latitude: number | string;
@@ -47,7 +50,7 @@ const INITIAL_VALIDATION_STATE = {
 };
 
 export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
-  const { auth } = usePage().props as any;
+  const { auth, turnstileSiteKey, errors } = usePage().props as any;
   const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
@@ -62,6 +65,34 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  
+  // CAPTCHA states
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+  const captchaRef = useRef<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // DEBUG: Cek nilai turnstileSiteKey
+  useEffect(() => {
+    console.log('🔍 CAPTCHA DEBUG:');
+    console.log('turnstileSiteKey:', turnstileSiteKey);
+    console.log('Type:', typeof turnstileSiteKey);
+    console.log('Is empty?', !turnstileSiteKey);
+    console.log('auth:', auth);
+    console.log('isAuthenticatedUser:', isAuthenticatedUser);
+    console.log('Should show CAPTCHA:', !isAuthenticatedUser && turnstileSiteKey);
+  }, [turnstileSiteKey, auth, isAuthenticatedUser]);
   
   // Redirect staff users immediately
   useEffect(() => {
@@ -84,12 +115,6 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     setShowDialog(true);
   }, []);
 
-  const showSuccessDialog = useCallback((title: string, message: string) => {
-    setDialogType('success');
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setShowDialog(true);
-  }, []);
 
   const showWarningDialog = useCallback((title: string, message: string) => {
     setDialogType('warning');
@@ -179,11 +204,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
 
   const handleDialogClose = useCallback(() => {
     setShowDialog(false);
-    // If it was a success dialog, reset the form
-    if (dialogType === 'success') {
-      resetForm();
-    }
-  }, [dialogType, resetForm]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +212,12 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     // Validate form
     if (!validateForm()) {
       showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi dengan benar');
+      return;
+    }
+
+    // Validate CAPTCHA for guest users
+    if (!isAuthenticatedUser && !captchaToken) {
+      showErrorDialog('Verifikasi Diperlukan', 'Mohon selesaikan verifikasi CAPTCHA terlebih dahulu.');
       return;
     }
     
@@ -209,10 +236,18 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
     try {
       let locationValidation;
       let userLocationCaptured = false;
-      let userLocationResult: Awaited<ReturnType<typeof requestUserLocationForReporting>> | undefined;
+      let userLocationResult: Awaited<ReturnType<typeof getLocationForAccountSwitching>> | undefined;
       
       // Always request user location for documentation and validation
-      userLocationResult = await requestUserLocationForReporting();
+      // Use advanced account-switching optimized location capture with tower validation
+      userLocationResult = await getLocationForAccountSwitching(
+        auth?.user?.id, 
+        towerHasCoordinates ? {
+          latitude: Number(selectedTower.latitude),
+          longitude: Number(selectedTower.longitude)
+        } : undefined,
+        5 // Use more attempts for better accuracy
+      );
       
       if (!userLocationResult.success) {
         let locationTitle = 'Lokasi Diperlukan';
@@ -227,6 +262,15 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         } else if (userLocationResult.message.includes('tidak tersedia')) {
           locationTitle = 'Lokasi Tidak Tersedia';
           locationMessage = 'Informasi lokasi tidak dapat diperoleh. Pastikan GPS aktif dan coba lagi.';
+        } else if (userLocationResult.message.includes('beberapa percobaan')) {
+          locationTitle = 'Lokasi Tidak Stabil';
+          locationMessage = 'GPS tidak dapat memberikan lokasi yang stabil. Coba pindah ke area terbuka atau gunakan WiFi untuk meningkatkan akurasi.';
+        } else if (userLocationResult.message.includes('restart WiFi')) {
+          locationTitle = 'Perlu Refresh Lokasi';
+          locationMessage = 'Koordinat GPS tidak akurat. Coba restart WiFi atau pindah ke area terbuka untuk mendapatkan lokasi yang lebih tepat.';
+        } else if (userLocationResult.message.includes('Semua strategi')) {
+          locationTitle = 'GPS Tidak Responsif';
+          locationMessage = 'GPS tidak dapat memberikan lokasi yang akurat. Pastikan GPS aktif, tidak dalam mode hemat daya, dan coba restart aplikasi.';
         }
         
         showWarningDialog(locationTitle, locationMessage);
@@ -246,6 +290,24 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       }
       
       userLocationCaptured = true;
+      
+      // Show detailed location feedback based on validation results
+      if (userLocationResult.validation && userLocationResult.validation.issues.length > 0) {
+        const issues = userLocationResult.validation.issues;
+        const recommendations = userLocationResult.validation.recommendations;
+        
+        if (userLocationResult.validation.confidence === 'low') {
+          showWarningDialog(
+            'Masalah Lokasi GPS Ditemukan', 
+            `${issues.join('. ')}. ${recommendations.join('. ')}`
+          );
+        } else if (userLocationResult.validation.confidence === 'medium') {
+          showWarningDialog(
+            'Akurasi Lokasi Sedang', 
+            `${issues.join('. ')}. ${recommendations.join('. ')}`
+          );
+        }
+      }
       
       if (towerHasCoordinates) {
         // Additional validation against tower coordinates for distance check
@@ -312,6 +374,11 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
         // Don't set email field for authenticated users - backend will use user's email automatically
       }
       
+      // Append CAPTCHA token only for guest users
+      if (!isAuthenticatedUser && captchaToken) {
+        formData.append('cf-turnstile-response', captchaToken);
+      }
+      
       // Append files
       files.forEach((file, index) => {
         formData.append(`foto[${index}]`, file);
@@ -320,17 +387,30 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       // Submit using Inertia router
       router.post('/complaint', formData, {
         onSuccess: () => {
-          showSuccessDialog('Berhasil Dikirim', 'Keluhan Anda telah berhasil dikirimkan');
-          // Don't reset form immediately, let user see the success message
+          // Backend akan redirect ke halaman success (untuk authenticated) atau verifikasi (untuk guest)
+          // Reset CAPTCHA after success
+          if (captchaRef.current) {
+            captchaRef.current.reset();
+            setCaptchaToken('');
+          }
         },
         onError: (errors: Record<string, string>) => {
           console.error('Form submission errors:', errors);
+          
+          // Reset CAPTCHA if there's an error
+          if (captchaRef.current) {
+            captchaRef.current.reset();
+            setCaptchaToken('');
+          }
           
           // Handle specific validation errors with user-friendly messages
           let errorTitle = 'Gagal Mengirim';
           let errorMessage = '';
           
-          if (errors.email && errors.email.includes('prohibited')) {
+          if (errors.captcha) {
+            errorTitle = 'Verifikasi Gagal';
+            errorMessage = errors.captcha;
+          } else if (errors.email && errors.email.includes('prohibited')) {
             errorTitle = 'Error Sistem';
             errorMessage = 'Terjadi kesalahan sistem. Silakan refresh halaman dan coba lagi.';
           } else if (errors.telepon) {
@@ -374,27 +454,11 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
       <Head title="Form Keluhan" />
       
       <div className="p-4 sm:p-6">
-        <div 
-          className="rounded-lg shadow mb-8 px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" 
-          style={{ backgroundColor: '#FFF8E1' }}
-        >
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#212121' }}>
-              {isAuthenticatedUser ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
-            </h1>
-            <p className="text-sm sm:text-base" style={{ color: '#212121', opacity: 0.85 }}>
-              {isAuthenticatedUser 
-                ? 'Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi'
-                : 'Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi'
-              }
-            </p>
-          </div>
-          <img 
-            src="/images/kab-smg-logo.png" 
-            alt="Kabupaten Semarang" 
-            className="h-8 w-8 sm:h-10 sm:w-10 hidden xs:block" 
-          />
-        </div>
+        <PageHeader
+          title={isAuthenticatedUser ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
+          description="Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi"
+          showLogo
+        />
         
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-4 sm:p-6">
@@ -475,6 +539,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
+                        id="is_public_private"
                         name="is_public"
                         checked={!form.is_public}
                         onChange={() => setForm(prev => ({ ...prev, is_public: false }))}
@@ -492,6 +557,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
+                        id="is_public_public"
                         name="is_public"
                         checked={form.is_public}
                         onChange={() => setForm(prev => ({ ...prev, is_public: true }))}
@@ -593,22 +659,77 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
                 </p>
               </div>
               
+              {/* CAPTCHA widget - only for guest users */}
+              {!isAuthenticatedUser && (
+                <div className="mb-6 w-full overflow-hidden">
+                  {turnstileSiteKey ? (
+                    <div className="w-full flex justify-center sm:justify-start">
+                      <div className="w-full max-w-[300px] sm:max-w-none" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                        <Turnstile
+                          ref={captchaRef}
+                          siteKey={turnstileSiteKey}
+                          onSuccess={(token) => {
+                            console.log('✅ CAPTCHA Success, token:', token);
+                            setCaptchaToken(token);
+                          }}
+                          onError={(error) => {
+                            console.error('❌ CAPTCHA Error:', error);
+                            setCaptchaToken('');
+                            showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
+                          }}
+                          onExpire={() => {
+                            console.log('⏰ CAPTCHA Expired');
+                            setCaptchaToken('');
+                          }}
+                          options={{
+                            theme: 'light',
+                            size: isMobile ? 'compact' : 'normal',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800 font-medium">
+                        ⚠️ Error: CAPTCHA tidak dapat dimuat. turnstileSiteKey = {String(turnstileSiteKey)}
+                      </p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Silakan refresh halaman atau hubungi administrator.
+                      </p>
+                    </div>
+                  )}
+                  {errors?.captcha && (
+                    <p className="mt-2 text-sm text-red-600">{errors.captcha}</p>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
-                <button
+                <AnimatedButton
                   type="button"
+                  variant="secondary"
+                  size="md"
+                  animation="scale"
                   onClick={resetForm}
-                  className="px-6 py-3 border border-gray-400 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
                   disabled={isSubmitting}
                 >
                   Reset
-                </button>
-                <button
+                </AnimatedButton>
+                <AnimatedButton
                   type="submit"
-                  className="px-6 py-3 font-medium rounded-lg hover:opacity-90 text-white bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                  disabled={isSubmitting}
+                  variant="primary"
+                  size="md"
+                  animation="scale"
+                  loading={isSubmitting}
+                  disabled={isSubmitting || (!isAuthenticatedUser && !captchaToken)}
+                  icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  }
                 >
                   {isSubmitting ? 'Mengirim...' : 'Kirim Keluhan'}
-                </button>
+                </AnimatedButton>
               </div>
             </form>
           </div>

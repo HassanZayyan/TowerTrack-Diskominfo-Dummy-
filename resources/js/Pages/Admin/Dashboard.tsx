@@ -2,6 +2,7 @@ import React from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, usePage, Link } from '@inertiajs/react';
 import HeroSection from '@/Components/HeroSection';
+import { getStatusColor } from '@/utils/statusHelpers';
 
 type Stats = {
   totalTowers: number;
@@ -239,36 +240,43 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Recent Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
         {/* Recent Complaints */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">Keluhan Terbaru</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="space-y-4">
-              {recentComplaints.slice(0, 3).map((complaint) => (
-                <div key={complaint.id} className="flex items-start space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="flex-shrink-0">
-                    <div className={`w-3 h-3 rounded-full ${
-                      complaint.status === 'pending' ? 'bg-yellow-400' :
-                      complaint.status === 'in_progress' ? 'bg-red-400' : 'bg-green-400'
-                    }`}></div>
+              {recentComplaints.slice(0, 3).map((complaint) => {
+                const statusConfig = getStatusColor(complaint.status);
+                return (
+                  <div key={complaint.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="flex-shrink-0 mt-1">
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: statusConfig.bg }}
+                      ></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-800 truncate">{complaint.title}</h4>
+                      <p className="text-sm text-gray-600 truncate">{complaint.tower_name}</p>
+                      <p className="text-xs text-gray-500">{complaint.created_at}</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <span 
+                        className="px-2 py-1 text-xs rounded-full whitespace-nowrap"
+                        style={{ 
+                          backgroundColor: statusConfig.bg, 
+                          color: statusConfig.text 
+                        }}
+                      >
+                        {statusConfig.label}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-800">{complaint.title}</h4>
-                    <p className="text-sm text-gray-600">{complaint.tower_name}</p>
-                    <p className="text-xs text-gray-500">{complaint.created_at}</p>
-                  </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    complaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    complaint.status === 'in_progress' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {complaint.status === 'pending' ? 'Pending' :
-                     complaint.status === 'in_progress' ? 'Progress' : 'Selesai'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
               <Link href="/admin/messages?tab=complaints" className="text-red-600 hover:text-red-800 font-medium text-sm">Lihat Semua Keluhan →</Link>
@@ -277,34 +285,41 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Recent Feedbacks */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">Masukan Terbaru</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="space-y-4">
-              {recentFeedbacks.slice(0, 3).map((fb) => (
-                <div key={fb.id} className="flex items-start space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="flex-shrink-0">
-                    <div className={`w-3 h-3 rounded-full ${
-                      fb.status === 'pending' ? 'bg-yellow-400' :
-                      fb.status === 'in_progress' ? 'bg-red-400' : 'bg-green-400'
-                    }`}></div>
+              {recentFeedbacks.slice(0, 3).map((fb) => {
+                const statusConfig = getStatusColor(fb.status);
+                return (
+                  <div key={fb.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="flex-shrink-0 mt-1">
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: statusConfig.bg }}
+                      ></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-800 truncate">{fb.title}</h4>
+                      <p className="text-sm text-gray-600 truncate">{fb.description || fb.tower_name}</p>
+                      <p className="text-xs text-gray-500">{fb.created_at}</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <span 
+                        className="px-2 py-1 text-xs rounded-full whitespace-nowrap"
+                        style={{ 
+                          backgroundColor: statusConfig.bg, 
+                          color: statusConfig.text 
+                        }}
+                      >
+                        {statusConfig.label}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-800">{fb.title}</h4>
-                    <p className="text-sm text-gray-600">{fb.tower_name}</p>
-                    <p className="text-xs text-gray-500">{fb.created_at}</p>
-                  </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    fb.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    fb.status === 'in_progress' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {fb.status === 'pending' ? 'Pending' :
-                     fb.status === 'in_progress' ? 'Progress' : 'Selesai'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
               <Link href="/admin/messages?tab=feedbacks" className="text-red-600 hover:text-red-800 font-medium text-sm">Lihat Semua Masukan →</Link>

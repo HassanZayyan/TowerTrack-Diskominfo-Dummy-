@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,11 +21,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force HTTPS only when explicitly enabled (e.g., for ngrok/production)
-        // Set FORCE_HTTPS=true in the environment to enable
-        if (filter_var(env('FORCE_HTTPS', false), FILTER_VALIDATE_BOOLEAN)) {
+        // Force HTTPS hanya jika FORCE_HTTPS=true atau menggunakan ngrok
+        $appUrl = config('app.url');
+        $forceHttps = env('FORCE_HTTPS', false);
+        
+        if ($forceHttps || ($appUrl && str_contains($appUrl, 'ngrok'))) {
             URL::forceScheme('https');
         }
+        
         Vite::prefetch(concurrency: 3);
     }
 }

@@ -9,7 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Models\Tower;
-use App\Http\Controllers\UserComplaintController;
+use App\Http\Controllers\ComplaintController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\StaffMiddleware;
 use App\Http\Middleware\NonStaffMiddleware;
@@ -17,6 +17,8 @@ use App\Http\Middleware\TowerOwnerMiddleware;
 use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
 use App\Http\Controllers\Admin\FoManagementController;
+use App\Http\Controllers\MyMessagesController;
+use App\Services\PublicMessageQueryService;
 
 Route::get('/', function () {
     return redirect()->route('data.tower');
@@ -48,199 +50,63 @@ Route::get('/tower/{tower}', [TowerController::class, 'show'])->name('tower.show
 Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback');
 Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
 
-Route::get('/complaint', [UserComplaintController::class, 'index'])->name('complaint');
-Route::post('/complaint', [UserComplaintController::class, 'store'])->name('complaint.store');
+Route::get('/complaint', [ComplaintController::class, 'index'])->name('complaint');
+Route::post('/complaint', [ComplaintController::class, 'store'])->name('complaint.store');
+
+// Guest email verification routes
+Route::get('/guest/verify-email', [\App\Http\Controllers\GuestEmailVerificationController::class, 'notice'])
+    ->name('guest.verification.notice');
+Route::get('/verify-guest-email/{token}', [\App\Http\Controllers\GuestEmailVerificationController::class, 'verify'])
+    ->name('guest.email.verify');
+Route::post('/resend-guest-verification', [\App\Http\Controllers\GuestEmailVerificationController::class, 'resend'])
+    ->name('guest.email.resend');
+
+// Guest submission success page
+Route::get('/submission-success', function (\Illuminate\Http\Request $request) {
+    $type = $request->query('type', 'complaint');
+    $message = $request->query('message');
+    
+    return Inertia::render('Guest/Success', [
+        'messageType' => $type,
+        'message' => $message,
+    ]);
+})->name('guest.submission.success');
 
 // User feedback list and details (authenticated or anonymous with email)
 Route::get('/my-feedbacks', [FeedbackController::class, 'userFeedbacks'])->name('my.feedbacks');
 Route::get('/feedback/{feedback}', [FeedbackController::class, 'show'])->name('feedback.show');
 
 // User reports page (messages) - accessible by authenticated users or anonymous
-Route::get('/my-messages', function () {
-    if (auth()->check()) {
-        // Authenticated user (complainant/tower_owner) - show their own reports + public reports from others
-        $ownReports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email', // Include user info for authenticated reports
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('user_id', auth()->id())
-        ->orderByDesc('created_at')
-        ->get();
-        
-        // Get public reports from others
-        $publicReports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email', // Include user info for authenticated reports
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('is_public', true)
-        ->where('user_id', '!=', auth()->id())
-        ->orderByDesc('created_at')
-        ->get();
-        
-        $reports = $ownReports->merge($publicReports)->sortByDesc('created_at')->values();
+Route::get('/my-messages', [MyMessagesController::class, 'index'])->name('my.messages');
 
-        $feedbacks = collect();
-        
-        try {
-            if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-                // Get own feedbacks
-                $ownFeedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email', // Include user info for authenticated feedbacks
-                    'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                    }
-                ])
-                ->where('user_id', auth()->id())
-                ->orderByDesc('created_at')
-                ->get();
-                
-                // Get public feedbacks from others
-                $publicFeedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email', // Include user info for authenticated feedbacks
-                    'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                    }
-                ])
-                ->where('is_public', true)
-                ->where('user_id', '!=', auth()->id())
-                ->orderByDesc('created_at')
-                ->get();
-                
-                $feedbacks = $ownFeedbacks->merge($publicFeedbacks)->sortByDesc('created_at')->values();
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-            $feedbacks = collect();
-        }
-        
-        return Inertia::render('MyMessages/Index', [
-            'reports' => $reports,
-            'feedbacks' => $feedbacks,
-            'showEmailInput' => false,
-            'isAnonymous' => false,
-        ]);
-    } else {
-        // Anonymous user (guest) - show ALL public reports
-        $reports = \App\Models\Report::with([
-            'tower:id,site_name,alamat_menara',
-            'user:id,name,email', // Include user info for authenticated reports
-            'responses' => function ($q) {
-                $q->select('id','report_id','message','created_at','user_id')
-                  ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-            },
-            'images:id,report_id,file_path,file_type'
-        ])
-        ->where('is_public', true)
-        ->orderByDesc('created_at')
-        ->get();
-        
-        $feedbacks = collect();
-        try {
-            if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-                $feedbacks = \App\Models\Feedback::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email', // Include user info for authenticated feedbacks
-                    'assets:id,feedback_id,file_path,file_type',
-                    'responses' => function ($q) {
-                        $q->select('id','feedback_id','created_at','user_id','message')
-                          ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                    }
-                ])
-                ->where('is_public', true)
-                ->orderByDesc('created_at')
-                ->get();
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-            $feedbacks = collect();
-        }
-        
-        return Inertia::render('MyMessages/Index', [
-            'reports' => $reports,
-            'feedbacks' => $feedbacks,
-            'showEmailInput' => false, // Guest tidak perlu input email - langsung lihat public reports
-            'isAnonymous' => true,
-        ]);
-    }
-})->name('my.messages');
+// "Pesan Saya" route - Show user's own messages (both public and private)
+Route::get('/my-messages/my-posts', [MyMessagesController::class, 'myPosts'])->middleware('auth')->name('my.messages.myposts');
 
-// Guest private message tracking route - untuk melacak pesan private guest
-Route::get('/my-messages/private', function () {
-    $email = request()->query('email');
-    $phone = request()->query('phone');
-    
-    if (!$email || !$phone) {
-        return Inertia::render('MyMessages/PrivateTracking', [
-            'reports' => [],
-            'feedbacks' => [],
-            'email' => $email,
-            'phone' => $phone,
-        ]);
-    }
-    
-    // Get private reports for this email AND phone combination
-    $reports = \App\Models\Report::with([
-        'tower:id,site_name,alamat_menara', 
-        'responses' => function ($q) {
-            $q->select('id','report_id','message','created_at','user_id')
-              ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-        },
-        'images:id,report_id,file_path,file_type'
-    ])
-    ->where('email', $email)
-    ->where('reporter_phone', $phone)
-    ->where('is_public', false) // Only private reports
-    ->whereNull('user_id')
-    ->orderByDesc('created_at')
-    ->get();
-    
-    // Get private feedbacks for this email AND phone combination
-    $feedbacks = collect();
-    try {
-        if (class_exists('App\\Models\\Feedback') && \Schema::hasTable('feedbacks')) {
-            $feedbacks = \App\Models\Feedback::with([
-                'tower:id,site_name,alamat_menara',
-                'assets:id,feedback_id,file_path,file_type',
-                'responses' => function ($q) {
-                    $q->select('id','feedback_id','created_at','user_id','message')
-                      ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                }
-            ])
-            ->where('email', $email)
-            ->where('sender_phone', $phone)
-            ->where('is_public', false) // Only private feedbacks
-            ->whereNull('user_id')
-            ->orderByDesc('created_at')
-            ->get();
-        }
-    } catch (\Exception $e) {
-        \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-        $feedbacks = collect();
-    }
-    
-    return Inertia::render('MyMessages/PrivateTracking', [
-        'reports' => $reports,
-        'feedbacks' => $feedbacks,
-        'email' => $email,
-        'phone' => $phone,
-    ]);
-})->name('my.messages.private');
+// Guest private message tracking route
+Route::get('/my-messages/private', [MyMessagesController::class, 'privateTracking'])->name('my.messages.private');
+
+// Public detail pages for reports and feedbacks (with comments)
+Route::get('/my-messages/reports/{report}', [ComplaintController::class, 'showPublic'])
+    ->name('public.reports.show');
+Route::get('/my-messages/feedbacks/{feedback}', [FeedbackController::class, 'showPublic'])
+    ->name('public.feedbacks.show');
+
+// Private detail pages for reports and feedbacks (without comments, requires email & phone)
+Route::get('/my-messages/private/reports/{report}', [ComplaintController::class, 'showPrivate'])
+    ->name('private.reports.show');
+Route::get('/my-messages/private/feedbacks/{feedback}', [FeedbackController::class, 'showPrivate'])
+    ->name('private.feedbacks.show');
+
+Route::post('/my-messages/reports/{report}/responses', [ComplaintController::class, 'storeResponse'])
+    ->name('public.reports.responses.store');
+Route::post('/my-messages/feedbacks/{feedback}/responses', [FeedbackController::class, 'storeResponse'])
+    ->name('public.feedbacks.responses.store');
+
+// Public comment routes (guest and authenticated users can comment)
+Route::post('/my-messages/reports/{report}/comments', [\App\Http\Controllers\PublicCommentController::class, 'storeReport'])
+    ->name('public.reports.comments.store');
+Route::post('/my-messages/feedbacks/{feedback}/comments', [\App\Http\Controllers\PublicCommentController::class, 'storeFeedback'])
+    ->name('public.feedbacks.comments.store');
 
 // Admin/Authenticated Routes
 Route::middleware('auth')->group(function () {
@@ -261,6 +127,7 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
         Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/restore', [\App\Http\Controllers\Admin\UserController::class, 'restore'])->name('users.restore');
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
     });
 
@@ -318,12 +185,23 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/points', [FoManagementController::class, 'storePoint'])->name('fo-management.points.store');
         Route::get('/fo-management/points/{foPoint}/edit', [FoManagementController::class, 'editPoint'])->name('fo-management.points.edit');
         Route::put('/fo-management/points/{foPoint}', [FoManagementController::class, 'updatePoint'])->name('fo-management.points.update');
+        Route::patch('/fo-management/points/{foPoint}/coordinates', [FoManagementController::class, 'updatePointCoordinates'])->name('fo-management.points.update-coordinates');
         Route::delete('/fo-management/points/{foPoint}', [FoManagementController::class, 'destroyPoint'])->name('fo-management.points.destroy');
         Route::post('/fo-management/points/bulk-action', [FoManagementController::class, 'bulkPointsAction'])->name('fo-management.points.bulk-action');
 
         // FO Export (CSV downloads)
         Route::get('/fo-management/points/export', [FoManagementController::class, 'exportPoints'])->name('fo-management.points.export');
         Route::get('/fo-management/routes/export', [FoManagementController::class, 'exportRoutes'])->name('fo-management.routes.export');
+
+        // Master Provider Management (CRUD) - DRY: Consolidated in FoManagementController
+        Route::get('/fo-management/providers', [FoManagementController::class, 'indexProviders'])->name('fo-management.providers.index');
+        Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
+        Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
+        Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
+        
+        // Quick create provider from point form
+        Route::post('/fo-management/providers/quick-create', [FoManagementController::class, 'quickCreateProvider'])
+            ->name('fo-management.providers.quick-create');
 
     });
 

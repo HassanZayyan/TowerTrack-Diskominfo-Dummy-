@@ -4,7 +4,13 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import VideoThumbnail from '@/Components/VideoThumbnail';
 import AnimatedButton from '@/Components/AnimatedButton';
 import StaggeredContainer from '@/Components/StaggeredContainer';
+import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMessages/MessageResponseTimeline';
+import MediaLightbox from '@/Components/MediaLightbox';
 import { PageProps } from '@/types';
+import { formatDateWithTime } from '@/utils/dateHelpers';
+import { renderMessageStatusBadge, getStatusColor } from '@/utils/statusHelpers';
+import { getMediaUrl, isImage, isVideo, validateMediaFile } from '@/utils/mediaHelpers';
+import { mapReportResponses } from '@/utils/responseMapper';
 
 interface ReportAsset {
   id: number;
@@ -35,11 +41,15 @@ interface ReportResponseAsset {
 interface ReportResponse {
   id: number;
   report_id: number;
-  user_id: number;
-  message: string;
+  user_id: number | null;
+  message: string | null;
   created_at: string;
-  user?: User;
+  user?: User | null;
   assets?: ReportResponseAsset[];
+  sender_type?: 'staff' | 'reporter' | 'guest';
+  sender_name?: string | null;
+  sender_email?: string | null;
+  sender_phone?: string | null;
 }
 
 interface Report {
@@ -57,6 +67,7 @@ interface Report {
   tower?: Tower;
   images?: ReportAsset[];
   responses?: ReportResponse[];
+  email?: string;
 }
 
 interface Props extends PageProps {
@@ -84,12 +95,12 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       // Filter valid files (images, videos, max 5 files)
-      const validFiles = files.filter(file => {
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        const validSize = isImage ? file.size <= 5 * 1024 * 1024 : file.size <= 50 * 1024 * 1024;
-        return (isImage || isVideo) && validSize;
-      }).slice(0, 5);
+      const validFiles = files
+        .filter(file => {
+          const validation = validateMediaFile(file);
+          return validation.valid;
+        })
+        .slice(0, 5);
       
       setSelectedFiles(currentFiles => [...currentFiles, ...validFiles].slice(0, 5));
     }
@@ -166,50 +177,10 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
     setReplyStatus(newStatus);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-  
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: 'bg-red-100 text-red-800 border-red-300',
-      in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
-      closed: 'bg-green-100 text-green-800 border-green-300'
-    };
-    
-    const labels = {
-      pending: 'BARU',
-      in_progress: 'PROGRESS',
-      closed: 'SELESAI'
-    };
+  const mappedResponses = mapReportResponses(report.responses);
 
-    return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors] || colors.pending}`}>
-        {labels[status as keyof typeof labels] || labels.pending}
-      </span>
-    );
-  };
-
-  const getMediaUrl = (path: string) => {
-    if (path.startsWith('http')) return path;
-    return `/storage/${path}`;
-  };
-
-  const isImage = (path: string, type?: string) => {
-    if (type) return type === 'image' || type.startsWith('image/');
-    return /\.(jpg|jpeg|png|gif|webp)$/i.test(path);
-  };
-
-  const isVideo = (path: string, type?: string) => {
-    if (type) return type === 'video' || type.startsWith('video/');
-    return /\.(mp4|mov|avi|webm)$/i.test(path);
+  const resolveReportStatusStyle = (statusValue: string | null | undefined) => {
+    return getStatusColor(statusValue);
   };
 
   return (
@@ -237,31 +208,31 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
       </StaggeredContainer>
 
       <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
-        <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
+        <div className="relative rounded-xl shadow-lg mb-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
           {/* Decorative elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-red-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
           
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md flex-shrink-0">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent break-words">
                     Detail Keluhan #{report.id}
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Dikirim: {formatDate(report.created_at)}
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                    Dikirim: {formatDateWithTime(report.created_at)}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 font-medium">Status:</span>
-                {getStatusBadge(report.status)}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-gray-600 font-medium hidden sm:inline">Status:</span>
+                {renderMessageStatusBadge(report.status)}
               </div>
             </div>
           </div>
@@ -273,9 +244,9 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
         <div className="lg:col-span-2 space-y-6">
           <StaggeredContainer delay={200} animationType="fadeInUp" duration={500}>
             {/* Sender Information Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-md">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-200 shadow-md">
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md flex-shrink-0">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -283,37 +254,36 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                 <h3 className="text-lg font-bold text-gray-900">Informasi Pelapor</h3>
               </div>
               
-              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
-                <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg ring-4 ring-white">
-                  <span className="text-white font-bold text-2xl">
-                    {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {report.reporter_name || report.user?.name || 'Anonim'}
-                  </h2>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span className="font-medium">{report.reporter_phone || '-'}</span>
-                    </div>
-                    {report.user?.email && (
-                      <>
-                        <span className="hidden sm:inline text-gray-400">•</span>
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg ring-4 ring-white">
+                    <span className="text-white font-bold text-2xl">
+                      {(report.reporter_name || report.user?.name || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 break-words">
+                      {report.reporter_name || report.user?.name || 'Anonim'}
+                    </h2>
+                    <div className="flex flex-col gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <svg className="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span className="font-medium break-all">{report.reporter_phone || '-'}</span>
+                      </div>
+                      {(report.user?.email || (report as any).email) && (
+                        <div className="flex items-start gap-1.5 min-w-0">
+                          <svg className="w-4 h-4 flex-shrink-0 text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
-                          <span className="font-medium">{report.user?.email}</span>
+                          <span className="font-medium break-all text-gray-700">{(report as any).email || report.user?.email}</span>
                         </div>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-red-100 text-red-800 border border-red-200 shadow-sm">
+                <span className="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-red-100 text-red-800 border border-red-200 shadow-sm flex-shrink-0 self-start sm:self-center">
                   {report.category}
                 </span>
               </div>
@@ -354,9 +324,9 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                     <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-600 mb-1 font-medium">Nama Site</p>
-                      <p className="text-base font-bold text-gray-900">{report.tower.site_name}</p>
+                      <p className="text-base font-bold text-gray-900 break-words">{report.tower.site_name}</p>
                     </div>
                   </div>
                   {report.tower.alamat_menara && (
@@ -365,9 +335,9 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-xs text-gray-600 mb-1 font-medium">Alamat</p>
-                        <p className="text-sm text-gray-700">{report.tower.alamat_menara}</p>
+                        <p className="text-sm text-gray-700 break-words leading-relaxed">{report.tower.alamat_menara}</p>
                       </div>
                     </div>
                   )}
@@ -398,12 +368,12 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
                     const isVid = isVideo(asset.file_path, asset.file_type);
 
                     return (
-                      <div key={asset.id} className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-pink-400 transition-all shadow-sm hover:shadow-lg transform hover:scale-105 duration-300">
+                      <div key={asset.id} className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-pink-400 transition-all shadow-sm hover:shadow-lg duration-300">
                         {isImg ? (
                           <img
                             src={mediaUrl}
                             alt={`Lampiran ${index + 1}`}
-                            className="w-full h-32 object-cover cursor-pointer"
+                            className="w-full h-32 object-contain cursor-pointer bg-gray-50"
                             onClick={() => openLightbox(mediaUrl, 'image')}
                           />
                         ) : isVid ? (
@@ -448,7 +418,7 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
 
         </div>
 
-        {/* Right column - Reply form and previous responses */}
+        {/* Right column - Reply form */}
         <div className="lg:col-span-1 space-y-6">
           {/* Reply Form */}
           <StaggeredContainer delay={400} animationType="fadeInRight" duration={500}>
@@ -605,165 +575,65 @@ const ReportShow: React.FC<Props> = ({ report: initialReport }) => {
             </div>
           </StaggeredContainer>
 
-          {/* Previous Responses */}
-          <StaggeredContainer delay={450} animationType="fadeInRight" duration={500}>
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-sm">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Riwayat Balasan</h3>
-                {report.responses && report.responses.length > 0 && (
-                  <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {report.responses.length} balasan
-                  </span>
-                )}
-              </div>
-              
-              {report.responses && report.responses.length > 0 ? (
-                <div className="relative space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                  {/* Timeline line */}
-                  <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-gradient-to-b from-cyan-200 via-cyan-300 to-cyan-200"></div>
-                  
-                  {report.responses.map((response, index) => (
-                    <div key={response.id} className="relative pl-12">
-                      {/* Timeline dot */}
-                      <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-white shadow-md z-10"></div>
-                      
-                      <div className="bg-gradient-to-br from-cyan-50 to-white rounded-xl p-4 border border-cyan-100 shadow-sm">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-md ring-2 ring-white">
-                              <span className="text-white font-bold text-sm">
-                                {response.user?.name.charAt(0).toUpperCase() || 'A'}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900">
-                                {response.user?.name || 'Admin'}
-                              </p>
-                              <p className="text-xs text-gray-500 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {formatDate(response.created_at)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-cyan-100 mb-3">
-                          {response.message}
-                        </div>
-                        
-                        {/* Response attachments */}
-                        {response.assets && response.assets.length > 0 && (
-                          <div className="grid grid-cols-3 gap-2">
-                            {response.assets.map((asset, idx) => {
-                              const mediaUrl = getMediaUrl(asset.file_path);
-                              const isImg = isImage(asset.file_path, asset.file_type);
-                              const isVid = isVideo(asset.file_path, asset.file_type);
-
-                              return (
-                                <div key={asset.id} className="relative rounded-lg overflow-hidden border-2 border-cyan-200 hover:border-cyan-400 transition-all transform hover:scale-105 cursor-pointer">
-                                  {isImg ? (
-                                    <img
-                                      src={mediaUrl}
-                                      alt={`Response media ${idx + 1}`}
-                                      className="w-full h-20 object-cover"
-                                      onClick={() => openLightbox(mediaUrl, 'image')}
-                                    />
-                                  ) : isVid ? (
-                                    <VideoThumbnail
-                                      src={mediaUrl}
-                                      fileType="video"
-                                      className="w-full h-20"
-                                      onClick={() => openLightbox(mediaUrl, 'video')}
-                                      showPlayButton={true}
-                                      alt={`Response video ${idx + 1}`}
-                                      loading="lazy"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-20 bg-gray-100 flex items-center justify-center">
-                                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-10 text-center border-2 border-dashed border-gray-300">
-                  <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                  </div>
-                  <p className="text-base font-semibold text-gray-600 mb-1">
-                    Belum Ada Balasan
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Kirim balasan pertama untuk keluhan ini
-                  </p>
-                </div>
-              )}
-            </div>
-          </StaggeredContainer>
         </div>
       </div>
 
-      {/* Lightbox */}
-      {lightboxOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
-          onClick={() => setLightboxOpen(false)}
-        >
-          <div className="relative max-w-5xl max-h-full">
-            {lightboxType === 'image' ? (
-              <img
-                src={lightboxSrc}
-                alt="Full size preview"
-                className="max-w-full max-h-full object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <div className="relative">
-                <video 
-                  src={lightboxSrc}
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  controls
-                  autoPlay
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ maxHeight: '80vh' }}
-                />
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Video
-                </div>
-              </div>
-            )}
-            <button
-              className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-2"
-              onClick={() => setLightboxOpen(false)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      {/* Previous Responses */}
+      <StaggeredContainer delay={450} animationType="fadeInUp" duration={500}>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mt-6">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-sm">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </button>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Riwayat Balasan</h3>
+            {report.responses && report.responses.length > 0 && (
+              <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {report.responses.length} balasan
+              </span>
+            )}
           </div>
+          
+          {mappedResponses.length > 0 ? (
+            <MessageResponseTimeline
+              responses={mappedResponses}
+              status={report.status}
+              statusResolver={resolveReportStatusStyle}
+              heading={null}
+              accentColorClass="from-cyan-500 to-cyan-600"
+              onPreviewAsset={(asset) => {
+                const mediaUrl = getMediaUrl(asset.file_path);
+                const type = asset.file_type === 'video' ? 'video' : 'image';
+                openLightbox(mediaUrl, type as 'image' | 'video');
+              }}
+            />
+          ) : (
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-10 text-center border-2 border-dashed border-gray-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <p className="text-base font-semibold text-gray-600 mb-1">
+                Belum Ada Balasan
+              </p>
+              <p className="text-sm text-gray-500">
+                Kirim balasan pertama untuk keluhan ini
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </StaggeredContainer>
+
+      {/* Lightbox */}
+      <MediaLightbox
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        src={lightboxSrc}
+        type={lightboxType}
+        alt="Full size preview"
+      />
     </AdminLayout>
   );
 };

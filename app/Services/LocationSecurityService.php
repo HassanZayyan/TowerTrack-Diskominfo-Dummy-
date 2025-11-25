@@ -5,36 +5,25 @@ namespace App\Services;
 class LocationSecurityService
 {
     /**
-     * Validate and sanitize coordinate data
+     * Process coordinates without strict validation - always succeeds
+     * Prioritizes report submission over GPS accuracy
      *
      * @param float $latitude
      * @param float $longitude
      * @param float|null $accuracy
-     * @return array
+     * @return array|null Returns processed coordinates or null if completely invalid
      */
-    public static function validateCoordinates(float $latitude, float $longitude, ?float $accuracy = null): array
+    public static function validateCoordinates(float $latitude, float $longitude, ?float $accuracy = null): ?array
     {
-        // Validate coordinate ranges
-        if ($latitude < -90 || $latitude > 90) {
-            throw new \InvalidArgumentException('Invalid latitude range');
+        // Basic sanity check - if coordinates are completely invalid, return null
+        // But don't block report submission
+        if (abs($latitude) > 90 || abs($longitude) > 180 || ($latitude == 0 && $longitude == 0)) {
+            return null; // No coordinates saved, but report continues
         }
         
-        if ($longitude < -180 || $longitude > 180) {
-            throw new \InvalidArgumentException('Invalid longitude range');
-        }
-        
-        // Round coordinates to appropriate precision (6 decimal places = ~11cm accuracy)
+        // Accept any coordinates within reasonable bounds
         $sanitizedLatitude = round($latitude, 6);
         $sanitizedLongitude = round($longitude, 6);
-        
-        // Validate accuracy if provided
-        $sanitizedAccuracy = null;
-        if ($accuracy !== null) {
-            if ($accuracy < 0 || $accuracy > 10000) { // Max 10km accuracy (more flexible for documentation purposes)
-                throw new \InvalidArgumentException('Invalid accuracy value');
-            }
-            $sanitizedAccuracy = round($accuracy, 2);
-        }
         
         $result = [
             'reporter_latitude' => $sanitizedLatitude,
@@ -42,12 +31,31 @@ class LocationSecurityService
             'location_captured_at' => now()
         ];
         
-        // Only include accuracy if it's provided and valid
-        if ($sanitizedAccuracy !== null) {
-            $result['reporter_accuracy'] = $sanitizedAccuracy;
+        // Include accuracy if provided, regardless of value (be permissive)
+        if ($accuracy !== null && $accuracy >= 0) {
+            $result['reporter_accuracy'] = round($accuracy, 2);
         }
         
         return $result;
+    }
+    
+    /**
+     * Assess location quality based on accuracy
+     *
+     * @param float $accuracy Accuracy in meters
+     * @return string Quality level
+     */
+    public static function assessLocationQuality(float $accuracy): string
+    {
+        if ($accuracy <= 10) {
+            return 'excellent';
+        } elseif ($accuracy <= 50) {
+            return 'good';
+        } elseif ($accuracy <= 100) {
+            return 'fair';
+        } else {
+            return 'poor';
+        }
     }
     
     /**
@@ -114,6 +122,21 @@ class LocationSecurityService
     }
     
     /**
+     * Quick validation for coordinates without detailed analysis
+     * Used for performance-critical operations
+     *
+     * @param float $latitude
+     * @param float $longitude
+     * @return bool
+     */
+    public static function isValidCoordinates(float $latitude, float $longitude): bool
+    {
+        return $latitude >= -90 && $latitude <= 90 && 
+               $longitude >= -180 && $longitude <= 180 &&
+               !($latitude == 0 && $longitude == 0); // Exclude obvious fake coordinates
+    }
+
+    /**
      * Check if location data should be considered suspicious
      *
      * @param float $latitude
@@ -141,7 +164,7 @@ class LocationSecurityService
         }
         
         // Check for very high accuracy (might indicate fake location)
-        if ($accuracy !== null && $accuracy > 100) {
+        if ($accuracy !== null && $accuracy > 500) { // Increased threshold to be more permissive
             $risks[] = 'very_low_accuracy';
         }
         

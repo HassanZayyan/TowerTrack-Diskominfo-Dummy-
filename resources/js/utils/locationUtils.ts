@@ -2,11 +2,7 @@
  * Utility functions for location-based operations
  */
 
-// Interface for coordinates
-export interface Coordinates {
-  latitude: number;
-  longitude: number;
-}
+import type { Coordinates } from '@/types';
 
 // Interface for geolocation result
 export interface LocationResult {
@@ -47,7 +43,7 @@ export interface LocationResultWithAccuracy {
 }
 
 /**
- * Get user's current location using Geolocation API
+ * Get user's current location using Geolocation API with improved accuracy
  * @param options Geolocation options
  * @returns Promise with location result
  */
@@ -64,8 +60,8 @@ export function getCurrentLocation(options?: PositionOptions): Promise<LocationR
 
     const defaultOptions: PositionOptions = {
       enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 300000, // 5 minutes
+      timeout: 15000, // Increased timeout for better accuracy
+      maximumAge: 60000, // Reduced to 1 minute for fresher data
       ...options
     };
 
@@ -109,6 +105,254 @@ export function getCurrentLocation(options?: PositionOptions): Promise<LocationR
 }
 
 /**
+ * Clear browser geolocation cache to force fresh location data
+ * This helps when switching accounts or when coordinates seem stale
+ */
+export function clearLocationCache(): void {
+  // Clear any stored location data in localStorage/sessionStorage
+  try {
+    localStorage.removeItem('lastKnownLocation');
+    localStorage.removeItem('cachedLocation');
+    sessionStorage.removeItem('lastKnownLocation');
+    sessionStorage.removeItem('cachedLocation');
+  } catch (error) {
+    console.warn('Could not clear location cache:', error);
+  }
+}
+
+/**
+ * Get fresh location data with cache clearing for account switching
+ * @param forceFresh Force fresh location even if cached data exists
+ * @returns Promise with location result
+ */
+export function getFreshLocation(forceFresh: boolean = false): Promise<LocationResultWithAccuracy> {
+  return new Promise((resolve) => {
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      resolve({
+        success: false,
+        error: 'Geolocation tidak didukung oleh browser ini'
+      });
+      return;
+    }
+
+    // Clear cache if forcing fresh location
+    if (forceFresh) {
+      clearLocationCache();
+    }
+
+    // Use very aggressive settings to get fresh location
+    const options: PositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 30000, // 30 seconds for maximum accuracy
+      maximumAge: forceFresh ? 0 : 10000 // Force fresh if requested, otherwise 10 seconds max
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const result = {
+          success: true,
+          coordinates: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          },
+          accuracy: position.coords.accuracy
+        };
+
+        // Store fresh location data
+        try {
+          localStorage.setItem('lastKnownLocation', JSON.stringify({
+            ...result,
+            timestamp: Date.now()
+          }));
+        } catch (error) {
+          console.warn('Could not store location data:', error);
+        }
+
+        resolve(result);
+      },
+      (error) => {
+        let errorMessage = 'Gagal mendapatkan lokasi';
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Izin lokasi ditolak. Silakan aktifkan izin lokasi di browser Anda.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Informasi lokasi tidak tersedia. Pastikan GPS aktif dan sinyal baik.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Waktu permintaan lokasi habis. Coba pindah ke area terbuka atau restart WiFi.';
+            break;
+          default:
+            errorMessage = 'Terjadi kesalahan saat mendapatkan lokasi.';
+            break;
+        }
+        
+        resolve({
+          success: false,
+          error: errorMessage
+        });
+      },
+      options
+    );
+  });
+}
+
+/**
+ * Get user's current location with progressive enhancement and retry mechanism
+ * Tries multiple strategies to get the best possible location accuracy
+ * @param maxRetries Maximum number of retry attempts
+ * @param forceFresh Force fresh location data (useful for account switching)
+ * @returns Promise with location result
+ */
+export function getCurrentLocationEnhanced(maxRetries: number = 3, forceFresh: boolean = false): Promise<LocationResultWithAccuracy> {
+  return new Promise(async (resolve) => {
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      resolve({
+        success: false,
+        error: 'Geolocation tidak didukung oleh browser ini'
+      });
+      return;
+    }
+
+    let bestResult: LocationResultWithAccuracy | null = null;
+    let attempts = 0;
+
+    // Strategy 1: Fresh high accuracy GPS (best for account switching)
+    const tryFreshHighAccuracyGPS = (): Promise<LocationResultWithAccuracy> => {
+      return new Promise((resolveStrategy) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolveStrategy({
+              success: true,
+              coordinates: {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              },
+              accuracy: position.coords.accuracy
+            });
+          },
+          () => {
+            resolveStrategy({
+              success: false,
+              error: 'Fresh high accuracy GPS failed'
+            });
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 25000, // 25 seconds for GPS
+            maximumAge: forceFresh ? 0 : 5000 // Force fresh if requested
+          }
+        );
+      });
+    };
+
+    // Strategy 2: Balanced accuracy with moderate caching
+    const tryBalancedAccuracy = (): Promise<LocationResultWithAccuracy> => {
+      return new Promise((resolveStrategy) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolveStrategy({
+              success: true,
+              coordinates: {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              },
+              accuracy: position.coords.accuracy
+            });
+          },
+          () => {
+            resolveStrategy({
+              success: false,
+              error: 'Balanced accuracy failed'
+            });
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 15000, // 15 seconds
+            maximumAge: forceFresh ? 0 : 60000 // 1 minute max age
+          }
+        );
+      });
+    };
+
+    // Strategy 3: Fast fallback with cached data
+    const tryFastFallback = (): Promise<LocationResultWithAccuracy> => {
+      return new Promise((resolveStrategy) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolveStrategy({
+              success: true,
+              coordinates: {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              },
+              accuracy: position.coords.accuracy
+            });
+          },
+          () => {
+            resolveStrategy({
+              success: false,
+              error: 'Fast fallback failed'
+            });
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 8000, // 8 seconds
+            maximumAge: forceFresh ? 0 : 300000 // 5 minutes max age
+          }
+        );
+      });
+    };
+
+    // Try strategies in order of preference
+    const strategies = [tryFreshHighAccuracyGPS, tryBalancedAccuracy, tryFastFallback];
+
+    for (let i = 0; i < strategies.length && attempts < maxRetries; i++) {
+      attempts++;
+      
+      try {
+        const result = await strategies[i]();
+        
+        if (result.success && result.coordinates) {
+          // Check if this result is better than our current best
+          if (!bestResult || 
+              (result.accuracy && bestResult.accuracy && result.accuracy < bestResult.accuracy) ||
+              (!bestResult.accuracy && result.accuracy)) {
+            bestResult = result;
+            
+            // If we get good accuracy (better than 50 meters), accept it
+            if (result.accuracy && result.accuracy <= 50) {
+              resolve(result);
+              return;
+            }
+          }
+        }
+        
+        // Add a longer delay between attempts for better GPS acquisition
+        if (i < strategies.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (error) {
+        console.warn(`Location strategy ${i + 1} failed:`, error);
+      }
+    }
+
+    // Return the best result we found, or failure
+    if (bestResult && bestResult.success) {
+      resolve(bestResult);
+    } else {
+      resolve({
+        success: false,
+        error: 'Gagal mendapatkan lokasi setelah beberapa percobaan. Coba restart WiFi atau pindah ke area terbuka.'
+      });
+    }
+  });
+}
+
+/**
  * Validate if user location is within allowed distance from tower
  * @param userLocation User's coordinates
  * @param towerLocation Tower's coordinates
@@ -134,6 +378,7 @@ export function validateLocationDistance(
 
 /**
  * Request location permission and validate distance from tower
+ * Uses enhanced location capture for better accuracy
  * @param towerLocation Tower coordinates to validate against
  * @param maxDistanceKm Maximum allowed distance (default: 1km)
  * @returns Promise with validation result
@@ -143,7 +388,8 @@ export async function requestLocationAndValidate(
   maxDistanceKm: number = 1
 ): Promise<{ success: boolean; message: string; distance?: number }> {
   try {
-    const locationResult = await getCurrentLocation();
+    // Use enhanced location capture for better accuracy
+    const locationResult = await getCurrentLocationEnhanced(3);
     
     if (!locationResult.success) {
       return {
@@ -165,9 +411,23 @@ export async function requestLocationAndValidate(
       maxDistanceKm
     );
     
+    // Add accuracy information to the message
+    let enhancedMessage = validation.message;
+    if (locationResult.accuracy) {
+      if (locationResult.accuracy <= 10) {
+        enhancedMessage += ' (Akurasi tinggi: ±10m)';
+      } else if (locationResult.accuracy <= 50) {
+        enhancedMessage += ' (Akurasi baik: ±50m)';
+      } else if (locationResult.accuracy <= 100) {
+        enhancedMessage += ' (Akurasi sedang: ±100m)';
+      } else {
+        enhancedMessage += ' (Akurasi rendah: ±100m+)';
+      }
+    }
+    
     return {
       success: validation.valid,
-      message: validation.message,
+      message: enhancedMessage,
       distance: validation.distance
     };
   } catch (error) {
@@ -180,6 +440,7 @@ export async function requestLocationAndValidate(
 
 /**
  * Request user location for cases where tower coordinates are not available
+ * Uses enhanced location capture for better accuracy
  * @returns Promise with location result including accuracy info
  */
 export async function requestUserLocationForReporting(): Promise<{
@@ -189,11 +450,8 @@ export async function requestUserLocationForReporting(): Promise<{
   message: string;
 }> {
   try {
-    const locationResult = await getCurrentLocation({
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 60000 // 1 minute
-    });
+    // Use enhanced location capture for better accuracy
+    const locationResult = await getCurrentLocationEnhanced(3);
     
     if (!locationResult.success) {
       return {
@@ -209,11 +467,25 @@ export async function requestUserLocationForReporting(): Promise<{
       };
     }
     
+    // Provide feedback about location quality
+    let qualityMessage = 'Lokasi berhasil diperoleh';
+    if (locationResult.accuracy) {
+      if (locationResult.accuracy <= 10) {
+        qualityMessage = 'Lokasi diperoleh dengan akurasi tinggi (±10m)';
+      } else if (locationResult.accuracy <= 50) {
+        qualityMessage = 'Lokasi diperoleh dengan akurasi baik (±50m)';
+      } else if (locationResult.accuracy <= 100) {
+        qualityMessage = 'Lokasi diperoleh dengan akurasi sedang (±100m)';
+      } else {
+        qualityMessage = 'Lokasi diperoleh dengan akurasi rendah (±100m+)';
+      }
+    }
+    
     return {
       success: true,
       coordinates: locationResult.coordinates,
       accuracy: locationResult.accuracy,
-      message: 'Lokasi berhasil diperoleh'
+      message: qualityMessage
     };
   } catch (error) {
     return {
@@ -221,6 +493,480 @@ export async function requestUserLocationForReporting(): Promise<{
       message: 'Terjadi kesalahan saat mendapatkan lokasi'
     };
   }
+}
+
+/**
+ * Advanced GPS calibration and validation system
+ * Handles poor GPS accuracy and provides multiple fallback strategies
+ */
+
+// Interface for GPS diagnostics
+export interface GPSDiagnostics {
+  accuracy: number;
+  altitude?: number;
+  altitudeAccuracy?: number;
+  heading?: number;
+  speed?: number;
+  timestamp: number;
+  source: 'gps' | 'network' | 'passive';
+}
+
+// Interface for location validation result
+export interface LocationValidationResult {
+  isValid: boolean;
+  confidence: 'high' | 'medium' | 'low';
+  issues: string[];
+  recommendations: string[];
+  fallbackUsed?: boolean;
+}
+
+/**
+ * Get GPS diagnostics for debugging location issues
+ */
+export function getGPSDiagnostics(position: GeolocationPosition): GPSDiagnostics {
+  return {
+    accuracy: position.coords.accuracy,
+    altitude: position.coords.altitude || undefined,
+    altitudeAccuracy: position.coords.altitudeAccuracy || undefined,
+    heading: position.coords.heading || undefined,
+    speed: position.coords.speed || undefined,
+    timestamp: position.timestamp,
+    source: position.coords.accuracy < 50 ? 'gps' : 'network'
+  };
+}
+
+/**
+ * Validate location quality and provide recommendations
+ */
+export function validateLocationQuality(
+  coordinates: Coordinates,
+  accuracy: number,
+  towerCoordinates?: Coordinates
+): LocationValidationResult {
+  const issues: string[] = [];
+  const recommendations: string[] = [];
+  let confidence: 'high' | 'medium' | 'low' = 'high';
+
+  // Check accuracy
+  if (accuracy > 100) {
+    issues.push('Akurasi GPS sangat rendah (±100m+)');
+    confidence = 'low';
+    recommendations.push('Pindah ke area terbuka tanpa penghalang');
+    recommendations.push('Pastikan GPS aktif dan tidak dalam mode hemat daya');
+    recommendations.push('Coba restart aplikasi atau browser');
+  } else if (accuracy > 50) {
+    issues.push('Akurasi GPS sedang (±50-100m)');
+    confidence = 'medium';
+    recommendations.push('Coba tunggu beberapa detik untuk GPS lock yang lebih baik');
+  }
+
+  // Check for suspicious coordinates (Indonesia bounds)
+  if (coordinates.latitude < -11 || coordinates.latitude > 6 || 
+      coordinates.longitude < 95 || coordinates.longitude > 141) {
+    issues.push('Koordinat di luar wilayah Indonesia');
+    confidence = 'low';
+    recommendations.push('Pastikan GPS aktif dan tidak menggunakan VPN');
+  }
+
+  // Check distance to tower if provided
+  if (towerCoordinates) {
+    const distance = calculateDistance(coordinates, towerCoordinates);
+    if (distance > 10) { // More than 10km seems suspicious
+      issues.push(`Jarak ke tower sangat jauh (${distance.toFixed(2)} km)`);
+      confidence = 'low';
+      recommendations.push('Pastikan Anda berada di lokasi tower yang benar');
+      recommendations.push('Coba refresh lokasi atau restart GPS');
+    }
+  }
+
+  // Check for zero coordinates
+  if (coordinates.latitude === 0 && coordinates.longitude === 0) {
+    issues.push('Koordinat menunjukkan lokasi default (0,0)');
+    confidence = 'low';
+    recommendations.push('GPS tidak dapat menentukan lokasi');
+  }
+
+  return {
+    isValid: issues.length === 0,
+    confidence,
+    issues,
+    recommendations
+  };
+}
+
+/**
+ * Get location with advanced GPS calibration and multiple fallback strategies
+ */
+export async function getAdvancedLocation(
+  towerCoordinates?: Coordinates,
+  maxAttempts: number = 5
+): Promise<{
+  success: boolean;
+  coordinates?: Coordinates;
+  accuracy?: number;
+  diagnostics?: GPSDiagnostics;
+  validation?: LocationValidationResult;
+  message: string;
+  attemptsUsed: number;
+}> {
+  const attempts: Array<Promise<GeolocationPosition>> = [];
+  
+  // Strategy 1: Ultra-high accuracy GPS (longest timeout)
+  attempts.push(new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: true,
+        timeout: 45000, // 45 seconds
+        maximumAge: 0 // Force fresh
+      }
+    );
+  }));
+
+  // Strategy 2: High accuracy with moderate timeout
+  attempts.push(new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: true,
+        timeout: 30000, // 30 seconds
+        maximumAge: 10000 // 10 seconds max age
+      }
+    );
+  }));
+
+  // Strategy 3: Balanced accuracy
+  attempts.push(new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: false,
+        timeout: 20000, // 20 seconds
+        maximumAge: 60000 // 1 minute max age
+      }
+    );
+  }));
+
+  // Strategy 4: Fast network-based location
+  attempts.push(new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: false,
+        timeout: 15000, // 15 seconds
+        maximumAge: 300000 // 5 minutes max age
+      }
+    );
+  }));
+
+  // Strategy 5: Emergency fallback with cached data
+  attempts.push(new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: false,
+        timeout: 10000, // 10 seconds
+        maximumAge: 600000 // 10 minutes max age
+      }
+    );
+  }));
+
+  let bestResult: GeolocationPosition | null = null;
+  let bestAccuracy = Infinity;
+  let attemptsUsed = 0;
+
+  // Try each strategy
+  for (let i = 0; i < Math.min(attempts.length, maxAttempts); i++) {
+    attemptsUsed++;
+    
+    try {
+      const result = await Promise.race([
+        attempts[i],
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Strategy timeout')), 50000)
+        )
+      ]);
+
+      const diagnostics = getGPSDiagnostics(result);
+      
+      // If this result is better than our current best, use it
+      if (result.coords.accuracy < bestAccuracy) {
+        bestResult = result;
+        bestAccuracy = result.coords.accuracy;
+        
+        // If we get excellent accuracy, use it immediately
+        if (result.coords.accuracy <= 20) {
+          break;
+        }
+      }
+
+      // Add delay between attempts for GPS stabilization
+      if (i < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+
+    } catch (error) {
+      console.warn(`Location strategy ${i + 1} failed:`, error);
+      continue;
+    }
+  }
+
+  if (!bestResult) {
+    return {
+      success: false,
+      message: 'Semua strategi lokasi gagal. Pastikan GPS aktif dan izin lokasi diizinkan.',
+      attemptsUsed
+    };
+  }
+
+  const coordinates: Coordinates = {
+    latitude: bestResult.coords.latitude,
+    longitude: bestResult.coords.longitude
+  };
+
+  const diagnostics = getGPSDiagnostics(bestResult);
+  const validation = validateLocationQuality(coordinates, bestResult.coords.accuracy, towerCoordinates);
+
+  // Generate appropriate message based on validation
+  let message = 'Lokasi berhasil diperoleh';
+  if (validation.confidence === 'low') {
+    message = `Lokasi diperoleh dengan akurasi rendah (±${Math.round(bestResult.coords.accuracy)}m). ${validation.recommendations[0] || ''}`;
+  } else if (validation.confidence === 'medium') {
+    message = `Lokasi diperoleh dengan akurasi sedang (±${Math.round(bestResult.coords.accuracy)}m)`;
+  } else {
+    message = `Lokasi diperoleh dengan akurasi tinggi (±${Math.round(bestResult.coords.accuracy)}m)`;
+  }
+
+  return {
+    success: true,
+    coordinates,
+    accuracy: bestResult.coords.accuracy,
+    diagnostics,
+    validation,
+    message,
+    attemptsUsed
+  };
+}
+
+/**
+ * Assess location quality based on accuracy and other factors
+ * @param accuracy GPS accuracy in meters
+ * @param coordinates Location coordinates
+ * @returns Quality assessment object
+ */
+export function assessLocationQuality(accuracy: number | undefined, coordinates: Coordinates): {
+  quality: 'excellent' | 'good' | 'fair' | 'poor';
+  message: string;
+  recommendation: string;
+} {
+  if (!accuracy) {
+    return {
+      quality: 'fair',
+      message: 'Akurasi lokasi tidak diketahui',
+      recommendation: 'Pastikan GPS aktif dan sinyal baik'
+    };
+  }
+
+  if (accuracy <= 10) {
+    return {
+      quality: 'excellent',
+      message: 'Akurasi sangat tinggi (±10m)',
+      recommendation: 'Lokasi sangat akurat, cocok untuk pelaporan'
+    };
+  } else if (accuracy <= 50) {
+    return {
+      quality: 'good',
+      message: 'Akurasi baik (±50m)',
+      recommendation: 'Lokasi cukup akurat untuk pelaporan'
+    };
+  } else if (accuracy <= 100) {
+    return {
+      quality: 'fair',
+      message: 'Akurasi sedang (±100m)',
+      recommendation: 'Lokasi dapat digunakan, namun akurasi terbatas'
+    };
+  } else {
+    return {
+      quality: 'poor',
+      message: 'Akurasi rendah (±100m+)',
+      recommendation: 'Pindah ke area dengan sinyal GPS lebih baik atau gunakan WiFi'
+    };
+  }
+}
+
+/**
+ * Get location with user-friendly feedback and retry options
+ * @param maxRetries Maximum number of retry attempts
+ * @param forceFresh Force fresh location data (useful for account switching)
+ * @returns Promise with enhanced location result
+ */
+export async function getLocationWithFeedback(maxRetries: number = 3, forceFresh: boolean = false): Promise<{
+  success: boolean;
+  coordinates?: Coordinates;
+  accuracy?: number;
+  quality?: 'excellent' | 'good' | 'fair' | 'poor';
+  message: string;
+  recommendation?: string;
+}> {
+  try {
+    const locationResult = await getCurrentLocationEnhanced(maxRetries, forceFresh);
+    
+    if (!locationResult.success) {
+      return {
+        success: false,
+        message: locationResult.error || 'Gagal mendapatkan lokasi'
+      };
+    }
+    
+    if (!locationResult.coordinates) {
+      return {
+        success: false,
+        message: 'Koordinat lokasi tidak tersedia'
+      };
+    }
+    
+    const qualityAssessment = assessLocationQuality(
+      locationResult.accuracy,
+      locationResult.coordinates
+    );
+    
+    return {
+      success: true,
+      coordinates: locationResult.coordinates,
+      accuracy: locationResult.accuracy,
+      quality: qualityAssessment.quality,
+      message: qualityAssessment.message,
+      recommendation: qualityAssessment.recommendation
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Terjadi kesalahan saat mendapatkan lokasi'
+    };
+  }
+}
+
+/**
+ * Detect if user has switched accounts and needs fresh location
+ * @param currentUserId Current user ID
+ * @returns Boolean indicating if fresh location is needed
+ */
+export function shouldUseFreshLocation(currentUserId: string | number | null): boolean {
+  try {
+    const lastUserId = localStorage.getItem('lastLocationUserId');
+    const currentUserIdStr = currentUserId?.toString() || 'anonymous';
+    
+    if (lastUserId !== currentUserIdStr) {
+      // User has changed, store new user ID and return true
+      localStorage.setItem('lastLocationUserId', currentUserIdStr);
+      return true;
+    }
+    
+    // Check if location data is stale (older than 5 minutes)
+    const lastLocationData = localStorage.getItem('lastKnownLocation');
+    if (lastLocationData) {
+      try {
+        const parsed = JSON.parse(lastLocationData);
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+        if (parsed.timestamp && parsed.timestamp < fiveMinutesAgo) {
+          return true;
+        }
+      } catch (error) {
+        // If we can't parse the data, assume it's stale
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    // If there's any error, assume we need fresh location
+    return true;
+  }
+}
+
+/**
+ * Get location optimized for account switching scenarios with advanced GPS calibration
+ * @param currentUserId Current user ID
+ * @param towerCoordinates Optional tower coordinates for validation
+ * @param maxRetries Maximum number of retry attempts
+ * @returns Promise with enhanced location result
+ */
+export async function getLocationForAccountSwitching(
+  currentUserId: string | number | null,
+  towerCoordinates?: Coordinates,
+  maxRetries: number = 5
+): Promise<{
+  success: boolean;
+  coordinates?: Coordinates;
+  accuracy?: number;
+  quality?: 'excellent' | 'good' | 'fair' | 'poor';
+  message: string;
+  recommendation?: string;
+  isFreshLocation?: boolean;
+  diagnostics?: GPSDiagnostics;
+  validation?: LocationValidationResult;
+  attemptsUsed?: number;
+}> {
+  const needsFreshLocation = shouldUseFreshLocation(currentUserId);
+  
+  if (needsFreshLocation) {
+    // Clear any cached location data
+    clearLocationCache();
+  }
+  
+  // Use advanced location capture with tower coordinates for validation
+  const result = await getAdvancedLocation(towerCoordinates, maxRetries);
+  
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      isFreshLocation: needsFreshLocation,
+      attemptsUsed: result.attemptsUsed
+    };
+  }
+  
+  // Convert validation confidence to quality
+  let quality: 'excellent' | 'good' | 'fair' | 'poor' = 'excellent';
+  if (result.validation) {
+    switch (result.validation.confidence) {
+      case 'low':
+        quality = 'poor';
+        break;
+      case 'medium':
+        quality = 'fair';
+        break;
+      case 'high':
+        quality = result.accuracy && result.accuracy <= 20 ? 'excellent' : 'good';
+        break;
+    }
+  }
+  
+  // Generate comprehensive message
+  let message = result.message;
+  let recommendation = '';
+  
+  if (result.validation && result.validation.issues.length > 0) {
+    recommendation = result.validation.recommendations.join('. ');
+  }
+  
+  return {
+    success: true,
+    coordinates: result.coordinates,
+    accuracy: result.accuracy,
+    quality,
+    message,
+    recommendation: recommendation || undefined,
+    isFreshLocation: needsFreshLocation,
+    diagnostics: result.diagnostics,
+    validation: result.validation,
+    attemptsUsed: result.attemptsUsed
+  };
 }
 
 /**

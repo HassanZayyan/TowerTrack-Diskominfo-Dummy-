@@ -27,15 +27,6 @@ class Status extends Model
     }
 
     /**
-     * Get all report responses with this status
-     */
-    public function reportResponses()
-    {
-        return $this->belongsToMany(ReportResponse::class, 'report_response_status')
-                    ->withTimestamps();
-    }
-
-    /**
      * Get the default status
      * 
      * @return Status|null

@@ -4,10 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Commentable;
+use App\Traits\HasGuestEmailVerification;
+use App\Services\CacheService;
 
 class Feedback extends Model
 {
     use HasFactory;
+    use Commentable;
+    use HasGuestEmailVerification;
     
     protected $table = 'feedbacks';
     
@@ -25,6 +30,12 @@ class Feedback extends Model
         'reporter_accuracy',
         'location_captured_at',
         'is_public',
+        'email_verified_at',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'is_public' => 'boolean',
     ];
     
     public function tower()
@@ -45,5 +56,31 @@ class Feedback extends Model
     public function responses()
     {
         return $this->hasMany(FeedbackResponse::class);
+    }
+
+    /**
+     * Boot the model and set up cache invalidation
+     */
+    protected static function booted(): void
+    {
+        static::created(function ($feedback) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_feedbacks:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+        });
+
+        static::updated(function ($feedback) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_feedbacks:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('feedbacks:*');
+        });
+
+        static::deleted(function ($feedback) {
+            CacheService::invalidateByPattern('my_messages:*');
+            CacheService::invalidateByPattern('my_posts_feedbacks:*');
+            CacheService::invalidateByPattern('guest_private_messages:*');
+            CacheService::invalidateByPattern('feedbacks:*');
+        });
     }
 }

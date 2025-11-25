@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { getIconByImagesAndSide } from '@/utils/foIconUtils';
+import { STATUS_LABELS, getStatusLabel } from '@/utils/foConstants';
+import { useCoordinateUpdate } from '@/Hooks/useCoordinateUpdate';
 
 interface FoRoute {
   id: number;
@@ -13,13 +19,61 @@ interface FoRoute {
   total_points: number;
 }
 
-interface PageProps {
-  foRoute: FoRoute;
-  availableAreas: string[];
-  availableStatuses: string[];
+interface FoPoint {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  sequence_number: number;
+  type: string;
+  status: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
+  images?: {
+    isp: string | null;
+    pole: string | null;
+    junction_box: string | null;
+  };
 }
 
-export default function RouteEdit({ foRoute, availableAreas, availableStatuses }: PageProps) {
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+interface PageProps {
+  foRoute: FoRoute;
+  points?: FoPoint[];
+  mapBounds?: MapBounds;
+  availableAreas: string[];
+  availableStatuses: string[];
+  csrfToken: string;
+}
+
+// Component untuk auto-fit bounds
+function FitBounds({ bounds }: { bounds: MapBounds }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(
+        [[bounds.south, bounds.west], [bounds.north, bounds.east]],
+        { padding: [50, 50], maxZoom: 15 }
+      );
+    }
+  }, [bounds, map]);
+  
+  return null;
+}
+
+export default function RouteEdit({ 
+  foRoute, 
+  points = [],
+  mapBounds,
+  availableAreas, 
+  availableStatuses 
+}: PageProps) {
   const { data, setData, put, processing, errors } = useForm({
     name: foRoute.name,
     area: foRoute.area,
@@ -27,6 +81,92 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
     status: foRoute.status,
     color: foRoute.color,
   });
+
+  // State untuk map dan drag functionality
+  const [draggingPointId, setDraggingPointId] = useState<number | null>(null);
+  const [updatingPointId, setUpdatingPointId] = useState<number | null>(null);
+  const [updateMessage, setUpdateMessage] = useState<{ pointId: number; message: string; type: 'success' | 'error' } | null>(null);
+  const [pointPositions, setPointPositions] = useState<Map<number, [number, number]>>(new Map());
+
+  // Initialize point positions
+  useEffect(() => {
+    const positions = new Map<number, [number, number]>();
+    points.forEach(point => {
+      positions.set(point.id, [point.latitude, point.longitude]);
+    });
+    setPointPositions(positions);
+  }, [points]);
+
+  // Handler untuk drag marker
+  const handleMarkerDragEnd = async (pointId: number, e: any) => {
+    const { lat, lng } = e.target.getLatLng();
+    setDraggingPointId(null);
+    setUpdatingPointId(pointId);
+    setUpdateMessage(null);
+
+    // Update local state immediately for better UX
+    setPointPositions(prev => {
+      const newMap = new Map(prev);
+      newMap.set(pointId, [lat, lng]);
+      return newMap;
+    });
+
+    try {
+      const routeUrl = route('admin.fo-management.points.update-coordinates', { foPoint: pointId });
+      
+      // Ensure CSRF token is set
+      const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      if (csrfToken) {
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+      }
+      
+      const response = await window.axios.patch(routeUrl, {
+        latitude: lat,
+        longitude: lng,
+      });
+
+      if (response.data && response.data.success) {
+        setUpdateMessage({
+          pointId,
+          message: 'Koordinat berhasil diperbarui. GeoJSON akan di-regenerate saat route di-load.',
+          type: 'success'
+        });
+        setTimeout(() => setUpdateMessage(null), 5000);
+      } else {
+        setUpdateMessage({
+          pointId,
+          message: 'Gagal memperbarui koordinat. Silakan coba lagi.',
+          type: 'error'
+        });
+        setTimeout(() => setUpdateMessage(null), 5000);
+      }
+    } catch (error: any) {
+      console.error('Error updating coordinates:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat memperbarui koordinat.';
+      setUpdateMessage({
+        pointId,
+        message: errorMessage,
+        type: 'error'
+      });
+      setTimeout(() => setUpdateMessage(null), 5000);
+    } finally {
+      setUpdatingPointId(null);
+    }
+  };
+
+  // Calculate center for map (use first point or default)
+  const mapCenter: [number, number] = points.length > 0 
+    ? [points[0].latitude, points[0].longitude]
+    : [-7.1368, 110.4044]; // Default to Ungaran
+
+  // Generate polyline coordinates from points
+  const polylineCoordinates = points
+    .sort((a, b) => a.sequence_number - b.sequence_number)
+    .map(point => {
+      const pos = pointPositions.get(point.id) || [point.latitude, point.longitude];
+      return pos as [number, number];
+    })
+    .filter(coord => coord[0] && coord[1] && !isNaN(coord[0]) && !isNaN(coord[1]));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +182,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
     });
   };
 
-  const statusLabels: { [key: string]: string } = {
-    active: 'Aktif',
-    inactive: 'Non-aktif',
-    maintenance: 'Maintenance'
-  };
+  // Use shared constants instead of local definitions
 
   return (
     <AdminLayout title={`Edit Jalur FO: ${foRoute.name}`}>
@@ -124,8 +260,8 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                 <div className="space-y-6">
                   <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
@@ -220,7 +356,7 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                         >
                           {availableStatuses.map((status) => (
                             <option key={status} value={status}>
-                              {statusLabels[status] || status}
+                              {getStatusLabel(status)}
                             </option>
                           ))}
                         </select>
@@ -241,21 +377,30 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                           </svg>
                           Warna Jalur
                         </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="color"
-                            id="color"
-                            value={data.color}
-                            onChange={(e) => setData('color', e.target.value)}
-                            className="h-12 w-16 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-gray-300 transition-colors"
-                          />
-                          <input
-                            type="text"
-                            value={data.color}
-                            onChange={(e) => setData('color', e.target.value)}
-                            className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
-                            placeholder="#3B82F6"
-                          />
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <input
+                              type="color"
+                              id="color"
+                              value={data.color}
+                              onChange={(e) => setData('color', e.target.value)}
+                              className="h-12 w-20 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-red-300 transition-colors"
+                            />
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={data.color}
+                              onChange={(e) => setData('color', e.target.value)}
+                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
+                              placeholder="#3B82F6"
+                            />
+                          </div>
                         </div>
                         {errors.color && (
                           <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
@@ -307,8 +452,8 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                   {/* Description */}
                   <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                         </svg>
                       </div>
@@ -350,8 +495,8 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                   {/* Point Management */}
                   <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         </svg>
                       </div>
@@ -388,6 +533,155 @@ export default function RouteEdit({ foRoute, availableAreas, availableStatuses }
                   </div>
                 </div>
               </div>
+
+              {/* Map Section for Point Editing */}
+              {points.length > 0 && (
+                <div className="mt-8 col-span-1 xl:col-span-2">
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-purple-900">Edit Posisi Titik FO</h3>
+                        <p className="text-sm text-purple-700">
+                          Drag marker untuk mengubah posisi titik. {points.length} titik tersedia.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status Messages */}
+                    {updateMessage && (
+                      <div className={`mb-4 p-3 rounded-lg ${
+                        updateMessage.type === 'success'
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {updateMessage.type === 'success' ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                          <span className="text-sm font-medium">{updateMessage.message}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Map Container */}
+                    <div className="relative rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg" style={{ height: '600px' }}>
+                      {updatingPointId && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1000] flex items-center justify-center">
+                          <div className="text-center">
+                            <svg className="animate-spin w-8 h-8 text-purple-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p className="text-sm font-medium text-purple-700">Memperbarui koordinat...</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <MapContainer
+                        center={mapCenter}
+                        zoom={13}
+                        style={{ height: '100%', width: '100%', zIndex: 1 }}
+                        scrollWheelZoom={true}
+                        doubleClickZoom={true}
+                        dragging={true}
+                        zoomControl={true}
+                      >
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          maxZoom={19}
+                        />
+
+                        {/* Auto-fit bounds */}
+                        {mapBounds && <FitBounds bounds={mapBounds} />}
+
+                        {/* Route Polyline */}
+                        {polylineCoordinates.length > 1 && (
+                          <Polyline
+                            positions={polylineCoordinates}
+                            pathOptions={{
+                              color: foRoute.color || '#EF4444',
+                              weight: 4,
+                              opacity: 0.7,
+                            }}
+                          />
+                        )}
+
+                        {/* Draggable Point Markers */}
+                        {points.map((point) => {
+                          const position = pointPositions.get(point.id) || [point.latitude, point.longitude];
+                          const isUpdating = updatingPointId === point.id;
+                          const isDragging = draggingPointId === point.id;
+
+                          return (
+                            <Marker
+                              key={point.id}
+                              position={position as [number, number]}
+                              draggable={!isUpdating}
+                              icon={getIconByImagesAndSide(
+                                point.images || { isp: null, pole: null, junction_box: null },
+                                point.side_of_road
+                              )}
+                              eventHandlers={{
+                                dragstart: (e) => {
+                                  // Close popup before dragging to prevent interference
+                                  if (e.target && typeof e.target.closePopup === 'function') {
+                                    e.target.closePopup();
+                                  }
+                                  setDraggingPointId(point.id);
+                                },
+                                dragend: (e) => handleMarkerDragEnd(point.id, e),
+                              }}
+                              opacity={isUpdating ? 0.6 : 1}
+                              >
+                              <Popup closeOnClick={false} autoClose={false}>
+                                <div className="text-center min-w-[150px]">
+                                  <p className="font-semibold text-sm">{point.name}</p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Urutan: {point.sequence_number}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {position[0].toFixed(6)}, {position[1].toFixed(6)}
+                                  </p>
+                                  <p className="text-xs text-blue-600 mt-2">
+                                    {isUpdating
+                                      ? 'Memperbarui...'
+                                      : 'Lepaskan untuk menyimpan'}
+                                  </p>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          );
+                        })}
+                      </MapContainer>
+                    </div>
+
+                    <p className="text-xs text-gray-500 mt-3">
+                      💡 Drag marker untuk mengubah posisi titik. Koordinat akan otomatis ter-update. 
+                      GeoJSON route akan di-regenerate saat route di-load.
+                    </p>
+
+                    {/* Points Summary */}
+                    <div className="mt-4 bg-white/60 rounded-lg p-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Total Titik</span>
+                        <span className="font-semibold text-purple-800">{points.length} titik</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Submit Buttons */}

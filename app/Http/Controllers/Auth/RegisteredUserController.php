@@ -18,8 +18,18 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): Response
+    public function create(): Response|RedirectResponse
     {
+        // Check if there's a role parameter indicating tower owner registration attempt
+        $role = request()->query('role');
+        
+        if ($role === 'tower_owner') {
+            // Tower owners should not register - they should login with existing accounts
+            return redirect()->route('login')->with('message', 
+                'Tower owners should login with their existing accounts. If you need a tower owner account, please contact an administrator.'
+            );
+        }
+        
         return Inertia::render('Auth/Register');
     }
 
