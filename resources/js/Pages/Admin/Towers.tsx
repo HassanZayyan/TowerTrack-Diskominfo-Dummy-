@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import HeroSection from '@/Components/HeroSection';
 import FilterPanel from '@/Components/Admin/FilterPanel';
@@ -593,7 +593,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
           variant="brand"
           align="left"
           actions={
-            <>
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => router.get(route('admin.towers.create'))}
                 className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors shadow-sm w-full sm:w-auto"
@@ -610,7 +610,16 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               >
                 + Tambah Tower
               </button>
-            </>
+              <Link
+                href={route('admin.towers.import')}
+                className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md font-medium w-full sm:w-auto"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Import Excel
+              </Link>
+            </div>
           }
         />
       </div>
@@ -746,6 +755,16 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
               <span className="hidden xs:inline">Tambah Tower</span>
               <span className="xs:hidden">Tambah</span>
             </button>
+            <Link
+              href={route('admin.towers.import')}
+              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2 text-sm sm:text-base font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span className="hidden xs:inline">Import Excel</span>
+              <span className="xs:hidden">Import</span>
+            </Link>
           </div>
         </div>
         
@@ -1148,10 +1167,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
                             value={selectedOwners[tower.id]?.id?.toString() || getEditValue(tower, 'owner_id')?.toString() || ''}
                             onChange={(value) => updateField(tower.id, 'owner_id', value)}
                             error={getFieldError(tower.id, 'owner_id')}
-                            options={[
-                              { value: '', label: 'Pilih Owner' },
-                              ...owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))
-                            ]}
+                            options={owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))}
                             placeholder="Pilih owner"
                             disabled={!isEditing(tower.id)}
                           />

@@ -24,8 +24,10 @@
             margin-bottom: 30px;
         }
         .header h1 {
-            color: #2563eb;
+            color: #1e40af;
             margin: 0;
+            font-size: 28px;
+            font-weight: bold;
         }
         .content {
             background-color: white;
@@ -33,18 +35,26 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+        .content p {
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
         .button {
             display: inline-block;
-            padding: 12px 30px;
-            background-color: #2563eb;
-            color: white;
+            padding: 14px 35px;
+            background-color: #dc2626;
+            color: #ffffff;
             text-decoration: none;
-            border-radius: 5px;
+            border-radius: 6px;
             margin: 20px 0;
             text-align: center;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
         }
         .button:hover {
-            background-color: #1d4ed8;
+            background-color: #b91c1c;
+            box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
         }
         .footer {
             text-align: center;
@@ -61,7 +71,13 @@
         }
         .link {
             word-break: break-all;
-            color: #2563eb;
+            color: #1e40af;
+            font-weight: 500;
+            background-color: #eff6ff;
+            padding: 10px;
+            border-radius: 4px;
+            display: block;
+            margin-top: 10px;
         }
     </style>
 </head>

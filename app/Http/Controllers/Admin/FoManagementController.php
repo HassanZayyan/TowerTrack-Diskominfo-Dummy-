@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
+use App\Imports\FoPointsImport;
+use App\Imports\FoPointsTemplateExport;
 use App\Rules\GoogleDriveUrl;
 use App\Services\CacheService;
 use App\Traits\HasFoPointValidation;
 use App\Traits\HasFoRouteStatistics;
 use App\Traits\HasGeoJsonGeneration;
 use App\Traits\HasCacheInvalidation;
+use App\Helpers\ExcelHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +22,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FoManagementController extends Controller
 {
@@ -1253,5 +1258,520 @@ class FoManagementController extends Controller
                 'name' => $provider->name,
             ],
         ]);
+    }
+
+    /**
+     * Show import form for FO Points
+     */
+    public function showImportFoPointsForm(): Response
+    {
+        // Get available routes
+        $availableRoutes = FoRoute::select('id', 'name', 'area')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($route) {
+                return [
+                    'id' => $route->id,
+                    'name' => $route->name,
+                    'area' => $route->area,
+                ];
+            });
+
+        return Inertia::render('Admin/FoManagement/ImportFoPoints', [
+            'templateUrl' => route('admin.fo-management.points.import.template'),
+            'availableRoutes' => $availableRoutes,
+            'availableProviders' => $this->getAvailableProviders(),
+        ]);
+    }
+
+    /**
+     * Preview import FO Points (before actual import)
+     * DRY: Uses ExcelHelper for header detection and column mapping
+     */
+    public function previewImportFoPoints(Request $request): JsonResponse
+    {
+        $validated = $request->validate(
+            ExcelHelper::getFileValidationRules(),
+            ExcelHelper::getFileValidationMessages()
+        );
+
+        try {
+            // Use ExcelHelper to find header row
+            $headerResult = ExcelHelper::findHeaderRow($validated['file'], ['nama', 'lokasi', 'koordinat', 'nomor']);
+            $cleanedHeaderRow = $headerResult['cleanedHeaderRow'];
+            $headerRowIndex = $headerResult['headerRowIndex'];
+            $startIndex = $headerResult['startIndex'];
+            
+            // Debug: Log header detection
+            \Log::info('FO Points Import - Header Detection', [
+                'headerRowIndex' => $headerRowIndex,
+                'cleanedHeaderRow' => $cleanedHeaderRow,
+                'startIndex' => $startIndex,
+            ]);
+            
+            // Auto-detect mapping using cleaned header
+            $import = new FoPointsImport();
+            $detectedMapping = $import->detectColumnMapping($cleanedHeaderRow);
+            
+            // Build column index mapping using ExcelHelper
+            $columnIndexMapping = ExcelHelper::buildColumnIndexMapping(
+                $detectedMapping,
+                $cleanedHeaderRow,
+                $startIndex
+            );
+            
+            // Determine start row for actual import (header row index + 1, 1-based)
+            $startRowForImport = ($headerRowIndex ?? 0) + 1; // +1 because WithStartRow is 1-based
+            
+            // Validate required columns
+            // Note: latitude/longitude can come from separate columns OR from coordinates column
+            // Note: route_name is optional - will use defaultRouteId if not found
+            $requiredColumns = ['name']; // route_name is optional, will use defaultRouteId
+            $coordinateColumns = ['latitude', 'longitude', 'coordinates'];
+            $hasCoordinateData = !empty(array_intersect($coordinateColumns, array_keys($detectedMapping)));
+            
+            $missingColumns = array_diff($requiredColumns, array_keys($detectedMapping));
+            if (!$hasCoordinateData) {
+                $missingColumns[] = 'latitude/longitude atau koordinat';
+            }
+            
+            // Add warnings for optional but recommended columns
+            $warnings = [];
+            if (!isset($detectedMapping['route_name'])) {
+                $warnings[] = 'Kolom "route_name" tidak ditemukan. Pastikan Anda memilih "Default Route" sebelum import, atau aktifkan "Auto Create Routes" untuk membuat route otomatis.';
+            }
+            
+            // Preview data - read all rows to find actual data rows
+            $allRows = Excel::toArray(new \stdClass(), $validated['file']);
+            $preview = [];
+            
+            // Get preview rows (skip header row and empty rows, get next 10 data rows)
+            if ($headerRowIndex !== null && !empty($allRows[0])) {
+                $dataRows = array_slice($allRows[0], $headerRowIndex + 1);
+                foreach ($dataRows as $row) {
+                    // Skip empty rows
+                    $nonEmptyValues = array_filter($row, function($v) { 
+                        return !empty(trim($v ?? '')); 
+                    });
+                    if (empty($nonEmptyValues)) {
+                        continue;
+                    }
+                    // Skip rows that look like headers (repeated headers in CSV)
+                    $rowString = implode(' ', array_map('trim', $nonEmptyValues));
+                    if (stripos($rowString, 'nomor') !== false && stripos($rowString, 'nama lokasi') !== false) {
+                        continue;
+                    }
+                    $preview[] = $row;
+                    if (count($preview) >= 10) {
+                        break;
+                    }
+                }
+            }
+            
+            // Convert preview rows to associative arrays using cleaned header row
+            // Note: CSV may have empty columns at the start, so we use cleanedHeaderRow and startIndex
+            $previewAssoc = [];
+            foreach ($preview as $row) {
+                $rowAssoc = [];
+                // Use cleaned header row (without empty columns at start)
+                foreach ($cleanedHeaderRow as $colIndex => $headerName) {
+                    // Get value from data row using startIndex offset
+                    $actualColIndex = $startIndex + $colIndex;
+                    $rowAssoc[trim($headerName)] = $row[$actualColIndex] ?? null;
+                }
+                $previewAssoc[] = $rowAssoc;
+            }
+            $preview = $previewAssoc;
+            
+            // Validate preview rows
+            $errors = [];
+            foreach ($preview as $index => $row) {
+                $rowErrors = [];
+                
+                // Check name - $row is now associative array with header names as keys
+                $nameValue = null;
+                if (isset($detectedMapping['name'])) {
+                    // Try original header name first (exact match)
+                    $nameValue = $row[$detectedMapping['name']] ?? null;
+                    
+                    // Try with trimmed version
+                    if (empty($nameValue)) {
+                        $nameValue = $row[trim($detectedMapping['name'])] ?? null;
+                    }
+                    
+                    // Try normalized version
+                    if (empty($nameValue)) {
+                        $headerKey = strtolower(trim(str_replace([' ', '-', '.', '/'], '_', $detectedMapping['name'])));
+                        $headerKey = preg_replace('/_+/', '_', $headerKey);
+                        $nameValue = $row[$headerKey] ?? null;
+                    }
+                } else {
+                    // If mapping not found, try common variations directly from row
+                    $nameValue = $row['Nama Lokasi'] ?? $row['nama lokasi'] ?? $row['Nama_Lokasi'] ?? $row['nama_lokasi'] ?? null;
+                }
+                
+                if (empty($nameValue) || trim($nameValue) === '' || trim($nameValue) === '-') {
+                    $rowErrors[] = 'Name wajib diisi';
+                }
+                
+                // Check coordinates - support both separate lat/lng and combined format
+                $hasValidCoordinates = false;
+                
+                // Check if coordinates column exists (combined format)
+                if (isset($detectedMapping['coordinates'])) {
+                    // Try original header name first (exact match)
+                    $coordinatesValue = $row[$detectedMapping['coordinates']] ?? null;
+                    
+                    // Try with trimmed version
+                    if (empty($coordinatesValue)) {
+                        $coordinatesValue = $row[trim($detectedMapping['coordinates'])] ?? null;
+                    }
+                    
+                    // Try normalized version
+                    if (empty($coordinatesValue)) {
+                        $headerKey = strtolower(trim(str_replace([' ', '-', '.', '/'], '_', $detectedMapping['coordinates'])));
+                        $headerKey = preg_replace('/_+/', '_', $headerKey);
+                        $coordinatesValue = $row[$headerKey] ?? null;
+                    }
+                    
+                    if (!empty($coordinatesValue) && trim($coordinatesValue) !== '-') {
+                        // Try to parse coordinates (format: "lat,lng")
+                        $coords = $this->parseCoordinatesForValidation($coordinatesValue);
+                        if ($coords['latitude'] !== null && $coords['longitude'] !== null) {
+                            $hasValidCoordinates = true;
+                        }
+                    }
+                } else {
+                    // If mapping not found, try common variations directly from row
+                    $coordinatesValue = $row['Koordinat'] ?? $row['koordinat'] ?? $row['Koordinat'] ?? null;
+                    if (!empty($coordinatesValue) && trim($coordinatesValue) !== '-') {
+                        $coords = $this->parseCoordinatesForValidation($coordinatesValue);
+                        if ($coords['latitude'] !== null && $coords['longitude'] !== null) {
+                            $hasValidCoordinates = true;
+                        }
+                    }
+                }
+                
+                // Check if latitude and longitude exist separately
+                if (!$hasValidCoordinates) {
+                    $latValue = null;
+                    $lngValue = null;
+                    
+                    if (isset($detectedMapping['latitude'])) {
+                        $latValue = $row[$detectedMapping['latitude']] ?? null;
+                        if (empty($latValue)) {
+                            $headerKey = strtolower(trim(str_replace([' ', '-', '.', '/'], '_', $detectedMapping['latitude'])));
+                            $headerKey = preg_replace('/_+/', '_', $headerKey);
+                            $latValue = $row[$headerKey] ?? null;
+                        }
+                    }
+                    
+                    if (isset($detectedMapping['longitude'])) {
+                        $lngValue = $row[$detectedMapping['longitude']] ?? null;
+                        if (empty($lngValue)) {
+                            $headerKey = strtolower(trim(str_replace([' ', '-', '.', '/'], '_', $detectedMapping['longitude'])));
+                            $headerKey = preg_replace('/_+/', '_', $headerKey);
+                            $lngValue = $row[$headerKey] ?? null;
+                        }
+                    }
+                    
+                    if (!empty($latValue) && trim($latValue) !== '-' && !empty($lngValue) && trim($lngValue) !== '-') {
+                        $hasValidCoordinates = true;
+                    }
+                }
+                
+                if (!$hasValidCoordinates) {
+                    $rowErrors[] = 'Latitude wajib diisi';
+                    $rowErrors[] = 'Longitude wajib diisi';
+                }
+                
+                if (!empty($rowErrors)) {
+                    $errors[] = [
+                        'row' => $index + 2, // +2 karena header + 1-based
+                        'errors' => $rowErrors
+                    ];
+                }
+            }
+            
+            // Count total data rows using helper method
+            $totalRows = $this->countDataRows($allRows[0] ?? [], $headerRowIndex);
+            
+            // Debug: Log total rows calculation
+            \Log::info('FO Points Import - Total Rows Calculation', [
+                'headerRowIndex' => $headerRowIndex,
+                'totalRowsInFile' => count($allRows[0] ?? []),
+                'totalRows' => $totalRows,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'detected_mapping' => $detectedMapping,
+                'column_index_mapping' => $columnIndexMapping, // Pass column index mapping
+                'missing_columns' => array_values($missingColumns),
+                'warnings' => $warnings, // Add warnings for optional columns
+                'preview' => $preview,
+                'errors' => $errors,
+                'can_import' => empty($missingColumns) && empty($errors),
+                'total_rows' => $totalRows,
+                'start_row_for_import' => $startRowForImport, // Pass start row to frontend
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error previewing FO points import', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membaca file: ' . $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Process import FO Points
+     */
+    public function importFoPoints(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:10240', // Excel only (template required)
+            'mode' => 'required|in:insert,update,upsert',
+            'default_route_id' => 'nullable|exists:fo_routes,id',
+            'auto_create_routes' => 'nullable|boolean',
+            'column_mapping' => 'nullable|array',
+            'start_row' => 'nullable|integer|min:1', // Optional: start row from preview
+            'column_index_mapping' => 'nullable|array', // Column index mapping for CSV with empty leading columns
+        ]);
+
+        try {
+            $defaultRouteId = $validated['default_route_id'] ?? null;
+            $autoCreateRoutes = $validated['auto_create_routes'] ?? false;
+            $columnMapping = $validated['column_mapping'] ?? [];
+            
+            // Detect header row if start_row not provided
+            $startRow = $validated['start_row'] ?? null;
+            $hasRouteNameColumn = false;
+            
+            // Detect header row if start_row not provided
+            if ($startRow === null) {
+                // Use ExcelHelper to find header row
+                $headerResult = ExcelHelper::findHeaderRow($validated['file'], ['nama', 'lokasi', 'koordinat', 'nomor']);
+                $cleanedHeaderRow = $headerResult['cleanedHeaderRow'];
+                $headerRowIndex = $headerResult['headerRowIndex'];
+                $startIndex = $headerResult['startIndex'];
+                
+                // Check if route_name exists
+                $import = new FoPointsImport();
+                $detectedMapping = $import->detectColumnMapping($cleanedHeaderRow);
+                $hasRouteNameColumn = isset($detectedMapping['route_name']);
+                
+                // Set start row (header row index + 1, 1-based)
+                $startRow = ($headerRowIndex ?? 0) + 1;
+                
+                // Build column index mapping if not provided
+                $columnIndexMapping = $validated['column_index_mapping'] ?? [];
+                if (empty($columnIndexMapping)) {
+                    $columnIndexMapping = ExcelHelper::buildColumnIndexMapping(
+                        $detectedMapping,
+                        $cleanedHeaderRow,
+                        $startIndex
+                    );
+                }
+                
+                \Log::info('FO Points Import - Start Row Detection', [
+                    'headerRowIndex' => $headerRowIndex,
+                    'startRow' => $startRow,
+                    'startIndex' => $startIndex,
+                    'hasRouteNameColumn' => $hasRouteNameColumn,
+                ]);
+            } else {
+                // If startRow is provided, we still need to check for route_name column
+                $allRows = Excel::toArray(new \stdClass(), $validated['file']);
+                $headerRowIndex = $startRow - 1;
+                
+                if (isset($allRows[0][$headerRowIndex])) {
+                    $headerRow = $allRows[0][$headerRowIndex];
+                    
+                    // Clean header row
+                    $startIndex = 0;
+                    foreach ($headerRow as $index => $value) {
+                        if (!empty(trim($value ?? ''))) {
+                            $startIndex = $index;
+                            break;
+                        }
+                    }
+                    $cleanedHeaderRow = array_slice($headerRow, $startIndex);
+                    
+                    // Check if route_name exists
+                    $import = new FoPointsImport();
+                    $detectedMapping = $import->detectColumnMapping($cleanedHeaderRow);
+                    $hasRouteNameColumn = isset($detectedMapping['route_name']);
+                    
+                    // Build column index mapping if not provided
+                    $columnIndexMapping = $validated['column_index_mapping'] ?? [];
+                    if (empty($columnIndexMapping)) {
+                        $columnIndexMapping = ExcelHelper::buildColumnIndexMapping(
+                            $detectedMapping,
+                            $cleanedHeaderRow,
+                            $startIndex
+                        );
+                    }
+                } else {
+                    $hasRouteNameColumn = false;
+                    $columnIndexMapping = $validated['column_index_mapping'] ?? [];
+                }
+            }
+            
+            // Validate: If route_name is not in CSV, defaultRouteId or autoCreateRoutes must be set
+            if (!$hasRouteNameColumn && empty($defaultRouteId) && !$autoCreateRoutes) {
+                return back()->withErrors([
+                    'default_route_id' => 'Kolom "route_name" tidak ditemukan di file. Silakan pilih "Default Route" atau aktifkan "Auto Create Routes" sebelum import.'
+                ]);
+            }
+            
+            $import = new FoPointsImport(
+                $validated['mode'],
+                $defaultRouteId,
+                $autoCreateRoutes,
+                $columnMapping,
+                $startRow,
+                $columnIndexMapping
+            );
+            
+            \Log::info('FO Points Import - Starting import', [
+                'mode' => $validated['mode'],
+                'startRow' => $startRow,
+                'defaultRouteId' => $defaultRouteId,
+                'autoCreateRoutes' => $autoCreateRoutes,
+                'columnIndexMapping' => $columnIndexMapping,
+            ]);
+            
+            Excel::import($import, $validated['file']);
+            
+            \Log::info('FO Points Import - Import completed', [
+                'rowCount' => $import->getRowCount(),
+                'failures' => count($import->failures()),
+            ]);
+
+            $successCount = $import->getRowCount() - count($import->failures());
+            $errorCount = count($import->failures());
+
+            // Invalidate cache setelah import
+            $this->invalidateFoPointsCache('ungaran'); // atau dari data yang diimport
+            
+            // Invalidate route caches jika ada route yang terpengaruh
+            $affectedRoutes = FoRoute::where('area', 'ungaran')->get();
+            foreach ($affectedRoutes as $route) {
+                $this->touchRouteAndInvalidateCache($route);
+            }
+
+            $message = "Import FO Points berhasil: {$successCount} data berhasil diimport";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} data gagal";
+            }
+
+            return redirect()
+                ->route('admin.fo-management.routes.list')
+                ->with([
+                    'success' => $message,
+                    'import_errors' => $import->failures(),
+                    'error_count' => $errorCount,
+                ]);
+        } catch (\Exception $e) {
+            \Log::error('Error importing FO points', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['file' => 'Import gagal: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Download template for FO Points import
+     */
+    public function downloadFoPointsTemplate(): BinaryFileResponse
+    {
+        return Excel::download(
+            new FoPointsTemplateExport(), 
+            'template_import_fo_points_' . date('Ymd_His') . '.xlsx'
+        );
+    }
+
+    /**
+     * Parse coordinates from string format "lat,lng" for validation
+     * DRY: Uses ExcelHelper::parseCoordinates()
+     */
+    protected function parseCoordinatesForValidation(?string $coordinateString): array
+    {
+        return ExcelHelper::parseCoordinates($coordinateString);
+    }
+
+    /**
+     * Count data rows in Excel file (excluding headers and empty rows)
+     * DRY: Helper method for row counting logic
+     */
+    protected function countDataRows(array $allRows, ?int $headerRowIndex): int
+    {
+        $totalRows = 0;
+        
+        foreach ($allRows as $index => $row) {
+            // Skip header row
+            if ($headerRowIndex !== null && $index === $headerRowIndex) {
+                continue;
+            }
+            
+            // Skip completely empty rows
+            $nonEmptyValues = array_filter($row, function($v) { 
+                $trimmed = trim($v ?? '');
+                return !empty($trimmed) && $trimmed !== '-';
+            });
+            if (empty($nonEmptyValues)) {
+                continue;
+            }
+            
+            $rowString = implode(' ', array_map('trim', $nonEmptyValues));
+            
+            // Check if this row is a header (has "Nomor" and "Nama Lokasi" or "Koordinat")
+            $isHeader = (stripos($rowString, 'nomor') !== false) && 
+                        ((stripos($rowString, 'nama lokasi') !== false) || 
+                         (stripos($rowString, 'nama_lokasi') !== false) ||
+                         (stripos($rowString, 'koordinat') !== false));
+            
+            if ($isHeader) {
+                continue; // Skip header row
+            }
+            
+            // Check if this row has data characteristics
+            $hasSequenceNumber = isset($row[3]) && !empty(trim($row[3])) && is_numeric(trim($row[3]));
+            $hasName = isset($row[4]) && !empty(trim($row[4])) && trim($row[4]) !== '-';
+            $hasCoordinates = false;
+            
+            // Check column 5 for coordinates
+            if (isset($row[5]) && !empty(trim($row[5]))) {
+                $col5 = trim($row[5]);
+                if ($col5 !== '-' && preg_match('/-?\d+\.?\d*\s*,\s*-?\d+\.?\d*/', $col5)) {
+                    $hasCoordinates = true;
+                }
+            }
+            
+            // Also check all columns for coordinates pattern
+            if (!$hasCoordinates) {
+                foreach ($row as $value) {
+                    $trimmed = trim($value ?? '');
+                    if (!empty($trimmed) && $trimmed !== '-' && preg_match('/-?\d+\.?\d*\s*,\s*-?\d+\.?\d*/', $trimmed)) {
+                        $hasCoordinates = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Count as data row if it has sequence number OR (coordinates and name)
+            if ($hasSequenceNumber || ($hasCoordinates && $hasName)) {
+                $totalRows++;
+            }
+        }
+        
+        return $totalRows;
     }
 }

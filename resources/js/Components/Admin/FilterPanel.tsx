@@ -1,5 +1,6 @@
 import React from 'react';
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
+import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface FilterPanelProps {
   filters: {
@@ -62,12 +63,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
     { value: 'SSTL', label: 'SSTL' }
   ];
 
+  // Use SITE_TYPE_OPTIONS from constants for consistency
   const siteTypes = [
     { value: 'all', label: 'Semua Tipe Site' },
-    { value: 'Greenfield', label: 'Greenfield' },
-    { value: 'Rooftop', label: 'Rooftop' },
-    { value: 'Indoor', label: 'Indoor' },
-    { value: 'Outdoor', label: 'Outdoor' }
+    ...SITE_TYPE_OPTIONS.map(option => ({
+      value: option.value,
+      label: option.label
+    }))
   ];
 
   const permitStatuses = [
