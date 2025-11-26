@@ -153,6 +153,12 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerController::class, 'create'])->name('towers.create');
         Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
         Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerController::class, 'update'])->name('towers.update');
+        
+        // Tower Import
+        Route::get('/towers/import', [\App\Http\Controllers\Admin\TowerController::class, 'showImportForm'])->name('towers.import');
+        Route::post('/towers/import/preview', [\App\Http\Controllers\Admin\TowerController::class, 'previewImport'])->name('towers.import.preview');
+        Route::post('/towers/import', [\App\Http\Controllers\Admin\TowerController::class, 'import'])->name('towers.import.process');
+        Route::get('/towers/import/template', [\App\Http\Controllers\Admin\TowerController::class, 'downloadTemplate'])->name('towers.import.template');
     });
 
     // Feedback management actions
@@ -192,6 +198,12 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         // FO Export (CSV downloads)
         Route::get('/fo-management/points/export', [FoManagementController::class, 'exportPoints'])->name('fo-management.points.export');
         Route::get('/fo-management/routes/export', [FoManagementController::class, 'exportRoutes'])->name('fo-management.routes.export');
+
+        // FO Points Import
+        Route::get('/fo-management/points/import', [FoManagementController::class, 'showImportFoPointsForm'])->name('fo-management.points.import');
+        Route::post('/fo-management/points/import/preview', [FoManagementController::class, 'previewImportFoPoints'])->name('fo-management.points.import.preview');
+        Route::post('/fo-management/points/import', [FoManagementController::class, 'importFoPoints'])->name('fo-management.points.import.process');
+        Route::get('/fo-management/points/import/template', [FoManagementController::class, 'downloadFoPointsTemplate'])->name('fo-management.points.import.template');
 
         // Master Provider Management (CRUD) - DRY: Consolidated in FoManagementController
         Route::get('/fo-management/providers', [FoManagementController::class, 'indexProviders'])->name('fo-management.providers.index');

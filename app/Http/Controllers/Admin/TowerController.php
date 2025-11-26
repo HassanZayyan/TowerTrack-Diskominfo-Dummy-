@@ -5,8 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tower;
 use App\Models\Owner;
+use App\Imports\TowersImport;
+use App\Imports\TowersTemplateExport;
+use App\Helpers\ExcelHelper;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
+use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TowerController extends Controller
 {
@@ -444,6 +454,178 @@ class TowerController extends Controller
 
         $tower->update($validated);
         return back();
+    }
+
+    /**
+     * Show import form
+     */
+    public function showImportForm(): Response
+    {
+        // Get available owners (filtered for tower owners)
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            $owners = Owner::where('id', auth()->user()->owner_id)->orderBy('name')->get();
+        } else {
+            $owners = Owner::orderBy('name')->get();
+        }
+
+        return Inertia::render('Admin/TowerImport', [
+            'templateUrl' => route('admin.towers.import.template'),
+            'availableOwners' => $owners->map(function ($owner) {
+                return [
+                    'id' => $owner->id,
+                    'name' => $owner->name,
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Preview import (before actual import)
+     * DRY: Uses ExcelHelper for header detection
+     */
+    public function previewImport(Request $request): JsonResponse
+    {
+        $validated = $request->validate(
+            ExcelHelper::getFileValidationRules(),
+            ExcelHelper::getFileValidationMessages()
+        );
+
+        try {
+            // Use ExcelHelper to find header row
+            $headerResult = ExcelHelper::findHeaderRow($validated['file'], ['alamat', 'menara', 'tower', 'site']);
+            $headerRow = $headerResult['cleanedHeaderRow'];
+            $headerRowIndex = $headerResult['headerRowIndex'];
+            
+            // Auto-detect mapping
+            $import = new TowersImport();
+            $detectedMapping = $import->detectColumnMapping($headerRow);
+            
+            // Validate required columns
+            $requiredColumns = ['alamat_menara'];
+            $missingColumns = array_diff($requiredColumns, array_keys($detectedMapping));
+            
+            // Preview data (10 rows)
+            $previewData = Excel::toArray(new TowersImport(), $validated['file']);
+            $preview = array_slice($previewData[0] ?? [], ($headerRowIndex ?? 0) + 1, 10);
+            
+            // Validate preview rows
+            $errors = [];
+            foreach ($preview as $index => $row) {
+                $rowErrors = [];
+                // Excel::toArray with WithHeadingRow uses original header as key, but Laravel Excel normalizes it
+                if (isset($detectedMapping['alamat_menara'])) {
+                    // Normalize header name to match how Laravel Excel creates keys
+                    $headerKey = strtolower(trim(str_replace([' ', '-', '.', '/'], '_', $detectedMapping['alamat_menara'])));
+                    $headerKey = preg_replace('/_+/', '_', $headerKey);
+                    // Also try original header name
+                    $value = $row[$headerKey] ?? $row[$detectedMapping['alamat_menara']] ?? null;
+                    if (empty($value) || trim($value) === '' || trim($value) === '-') {
+                        $rowErrors[] = 'Alamat Menara wajib diisi';
+                    }
+                } else {
+                    // If mapping not found, try common variations
+                    $value = $row['alamat_menara'] ?? $row['alamat menara'] ?? $row['alamat'] ?? null;
+                    if (empty($value) || trim($value) === '' || trim($value) === '-') {
+                        $rowErrors[] = 'Alamat Menara wajib diisi';
+                    }
+                }
+                if (!empty($rowErrors)) {
+                    $errors[] = [
+                        'row' => $index + 2, // +2 karena header + 1-based
+                        'errors' => $rowErrors
+                    ];
+                }
+            }
+            
+            $totalRows = count($previewData[0] ?? []) - ($headerRowIndex ?? 0) - 1;
+            
+            return response()->json([
+                'success' => true,
+                'detected_mapping' => $detectedMapping,
+                'missing_columns' => array_values($missingColumns),
+                'preview' => $preview,
+                'errors' => $errors,
+                'can_import' => empty($missingColumns) && empty($errors),
+                'total_rows' => max(0, $totalRows),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error previewing tower import', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membaca file: ' . $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Process import
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:10240', // Excel only (template required)
+            'mode' => 'required|in:insert,update,upsert',
+            'owner_id' => 'nullable|exists:owners,id',
+            'column_mapping' => 'nullable|array', // Manual mapping jika perlu
+        ]);
+
+        try {
+            $ownerId = auth()->user()->role === 'tower_owner' 
+                ? auth()->user()->owner_id 
+                : $validated['owner_id'] ?? null;
+
+            $columnMapping = $validated['column_mapping'] ?? [];
+            
+            $import = new TowersImport($validated['mode'], $ownerId, $columnMapping);
+            
+            Excel::import($import, $validated['file']);
+
+            $successCount = $import->getRowCount() - count($import->failures());
+            $errorCount = count($import->failures());
+
+            $message = "Import berhasil: {$successCount} data berhasil diimport";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} data gagal";
+            }
+
+            return redirect()
+                ->route('admin.towers.index')
+                ->with([
+                    'success' => $message,
+                    'import_errors' => $import->failures(),
+                    'error_count' => $errorCount,
+                ]);
+        } catch (\Exception $e) {
+            \Log::error('Error importing towers', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['file' => 'Import gagal: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Download template
+     */
+    public function downloadTemplate(): BinaryFileResponse
+    {
+        return Excel::download(new TowersTemplateExport(), 'template_import_tower_' . date('Ymd_His') . '.xlsx');
+    }
+
+    /**
+     * Get available owners (helper method)
+     */
+    protected function getAvailableOwners()
+    {
+        if (auth()->user() && auth()->user()->role === 'tower_owner') {
+            return Owner::where('id', auth()->user()->owner_id)->orderBy('name')->get();
+        }
+        return Owner::orderBy('name')->get();
     }
 }
 

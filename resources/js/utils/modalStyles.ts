@@ -58,6 +58,3 @@ export function getMaxWidthClass(maxWidth: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '
   };
   return maxWidthClasses[maxWidth];
 }
-
-
-
