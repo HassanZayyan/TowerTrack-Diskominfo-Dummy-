@@ -43,7 +43,7 @@
             display: inline-block;
             padding: 14px 35px;
             background-color: #dc2626;
-            color: #ffffff;
+            color: #ffffff !important;
             text-decoration: none;
             border-radius: 6px;
             margin: 20px 0;
@@ -54,7 +54,14 @@
         }
         .button:hover {
             background-color: #b91c1c;
+            color: #ffffff !important;
             box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+        }
+        .button:visited {
+            color: #ffffff !important;
+        }
+        .button:link {
+            color: #ffffff !important;
         }
         .footer {
             text-align: center;
