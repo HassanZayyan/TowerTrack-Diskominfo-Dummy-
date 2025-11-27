@@ -66,10 +66,15 @@ class FoController extends Controller
 
     /**
      * Apply filters to routes query (provider and/or side)
+     * DRY: Reusable filter logic for routes
+     * 
+     * Best Practice: Show all active routes when no filters are applied
+     * Routes without providers should still be visible for new routes
      */
     private function applyFiltersToRoutes($routesQuery, ?string $provider, ?string $side): void
     {
         if ($provider && $provider !== 'all') {
+            // Filter by provider (and optionally by side)
             $routesQuery->whereHas('points', function ($q) use ($provider, $side) {
                 $q->whereColumn('fo_points.area', 'fo_routes.area');
                 
@@ -88,8 +93,11 @@ class FoController extends Controller
                   ->where('fo_points.side_of_road', $side);
             });
         } else {
-            // No filters - only show routes with providers
-            $routesQuery->hasProviders();
+            // No filters - show all active routes
+            // Best Practice: Include routes without providers and without points
+            // This ensures new routes are visible immediately after creation
+            // Routes without points will appear in the list but won't render on map (no polyline)
+            // No additional filtering needed - all active routes in the area are shown
         }
     }
 
@@ -655,6 +663,14 @@ class FoController extends Controller
         try {
             $foRoute = FoRoute::findOrFail($routeId);
 
+            // Best Practice: Ensure path_coordinates is up-to-date from points
+            // DRY: Use reusable method to update route statistics if path_coordinates is empty
+            if (empty($foRoute->path_coordinates) || count($foRoute->path_coordinates) < 2) {
+                // Generate path_coordinates from points if empty
+                $this->updateFoRouteStatistics($foRoute->id);
+                $foRoute->refresh();
+            }
+
             // Ensure GeoJSON exists and is up-to-date
             // DRY: Use reusable method to check and generate GeoJSON if needed
             $geoJsonResult = $this->ensureGeoJsonForRoute($foRoute, 'public');
@@ -662,9 +678,28 @@ class FoController extends Controller
             $foRoute = $geoJsonResult['route'];
 
             // Use GeoJSON coordinates if available, otherwise enhanced polyline
+            // Fallback: If path_coordinates is still empty, generate from points directly
+            $pathCoordinates = $foRoute->path_coordinates;
+            if (empty($pathCoordinates) || count($pathCoordinates) < 2) {
+                // Generate from points as last resort
+                $points = FoPoint::where('route_name', $foRoute->name)
+                    ->where('area', $foRoute->area)
+                    ->orderBy('sequence_number')
+                    ->get();
+                
+                if ($points->count() >= 2) {
+                    $pathCoordinates = $points->map(function ($point) {
+                        return [
+                            'lat' => (float) $point->latitude,
+                            'lng' => (float) $point->longitude,
+                        ];
+                    })->toArray();
+                }
+            }
+
             $polyline = $foRoute->hasValidGeoJSON()
                 ? $foRoute->getGeoJSONCoordinates()
-                : $this->generateEnhancedRoutePolyline($foRoute->path_coordinates);
+                : $this->generateEnhancedRoutePolyline($pathCoordinates ?? []);
 
             \Log::info('✅ PUBLIC - Route polyline served', [
                 'route_id' => $foRoute->id,

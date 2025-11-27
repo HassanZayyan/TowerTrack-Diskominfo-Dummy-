@@ -565,9 +565,15 @@ class FoManagementController extends Controller
             // Create the route
             $route = FoRoute::create($validated);
 
+            // Best Practice: Invalidate routes cache to ensure new route appears immediately
+            // DRY: Use reusable cache invalidation method from trait
+            $this->invalidateFoRoutesCache($validated['area'] ?? 'ungaran');
+
             \Log::info('FO Route created successfully', [
                 'route_id' => $route->id,
                 'name' => $route->name,
+                'area' => $route->area,
+                'status' => $route->status,
                 'total_distance' => 0,
                 'total_points' => 0,
             ]);
@@ -695,9 +701,14 @@ class FoManagementController extends Controller
 
             // Best Practice: Touch route and invalidate cache (ensures cache key changes)
             $this->touchRouteAndInvalidateCache($foRoute, updateStatistics: false);
+            
+            // Best Practice: Also invalidate routes list cache to ensure updated route appears immediately
+            // DRY: Use reusable cache invalidation method from trait
+            $this->invalidateFoRoutesCache($foRoute->area);
 
             \Log::info('FO Route updated successfully', [
                 'route_id' => $foRoute->id,
+                'area' => $foRoute->area,
                 'total_distance' => $foRoute->total_distance,
                 'total_points' => $foRoute->total_points,
             ]);
@@ -731,6 +742,7 @@ class FoManagementController extends Controller
     public function destroyRoute(FoRoute $foRoute): RedirectResponse
     {
         $routeId = $foRoute->id;
+        $area = $foRoute->area; // Store area before deletion
 
         DB::transaction(function () use ($foRoute) {
             // Delete related FO points by route name and area
@@ -751,7 +763,15 @@ class FoManagementController extends Controller
                 $cacheKey = "fo_route_geojson_{$routeId}_{$timestamp}";
                 Cache::forget($cacheKey);
             }
-            \Log::info('Cache invalidated for deleted route', ['route_id' => $routeId]);
+            
+            // Best Practice: Also invalidate routes list cache to ensure deleted route is removed from list
+            // DRY: Use reusable cache invalidation method from trait
+            $this->invalidateFoRoutesCache($area);
+
+            \Log::info('Cache invalidated for deleted route', [
+                'route_id' => $routeId,
+                'area' => $area,
+            ]);
         } catch (\Exception $e) {
             \Log::error('Error invalidating cache for deleted route', [
                 'route_id' => $routeId,
