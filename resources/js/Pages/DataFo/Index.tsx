@@ -241,14 +241,21 @@ export default function DataFoIndex({
       }
     }
     
-    // Note: Side of road filtering is done server-side for better performance
-    // when combined with provider filter. Client-side filtering only for type and search.
+    // Status filtering
+    let matchesStatus = true;
+    if (selectedStatus !== 'all') {
+      const pointStatus = point.status || 'active';
+      matchesStatus = pointStatus.toLowerCase() === selectedStatus.toLowerCase();
+    }
     
-    return matchesSearch && matchesType;
+    // Note: Side of road filtering is done server-side for better performance
+    // when combined with provider filter. Client-side filtering only for type, status, and search.
+    
+    return matchesSearch && matchesType && matchesStatus;
   }).map(point => ({
     ...point,
-    area: selectedArea,
-    status: 'active',
+    area: point.area || selectedArea,
+    status: point.status || 'active',
     // Ensure all required fields exist
     name: point.name || 'Unnamed Point',
     type: point.type || 'pole',
@@ -352,6 +359,15 @@ export default function DataFoIndex({
   const handleSideChange = (side: string) => {
     setSelectedSide(side);
     router.get('/data-fo', buildQueryParams({ side }), {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
+  };
+
+  const handleStatusChange = (status: string) => {
+    setSelectedStatus(status);
+    router.get('/data-fo', buildQueryParams({ status }), {
       preserveState: true,
       preserveScroll: true,
       replace: true
@@ -777,7 +793,7 @@ export default function DataFoIndex({
             selectedType={selectedType}
             onTypeChange={setSelectedType}
             selectedStatus={selectedStatus}
-            onStatusChange={setSelectedStatus}
+            onStatusChange={handleStatusChange}
             selectedSide={selectedSide}
             onSideChange={handleSideChange}
           />

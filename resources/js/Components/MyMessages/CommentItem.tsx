@@ -96,7 +96,7 @@ export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }:
                 </span>
               )}
               <span className="text-xs text-gray-500">
-                {formatDateWithTime(comment.created_at)} • {new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                {formatDateWithTime(comment.created_at)}
               </span>
             </div>
             <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-3 border border-gray-100">
