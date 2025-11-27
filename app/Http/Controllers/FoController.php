@@ -542,6 +542,8 @@ class FoController extends Controller
                         'description' => $point->description,
                         'area' => $point->area,
                         'status' => $point->status,
+                        'side_of_road' => $point->side_of_road,
+                        'side_of_road_label' => $point->side_of_road_label,
                         'images' => [
                             'isp' => $point->isp_image_url,
                             'pole' => $point->pole_image_url,
