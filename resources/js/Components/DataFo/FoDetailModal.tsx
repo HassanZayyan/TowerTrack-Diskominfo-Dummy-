@@ -15,6 +15,8 @@ interface FoPoint {
   description?: string;
   area: string;
   status: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
+  side_of_road_label?: string;
   images: {
     isp: string | null;
     pole: string | null;
@@ -234,6 +236,59 @@ function PointDetails({
                     );
                   })()}
                 </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-100">
+              <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Posisi</label>
+              <div className="flex items-center space-x-2 mt-1">
+                {(() => {
+                  const sideOfRoad = point.side_of_road || 'unknown';
+                  const label = point.side_of_road_label || 'Belum Diketahui';
+                  const getPositionConfig = (side: string) => {
+                    switch (side) {
+                      case 'left':
+                        return {
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                            </svg>
+                          ),
+                          bg: 'bg-blue-100',
+                          text: 'text-blue-800',
+                          border: 'border-blue-200',
+                        };
+                      case 'right':
+                        return {
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                          ),
+                          bg: 'bg-red-100',
+                          text: 'text-red-800',
+                          border: 'border-red-200',
+                        };
+                      default:
+                        return {
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          ),
+                          bg: 'bg-gray-100',
+                          text: 'text-gray-800',
+                          border: 'border-gray-200',
+                        };
+                    }
+                  };
+                  const config = getPositionConfig(sideOfRoad);
+                  return (
+                    <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border ${config.bg} ${config.text} ${config.border}`}>
+                      <span className="mr-2">{config.icon}</span>
+                      {label}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
             <div className="bg-white rounded-lg p-4 border border-gray-100">

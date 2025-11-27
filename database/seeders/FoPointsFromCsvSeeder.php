@@ -221,7 +221,7 @@ class FoPointsFromCsvSeeder extends Seeder
             [98, 109, 'Assalamah - Taman Unyil'],
             [114, 122, 'Dishub - Bergas'],
             [127, 129, 'Pasar Karangjati - Kelurahan Karangjati'],
-            [134, 151, 'Setelah terowongan TOL - Pertigaan'],
+            [134, 151, 'Setelah Terowongan TOL - Pertigaan Kajangan'],
             [156, 171, 'Polsek Bergas - Ngempon'],
             [176, 189, 'Polsek Bergas - Wujil'],
             [194, 210, 'Terowongan - Bangjo Asmara'],
