@@ -153,12 +153,21 @@ trait HasCacheInvalidation
      * Invalidate FO routes cache for data-fo page
      * This ensures route updated_at is fresh when points are modified
      * 
+     * Best Practice: Use pattern-based invalidation to catch all cache keys
+     * DRY: Reusable method for cache invalidation
+     * 
      * @param string $area Area name
      * @return void
      */
     protected function invalidateFoRoutesCache(string $area): void
     {
         try {
+            // Method 1: Pattern-based invalidation (works with Redis)
+            // This is more efficient and catches all possible combinations
+            $pattern = 'fo_routes:*';
+            CacheService::invalidateByPattern($pattern);
+
+            // Method 2: Manual invalidation for common combinations (fallback)
             // Invalidate foRoutes cache with all possible filter combinations
             // This ensures frontend receives fresh updated_at from database
             foreach (['all', null] as $provider) {
@@ -178,12 +187,14 @@ trait HasCacheInvalidation
 
             Log::info('FO routes cache invalidated', [
                 'area' => $area,
+                'method' => 'pattern-based + manual fallback',
                 'note' => 'This ensures frontend receives fresh updated_at for cache validation',
             ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating FO routes cache', [
                 'area' => $area,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
