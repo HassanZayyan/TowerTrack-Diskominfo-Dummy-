@@ -36,10 +36,17 @@ abstract class MessageableController extends Controller
     
     /**
      * Validate public access.
+     * Allows authenticated users to view their own private messages.
      */
     protected function validatePublicAccess($model, string $type = 'Pesan'): void
     {
         if (!$model->is_public) {
+            $user = auth()->user();
+            // Allow authenticated users to view their own private messages
+            if ($user && $model->user_id && (int) $model->user_id === (int) $user->id) {
+                return;
+            }
+            // Not public and not owned by authenticated user - deny access
             abort(404, "{$type} tidak ditemukan atau tidak publik.");
         }
     }
