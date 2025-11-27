@@ -26,11 +26,11 @@ export default function FOStatusBadge({
   return React.createElement(
     'span',
     { 
-      className: `inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} ${className}` 
+      className: `inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} whitespace-nowrap ${className}` 
     },
     showDot && React.createElement(
       'div',
-      { className: `w-2 h-2 rounded-full mr-2 ${statusConfig.dot}` }
+      { className: `w-1.5 h-1.5 rounded-full mr-1.5 flex-shrink-0 ${statusConfig.dot}` }
     ),
     statusConfig.label
   );

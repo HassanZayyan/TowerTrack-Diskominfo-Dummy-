@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import AnimatedButton from '@/Components/AnimatedButton';
 import { useGuestFormData } from '@/Hooks/useGuestData';
@@ -7,6 +7,7 @@ import FormHeader from '@/Components/Forms/FormHeader';
 import ContactFields from '@/Components/Forms/ContactFields';
 import TextareaWithCounter from '@/Components/Forms/TextareaWithCounter';
 import FileUploadWithProgress from '@/Components/Forms/FileUploadWithProgress';
+import InputError from '@/Components/InputError';
 
 type MessageType = 'report' | 'feedback';
 
@@ -61,7 +62,7 @@ export default function MessageResponseForm({
     phone: defaultPhone || undefined,
   });
 
-  const { data, setData, post, processing, errors, reset, progress } = useForm<FormDataState>({
+  const { data, setData, post, processing, errors, reset, progress, setError } = useForm<FormDataState>({
     message: '',
     sender_name: guestFormData.name,
     email: guestFormData.email,
@@ -69,21 +70,36 @@ export default function MessageResponseForm({
     attachments: [],
   });
   const fieldErrors = errors as Record<string, string | undefined>;
+  const [customError, setCustomError] = useState<string | null>(null);
 
   const routeName =
     type === 'report' ? 'public.reports.responses.store' : 'public.feedbacks.responses.store';
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    setCustomError(null); // Clear previous error
 
     post(route(routeName, id), {
       forceFormData: true,
       preserveScroll: true,
       onSuccess: () => {
         reset();
+        setCustomError(null);
         if (onSuccess) {
           onSuccess();
         }
+      },
+      onError: (errors) => {
+        // Handle 403 errors specifically
+        if (errors.email || errors.message) {
+          // If there's an email error, set it as custom error
+          const errorMessage = errors.email || errors.message || 'Terjadi kesalahan saat mengirim balasan.';
+          setCustomError(errorMessage);
+          setError('email', errorMessage);
+        }
+      },
+      onFinish: () => {
+        // This runs after both success and error
       },
     });
   };
@@ -106,6 +122,20 @@ export default function MessageResponseForm({
       />
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Display custom error message for 403 errors */}
+        {customError && (
+          <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-800">{customError}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {requiresContact && (
           <ContactFields
             nameField="response_sender_name"
@@ -114,11 +144,20 @@ export default function MessageResponseForm({
             nameValue={data.sender_name}
             emailValue={data.email}
             phoneValue={data.phone}
-            onNameChange={(value) => setData('sender_name', value)}
-            onEmailChange={(value) => setData('email', value)}
-            onPhoneChange={(value) => setData('phone', value)}
+            onNameChange={(value) => {
+              setData('sender_name', value);
+              setCustomError(null); // Clear error when user types
+            }}
+            onEmailChange={(value) => {
+              setData('email', value);
+              setCustomError(null); // Clear error when user types
+            }}
+            onPhoneChange={(value) => {
+              setData('phone', value);
+              setCustomError(null); // Clear error when user types
+            }}
             nameError={errors.sender_name}
-            emailError={errors.email}
+            emailError={customError || errors.email}
             phoneError={errors.phone}
             phoneRequired={true}
             disabled={lockContactFields}

@@ -205,8 +205,8 @@ export default function FoTable({
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Nama</th>
                   <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Tipe</th>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Sisi</th>
-                  <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Status</th>
-                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Aksi</th>
+                  <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] w-[120px]">Status</th>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] w-[80px]">Aksi</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200 relative z-10">
@@ -254,7 +254,7 @@ export default function FoTable({
                     </td>
                     <td className="hidden md:table-cell px-2 sm:px-4 py-3">
                       <div className="flex justify-center sm:justify-start">
-                        <FOStatusBadge status={point.status} />
+                        <FOStatusBadge status={point.status} className="flex-shrink-0" />
                       </div>
                     </td>
                     <td className="px-2 sm:px-4 py-3">
@@ -265,7 +265,7 @@ export default function FoTable({
                             e.stopPropagation();
                             onPointClick?.(point);
                           }}
-                          className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                          className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation whitespace-nowrap flex-shrink-0"
                           style={{ backgroundColor: '#B71C1C' }}
                         >
                           Detail
@@ -309,14 +309,14 @@ export default function FoTable({
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative overscroll-contain">
           <table className="w-full divide-y divide-gray-200 table-fixed">
-            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
-              <tr>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
-                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Titik</th>
-                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Status</th>
-                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Aksi</th>
-              </tr>
-            </thead>
+              <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
+                <tr>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
+                  <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Titik</th>
+                  <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] w-[120px]">Status</th>
+                  <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] w-[80px]">Aksi</th>
+                </tr>
+              </thead>
             <tbody className="bg-white divide-y divide-gray-200 relative z-10">
               {currentRoutes.length > 0 ? currentRoutes.map((route) => (
                 <tr key={route.id} className="hover:bg-gray-50 transition-colors">
@@ -341,7 +341,7 @@ export default function FoTable({
                   </td>
                   <td className="px-1 sm:px-4 py-3">
                     <div className="flex justify-center sm:justify-start">
-                      <FOStatusBadge status={route.status} />
+                      <FOStatusBadge status={route.status} className="flex-shrink-0" />
                     </div>
                   </td>
                   <td className="px-1 sm:px-4 py-3">
@@ -352,7 +352,7 @@ export default function FoTable({
                           e.stopPropagation();
                           onRouteClick?.(route);
                         }}
-                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation whitespace-nowrap flex-shrink-0"
                         style={{ backgroundColor: '#B71C1C' }}
                       >
                         Detail
@@ -403,8 +403,8 @@ export default function FoTable({
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Nama</th>
                   <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Tipe</th>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Sisi</th>
-                  <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Status</th>
-                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Aksi</th>
+                  <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] w-[120px]">Status</th>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] w-[80px]">Aksi</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200 relative z-10">
@@ -452,7 +452,7 @@ export default function FoTable({
                     </td>
                     <td className="hidden md:table-cell px-2 sm:px-4 py-3">
                       <div className="flex justify-center sm:justify-start">
-                        <FOStatusBadge status={point.status} />
+                        <FOStatusBadge status={point.status} className="flex-shrink-0" />
                       </div>
                     </td>
                     <td className="px-2 sm:px-4 py-3">
@@ -463,7 +463,7 @@ export default function FoTable({
                             e.stopPropagation();
                             onPointClick?.(point);
                           }}
-                          className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                          className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation whitespace-nowrap flex-shrink-0"
                           style={{ backgroundColor: '#B71C1C' }}
                         >
                           Detail
@@ -504,14 +504,14 @@ export default function FoTable({
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative overscroll-contain">
           <table className="w-full divide-y divide-gray-200 table-fixed">
-            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
-              <tr>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
-                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Titik</th>
-                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Status</th>
-                <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Aksi</th>
-              </tr>
-            </thead>
+              <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
+                <tr>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5 sm:w-2/5">Nama</th>
+                  <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5 sm:w-1/5">Titik</th>
+                  <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] w-[120px]">Status</th>
+                  <th className="px-1 sm:px-4 py-3 text-center sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] w-[80px]">Aksi</th>
+                </tr>
+              </thead>
             <tbody className="bg-white divide-y divide-gray-200 relative z-10">
               {currentRoutes.length > 0 ? currentRoutes.map((route) => (
                 <tr key={route.id} className="hover:bg-gray-50 transition-colors">
@@ -536,7 +536,7 @@ export default function FoTable({
                   </td>
                   <td className="px-1 sm:px-4 py-3">
                     <div className="flex justify-center sm:justify-start">
-                      <FOStatusBadge status={route.status} />
+                      <FOStatusBadge status={route.status} className="flex-shrink-0" />
                     </div>
                   </td>
                   <td className="px-1 sm:px-4 py-3">
@@ -547,7 +547,7 @@ export default function FoTable({
                           e.stopPropagation();
                           onRouteClick?.(route);
                         }}
-                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                        className="text-white px-2 sm:px-3 py-1 rounded text-xs font-medium hover:opacity-90 transition-opacity touch-manipulation whitespace-nowrap flex-shrink-0"
                         style={{ backgroundColor: '#B71C1C' }}
                       >
                         Detail

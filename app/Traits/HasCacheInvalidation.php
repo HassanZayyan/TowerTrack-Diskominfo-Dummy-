@@ -123,16 +123,23 @@ trait HasCacheInvalidation
             // This is important because frontend uses route.updated_at for cache validation
             $this->invalidateFoRoutesCache($area);
 
-            // Invalidate with common filter combinations
-            foreach (['all', null] as $provider) {
-                foreach (['all', null] as $side) {
-                    $key = CacheService::foPointsKey($area, $provider, $side);
-                    Cache::forget($key);
+            // Invalidate with all filter combinations (provider, side, and status)
+            $statuses = ['all', 'active', 'inactive', 'maintenance', null];
+            $providers = ['all', null];
+            $sides = ['all', null];
+
+            foreach ($statuses as $status) {
+                foreach ($providers as $provider) {
+                    foreach ($sides as $side) {
+                        $key = CacheService::foPointsKey($area, $provider, $side, $status);
+                        Cache::forget($key);
+                    }
                 }
             }
 
-            Log::info('FO points cache invalidated', [
+            Log::info('FO points cache invalidated for all filter combinations', [
                 'area' => $area,
+                'combinations' => count($statuses) * count($providers) * count($sides),
             ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating FO points cache', [

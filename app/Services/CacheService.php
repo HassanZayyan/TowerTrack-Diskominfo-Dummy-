@@ -257,14 +257,16 @@ class CacheService
      * @param string $area Area name
      * @param string|null $provider Provider filter
      * @param string|null $side Side of road filter
+     * @param string|null $status Status filter
      * @return string Cache key
      */
-    public static function foPointsKey(string $area, ?string $provider = null, ?string $side = null): string
+    public static function foPointsKey(string $area, ?string $provider = null, ?string $side = null, ?string $status = null): string
     {
         return self::key('fo_points', array_filter([
             'area' => $area,
             'provider' => $provider,
             'side' => $side,
+            'status' => $status !== 'all' ? $status : null,
         ]));
     }
 

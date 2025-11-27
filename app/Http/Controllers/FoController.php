@@ -110,16 +110,21 @@ class FoController extends Controller
         $area = $request->get('area', 'ungaran'); // Default ke ungaran
         $provider = $request->get('provider'); // Filter by provider
         $side = $request->get('side'); // Filter by side of road
+        $status = $request->get('status', 'all'); // Filter by status (default: all)
 
         // Build query for FO points
-        $pointsQuery = FoPoint::where('area', $area)
-            ->where('status', 'active');
+        $pointsQuery = FoPoint::where('area', $area);
+        
+        // Apply status filter if not 'all'
+        if ($status && $status !== 'all') {
+            $pointsQuery->where('status', $status);
+        }
 
         // Apply filters using helper methods
         $this->applyFiltersToPoints($pointsQuery, $provider, $side);
 
-        // Cache FO points query
-        $cacheKey = CacheService::foPointsKey($area, $provider, $side);
+        // Cache FO points query (include status in cache key)
+        $cacheKey = CacheService::foPointsKey($area, $provider, $side, $status);
         $foPoints = CacheService::remember($cacheKey, function () use ($pointsQuery) {
             return $pointsQuery
                 ->with(['providers' => function ($q) {

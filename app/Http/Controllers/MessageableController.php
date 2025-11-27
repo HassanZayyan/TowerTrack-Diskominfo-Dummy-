@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Traits\HasStatusHandling;
@@ -233,19 +234,27 @@ abstract class MessageableController extends Controller
         $providedPhone = (string) $request->input('phone', '');
 
         if ($requiresEmail && $providedEmail === '') {
-            abort(403, 'Email diperlukan untuk membalas pesan ini.');
+            throw ValidationException::withMessages([
+                'email' => 'Email diperlukan untuk membalas pesan ini.'
+            ]);
         }
 
         if ($requiresPhone && $providedPhone === '') {
-            abort(403, 'Nomor telepon diperlukan untuk membalas pesan ini.');
+            throw ValidationException::withMessages([
+                'phone' => 'Nomor telepon diperlukan untuk membalas pesan ini.'
+            ]);
         }
 
         if ($requiresEmail && !hash_equals($storedEmail, $providedEmail)) {
-            abort(403, 'Email tidak cocok dengan data pengirim.');
+            throw ValidationException::withMessages([
+                'email' => 'Email tidak cocok dengan data pengirim.'
+            ]);
         }
 
         if ($requiresPhone && !hash_equals($storedPhone, $providedPhone)) {
-            abort(403, 'Anda tidak memiliki akses ke pesan ini.');
+            throw ValidationException::withMessages([
+                'phone' => 'Nomor telepon tidak cocok dengan data pengirim.'
+            ]);
         }
 
         $fallbackName = $model->{$nameField} ?? null;
