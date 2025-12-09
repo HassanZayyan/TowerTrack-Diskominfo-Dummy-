@@ -1,13 +1,6 @@
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, useMemo, useCallback, useState } from 'react';
 import L from 'leaflet';
-
-// Fix marker icon paths under Vite
-// @ts-ignore
-import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png';
-// @ts-ignore
-import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
-// @ts-ignore
-import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
+import { isTowerSelected, createTowerMarkerIcon } from '@/utils/towerIconUtils';
 
 interface MapMarker {
     position: [number, number];
@@ -29,6 +22,7 @@ interface LeafletMapProps {
     onDistanceChange?: (distance: number) => void;
     resetLinesTrigger?: number;
     onMarkerClick?: (towerData: any) => void;
+    selectedTowerId?: string | number | null; // ID of currently selected tower for visual feedback
 }
 
 const LeafletMap = forwardRef<any, LeafletMapProps>(({
@@ -43,6 +37,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     onDistanceChange,
     resetLinesTrigger,
     onMarkerClick,
+    selectedTowerId = null,
 }, ref) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
@@ -56,20 +51,13 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     const distanceLabelRef = useRef<L.Marker | null>(null);
     const isInitializedRef = useRef<boolean>(false);
     const scaleControlRef = useRef<L.Control.Scale | null>(null);
+    const previousMarkersRef = useRef<MapMarker[]>([]);
+    const hasInitialFitBoundsRef = useRef<boolean>(false);
+    const [measurementPointsUpdateTrigger, setMeasurementPointsUpdateTrigger] = useState<number>(0);
 
     // Initialize map only once on mount
     useEffect(() => {
         if (!mapRef.current || mapInstanceRef.current) return;
-
-        // Ensure default icon URLs work when bundling
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        delete L.Icon.Default.prototype._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: markerIcon2xUrl,
-            iconUrl: markerIconUrl,
-            shadowUrl: markerShadowUrl,
-        });
 
         const map = L.map(mapRef.current);
         map.setView(center, zoom);
@@ -186,6 +174,14 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
     // We intentionally do not auto-sync view to props on subsequent renders
     // to avoid overriding manual panning/zooming and programmatic flyTo calls.
 
+    // Helper function to check if position is in selectedPointsRef
+    const isPointSelected = useCallback((position: [number, number]): boolean => {
+        return selectedPointsRef.current.some(point => 
+            Math.abs(point.lat - position[0]) < 0.0001 && 
+            Math.abs(point.lng - position[1]) < 0.0001
+        );
+    }, []);
+
     // Expose map methods via ref
     useImperativeHandle(ref, () => ({
       flyTo: (center: [number, number], zoom: number = 15) => {
@@ -212,58 +208,142 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         console.log('Current marker instances:', markerInstancesRef.current.length);
         console.log('New markers to create:', markers.length);
 
-        // Clear existing markers and recreate
-        layer.clearLayers();
-        markerInstancesRef.current = [];
-
-        const bounds = L.latLngBounds([]);
+        // Check if markers array actually changed (not just selectedTowerId)
+        // Compare by creating a string key for each marker based on position and tower ID
+        const createMarkerKey = (m: MapMarker) => 
+            `${m.position[0]},${m.position[1]},${m.towerData?.id ?? 'no-id'}`;
         
-        markers.forEach((m, index) => {
-            console.log(`Creating marker ${index + 1} at position:`, m.position);
-            const marker = L.marker(m.position, { title: m.title });
-            
-            if (m.title || m.description) {
-                // Bind popup but configure to open on hover, not click
-                const popup = L.popup({
-                    closeButton: false,
-                    autoClose: false,
-                    closeOnEscapeKey: false,
-                    closeOnClick: false,
-                    // Prevent the map from panning to keep the popup in view on hover
-                    autoPan: false,
-                }).setContent(`<strong>${m.title ?? ''}</strong><br/>${m.description ?? ''}`);
-                
-                marker.bindPopup(popup);
-                
-                // Open popup on mouseover
-                marker.on('mouseover', () => {
-                    marker.openPopup();
-                });
-                
-                // Close popup on mouseout
-                marker.on('mouseout', () => {
-                    marker.closePopup();
-                });
-            }
-            
-            marker.addTo(layer);
-            markerInstancesRef.current.push(marker);
-            bounds.extend(m.position);
-            console.log(`Marker ${index + 1} added to layer, total markers:`, markerInstancesRef.current.length);
-        });
+        const currentMarkerKeys = markers.map(createMarkerKey).sort().join('|');
+        const previousMarkerKeys = previousMarkersRef.current.map(createMarkerKey).sort().join('|');
+        const markersChanged = currentMarkerKeys !== previousMarkerKeys;
 
-        if (markers.length > 0) {
-            map.fitBounds(bounds.pad(0.1));
+        // Only recreate markers if markers array actually changed
+        if (markersChanged) {
+            // Clear existing markers and recreate
+            layer.clearLayers();
+            markerInstancesRef.current = [];
+            hasInitialFitBoundsRef.current = false;
+
+            const bounds = L.latLngBounds([]);
+            
+            markers.forEach((m, index) => {
+                console.log(`Creating marker ${index + 1} at position:`, m.position);
+                
+                // Determine marker icon state
+                // Priority: measurement selected > selected > default
+                let iconState: 'default' | 'selected' | 'measurement';
+                if (showLines) {
+                    // Measurement mode: only selected points are red
+                    const isMeasurementSelected = isPointSelected(m.position);
+                    iconState = isMeasurementSelected ? 'measurement' : 'default';
+                } else {
+                    // Normal mode: check if selected
+                    const towerId = m.towerData?.id;
+                    const isSelected = isTowerSelected(towerId, selectedTowerId);
+                    iconState = isSelected ? 'selected' : 'default';
+                }
+                
+                // Create custom icon based on state
+                const customIcon = createTowerMarkerIcon(iconState);
+                
+                const marker = L.marker(m.position, { 
+                    title: m.title,
+                    icon: customIcon
+                });
+                
+                if (m.title || m.description) {
+                    // Bind popup but configure to open on hover, not click
+                    const popup = L.popup({
+                        closeButton: false,
+                        autoClose: false,
+                        closeOnEscapeKey: false,
+                        closeOnClick: false,
+                        // Prevent the map from panning to keep the popup in view on hover
+                        autoPan: false,
+                    }).setContent(`<strong>${m.title ?? ''}</strong><br/>${m.description ?? ''}`);
+                    
+                    marker.bindPopup(popup);
+                    
+                    // Open popup on mouseover
+                    marker.on('mouseover', () => {
+                        marker.openPopup();
+                    });
+                    
+                    // Close popup on mouseout
+                    marker.on('mouseout', () => {
+                        marker.closePopup();
+                    });
+                }
+                
+                marker.addTo(layer);
+                markerInstancesRef.current.push(marker);
+                bounds.extend(m.position);
+                console.log(`Marker ${index + 1} added to layer, total markers:`, markerInstancesRef.current.length);
+            });
+
+            // Only fit bounds on initial load (first time markers are added)
+            if (markers.length > 0 && !hasInitialFitBoundsRef.current) {
+                map.fitBounds(bounds.pad(0.1));
+                hasInitialFitBoundsRef.current = true;
+                console.log('Initial fitBounds applied');
+            } else if (markersChanged) {
+                // If markers changed but we already did initial fitBounds, don't refit
+                // This prevents zoom/pan when user clicks on markers
+                console.log('Markers changed but skipping fitBounds to preserve user zoom/pan');
+            }
+
+            // Update previous markers reference
+            previousMarkersRef.current = [...markers];
         }
         
         console.log('=== MARKER CREATION COMPLETED ===');
         console.log('Total markers created:', markerInstancesRef.current.length);
-    }, [markers]);
+    }, [markers]); // Only recreate markers when markers array changes
+
+    // Update marker icons when selectedTowerId, showLines, or selectedPointsRef changes
+    useEffect(() => {
+        if (!markerInstancesRef.current.length || !markers.length) return;
+
+        console.log('=== UPDATING MARKER ICONS ===');
+        console.log('Selected tower ID:', selectedTowerId);
+        console.log('Show lines (measurement mode):', showLines);
+        console.log('Selected measurement points:', selectedPointsRef.current.length);
+        console.log('Total markers to update:', markerInstancesRef.current.length);
+
+        markerInstancesRef.current.forEach((marker, index) => {
+            const markerData = markers[index];
+            if (!markerData) return;
+
+            // Determine marker icon state
+            // Priority: measurement selected > selected > default
+            let iconState: 'default' | 'selected' | 'measurement';
+            if (showLines) {
+                // Measurement mode: only selected points are red
+                const isMeasurementSelected = isPointSelected(markerData.position);
+                iconState = isMeasurementSelected ? 'measurement' : 'default';
+            } else {
+                // Normal mode: check if selected
+                const towerId = markerData.towerData?.id;
+                const isSelected = isTowerSelected(towerId, selectedTowerId);
+                iconState = isSelected ? 'selected' : 'default';
+            }
+            
+            // Update icon without recreating marker
+            const newIcon = createTowerMarkerIcon(iconState);
+            marker.setIcon(newIcon);
+            
+            console.log(`Marker ${index + 1} (tower ID: ${markerData.towerData?.id}) updated - State: ${iconState}`);
+        });
+
+        console.log('=== MARKER ICONS UPDATE COMPLETED ===');
+    }, [selectedTowerId, markers, showLines, measurementPointsUpdateTrigger, isPointSelected]);
 
     // Clear measurement function
     const clearMeasurement = () => {
         console.log('=== CLEARING MEASUREMENT ===');
         selectedPointsRef.current = [];
+        // Trigger icon update to reset marker colors
+        setMeasurementPointsUpdateTrigger(prev => prev + 1);
         
         // Remove polyline if exists
         if (measurePolylineRef.current) {
@@ -332,6 +412,8 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                         clearMeasurement();
                         selectedPointsRef.current.push(latlng);
                         console.log('First measurement point added, array length now:', selectedPointsRef.current.length);
+                        // Trigger icon update
+                        setMeasurementPointsUpdateTrigger(prev => prev + 1);
                         return;
                     }
 
@@ -344,12 +426,15 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                         
                         if (isSamePoint) {
                             console.log('Same point clicked - resetting measurement');
+                            clearMeasurement();
                             if (onDistanceChange) onDistanceChange(0);
                             return;
                         }
                         
                         selectedPointsRef.current.push(latlng);
                         console.log('Second measurement point added, array length now:', selectedPointsRef.current.length);
+                        // Trigger icon update
+                        setMeasurementPointsUpdateTrigger(prev => prev + 1);
                         
                         const points = selectedPointsRef.current;
                         console.log('Creating measurement polyline between points:', points[0], 'and', points[1]);
@@ -388,6 +473,8 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                         clearMeasurement();
                         selectedPointsRef.current.push(latlng);
                         console.log('New measurement started with first point, array length:', selectedPointsRef.current.length);
+                        // Trigger icon update
+                        setMeasurementPointsUpdateTrigger(prev => prev + 1);
                     }
                 });
             });
@@ -467,16 +554,19 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                     if (pts.length === 0) {
                         clearMeasurement();
                         selectedPointsRef.current.push(latlng);
+                        setMeasurementPointsUpdateTrigger(prev => prev + 1);
                         return;
                     }
                     if (pts.length === 1) {
                         const firstPoint = selectedPointsRef.current[0];
                         const isSamePoint = firstPoint.lat === latlng.lat && firstPoint.lng === latlng.lng;
                         if (isSamePoint) {
+                            clearMeasurement();
                             if (onDistanceChange) onDistanceChange(0);
                             return;
                         }
                         selectedPointsRef.current.push(latlng);
+                        setMeasurementPointsUpdateTrigger(prev => prev + 1);
                         const points = selectedPointsRef.current;
                         const distanceMeters = points[0].distanceTo(points[1]);
                         measurePolylineRef.current = L.polyline([points[0], points[1]], {
@@ -496,6 +586,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                     if (pts.length >= 2) {
                         clearMeasurement();
                         selectedPointsRef.current.push(latlng);
+                        setMeasurementPointsUpdateTrigger(prev => prev + 1);
                     }
                 });
             });

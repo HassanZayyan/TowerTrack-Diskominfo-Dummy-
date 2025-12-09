@@ -322,6 +322,7 @@ export default function TowerSelectionInput({
                   showCoverage={true}
                   defaultRadiusMeters={500}
                   onMarkerClick={handleMapMarkerClick}
+                  selectedTowerId={selectedTowerId}
                 />
               ) : (
                 <div className="h-[400px] flex items-center justify-center bg-gray-100">
