@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\CaptchaService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -29,7 +30,40 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'cf-turnstile-response' => ['required', 'string'],
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     *
+     * @param  \Illuminate\Validation\Validator  $validator
+     * @return void
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            // Verify CAPTCHA
+            $captchaService = app(CaptchaService::class);
+            $token = $this->input('cf-turnstile-response') ?? '';
+            $ipAddress = $this->ip();
+
+            // Ensure token is a string
+            if (empty($token) || !is_string($token)) {
+                $validator->errors()->add(
+                    'captcha',
+                    'Verifikasi CAPTCHA diperlukan. Silakan selesaikan CAPTCHA terlebih dahulu.'
+                );
+                return;
+            }
+
+            if (!$captchaService->verify($token, $ipAddress)) {
+                $validator->errors()->add(
+                    'captcha',
+                    'Verifikasi CAPTCHA gagal. Silakan coba lagi.'
+                );
+            }
+        });
     }
 
     /**

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Turnstile } from '@marsidev/react-turnstile';
 import MainLayout from '@/Layouts/MainLayout';
 
 import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
@@ -8,6 +7,7 @@ import FileUpload from '@/Components/FileUpload';
 import AlertDialog from '@/Components/AlertDialog';
 import PageHeader from '@/Components/PageHeader';
 import AnimatedButton from '@/Components/AnimatedButton';
+import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
 import { Tower as BaseTower } from '@/utils/searchUtils';
 import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
 
@@ -68,31 +68,7 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
   
   // CAPTCHA states
   const [captchaToken, setCaptchaToken] = useState<string>('');
-  const captchaRef = useRef<any>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  
-  // Detect mobile screen size
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-  
-  // DEBUG: Cek nilai turnstileSiteKey
-  useEffect(() => {
-    console.log('🔍 CAPTCHA DEBUG:');
-    console.log('turnstileSiteKey:', turnstileSiteKey);
-    console.log('Type:', typeof turnstileSiteKey);
-    console.log('Is empty?', !turnstileSiteKey);
-    console.log('auth:', auth);
-    console.log('isAuthenticatedUser:', isAuthenticatedUser);
-    console.log('Should show CAPTCHA:', !isAuthenticatedUser && turnstileSiteKey);
-  }, [turnstileSiteKey, auth, isAuthenticatedUser]);
+  const captchaRef = useRef<TurnstileCaptchaRef>(null);
   
   // Redirect staff users immediately
   useEffect(() => {
@@ -661,46 +637,15 @@ export default function ComplaintCreate({ towers = [] }: ComplaintCreateProps) {
               
               {/* CAPTCHA widget - only for guest users */}
               {!isAuthenticatedUser && (
-                <div className="mb-6 w-full overflow-hidden">
-                  {turnstileSiteKey ? (
-                    <div className="w-full flex justify-center sm:justify-start">
-                      <div className="w-full max-w-[300px] sm:max-w-none" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-                        <Turnstile
-                          ref={captchaRef}
-                          siteKey={turnstileSiteKey}
-                          onSuccess={(token) => {
-                            console.log('✅ CAPTCHA Success, token:', token);
-                            setCaptchaToken(token);
-                          }}
-                          onError={(error) => {
-                            console.error('❌ CAPTCHA Error:', error);
-                            setCaptchaToken('');
-                            showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
-                          }}
-                          onExpire={() => {
-                            console.log('⏰ CAPTCHA Expired');
-                            setCaptchaToken('');
-                          }}
-                          options={{
-                            theme: 'light',
-                            size: isMobile ? 'compact' : 'normal',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800 font-medium">
-                        ⚠️ Error: CAPTCHA tidak dapat dimuat. turnstileSiteKey = {String(turnstileSiteKey)}
-                      </p>
-                      <p className="text-xs text-red-600 mt-1">
-                        Silakan refresh halaman atau hubungi administrator.
-                      </p>
-                    </div>
-                  )}
-                  {errors?.captcha && (
-                    <p className="mt-2 text-sm text-red-600">{errors.captcha}</p>
-                  )}
+                <div className="mb-6">
+                  <TurnstileCaptcha
+                    ref={captchaRef}
+                    siteKey={turnstileSiteKey || ''}
+                    onTokenChange={setCaptchaToken}
+                    error={(errors as any)?.captcha || (errors as any)?.['cf-turnstile-response']}
+                    size="normal"
+                    theme="light"
+                  />
                 </div>
               )}
 

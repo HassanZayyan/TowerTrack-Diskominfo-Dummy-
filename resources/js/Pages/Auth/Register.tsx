@@ -1,45 +1,63 @@
+import { useRef, useState, useEffect } from 'react';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 export default function Register() {
+    const { turnstileSiteKey } = usePage().props as any;
+    const captchaRef = useRef<TurnstileCaptchaRef>(null);
+    const [captchaToken, setCaptchaToken] = useState<string>('');
+
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
+        'cf-turnstile-response': '',
     });
+
+    // Sync CAPTCHA token to form data whenever it changes
+    useEffect(() => {
+        if (captchaToken) {
+            setData('cf-turnstile-response', captchaToken);
+        } else {
+            setData('cf-turnstile-response', '');
+        }
+    }, [captchaToken, setData]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
+        // Validate CAPTCHA before submission
+        if (!captchaToken) {
+            return;
+        }
+
+        // Post will use the updated data state (token should already be synced by useEffect)
         post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
+            onFinish: () => {
+                reset('password', 'password_confirmation');
+                // Reset CAPTCHA after submission
+                captchaRef.current?.reset();
+                setCaptchaToken('');
+            },
+            onError: () => {
+                // Reset CAPTCHA on error
+                captchaRef.current?.reset();
+                setCaptchaToken('');
+            },
         });
     };
 
     return (
         <GuestLayout title="Daftar" subtitle="Silakan daftar untuk melanjutkan">
             <Head title="Daftar" />
-
-            {/* Information notice */}
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">Informasi Penting:</p>
-                        <p>Form pendaftaran ini hanya untuk <strong>pengguna umum (complainant)</strong> yang ingin melaporkan masalah menara.</p>
-                        <p className="mt-1">Jika Anda adalah <strong>pemilik menara (tower owner)</strong>, silakan hubungi administrator untuk mendapatkan akun login.</p>
-                    </div>
-                </div>
-            </div>
 
             <form onSubmit={submit} className="space-y-6">
                 <div className="space-y-2">
@@ -113,11 +131,23 @@ export default function Register() {
                     />
                 </div>
 
+                {/* CAPTCHA */}
+                <div className="mb-6">
+                    <TurnstileCaptcha
+                        ref={captchaRef}
+                        siteKey={turnstileSiteKey || ''}
+                        onTokenChange={setCaptchaToken}
+                        error={errors['cf-turnstile-response'] || (errors as any).captcha}
+                        size="normal"
+                        theme="light"
+                    />
+                </div>
+
                 {/* Main Action Button */}
                 <div className="pt-2">
                     <PrimaryButton 
                         className="w-full px-6 py-3 font-medium rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 justify-center" 
-                        disabled={processing} 
+                        disabled={processing || !captchaToken} 
                         style={{ backgroundColor: '#212121' }}
                     >
                         {processing ? 'Memproses...' : 'Daftar'}

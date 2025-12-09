@@ -1,11 +1,13 @@
+import { useRef, useState, useEffect } from 'react';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 export default function Login({
@@ -15,17 +17,47 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
+    const { turnstileSiteKey } = usePage().props as any;
+    const captchaRef = useRef<TurnstileCaptchaRef>(null);
+    const [captchaToken, setCaptchaToken] = useState<string>('');
+
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
         remember: false as boolean,
+        'cf-turnstile-response': '',
     });
+
+    // Sync CAPTCHA token to form data whenever it changes
+    useEffect(() => {
+        if (captchaToken) {
+            setData('cf-turnstile-response', captchaToken);
+        } else {
+            setData('cf-turnstile-response', '');
+        }
+    }, [captchaToken, setData]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
+        // Validate CAPTCHA before submission
+        if (!captchaToken) {
+            return;
+        }
+
+        // Post will use the updated data state (token should already be synced by useEffect)
         post(route('login'), {
-            onFinish: () => reset('password'),
+            onFinish: () => {
+                reset('password');
+                // Reset CAPTCHA after submission
+                captchaRef.current?.reset();
+                setCaptchaToken('');
+            },
+            onError: () => {
+                // Reset CAPTCHA on error
+                captchaRef.current?.reset();
+                setCaptchaToken('');
+            },
         });
     };
 
@@ -99,11 +131,23 @@ export default function Login({
                     )}
                 </div>
 
+                {/* CAPTCHA */}
+                <div className="mb-6">
+                    <TurnstileCaptcha
+                        ref={captchaRef}
+                        siteKey={turnstileSiteKey || ''}
+                        onTokenChange={setCaptchaToken}
+                        error={errors['cf-turnstile-response'] || (errors as any).captcha}
+                        size="normal"
+                        theme="light"
+                    />
+                </div>
+
                 {/* Main Action Button */}
                 <div className="pt-2">
                     <PrimaryButton 
                         className="w-full px-6 py-3 font-medium rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 justify-center" 
-                        disabled={processing} 
+                        disabled={processing || !captchaToken} 
                         style={{ backgroundColor: '#212121' }}
                     >
                         {processing ? 'Memproses...' : 'Masuk'}
