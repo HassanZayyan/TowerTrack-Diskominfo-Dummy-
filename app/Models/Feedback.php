@@ -66,20 +66,17 @@ class Feedback extends Model
         static::created(function ($feedback) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_feedbacks:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
         });
 
         static::updated(function ($feedback) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_feedbacks:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('feedbacks:*');
         });
 
         static::deleted(function ($feedback) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_feedbacks:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('feedbacks:*');
         });
     }

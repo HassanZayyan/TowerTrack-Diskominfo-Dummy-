@@ -11,6 +11,7 @@ import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCap
 
 import { validatePhoneNumber } from '@/utils/validationUtils';
 import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
+import { handlePrivateSelection, restoreFormState, shouldSelectPrivate } from '@/utils/privateMessageUtils';
 import 'leaflet/dist/leaflet.css';
 
 interface Tower {
@@ -39,7 +40,7 @@ const INITIAL_FORM_STATE = {
   tower_id: '',
   pesan: '',
   email: '',
-  is_public: false,
+  is_public: true,
   reporter_latitude: '',
   reporter_longitude: '',
   reporter_accuracy: '',
@@ -87,6 +88,33 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   // CAPTCHA states
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const captchaRef = useRef<TurnstileCaptchaRef>(null);
+
+  // Restore form state after login/register
+  useEffect(() => {
+    if (isAuthenticatedUser) {
+      const restoredState = restoreFormState();
+      const shouldSelectPrivateFlag = shouldSelectPrivate();
+      
+      if (restoredState && restoredState.type === 'feedback') {
+        // Restore form data
+        setForm(prev => ({
+          ...prev,
+          ...restoredState.form,
+          // Ensure private is selected if it was selected before or flag is set
+          is_public: shouldSelectPrivateFlag ? false : (restoredState.form.is_public ?? false),
+        }));
+        
+        // Restore files if any (Note: File objects can't be serialized, so this might need adjustment)
+        if (restoredState.files && restoredState.files.length > 0) {
+          // Files can't be restored from JSON, but we can show a message
+          console.log('Form state restored. Please re-upload files if needed.');
+        }
+      } else if (shouldSelectPrivateFlag) {
+        // If no restored state but private flag is set, just set private
+        setForm(prev => ({ ...prev, is_public: false }));
+      }
+    }
+  }, [isAuthenticatedUser]);
   
   // Dialog states
   const [showDialog, setShowDialog] = useState(false);
@@ -298,6 +326,25 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     // Validate form
     if (!validateForm()) {
       showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi dengan benar');
+      return;
+    }
+
+    // Validate private message access for guest users
+    if (!form.is_public && !isAuthenticatedUser) {
+      showErrorDialog(
+        'Login Diperlukan', 
+        'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'
+      );
+      // Redirect to register
+      handlePrivateSelection(
+        false,
+        window.location.pathname,
+        {
+          form: form,
+          files: files,
+          type: 'feedback'
+        }
+      );
       return;
     }
 
@@ -599,23 +646,6 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                     Visibilitas Masukan <span className="text-red-600">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
-                      <input
-                        type="radio"
-                        name="is_public"
-                        checked={!form.is_public}
-                        onChange={() => setForm(prev => ({ ...prev, is_public: false }))}
-                        className="mt-1 sm:mt-0"
-                        style={{ accentColor: '#DC2626' }}
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          Hanya Anda dan admin yang dapat melihat masukan ini. Gunakan email Anda untuk melacak status.
-                        </div>
-                      </div>
-                    </label>
-                    
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
@@ -629,6 +659,38 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                         <div className="font-medium text-gray-900">Terbuka (Public)</div>
                         <div className="text-sm text-gray-600 mt-1">
                           Masukan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        name="is_public"
+                        checked={!form.is_public}
+                        onChange={() => {
+                          const allowed = handlePrivateSelection(
+                            isAuthenticatedUser,
+                            window.location.pathname,
+                            {
+                              form: { ...form, is_public: false },
+                              files: files,
+                              type: 'feedback'
+                            }
+                          );
+                          if (allowed) {
+                            setForm(prev => ({ ...prev, is_public: false }));
+                          }
+                        }}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {isAuthenticatedUser 
+                            ? 'Hanya Anda dan admin yang dapat melihat masukan ini.'
+                            : 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'}
                         </div>
                       </div>
                     </label>

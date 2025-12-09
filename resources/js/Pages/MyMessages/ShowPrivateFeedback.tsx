@@ -9,31 +9,20 @@ import MessageResponseForm from '@/Components/MyMessages/MessageResponseForm';
 import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
-import { useGuestAutoRedirect } from '@/Hooks/useGuestAutoRedirect';
 import type { Feedback } from '@/types/messages';
 
 type ShowPrivateFeedbackProps = {
   feedback: Feedback;
   statuses?: Array<{ id: number; name: string; slug: string; color: string; icon: string }>;
-  email?: string;
-  phone?: string;
 };
 
-export default function ShowPrivateFeedback({ feedback, statuses = [], email, phone }: ShowPrivateFeedbackProps) {
+export default function ShowPrivateFeedback({ feedback, statuses = [] }: ShowPrivateFeedbackProps) {
   const { auth } = usePage().props as any;
   const [previewAsset, setPreviewAsset] = useState<{ file_path: string; file_type?: string } | null>(null);
   const [isResponseModalOpen, setResponseModalOpen] = useState(false);
 
   const authUser = auth?.user;
   const isAuthenticated = Boolean(authUser);
-
-  // Auto-redirect with query params from cookie if not in URL (only for guest users)
-  useGuestAutoRedirect({
-    email,
-    phone,
-    isAuthenticated,
-    currentPath: window.location.pathname,
-  });
 
   const handleResponseSuccess = React.useCallback(() => {
     router.reload({ only: ['feedback'] });
@@ -43,17 +32,13 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
     typeof authUser?.role === 'string' ? authUser.role.toLowerCase() : undefined;
   const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
   const isOwner = isAuthenticated && feedback.user_id && Number(feedback.user_id) === Number(authUser.id);
-  const hasGuestAccess = !isAuthenticated && Boolean(email) && Boolean(phone);
-  const canRespond = isStaff || isOwner || hasGuestAccess;
+  const canRespond = isStaff || isOwner;
 
   const responseStatusResolver = (statusValue: string | null | undefined) => {
     return getStatusColor(statusValue ?? '');
   };
 
-
-  const backUrl = email && phone 
-    ? `/my-messages/private?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`
-    : '/my-messages/private';
+  const backUrl = '/my-messages/my-posts';
 
   return (
     <MainLayout title={`Detail Masukan Pribadi #${feedback.id}`} currentPage="/my-messages">
@@ -229,7 +214,6 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
                       triggerFullWidth={true}
                       triggerClassName="w-full sm:w-auto whitespace-nowrap"
                     title="Kirim Balasan"
-                    description={!isAuthenticated ? 'Email dan nomor telepon otomatis diisi sesuai data pengirim.' : undefined}
                     maxWidth="3xl"
                     isOpen={isResponseModalOpen}
                     setOpen={setResponseModalOpen}
@@ -241,15 +225,14 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
                         id={feedback.id}
                         canRespond={canRespond}
                         defaultSenderName={authUser?.name ?? feedback.sender_name ?? ''}
-                        defaultEmail={authUser?.email ?? email ?? feedback.email ?? ''}
-                        defaultPhone={phone ?? feedback.sender_phone ?? ''}
+                        defaultEmail={authUser?.email ?? feedback.email ?? ''}
+                        defaultPhone={feedback.sender_phone ?? ''}
                         onSuccess={() => {
                           handleResponseSuccess();
                           close();
                         }}
-                        showContactFields={!isAuthenticated}
-                        lockContactFields={!isAuthenticated}
-                        description={!isAuthenticated ? 'Email dan nomor telepon otomatis diisi sesuai data pengirim.' : undefined}
+                        showContactFields={false}
+                        lockContactFields={true}
                       />
                     )}
                   </MessageActionDialog>

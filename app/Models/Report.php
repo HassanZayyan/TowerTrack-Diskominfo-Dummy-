@@ -94,20 +94,17 @@ class Report extends Model
         static::created(function ($report) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_reports:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
         });
 
         static::updated(function ($report) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_reports:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('reports:*');
         });
 
         static::deleted(function ($report) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_reports:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('reports:*');
         });
     }

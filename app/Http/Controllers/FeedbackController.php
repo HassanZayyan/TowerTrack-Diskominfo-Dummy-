@@ -107,6 +107,9 @@ class FeedbackController extends MessageableController
             return $captchaError;
         }
 
+        // Validate private message access (must be authenticated)
+        $this->validatePrivateMessageAccess($validated);
+
         // Handle user ID and email for authenticated vs anonymous users
         [$userId, $email] = $this->resolveUserAndEmail($validated);
 
@@ -201,16 +204,19 @@ class FeedbackController extends MessageableController
             // Redirect to public show page (with comments)
             return redirect()->route('public.feedbacks.show', $feedback);
         } else {
-            // For private feedbacks, check access
+            // For private feedbacks, require authentication
             if (auth()->check() && $feedback->user_id === auth()->id()) {
                 // Authenticated user viewing their own private feedback
                 return redirect()->route('public.feedbacks.show', $feedback);
             } else {
-                // Redirect to private tracking page
-                return redirect()->route('my.messages.private', [
-                    'email' => $feedback->email,
-                    'phone' => $feedback->sender_phone,
-                ]);
+                // Not authenticated or not owner - redirect to my-posts or login
+                if (auth()->check()) {
+                    return redirect()->route('my.messages.myposts');
+                } else {
+                    return redirect()->route('login')->withErrors([
+                        'message' => 'Anda harus login untuk mengakses pesan pribadi.'
+                    ]);
+                }
             }
         }
     }
@@ -233,18 +239,17 @@ class FeedbackController extends MessageableController
 
     /**
      * Display a private feedback detail page (without comments).
+     * Requires authentication.
      */
     public function showPrivate(Feedback $feedback, Request $request): Response
     {
         $config = $this->getConfig();
-        [$email, $phone] = $this->validatePrivateAccess($feedback, $request, $config['phone_field']);
+        $this->validatePrivateAccess($feedback, $request, $config['phone_field']);
         $this->loadPrivateRelationships($feedback, $config);
 
         return Inertia::render('MyMessages/ShowPrivateFeedback', [
             'feedback' => $feedback,
             'statuses' => $this->getStatuses(),
-            'email' => $email,
-            'phone' => $phone,
         ]);
     }
 

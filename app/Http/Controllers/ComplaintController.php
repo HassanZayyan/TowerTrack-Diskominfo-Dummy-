@@ -112,6 +112,9 @@ class ComplaintController extends MessageableController
             return $captchaError;
         }
 
+        // Validate private message access (must be authenticated)
+        $this->validatePrivateMessageAccess($validated);
+
         // Handle user ID and email for authenticated vs anonymous users
         [$userId, $email] = $this->resolveUserAndEmail($validated);
 
@@ -200,18 +203,17 @@ class ComplaintController extends MessageableController
 
     /**
      * Display a private report detail page (without comments).
+     * Requires authentication.
      */
     public function showPrivate(Report $report, Request $request): Response
     {
         $config = $this->getConfig();
-        [$email, $phone] = $this->validatePrivateAccess($report, $request, $config['phone_field']);
+        $this->validatePrivateAccess($report, $request, $config['phone_field']);
         $this->loadPrivateRelationships($report, $config);
 
         return Inertia::render('MyMessages/ShowPrivateReport', [
             'report' => $report,
             'statuses' => $this->getStatuses(),
-            'email' => $email,
-            'phone' => $phone,
         ]);
     }
 

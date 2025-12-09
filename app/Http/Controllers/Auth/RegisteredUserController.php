@@ -78,6 +78,21 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
+        // Check for return URL (from private message redirect)
+        $returnTo = $request->query('return_to');
+        $selectPrivate = $request->query('select_private') === 'true';
+
+        if ($returnTo && filter_var($returnTo, FILTER_VALIDATE_URL) === false) {
+            // Only allow relative URLs for security
+            $returnTo = ltrim(parse_url($returnTo, PHP_URL_PATH) ?? $returnTo, '/');
+            
+            // Redirect back to form with private selection flag
+            if ($selectPrivate) {
+                return redirect($returnTo)->with('select_private', true);
+            }
+            return redirect($returnTo);
+        }
+
         return redirect(route('verification.notice'));
     }
 }

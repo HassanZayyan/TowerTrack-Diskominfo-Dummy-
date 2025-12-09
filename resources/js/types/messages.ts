@@ -1,6 +1,6 @@
 /**
  * Shared types for MyMessages pages
- * Used across Index.tsx, PrivateTracking.tsx, Admin pages, and related components
+ * Used across Index.tsx, Admin pages, and related components
  */
 
 // Base types for media items

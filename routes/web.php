@@ -82,19 +82,18 @@ Route::get('/my-messages', [MyMessagesController::class, 'index'])->name('my.mes
 // "Pesan Saya" route - Show user's own messages (both public and private)
 Route::get('/my-messages/my-posts', [MyMessagesController::class, 'myPosts'])->middleware('auth')->name('my.messages.myposts');
 
-// Guest private message tracking route
-Route::get('/my-messages/private', [MyMessagesController::class, 'privateTracking'])->name('my.messages.private');
-
 // Public detail pages for reports and feedbacks (with comments)
 Route::get('/my-messages/reports/{report}', [ComplaintController::class, 'showPublic'])
     ->name('public.reports.show');
 Route::get('/my-messages/feedbacks/{feedback}', [FeedbackController::class, 'showPublic'])
     ->name('public.feedbacks.show');
 
-// Private detail pages for reports and feedbacks (without comments, requires email & phone)
+// Private detail pages for reports and feedbacks (requires authentication)
 Route::get('/my-messages/private/reports/{report}', [ComplaintController::class, 'showPrivate'])
+    ->middleware('auth')
     ->name('private.reports.show');
 Route::get('/my-messages/private/feedbacks/{feedback}', [FeedbackController::class, 'showPrivate'])
+    ->middleware('auth')
     ->name('private.feedbacks.show');
 
 Route::post('/my-messages/reports/{report}/responses', [ComplaintController::class, 'storeResponse'])

@@ -335,43 +335,6 @@ export default function MyMessagesIndex({
           </div>
         </StaggeredContainer>
 
-        {/* Show info banner for anonymous users about private message tracking */}
-        {isAnonymous && (
-          <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
-            <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg shadow-md">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <div className="p-2 bg-amber-500 rounded-lg shadow-sm">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-amber-900 mb-2">💡 Informasi Penting</h3>
-                  <p className="text-sm text-amber-800 leading-relaxed mb-3">
-                    Halaman ini menampilkan semua pesan <span className="font-semibold">publik</span>. Jika Anda ingin melihat pesan <span className="font-semibold">pribadi</span> yang Anda kirim, silakan gunakan fitur tracking pesan pribadi.
-                  </p>
-                  <AnimatedButton
-                    variant="outline"
-                    size="sm"
-                    animation="scale"
-                    onClick={() => router.visit('/my-messages/private')}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    }
-                    className="border-amber-600 text-amber-800 hover:bg-amber-600 hover:text-white"
-                  >
-                    Lacak Pesan Pribadi
-                  </AnimatedButton>
-                </div>
-              </div>
-            </div>
-          </StaggeredContainer>
-        )}
-
         {/* Show info banner for authenticated users about public messages */}
         {!isAnonymous && auth?.user && !isMyPosts && (
           <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>

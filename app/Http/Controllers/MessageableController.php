@@ -53,32 +53,28 @@ abstract class MessageableController extends Controller
     
     /**
      * Validate private access.
-     * 
-     * @return array [email, phone]
+     * Requires authentication - only authenticated users can access private messages.
      */
-    protected function validatePrivateAccess($model, Request $request, string $phoneField): array
+    protected function validatePrivateAccess($model, Request $request, string $phoneField): void
     {
-        $email = $request->query('email');
-        $phone = $request->query('phone');
-        
         if ($model->is_public) {
             abort(404, 'Pesan tidak ditemukan atau tidak pribadi.');
         }
         
-        if (!$email || !$phone) {
-            abort(404, 'Email dan nomor telepon diperlukan untuk mengakses pesan pribadi.');
+        // Require authentication
+        if (!auth()->check()) {
+            abort(403, 'Anda harus login untuk mengakses pesan pribadi.');
         }
         
-        if ($model->email !== $email || $model->$phoneField !== $phone) {
+        $user = auth()->user();
+        
+        // Check if user owns the message or is staff/admin
+        $isOwner = $model->user_id && $model->user_id === $user->id;
+        $isStaff = in_array($user->role, ['admin', 'operator', 'tower_owner', 'staff']);
+        
+        if (!$isOwner && !$isStaff) {
             abort(403, 'Anda tidak memiliki akses ke pesan ini.');
         }
-
-        // For guest users (no user_id), require email verification
-        if (!$model->user_id && method_exists($model, 'hasVerifiedEmail') && !$model->hasVerifiedEmail()) {
-            abort(403, 'Email Anda belum diverifikasi. Silakan periksa email Anda dan klik link verifikasi yang telah dikirim, atau gunakan fitur "Kirim Ulang Verifikasi Email" untuk mendapatkan link baru.');
-        }
-        
-        return [$email, $phone];
     }
     
     /**
@@ -355,6 +351,22 @@ abstract class MessageableController extends Controller
         }
         
         return $rules;
+    }
+
+    /**
+     * Validate that private messages can only be created by authenticated users.
+     * 
+     * @param array $validated Validated request data
+     * @throws \Illuminate\Http\Exceptions\HttpResponseException
+     */
+    protected function validatePrivateMessageAccess(array $validated): void
+    {
+        // Check if user is trying to create a private message
+        $isPrivate = !($validated['is_public'] ?? true);
+        
+        if ($isPrivate && isGuest()) {
+            abort(403, 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.');
+        }
     }
 
     /**
