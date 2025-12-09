@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useMemo, useCallback, useState } from 'react';
 import L from 'leaflet';
 import { isTowerSelected, createTowerMarkerIcon } from '@/utils/towerIconUtils';
+import { createFoMarkerIcon } from '@/utils/foIconUtils'; // Add this import
 
 interface MapMarker {
     position: [number, number];
@@ -8,6 +9,7 @@ interface MapMarker {
     description?: string;
     radiusMeters?: number;
     towerData?: any; // Tower data to pass when marker is clicked
+    customIcon?: L.Icon | L.DivIcon; // Custom icon (for FO points or other custom icons)
 }
 
 interface LeafletMapProps {
@@ -229,26 +231,33 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             markers.forEach((m, index) => {
                 console.log(`Creating marker ${index + 1} at position:`, m.position);
                 
-                // Determine marker icon state
-                // Priority: measurement selected > selected > default
-                let iconState: 'default' | 'selected' | 'measurement';
-                if (showLines) {
-                    // Measurement mode: only selected points are red
-                    const isMeasurementSelected = isPointSelected(m.position);
-                    iconState = isMeasurementSelected ? 'measurement' : 'default';
+                // Use custom icon if provided, otherwise create tower icon
+                let iconToUse: L.Icon | L.DivIcon;
+                if (m.customIcon) {
+                    // Use provided custom icon (e.g., FO point icon)
+                    iconToUse = m.customIcon;
                 } else {
-                    // Normal mode: check if selected
-                    const towerId = m.towerData?.id;
-                    const isSelected = isTowerSelected(towerId, selectedTowerId);
-                    iconState = isSelected ? 'selected' : 'default';
+                    // Determine marker icon state for towers
+                    // Priority: measurement selected > selected > default
+                    let iconState: 'default' | 'selected' | 'measurement';
+                    if (showLines) {
+                        // Measurement mode: only selected points are red
+                        const isMeasurementSelected = isPointSelected(m.position);
+                        iconState = isMeasurementSelected ? 'measurement' : 'default';
+                    } else {
+                        // Normal mode: check if selected
+                        const towerId = m.towerData?.id;
+                        const isSelected = isTowerSelected(towerId, selectedTowerId);
+                        iconState = isSelected ? 'selected' : 'default';
+                    }
+                    
+                    // Create custom icon based on state
+                    iconToUse = createTowerMarkerIcon(iconState);
                 }
-                
-                // Create custom icon based on state
-                const customIcon = createTowerMarkerIcon(iconState);
                 
                 const marker = L.marker(m.position, { 
                     title: m.title,
-                    icon: customIcon
+                    icon: iconToUse
                 });
                 
                 if (m.title || m.description) {
@@ -314,25 +323,108 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             const markerData = markers[index];
             if (!markerData) return;
 
-            // Determine marker icon state
-            // Priority: measurement selected > selected > default
-            let iconState: 'default' | 'selected' | 'measurement';
-            if (showLines) {
-                // Measurement mode: only selected points are red
-                const isMeasurementSelected = isPointSelected(markerData.position);
-                iconState = isMeasurementSelected ? 'measurement' : 'default';
+            const towerData = markerData.towerData;
+            
+            // Determine if this is an FO point or tower based on data structure
+            // Priority: __type > property check
+            // FO points have 'name' property, towers have 'site_name' property
+            const isFoPoint = towerData && (
+                towerData.__type === 'fo_point' || 
+                (towerData.__type !== 'tower' && towerData.name && !towerData.site_name)
+            );
+            const isTower = towerData && (
+                towerData.__type === 'tower' || 
+                (towerData.__type !== 'fo_point' && towerData.site_name)
+            );
+            
+            if (isFoPoint) {
+                // This is an FO point - update using createFoMarkerIcon
+                // Determine selection state
+                const isSelected = selectedTowerId && towerData.id && 
+                    towerData.id.toString() === selectedTowerId.toString();
+                const state = isSelected ? 'selected' : 'default';
+                
+                // Get FO point images and side_of_road
+                const foImages = (towerData.images && typeof towerData.images === 'object') ? {
+                    isp: towerData.images.isp || null,
+                    pole: towerData.images.pole || null,
+                    junction_box: towerData.images.junction_box || null,
+                } : {
+                    isp: null,
+                    pole: null,
+                    junction_box: null,
+                };
+                
+                const sideOfRoad = towerData.side_of_road || null;
+                
+                // Create new FO icon with correct selection state
+                const newIcon = createFoMarkerIcon(foImages, sideOfRoad, state);
+                marker.setIcon(newIcon);
+                
+                console.log(`FO Point marker ${index + 1} (ID: ${towerData.id}) updated - State: ${state}`);
+            } else if (isTower) {
+                // This is a tower - update using createTowerMarkerIcon
+                // Determine marker icon state
+                // Priority: measurement selected > selected > default
+                let iconState: 'default' | 'selected' | 'measurement';
+                if (showLines) {
+                    // Measurement mode: only selected points are red
+                    const isMeasurementSelected = isPointSelected(markerData.position);
+                    iconState = isMeasurementSelected ? 'measurement' : 'default';
+                } else {
+                    // Normal mode: check if selected
+                    const towerId = towerData?.id;
+                    const isSelected = isTowerSelected(towerId, selectedTowerId);
+                    iconState = isSelected ? 'selected' : 'default';
+                }
+                
+                // Update icon without recreating marker
+                const newIcon = createTowerMarkerIcon(iconState);
+                marker.setIcon(newIcon);
+                
+                console.log(`Tower marker ${index + 1} (ID: ${towerData?.id}) updated - State: ${iconState}`);
             } else {
-                // Normal mode: check if selected
-                const towerId = markerData.towerData?.id;
-                const isSelected = isTowerSelected(towerId, selectedTowerId);
-                iconState = isSelected ? 'selected' : 'default';
+                // Fallback: if we can't determine type, check if it has site_name (tower) or name (FO point)
+                // Default to tower if unclear
+                if (towerData?.site_name) {
+                    // Has site_name - treat as tower
+                    let iconState: 'default' | 'selected' | 'measurement';
+                    if (showLines) {
+                        const isMeasurementSelected = isPointSelected(markerData.position);
+                        iconState = isMeasurementSelected ? 'measurement' : 'default';
+                    } else {
+                        const towerId = towerData?.id;
+                        const isSelected = isTowerSelected(towerId, selectedTowerId);
+                        iconState = isSelected ? 'selected' : 'default';
+                    }
+                    const newIcon = createTowerMarkerIcon(iconState);
+                    marker.setIcon(newIcon);
+                    console.log(`Fallback (tower): Marker ${index + 1} (ID: ${towerData?.id}) updated - State: ${iconState}`);
+                } else if (towerData?.name) {
+                    // Has name but no site_name - treat as FO point
+                    const isSelected = selectedTowerId && towerData.id && 
+                        towerData.id.toString() === selectedTowerId.toString();
+                    const state = isSelected ? 'selected' : 'default';
+                    
+                    const foImages = (towerData.images && typeof towerData.images === 'object') ? {
+                        isp: towerData.images.isp || null,
+                        pole: towerData.images.pole || null,
+                        junction_box: towerData.images.junction_box || null,
+                    } : {
+                        isp: null,
+                        pole: null,
+                        junction_box: null,
+                    };
+                    
+                    const sideOfRoad = towerData.side_of_road || null;
+                    const newIcon = createFoMarkerIcon(foImages, sideOfRoad, state);
+                    marker.setIcon(newIcon);
+                    console.log(`Fallback (FO point): Marker ${index + 1} (ID: ${towerData?.id}) updated - State: ${state}`);
+                } else {
+                    // Can't determine type - skip update to avoid errors
+                    console.log(`Marker ${index + 1} - cannot determine type, skipping update`);
+                }
             }
-            
-            // Update icon without recreating marker
-            const newIcon = createTowerMarkerIcon(iconState);
-            marker.setIcon(newIcon);
-            
-            console.log(`Marker ${index + 1} (tower ID: ${markerData.towerData?.id}) updated - State: ${iconState}`);
         });
 
         console.log('=== MARKER ICONS UPDATE COMPLETED ===');
@@ -518,6 +610,10 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
         coverageLayer.clearLayers();
         if (showCoverage) {
             markers.forEach((m) => {
+                // Skip coverage circle for markers with customIcon (FO points) or undefined radiusMeters
+                if (m.customIcon || m.radiusMeters === undefined || m.radiusMeters === 0) {
+                    return;
+                }
                 const circle = L.circle(m.position, {
                     radius: m.radiusMeters ?? defaultRadiusMeters,
                     color: '#2563eb',

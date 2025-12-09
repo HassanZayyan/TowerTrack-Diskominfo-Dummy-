@@ -84,37 +84,65 @@ export default function MyMessagesIndex({
       ? feedbacks
       : (feedbacks && 'data' in feedbacks ? feedbacks.data : []);
     
-    const complaintItems = (reportsData || []).map((r) => ({
-      id: `report-${r.id}`,
-      type: 'Keluhan' as const,
-      created_at: r.created_at,
-      towerName: r.tower?.site_name ?? '-',
-      category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
-      status: r.status || 'pending',
-      responsesCount: r.responses?.length ?? 0,
-      commentsCount: r.comments_count ?? 0,
-      // Extract sender info - prefer authenticated user info over anonymous info
-      senderName: r.user?.name || r.reporter_name || 'Anonymous',
-      senderEmail: r.user?.email || r.email || '-',
-      isAnonymous: !r.user_id, // Anonymous if no user_id
-      isPublic: r.is_public ?? false, // Extract visibility flag
-    }));
+    const complaintItems = (reportsData || []).map((r) => {
+      // Determine location type from reportable_type
+      // Fallback to checking reportable object properties if reportable_type is not available
+      let locationType: 'Tower' | 'Fiber Optik' = 'Tower';
+      if (r.reportable_type === 'App\\Models\\FoPoint') {
+        locationType = 'Fiber Optik';
+      } else if (r.reportable_type === 'App\\Models\\Tower') {
+        locationType = 'Tower';
+      } else if (r.reportable) {
+        // Fallback: check if reportable has 'name' (FoPoint) or 'site_name' (Tower)
+        locationType = r.reportable.name && !r.reportable.site_name ? 'Fiber Optik' : 'Tower';
+      }
+      return {
+        id: `report-${r.id}`,
+        type: 'Keluhan' as const,
+        created_at: r.created_at,
+        towerName: r.tower?.site_name ?? r.reportable?.site_name ?? r.reportable?.name ?? '-',
+        locationType: locationType as 'Tower' | 'Fiber Optik',
+        category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
+        status: r.status || 'pending',
+        responsesCount: r.responses?.length ?? 0,
+        commentsCount: r.comments_count ?? 0,
+        // Extract sender info - prefer authenticated user info over anonymous info
+        senderName: r.user?.name || r.reporter_name || 'Anonymous',
+        senderEmail: r.user?.email || r.email || '-',
+        isAnonymous: !r.user_id, // Anonymous if no user_id
+        isPublic: r.is_public ?? false, // Extract visibility flag
+      };
+    });
 
-    const feedbackItems = (feedbacksData || []).map((f) => ({
-      id: `feedback-${f.id}`,
-      type: 'Masukan' as const,
-      created_at: f.created_at,
-      towerName: f.tower?.site_name ?? '-',
-      category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
-      status: f.status || 'pending',
-      responsesCount: f.responses?.length ?? 0,
-      commentsCount: f.comments_count ?? 0,
-      // Extract sender info - prefer authenticated user info over anonymous info
-      senderName: f.user?.name || f.sender_name || 'Anonymous',
-      senderEmail: f.user?.email || f.email || '-',
-      isAnonymous: !f.user_id, // Anonymous if no user_id
-      isPublic: f.is_public ?? false, // Extract visibility flag
-    }));
+    const feedbackItems = (feedbacksData || []).map((f) => {
+      // Determine location type from feedbackable_type
+      // Fallback to checking feedbackable object properties if feedbackable_type is not available
+      let locationType: 'Tower' | 'Fiber Optik' = 'Tower';
+      if (f.feedbackable_type === 'App\\Models\\FoPoint') {
+        locationType = 'Fiber Optik';
+      } else if (f.feedbackable_type === 'App\\Models\\Tower') {
+        locationType = 'Tower';
+      } else if (f.feedbackable) {
+        // Fallback: check if feedbackable has 'name' (FoPoint) or 'site_name' (Tower)
+        locationType = f.feedbackable.name && !f.feedbackable.site_name ? 'Fiber Optik' : 'Tower';
+      }
+      return {
+        id: `feedback-${f.id}`,
+        type: 'Masukan' as const,
+        created_at: f.created_at,
+        towerName: f.tower?.site_name ?? f.feedbackable?.site_name ?? f.feedbackable?.name ?? '-',
+        locationType: locationType as 'Tower' | 'Fiber Optik',
+        category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
+        status: f.status || 'pending',
+        responsesCount: f.responses?.length ?? 0,
+        commentsCount: f.comments_count ?? 0,
+        // Extract sender info - prefer authenticated user info over anonymous info
+        senderName: f.user?.name || f.sender_name || 'Anonymous',
+        senderEmail: f.user?.email || f.email || '-',
+        isAnonymous: !f.user_id, // Anonymous if no user_id
+        isPublic: f.is_public ?? false, // Extract visibility flag
+      };
+    });
 
     return [...complaintItems, ...feedbackItems];
   }, [reports, feedbacks]);

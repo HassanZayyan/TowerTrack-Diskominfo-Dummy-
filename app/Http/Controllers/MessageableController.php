@@ -70,7 +70,7 @@ abstract class MessageableController extends Controller
         
         // Check if user owns the message or is staff/admin
         $isOwner = $model->user_id && $model->user_id === $user->id;
-        $isStaff = in_array($user->role, ['admin', 'operator', 'tower_owner', 'staff']);
+        $isStaff = in_array($user->role, ['admin', 'operator', 'tower_owner', 'provider_owner', 'staff']);
         
         if (!$isOwner && !$isStaff) {
             abort(403, 'Anda tidak memiliki akses ke pesan ini.');
@@ -83,8 +83,13 @@ abstract class MessageableController extends Controller
      */
     protected function loadPublicRelationships($model, array $config): array
     {
+        // Determine the polymorphic relationship name based on model type
+        $polymorphicRelation = $model instanceof \App\Models\Report ? 'reportable' : 'feedbackable';
+        
+        // Load polymorphic relationship without select() to avoid SQL errors
+        // Different models (Tower vs FoPoint) have different columns
         $relationships = [
-            'tower:id,site_name,alamat_menara',
+            $polymorphicRelation, // Load all columns to avoid SQL errors
             'user:id,name,email,role',
             $config['assets_relation'] => function($q) use ($config) {
                 $q->select($config['assets_select']);
@@ -127,8 +132,13 @@ abstract class MessageableController extends Controller
      */
     protected function loadPrivateRelationships($model, array $config): void
     {
+        // Determine the polymorphic relationship name based on model type
+        $polymorphicRelation = $model instanceof \App\Models\Report ? 'reportable' : 'feedbackable';
+        
+        // Load polymorphic relationship without select() to avoid SQL errors
+        // Different models (Tower vs FoPoint) have different columns
         $relationships = [
-            'tower:id,site_name,alamat_menara',
+            $polymorphicRelation, // Load all columns to avoid SQL errors
             'user:id,name,email,role',
             $config['assets_relation'] => function($q) use ($config) {
                 $q->select($config['assets_select']);

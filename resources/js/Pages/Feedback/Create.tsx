@@ -3,7 +3,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
 import FileUpload from '@/Components/FileUpload';
-import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
+import LocationSelectionInput from '@/Components/LocationSelectionInput';
 import AlertDialog from '@/Components/AlertDialog';
 import PageHeader from '@/Components/PageHeader';
 import AnimatedButton from '@/Components/AnimatedButton';
@@ -12,12 +12,10 @@ import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCap
 import { validatePhoneNumber } from '@/utils/validationUtils';
 import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
 import { handlePrivateSelection, restoreFormState, shouldSelectPrivate } from '@/utils/privateMessageUtils';
+import { Tower, FoPoint, LocationType } from '@/types/messages';
 import 'leaflet/dist/leaflet.css';
 
-interface Tower {
-  id: number;
-  site_name: string;
-  alamat_menara?: string;
+interface TowerWithCoords extends Tower {
   latitude: number | string;
   longitude: number | string;
   tinggi_menara?: number;
@@ -27,8 +25,14 @@ interface Tower {
   site_type?: string | null;
 }
 
+interface FoPointWithCoords extends FoPoint {
+  latitude: number | string;
+  longitude: number | string;
+}
+
 interface FeedbackCreateProps {
-  towers: Tower[];
+  towers: TowerWithCoords[];
+  foPoints?: FoPointWithCoords[];
 }
 
 const INITIAL_FORM_STATE = {
@@ -37,13 +41,15 @@ const INITIAL_FORM_STATE = {
   kategori: '',
   lokasi_tower: '',
   lokasi_tower_display: '',
-  tower_id: '',
+  feedbackable_type: '' as '' | 'App\\Models\\Tower' | 'App\\Models\\FoPoint',
+  feedbackable_id: '',
   pesan: '',
   email: '',
   is_public: true,
   reporter_latitude: '',
   reporter_longitude: '',
   reporter_accuracy: '',
+  location_type_filter: 'tower' as 'tower' | 'fo_point', // Filter untuk memilih tower atau FO point
 };
 
 const INITIAL_VALIDATION_STATE = {
@@ -66,7 +72,7 @@ const FEEDBACK_CATEGORIES = [
 const MAX_MESSAGE_LENGTH = 1000;
 const MAX_DISTANCE_KM = 1;
 
-export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
+export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackCreateProps) {
   const { errors, auth, turnstileSiteKey } = usePage().props as any;
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
@@ -138,28 +144,42 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     setShowDialog(true);
   }, []);
 
-  // Handle tower selection (both from search and map)
-  const handleTowerSelection = useCallback((tower: Tower) => {
-    const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
+  // Handle location selection (both from search and map)
+  const handleLocationSelect = useCallback((location: Tower | FoPoint, type: LocationType) => {
+    let displayName = '';
+    let feedbackableType: 'App\\Models\\Tower' | 'App\\Models\\FoPoint';
+    
+    if (type === 'tower') {
+      const tower = location as TowerWithCoords;
+      displayName = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
+      feedbackableType = 'App\\Models\\Tower';
+    } else {
+      const foPoint = location as FoPointWithCoords;
+      displayName = `${foPoint.name}${foPoint.area ? ' - ' + foPoint.area : ''}${foPoint.route_name ? ' (' + foPoint.route_name + ')' : ''}`;
+      feedbackableType = 'App\\Models\\FoPoint';
+    }
+    
     setForm(prev => ({
       ...prev,
-      tower_id: String(tower.id),
-      lokasi_tower: tower.site_name,
-      lokasi_tower_display: fullAddress,
+      feedbackable_type: feedbackableType,
+      feedbackable_id: String(location.id),
+      lokasi_tower: type === 'tower' ? (location as Tower).site_name : (location as FoPoint).name,
+      lokasi_tower_display: displayName,
     }));
     
     if (validation.lokasi_tower) {
       setValidation(prev => ({ ...prev, lokasi_tower: false }));
     }
-  }, [validation.lokasi_tower]);
+  }, [validation]);
 
-  // Handle clear tower selection
-  const handleTowerClear = useCallback(() => {
+  // Handle clear location selection
+  const handleLocationClear = useCallback(() => {
     setForm(prev => ({ 
       ...prev, 
       lokasi_tower: '', 
       lokasi_tower_display: '', 
-      tower_id: '' 
+      feedbackable_type: '' as '' | 'App\\Models\\Tower' | 'App\\Models\\FoPoint',
+      feedbackable_id: '' 
     }));
   }, []);
 
@@ -174,22 +194,23 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       const selectedTower = towers.find(tower => tower.id.toString() === towerId);
       
       if (selectedTower) {
-        // Use the handleTowerSelection function to properly set the form data
-        handleTowerSelection(selectedTower);
+        // Use the handleLocationSelect function to properly set the form data
+        handleLocationSelect(selectedTower, 'tower');
         setIsAutoFilled(true);
       } else {
         // If tower not found in array, still set basic info from URL params
         const decodedTowerName = decodeURIComponent(towerName);
         setForm(prev => ({
           ...prev,
-          tower_id: towerId,
+          feedbackable_type: 'App\\Models\\Tower' as const,
+          feedbackable_id: towerId,
           lokasi_tower: decodedTowerName,
           lokasi_tower_display: decodedTowerName,
         }));
         setIsAutoFilled(true);
       }
     }
-  }, [towers, handleTowerSelection]); // Include dependencies
+  }, [towers, handleLocationSelect]); // Include dependencies
 
   const sanitizePhoneNumber = useCallback((value: string): string => {
     // Only allow numbers, + and - at the beginning
@@ -276,7 +297,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     formData.append('sender_name', isAuthenticatedUser ? (auth?.user?.name || '') : formToUse.nama.trim());
     formData.append('sender_phone', formToUse.telepon.trim());
     formData.append('category', formToUse.kategori.trim());
-    formData.append('tower_id', formToUse.tower_id);
+    formData.append('feedbackable_type', formToUse.feedbackable_type);
+    formData.append('feedbackable_id', formToUse.feedbackable_id);
     formData.append('message', formToUse.pesan.trim());
     
     // Append visibility (is_public)
@@ -361,15 +383,34 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       return;
     }
     
-    // Find selected tower to get coordinates
-    const selectedTower = towers.find(tower => tower.id.toString() === form.tower_id);
-    if (!selectedTower) {
-      showErrorDialog('Data Tower Tidak Tersedia', 'Tower yang dipilih tidak ditemukan');
+    // Find selected location (tower or FO point) to get coordinates
+    let selectedLocation: TowerWithCoords | FoPointWithCoords | undefined;
+    let locationHasCoordinates = false;
+    
+    if (form.feedbackable_type === 'App\\Models\\Tower') {
+      selectedLocation = towers.find(tower => tower.id.toString() === form.feedbackable_id);
+      if (!selectedLocation) {
+        showErrorDialog('Data Tower Tidak Tersedia', 'Tower yang dipilih tidak ditemukan');
+        return;
+      }
+      locationHasCoordinates = hasValidTowerCoordinates(selectedLocation as TowerWithCoords);
+    } else if (form.feedbackable_type === 'App\\Models\\FoPoint') {
+      selectedLocation = foPoints.find(point => point.id.toString() === form.feedbackable_id);
+      if (!selectedLocation) {
+        showErrorDialog('Data FO Point Tidak Tersedia', 'FO Point yang dipilih tidak ditemukan');
+        return;
+      }
+      const lat = Number(selectedLocation.latitude);
+      const lon = Number(selectedLocation.longitude);
+      locationHasCoordinates = (
+        Number.isFinite(lat) && Number.isFinite(lon) &&
+        lat !== 0 && lon !== 0 &&
+        Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+      );
+    } else {
+      showErrorDialog('Lokasi Tidak Valid', 'Silakan pilih lokasi (Tower atau FO Point)');
       return;
     }
-    
-    // Check if tower has valid coordinates
-    const towerHasCoordinates = hasValidTowerCoordinates(selectedTower);
     
     setIsSubmitting(true);
     
@@ -379,12 +420,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       let userLocationResult: Awaited<ReturnType<typeof getLocationForAccountSwitching>> | undefined;
       
       // Always request user location for documentation and validation
-      // Use advanced account-switching optimized location capture with tower validation
+      // Use advanced account-switching optimized location capture with location validation
       userLocationResult = await getLocationForAccountSwitching(
         auth?.user?.id, 
-        towerHasCoordinates ? {
-          latitude: Number(selectedTower.latitude),
-          longitude: Number(selectedTower.longitude)
+        locationHasCoordinates ? {
+          latitude: Number(selectedLocation.latitude),
+          longitude: Number(selectedLocation.longitude)
         } : undefined,
         5 // Use more attempts for better accuracy
       );
@@ -449,11 +490,11 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
         }
       }
       
-      if (towerHasCoordinates) {
-        // Additional validation against tower coordinates for distance check
+      if (locationHasCoordinates) {
+        // Additional validation against location coordinates for distance check
         locationValidation = await requestLocationAndValidate({
-          latitude: Number(selectedTower.latitude),
-          longitude: Number(selectedTower.longitude)
+          latitude: Number(selectedLocation.latitude),
+          longitude: Number(selectedLocation.longitude)
         }, MAX_DISTANCE_KM);
         
         if (!locationValidation.success) {
@@ -463,9 +504,10 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           
           if (locationValidation.message.includes('terlalu jauh')) {
             locationTitle = 'Jarak Terlalu Jauh';
-            locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
+            const locationType = form.feedbackable_type === 'App\\Models\\Tower' ? 'tower' : 'FO Point';
+            locationMessage = `${locationValidation.message} Silakan mendekati ${locationType} atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
           } else {
-            locationMessage = 'Gagal memvalidasi jarak ke tower. Silakan coba lagi.';
+            locationMessage = 'Gagal memvalidasi jarak ke lokasi. Silakan coba lagi.';
           }
           
           showWarningDialog(locationTitle, locationMessage);
@@ -473,7 +515,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           return;
         }
       } else {
-        // Tower has no coordinates, just log for documentation
+        // Location has no coordinates, just log for documentation
         locationValidation = { success: true, message: 'Lokasi berhasil diperoleh untuk dokumentasi' };
       }
       
@@ -518,9 +560,9 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           } else if (errors.sender_phone || errors.telepon) {
             errorTitle = 'Format Telepon Salah';
             errorMessage = 'Nomor telepon tidak valid. Pastikan menggunakan format yang benar (contoh: 08123456789).';
-          } else if (errors.tower_id) {
-            errorTitle = 'Tower Tidak Valid';
-            errorMessage = 'Tower yang dipilih tidak valid. Silakan pilih tower yang tersedia.';
+          } else if (errors.feedbackable_id || errors.feedbackable_type) {
+            errorTitle = 'Lokasi Tidak Valid';
+            errorMessage = 'Lokasi yang dipilih tidak valid. Silakan pilih lokasi (Tower atau FO Point) yang tersedia.';
           } else if (errors.message || errors.pesan) {
             errorTitle = 'Pesan Tidak Valid';
             errorMessage = 'Pesan terlalu panjang atau mengandung karakter yang tidak diizinkan.';
@@ -643,6 +685,61 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 
                 <div className="md:col-span-2">
                   <label className="block text-gray-700 font-medium mb-3">
+                    Tipe Masukan <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        id="location_type_tower"
+                        name="location_type_filter"
+                        checked={form.location_type_filter === 'tower'}
+                        onChange={() => {
+                          // Clear selection if current selection doesn't match new filter
+                          if (form.feedbackable_type === 'App\\Models\\FoPoint') {
+                            handleLocationClear();
+                          }
+                          setForm(prev => ({ ...prev, location_type_filter: 'tower' }));
+                        }}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Tower</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Pilih lokasi tower untuk masukan
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        id="location_type_fo"
+                        name="location_type_filter"
+                        checked={form.location_type_filter === 'fo_point'}
+                        onChange={() => {
+                          // Clear selection if current selection doesn't match new filter
+                          if (form.feedbackable_type === 'App\\Models\\Tower') {
+                            handleLocationClear();
+                          }
+                          setForm(prev => ({ ...prev, location_type_filter: 'fo_point' }));
+                        }}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Fiber Optik</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Pilih lokasi FO Point untuk masukan
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-medium mb-3">
                     Visibilitas Masukan <span className="text-red-600">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -741,16 +838,18 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 </div>
               </div>
               
-              <TowerSelectionInput
-                towers={towers}
-                selectedTowerId={form.tower_id}
-                selectedTowerDisplay={form.lokasi_tower_display}
-                onTowerSelect={handleTowerSelection}
-                onClear={handleTowerClear}
-                label="Lokasi Tower"
+              <LocationSelectionInput
+                towers={form.location_type_filter === 'tower' ? towers : []}
+                foPoints={form.location_type_filter === 'fo_point' ? foPoints : []}
+                selectedLocationId={form.feedbackable_id}
+                selectedLocationDisplay={form.lokasi_tower_display}
+                selectedLocationType={form.feedbackable_type === 'App\\Models\\Tower' ? 'tower' : form.feedbackable_type === 'App\\Models\\FoPoint' ? 'fo_point' : undefined}
+                onLocationSelect={handleLocationSelect}
+                onClear={handleLocationClear}
+                label={form.location_type_filter === 'tower' ? "Lokasi Tower" : "Lokasi FO Point"}
                 required={true}
                 error={validation.lokasi_tower}
-                errorMessage="Lokasi tower harus dipilih"
+                errorMessage="Lokasi harus dipilih"
                 className="mb-6"
               />
               

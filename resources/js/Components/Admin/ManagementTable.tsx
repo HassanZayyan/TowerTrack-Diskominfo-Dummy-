@@ -330,7 +330,7 @@ const ManagementTable: React.FC<Props> = ({
                       {type === 'complaints' ? 'Keluhan' : 'Masukan'}
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tower
+                      Type
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Visibilitas
@@ -431,19 +431,12 @@ const ManagementTable: React.FC<Props> = ({
                         </div>
                       </td>
                       <td className="px-3 py-4 align-top">
-                        <div className="text-sm text-gray-700">
-                          <div className="font-medium truncate" title={item.tower?.site_name || '-'}>
-                            {item.tower?.site_name || '-'}
-                          </div>
-                          {item.tower?.alamat_menara && (
-                            <div className="text-xs text-gray-500 truncate mt-1" title={item.tower.alamat_menara}>
-                              {item.tower.alamat_menara.length > 30 
-                                ? `${item.tower.alamat_menara.substring(0, 30)}...`
-                                : item.tower.alamat_menara
-                              }
-                            </div>
-                          )}
-                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                          {isReport(item, type) 
+                            ? (item.reportable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                            : (item.feedbackable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                          }
+                        </span>
                       </td>
                       <td className="px-3 py-4 align-top">
                         <div className="flex justify-center">
@@ -555,14 +548,14 @@ const ManagementTable: React.FC<Props> = ({
                     <div className="text-sm text-gray-600 line-clamp-3">{item.message}</div>
                   </div>
                   
-                  {item.tower && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-700 truncate">{item.tower.site_name}</div>
-                      {item.tower.alamat_menara && (
-                        <div className="text-xs text-gray-500 truncate">{item.tower.alamat_menara}</div>
-                      )}
-                    </div>
-                  )}
+                  <div className="mb-3">
+                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                      {isReport(item, type) 
+                        ? (item.reportable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                        : (item.feedbackable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                      }
+                    </span>
+                  </div>
                   
                   {getItemAssets(item).length > 0 && (
                     <div className="grid grid-cols-2 gap-2 mb-3">

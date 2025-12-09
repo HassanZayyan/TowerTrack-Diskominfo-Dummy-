@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'banned',
         'owner_id',
+        'fo_provider_id',
         'avatar',
     ];
 
@@ -53,12 +54,12 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user is staff (admin, operator, or tower_owner)
-     * Tower owner is considered staff for basic admin access
+     * Check if user is staff (admin, operator, tower_owner, or provider_owner)
+     * Tower owner and provider owner are considered staff for basic admin access
      */
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'operator', 'tower_owner'], true);
+        return in_array($this->role, ['admin', 'operator', 'tower_owner', 'provider_owner'], true);
     }
 
     /**
@@ -83,6 +84,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isTowerOwner(): bool
     {
         return $this->role === 'tower_owner';
+    }
+
+    /**
+     * Check if user is provider owner
+     */
+    public function isProviderOwner(): bool
+    {
+        return $this->role === 'provider_owner';
     }
 
     /**
@@ -118,6 +127,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Relationship with provider (for provider owners)
+     */
+    public function provider()
+    {
+        return $this->belongsTo(FoProvider::class, 'fo_provider_id');
+    }
+
+    /**
      * Get towers owned by this user (if tower owner)
      */
     public function ownedTowers()
@@ -127,5 +144,17 @@ class User extends Authenticatable implements MustVerifyEmail
         }
         
         return $this->owner ? $this->owner->towers : collect();
+    }
+
+    /**
+     * Get FO points owned by this user (if provider owner)
+     */
+    public function ownedFoPoints()
+    {
+        if ($this->role !== 'provider_owner') {
+            return collect();
+        }
+        
+        return $this->provider ? $this->provider->foPoints : collect();
     }
 }

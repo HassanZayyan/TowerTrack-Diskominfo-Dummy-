@@ -38,6 +38,34 @@ return new class extends Migration
             $table->index('default_sort_order');
             $table->index('name');
         });
+        
+        // Add foreign key constraint for fo_provider_id in users table
+        // This runs after fo_providers table is created, so it's safe
+        if (Schema::hasTable('users') && Schema::hasColumn('users', 'fo_provider_id')) {
+            try {
+                Schema::table('users', function (Blueprint $table) {
+                    // Check if foreign key doesn't exist yet to avoid duplicate constraint error
+                    $foreignKeyExists = DB::select(
+                        "SELECT CONSTRAINT_NAME 
+                         FROM information_schema.KEY_COLUMN_USAGE 
+                         WHERE TABLE_SCHEMA = DATABASE() 
+                         AND TABLE_NAME = 'users' 
+                         AND COLUMN_NAME = 'fo_provider_id' 
+                         AND REFERENCED_TABLE_NAME = 'fo_providers'"
+                    );
+                    
+                    if (empty($foreignKeyExists)) {
+                        $table->foreign('fo_provider_id')
+                              ->references('id')
+                              ->on('fo_providers')
+                              ->onDelete('set null');
+                    }
+                });
+            } catch (\Exception $e) {
+                // Ignore if foreign key already exists or other errors
+                \Log::warning('Could not add fo_provider_id foreign key: ' . $e->getMessage());
+            }
+        }
     }
 
     /**
@@ -45,6 +73,18 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drop foreign key constraint first if it exists
+        if (Schema::hasTable('users') && Schema::hasColumn('users', 'fo_provider_id')) {
+            try {
+                Schema::table('users', function (Blueprint $table) {
+                    $table->dropForeign(['fo_provider_id']);
+                });
+            } catch (\Exception $e) {
+                // Ignore if foreign key doesn't exist
+                \Log::warning('Could not drop fo_provider_id foreign key: ' . $e->getMessage());
+            }
+        }
+        
         Schema::dropIfExists('fo_providers');
     }
 

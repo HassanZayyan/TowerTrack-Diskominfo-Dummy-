@@ -7,6 +7,7 @@ interface MessageItem {
   type: 'Keluhan' | 'Masukan';
   created_at: string;
   towerName: string;
+  locationType?: 'Tower' | 'Fiber Optik';
   category: string;
   status: string | undefined | null;
   responsesCount: number;
@@ -53,7 +54,10 @@ export default function MessageCard({ item, getStatusColor, formatDate, onOpen, 
           <div className="space-y-1">
             {!hideEmail && <p className="text-xs text-gray-500 truncate">{item.senderEmail}</p>}
             <p className="text-xs text-gray-500 truncate">
-              <span className="font-medium">Tower:</span> {item.towerName ?? 'Tower tidak diketahui'}
+              <span className="font-medium">Type:</span>{' '}
+              <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                {item.locationType || 'Tower'}
+              </span>
             </p>
             <p className="text-xs text-gray-500">
               {formatDateWithTime(item.created_at)}

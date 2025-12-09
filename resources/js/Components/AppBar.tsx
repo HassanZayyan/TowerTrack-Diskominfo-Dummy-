@@ -184,7 +184,24 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                       </Dropdown>
                     </div>
 
-                    {['admin','operator','tower_owner'].includes(user.role) && (
+                    {user.role === 'provider_owner' && (
+                      <Link 
+                        href={route('admin.fo-management.routes.list')} 
+                        className="flex-none inline-flex w-fit items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
+                        style={{ color: 'white' }}
+                      >
+                        <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">
+                          timeline
+                        </span>
+                        <span className="hidden lg:inline">
+                          Manajemen FO
+                        </span>
+                        <span className="lg:hidden text-xs">
+                          FO
+                        </span>
+                      </Link>
+                    )}
+                    {['admin','operator','tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
                       <Link 
                         href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
                         className="flex-none inline-flex w-fit items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
@@ -297,7 +314,20 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                         <span className="material-icons-outlined mr-3 text-lg">person</span>
                         <span>Profil</span>
                       </Link>
-                      {['admin','operator','tower_owner'].includes(user.role) && (
+                      {user.role === 'provider_owner' && (
+                        <Link 
+                          href={route('admin.fo-management.routes.list')} 
+                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" 
+                          style={{ color: 'white' }} 
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <span className="material-icons-outlined mr-3 text-lg">
+                            timeline
+                          </span>
+                          <span>Manajemen FO</span>
+                        </Link>
+                      )}
+                      {['admin','operator','tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
                         <Link 
                           href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
                           className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" 

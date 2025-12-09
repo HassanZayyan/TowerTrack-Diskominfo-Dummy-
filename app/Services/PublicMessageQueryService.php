@@ -22,7 +22,7 @@ class PublicMessageQueryService
         }
 
         return Report::with([
-                'tower:id,site_name,alamat_menara',
+                'reportable', // Polymorphic relationship - load all columns to avoid SQL errors
                 'user:id,name,email',
                 'responses' => function ($query) use ($responseSelect) {
                     $query->select($responseSelect)
@@ -63,7 +63,7 @@ class PublicMessageQueryService
 
         try {
             return Feedback::with([
-                    'tower:id,site_name,alamat_menara',
+                    'feedbackable', // Polymorphic relationship - load all columns to avoid SQL errors
                     'user:id,name,email',
                     'assets:id,feedback_id,file_path,file_type',
                     'responses' => function ($query) use ($responseSelect) {

@@ -16,6 +16,7 @@ use App\Http\Middleware\NonStaffMiddleware;
 use App\Http\Middleware\TowerOwnerMiddleware;
 use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
+use App\Http\Middleware\FoAccessMiddleware;
 use App\Http\Controllers\Admin\FoManagementController;
 use App\Http\Controllers\MyMessagesController;
 use App\Services\PublicMessageQueryService;
@@ -28,6 +29,8 @@ Route::get('/dashboard', function () {
     $user = auth()->user();
     if ($user && $user->role === 'tower_owner') {
         return redirect()->route('admin.towers.index');
+    } elseif ($user && $user->role === 'provider_owner') {
+        return redirect()->route('admin.fo-management.routes.list');
     } elseif ($user && in_array($user->role, ['admin', 'operator'], true)) {
         return redirect()->route('admin.dashboard');
     } else {
@@ -114,9 +117,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Admin/Operator/Tower Owner routes (staff) - All staff can access dashboard and towers
+// Admin/Operator/Tower Owner/Provider Owner routes (staff) - All staff can access dashboard
 Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
-    // Dashboard - accessible by admin and operator only (not tower_owner)
+    // Dashboard - accessible by admin and operator only (tower_owner and provider_owner redirected)
     Route::middleware(['tower.owner.dashboard.redirect'])->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
     });
@@ -165,8 +168,9 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::post('/feedbacks/{feedback}/respond', [\App\Http\Controllers\Admin\FeedbackController::class, 'respond'])->name('feedbacks.respond');
     Route::put('/feedbacks/{feedback}/status', [\App\Http\Controllers\Admin\FeedbackController::class, 'updateStatus'])->name('feedbacks.updateStatus');
 
-    // FO management routes: admin and operator can CRUD
-    Route::middleware('admin_or_operator')->group(function () {
+    // FO management routes: admin, operator, and provider_owner can CRUD
+    // Provider owner access is further restricted by ProviderOwnerAccessControlMiddleware
+    Route::middleware([FoAccessMiddleware::class, 'provider.owner.access.control'])->group(function () {
         // Main FO Management Routes (Route-first flow)
         Route::get('/fo-management', [FoManagementController::class, 'routesList'])->name('fo-management.routes.list');
         

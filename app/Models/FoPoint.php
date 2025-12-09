@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * FO Point Model
@@ -118,6 +119,22 @@ class FoPoint extends Model
     public function owners()
     {
         return $this->providers();
+    }
+
+    /**
+     * Polymorphic relationship with reports
+     */
+    public function reports(): MorphMany
+    {
+        return $this->morphMany(Report::class, 'reportable');
+    }
+
+    /**
+     * Polymorphic relationship with feedbacks
+     */
+    public function feedbacks(): MorphMany
+    {
+        return $this->morphMany(Feedback::class, 'feedbackable');
     }
 
     /**

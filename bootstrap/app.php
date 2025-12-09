@@ -23,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tower.owner.dashboard.redirect' => \App\Http\Middleware\TowerOwnerDashboardRedirectMiddleware::class,
             'tower.owner.access.control' => \App\Http\Middleware\TowerOwnerAccessControlMiddleware::class,
+            'provider.owner.access.control' => \App\Http\Middleware\ProviderOwnerAccessControlMiddleware::class,
+            'fo.access' => \App\Http\Middleware\FoAccessMiddleware::class,
             'admin_or_operator' => \App\Http\Middleware\AdminOrOperatorMiddleware::class,
         ]);
 

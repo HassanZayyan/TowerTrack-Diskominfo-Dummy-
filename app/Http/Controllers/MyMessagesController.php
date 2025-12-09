@@ -6,6 +6,7 @@ use App\Models\Feedback;
 use App\Models\Report;
 use App\Services\CacheService;
 use App\Services\PublicMessageQueryService;
+use App\Traits\HasMessageableRelationships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +19,7 @@ use Inertia\Response;
  */
 class MyMessagesController extends BaseController
 {
+    use HasMessageableRelationships;
     /**
      * Display public messages (reports and feedbacks)
      * 
@@ -67,15 +69,7 @@ class MyMessagesController extends BaseController
         $reports = $this->cachedPaginate(
             'my_posts_reports',
             function () use ($userId) {
-                return Report::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email',
-                    'responses' => function ($q) {
-                        $q->select('id', 'report_id', 'message', 'created_at', 'user_id', 'sender_type', 'sender_name', 'sender_email', 'sender_phone')
-                            ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-                    },
-                    'images:id,report_id,file_path,file_type'
-                ])
+                return Report::with($this->getReportRelationships())
                     ->withCount(['allComments as comments_count'])
                     ->where('user_id', $userId)
                     ->orderByDesc('created_at');
@@ -92,15 +86,7 @@ class MyMessagesController extends BaseController
                 $feedbacks = $this->cachedPaginate(
                     'my_posts_feedbacks',
                     function () use ($userId) {
-                        return Feedback::with([
-                            'tower:id,site_name,alamat_menara',
-                            'user:id,name,email',
-                            'assets:id,feedback_id,file_path,file_type',
-                            'responses' => function ($q) {
-                                $q->select('id', 'feedback_id', 'created_at', 'user_id', 'message', 'sender_type', 'sender_name', 'sender_email', 'sender_phone')
-                                    ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                            }
-                        ])
+                        return Feedback::with($this->getFeedbackRelationships())
                             ->withCount(['allComments as comments_count'])
                             ->where('user_id', $userId)
                             ->orderByDesc('created_at');

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
 import ModalBackdrop from '@/Components/ModalBackdrop';
 import ModalContainer from '@/Components/ModalContainer';
@@ -30,6 +30,9 @@ export default function ProviderSelection({
   useBackdropBlur = false,
 }: ProviderSelectionProps) {
   const [showProviderDialog, setShowProviderDialog] = useState(false);
+  const { auth } = usePage().props as any;
+  const user = auth?.user;
+  const canCreateProvider = user && !['provider_owner'].includes(user.role);
   
   // Use Inertia.js useForm for proper CSRF handling and form management
   const { 
@@ -178,22 +181,24 @@ export default function ProviderSelection({
               <p className="text-sm text-gray-500 italic text-center py-2">Tidak ada provider tersedia</p>
             )}
 
-            {/* Button: Tambah Provider Baru */}
-            <div className="pt-3 border-t border-gray-200 mt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProviderDialog(true);
-                  clearProviderErrors();
-                }}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold ${colors.button} border-2 rounded-lg transition-all`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Tambah Provider Baru (Lainnya)
-              </button>
-            </div>
+            {/* Button: Tambah Provider Baru - Hidden for provider_owner */}
+            {canCreateProvider && (
+              <div className="pt-3 border-t border-gray-200 mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProviderDialog(true);
+                    clearProviderErrors();
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold ${colors.button} border-2 rounded-lg transition-all`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Tambah Provider Baru (Lainnya)
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Helper text */}

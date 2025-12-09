@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ReportAsset;
 use App\Models\Tower;
+use App\Models\FoPoint;
 use App\Services\LocationSecurityService;
 use App\Services\CaptchaService;
 use App\Http\Requests\StoreMessageResponseRequest;
@@ -46,11 +47,11 @@ class ComplaintController extends MessageableController
         ];
     }
     /**
-     * Show complaint form with towers from database (no CSV).
+     * Show complaint form with towers and FO points from database.
      */
     public function index(): Response
     {
-        $list = Tower::query()
+        $towers = Tower::query()
             ->select([
                 'id', 
                 'site_name', 
@@ -67,8 +68,33 @@ class ComplaintController extends MessageableController
             ->get()
             ->toArray();
 
+        $foPoints = FoPoint::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($point) {
+                return [
+                    'id' => $point->id,
+                    'name' => $point->name,
+                    'latitude' => (float) $point->latitude,
+                    'longitude' => (float) $point->longitude,
+                    'area' => $point->area,
+                    'route_name' => $point->route_name,
+                    'type' => $point->type,
+                    'status' => $point->status,
+                    'description' => $point->description,
+                    'side_of_road' => $point->side_of_road ?? 'unknown',
+                    'images' => [
+                        'isp' => $point->isp_image_url,
+                        'pole' => $point->pole_image_url,
+                        'junction_box' => $point->junction_box_image_url,
+                    ],
+                ];
+            })
+            ->toArray();
+
         return Inertia::render('Complaint/Create', [
-            'towers' => $list,
+            'towers' => $towers,
+            'foPoints' => $foPoints,
         ]);
     }
 
@@ -82,8 +108,25 @@ class ComplaintController extends MessageableController
                 'nama' => 'nullable|string|max:255',
                 'telepon' => 'required|string|max:20', // Phone number is required for all users
                 'kategori' => 'required|string|max:100',
-                'lokasi_tower' => 'required|string|max:255',
-                'tower_id' => 'required|exists:towers,id',
+                'lokasi_tower' => 'nullable|string|max:255', // Made nullable, can be tower or FO point name
+                'reportable_type' => 'required|in:App\\Models\\Tower,App\\Models\\FoPoint',
+                'reportable_id' => [
+                    'required',
+                    function ($attribute, $value, $fail) use ($request) {
+                        $type = $request->input('reportable_type');
+                        if ($type === 'App\\Models\\Tower') {
+                            if (!Tower::find($value)) {
+                                $fail('Tower tidak ditemukan.');
+                            }
+                        } elseif ($type === 'App\\Models\\FoPoint') {
+                            if (!FoPoint::find($value)) {
+                                $fail('FO Point tidak ditemukan.');
+                            }
+                        } else {
+                            $fail('Tipe lokasi tidak valid.');
+                        }
+                    },
+                ],
                 'pesan' => 'required|string|max:1000',
                 'email' => isAuthenticated() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
                     ? 'prohibited' // Email not allowed for authenticated users (both complainant and tower_owner)
@@ -136,7 +179,8 @@ class ComplaintController extends MessageableController
 
         // Always set status_id to 1 (pending) for new complaints
         $reportData = [
-            'tower_id' => $validated['tower_id'],
+            'reportable_type' => $validated['reportable_type'],
+            'reportable_id' => $validated['reportable_id'],
             'user_id' => $userId,
             'email' => $email,
             'reporter_name' => $validated['nama'] ?? (isAuthenticated() ? $request->user()->name : null),

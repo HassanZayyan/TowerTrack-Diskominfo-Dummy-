@@ -2,17 +2,20 @@
 
 namespace App\Http\Middleware;
 
+use App\Traits\HandlesUserRedirects;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Allow only non-staff (regular) users to proceed.
- * Staff here means users with roles: admin, operator, or tower_owner.
- * If a staff user hits these routes, redirect them to the staff dashboard.
+ * Staff here means users with roles: admin, operator, tower_owner, or provider_owner.
+ * If a staff user hits these routes, redirect them to the appropriate staff dashboard.
  */
 class NonStaffMiddleware
 {
+    use HandlesUserRedirects;
+
     /**
      * Handle an incoming request.
      */
@@ -26,12 +29,8 @@ class NonStaffMiddleware
         }
 
         // Route should already be protected by 'auth'. As an extra guard:
-        if ($user && in_array($user->role, ['admin', 'operator', 'tower_owner'], true)) {
-            if ($user->role === 'tower_owner') {
-                return redirect()->route('admin.towers.index');
-            } else {
-                return redirect()->route('admin.dashboard');
-            }
+        if ($user && in_array($user->role, ['admin', 'operator', 'tower_owner', 'provider_owner'], true)) {
+            return redirect($this->getRedirectDestination($user));
         }
 
         return $next($request);

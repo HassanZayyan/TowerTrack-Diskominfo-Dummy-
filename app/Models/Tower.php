@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Tower extends Model
 {
@@ -66,19 +66,19 @@ class Tower extends Model
     }
 
     /**
-     * One-to-many relationship with reports
+     * Polymorphic relationship with reports
      */
-    public function reports(): HasMany
+    public function reports(): MorphMany
     {
-        return $this->hasMany(Report::class);
+        return $this->morphMany(Report::class, 'reportable');
     }
 
     /**
-     * One-to-many relationship with feedbacks
+     * Polymorphic relationship with feedbacks
      */
-    public function feedbacks(): HasMany
+    public function feedbacks(): MorphMany
     {
-        return $this->hasMany(Feedback::class);
+        return $this->morphMany(Feedback::class, 'feedbackable');
     }
 }
 

@@ -30,6 +30,15 @@ interface Tower {
   alamat_menara?: string;
 }
 
+interface FoPoint {
+  id: number;
+  name: string;
+  area?: string;
+  route_name?: string;
+}
+
+type Feedbackable = Tower | FoPoint;
+
 interface FeedbackResponseAsset {
   id: number;
   file_path: string;
@@ -53,7 +62,9 @@ interface FeedbackResponse {
 
 interface Feedback {
   id: number;
-  tower_id: number | null;
+  tower_id?: number | null; // Deprecated: use feedbackable_id instead
+  feedbackable_type?: string; // 'App\\Models\\Tower' or 'App\\Models\\FoPoint'
+  feedbackable_id?: number;
   user_id: number;
   sender_phone: string;
   sender_name?: string;
@@ -63,7 +74,8 @@ interface Feedback {
   created_at: string;
   updated_at: string;
   user?: User;
-  tower?: Tower;
+  tower?: Tower; // Deprecated: use feedbackable instead
+  feedbackable?: Feedbackable; // Polymorphic relationship
   assets?: FeedbackAsset[];
   responses?: FeedbackResponse[];
   email?: string;
@@ -284,8 +296,8 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
             </div>
           </StaggeredContainer>
 
-          {/* Tower Information */}
-          {feedback.tower && (
+          {/* Location Information (Tower or FoPoint) */}
+          {(feedback.feedbackable || feedback.tower) && (
             <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
                 <div className="flex items-center gap-2 mb-4">
@@ -294,30 +306,97 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Informasi Tower</h3>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {feedback.feedbackable_type === 'App\\Models\\FoPoint' || (feedback.feedbackable && 'name' in feedback.feedbackable)
+                      ? 'Informasi Fiber Optik'
+                      : 'Informasi Tower'}
+                  </h3>
+                  <span className="ml-auto inline-flex px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                    {feedback.feedbackable_type === 'App\\Models\\FoPoint' || (feedback.feedbackable && 'name' in feedback.feedbackable)
+                      ? 'Fiber Optik'
+                      : 'Tower'}
+                  </span>
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-lg border border-purple-100">
-                  <div className="flex items-start gap-2 mb-3">
-                    <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-purple-700 mb-1 font-medium">Nama Site</p>
-                      <p className="text-base font-bold text-gray-900 break-words">{feedback.tower.site_name}</p>
-                    </div>
-                  </div>
-                  {feedback.tower.alamat_menara && (
-                    <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
-                      <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-purple-700 mb-1 font-medium">Alamat</p>
-                        <p className="text-sm text-gray-700 break-words leading-relaxed">{feedback.tower.alamat_menara}</p>
-                      </div>
-                    </div>
-                  )}
+                  {(() => {
+                    // Use feedbackable if available, otherwise fallback to tower for backward compatibility
+                    const location = feedback.feedbackable || feedback.tower;
+                    if (!location) return null;
+                    
+                    const isFoPoint = feedback.feedbackable_type === 'App\\Models\\FoPoint' || 
+                                     ('name' in location && !('site_name' in location));
+                    const isTower = feedback.feedbackable_type === 'App\\Models\\Tower' || 
+                                   ('site_name' in location);
+                    
+                    if (isFoPoint) {
+                      const foPoint = location as FoPoint;
+                      return (
+                        <>
+                          <div className="flex items-start gap-2 mb-3">
+                            <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-purple-700 mb-1 font-medium">Nama Lokasi</p>
+                              <p className="text-base font-bold text-gray-900 break-words">{foPoint.name}</p>
+                            </div>
+                          </div>
+                          {foPoint.route_name && (
+                            <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
+                              <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                              </svg>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-purple-700 mb-1 font-medium">Jalur</p>
+                                <p className="text-sm text-gray-700 break-words leading-relaxed">{foPoint.route_name}</p>
+                              </div>
+                            </div>
+                          )}
+                          {foPoint.area && (
+                            <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
+                              <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-purple-700 mb-1 font-medium">Area</p>
+                                <p className="text-sm text-gray-700 break-words leading-relaxed capitalize">{foPoint.area}</p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    } else if (isTower) {
+                      const tower = location as Tower;
+                      return (
+                        <>
+                          <div className="flex items-start gap-2 mb-3">
+                            <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-purple-700 mb-1 font-medium">Nama Site</p>
+                              <p className="text-base font-bold text-gray-900 break-words">{tower.site_name}</p>
+                            </div>
+                          </div>
+                          {tower.alamat_menara && (
+                            <div className="flex items-start gap-2 pt-3 border-t border-purple-100">
+                              <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-purple-700 mb-1 font-medium">Alamat</p>
+                                <p className="text-sm text-gray-700 break-words leading-relaxed">{tower.alamat_menara}</p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </StaggeredContainer>

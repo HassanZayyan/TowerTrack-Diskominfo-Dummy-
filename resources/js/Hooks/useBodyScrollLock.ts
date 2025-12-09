@@ -41,3 +41,4 @@ export function useBodyScrollLock(isLocked: boolean): void {
     }
   }, [isLocked]);
 }
+

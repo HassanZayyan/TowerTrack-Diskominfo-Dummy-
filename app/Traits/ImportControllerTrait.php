@@ -209,3 +209,4 @@ trait ImportControllerTrait
         return Excel::download(new $exportClass(), $fileName);
     }
 }
+

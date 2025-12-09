@@ -462,7 +462,7 @@ export default function RouteDetail() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [pointToDelete, setPointToDelete] = useState<FoPoint | null>(null);
-  const canEdit = ['admin', 'operator'].includes(auth.user.role);
+  const canEdit = ['admin', 'operator', 'provider_owner'].includes(auth.user.role);
 
   // Prevent body scroll saat modal terbuka (Detail atau Delete)
   useBodyScrollLock(showDetailDialog || showDeleteDialog);
