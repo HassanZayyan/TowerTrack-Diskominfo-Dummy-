@@ -13,8 +13,6 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\StaffMiddleware;
 use App\Http\Middleware\NonStaffMiddleware;
-use App\Http\Middleware\TowerOwnerMiddleware;
-use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
 use App\Http\Middleware\FoAccessMiddleware;
 use App\Http\Controllers\Admin\FoManagementController;
@@ -120,7 +118,7 @@ Route::middleware('auth')->group(function () {
 // Admin/Operator/Tower Owner/Provider Owner routes (staff) - All staff can access dashboard
 Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     // Dashboard - accessible by admin and operator only (tower_owner and provider_owner redirected)
-    Route::middleware(['tower.owner.dashboard.redirect'])->group(function () {
+    Route::middleware(['owner.dashboard.redirect'])->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
     });
 
@@ -151,16 +149,16 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
 
     // Tower management - accessible by admin, operator, and tower_owner (full CRUD operations)
     Route::middleware([TowerAccessMiddleware::class, 'tower.owner.access.control'])->group(function () {
-        Route::get('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'index'])->name('towers.index');
-        Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerController::class, 'create'])->name('towers.create');
-        Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
-        Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerController::class, 'update'])->name('towers.update');
+        Route::get('/towers', [\App\Http\Controllers\Admin\TowerManagementController::class, 'index'])->name('towers.index');
+        Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerManagementController::class, 'create'])->name('towers.create');
+        Route::post('/towers', [\App\Http\Controllers\Admin\TowerManagementController::class, 'store'])->name('towers.store');
+        Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerManagementController::class, 'update'])->name('towers.update');
         
         // Tower Import
-        Route::get('/towers/import', [\App\Http\Controllers\Admin\TowerController::class, 'showImportForm'])->name('towers.import');
-        Route::post('/towers/import/preview', [\App\Http\Controllers\Admin\TowerController::class, 'previewImport'])->name('towers.import.preview');
-        Route::post('/towers/import', [\App\Http\Controllers\Admin\TowerController::class, 'import'])->name('towers.import.process');
-        Route::get('/towers/import/template', [\App\Http\Controllers\Admin\TowerController::class, 'downloadTemplate'])->name('towers.import.template');
+        Route::get('/towers/import', [\App\Http\Controllers\Admin\TowerManagementController::class, 'showImportForm'])->name('towers.import');
+        Route::post('/towers/import/preview', [\App\Http\Controllers\Admin\TowerManagementController::class, 'previewImport'])->name('towers.import.preview');
+        Route::post('/towers/import', [\App\Http\Controllers\Admin\TowerManagementController::class, 'import'])->name('towers.import.process');
+        Route::get('/towers/import/template', [\App\Http\Controllers\Admin\TowerManagementController::class, 'downloadTemplate'])->name('towers.import.template');
     });
 
     // Feedback management actions
@@ -218,12 +216,6 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/providers/quick-create', [FoManagementController::class, 'quickCreateProvider'])
             ->name('fo-management.providers.quick-create');
 
-    });
-
-    // Tower owner specific routes
-    Route::middleware(TowerOwnerMiddleware::class)->group(function () {
-        // Add tower owner specific routes here if needed
-        // For now, they can access the general admin routes through StaffMiddleware
     });
 });
 

@@ -103,6 +103,15 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if user should have auto-filled name and email in forms
+     * (complainant, tower_owner, and provider_owner)
+     */
+    public function shouldAutoFillContactInfo(): bool
+    {
+        return $this->isComplainant() || $this->isTowerOwner() || $this->isProviderOwner();
+    }
+
+    /**
      * One-to-many relationship with feedbacks
      */
     public function feedbacks()

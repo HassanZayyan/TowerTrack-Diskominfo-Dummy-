@@ -63,7 +63,8 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   const isStaff = !!(auth?.user && ['admin', 'operator'].includes(auth.user.role));
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
-  const isAuthenticatedUser = isComplainant || isTowerOwner;
+  const isProviderOwner = !!(auth?.user && auth.user.role === 'provider_owner');
+  const isAuthenticatedUser = isComplainant || isTowerOwner || isProviderOwner;
   
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,

@@ -126,9 +126,9 @@ class FeedbackController extends MessageableController
             ],
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100',
-            'email' => isAuthenticated() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
-                ? 'prohibited' // Email not allowed for authenticated users (complainant and tower_owner)
-                : 'required|email|max:255', // Email now required for anonymous users
+            'email' => isAuthenticated() && auth()->user()->shouldAutoFillContactInfo()
+                ? 'prohibited' // Email not allowed for authenticated users who should auto-fill
+                : 'required|email|max:255', // Email required for anonymous users
             'is_public' => 'required|boolean', // Visibility option
             'reporter_latitude' => 'nullable|numeric',
             'reporter_longitude' => 'nullable|numeric',

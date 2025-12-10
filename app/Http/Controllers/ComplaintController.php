@@ -127,10 +127,10 @@ class ComplaintController extends MessageableController
                         }
                     },
                 ],
-                'pesan' => 'required|string|max:1000',
-                'email' => isAuthenticated() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
-                    ? 'prohibited' // Email not allowed for authenticated users (both complainant and tower_owner)
-                    : 'required|email|max:255', // Email required for anonymous users
+            'pesan' => 'required|string|max:1000',
+            'email' => isAuthenticated() && auth()->user()->shouldAutoFillContactInfo()
+                ? 'prohibited' // Email not allowed for authenticated users who should auto-fill
+                : 'required|email|max:255', // Email required for anonymous users
                 'is_public' => 'required|boolean', // Visibility option
                 'reporter_latitude' => 'nullable|numeric',
                 'reporter_longitude' => 'nullable|numeric',

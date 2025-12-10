@@ -55,6 +55,7 @@ export default function MyMessagesIndex({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterVisibility, setFilterVisibility] = React.useState<'all' | 'public' | 'private'>('all');
+  const [filterLocationType, setFilterLocationType] = React.useState<'all' | 'Tower' | 'Fiber Optik'>('all');
 
   React.useEffect(() => {
     if (isStaff) {
@@ -177,6 +178,11 @@ export default function MyMessagesIndex({
       result = result.filter(item => item.category === filterCategory);
     }
 
+    // Filter by location type (Tower/Fiber Optik)
+    if (filterLocationType !== 'all') {
+      result = result.filter(item => item.locationType === filterLocationType);
+    }
+
     // Filter by visibility (only for my posts page)
     if (isMyPosts && filterVisibility !== 'all') {
       if (filterVisibility === 'public') {
@@ -203,7 +209,7 @@ export default function MyMessagesIndex({
     }
 
     return result;
-  }, [sortedItems, filterType, filterStatus, filterCategory, filterVisibility, searchQuery, isMyPosts]);
+  }, [sortedItems, filterType, filterStatus, filterCategory, filterLocationType, filterVisibility, searchQuery, isMyPosts]);
 
   // Apply pagination
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -216,18 +222,22 @@ export default function MyMessagesIndex({
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filterType, filterStatus, filterCategory, filterVisibility, searchQuery, itemsPerPage]);
+  }, [filterType, filterStatus, filterCategory, filterLocationType, filterVisibility, searchQuery, itemsPerPage]);
   
   // Navigate to detail page for public messages
   const openDetail = React.useCallback((it: MessageItem) => {
     const [typ, raw] = it.id.split('-');
     const id = Number(raw);
+    
+    // Add query parameter if coming from my-posts page
+    const fromParam = isMyPosts ? '?from=my-posts' : '';
+    
     if (typ === 'report') {
-      router.visit(`/my-messages/reports/${id}`);
+      router.visit(`/my-messages/reports/${id}${fromParam}`);
     } else if (typ === 'feedback') {
-      router.visit(`/my-messages/feedbacks/${id}`);
+      router.visit(`/my-messages/feedbacks/${id}${fromParam}`);
     }
-  }, []);
+  }, [isMyPosts]);
   
   const [previewAsset, setPreviewAsset] = React.useState<{ file_path: string; file_type?: string } | null>(null);
 
@@ -483,7 +493,7 @@ export default function MyMessagesIndex({
                       className="pl-10 pr-20 block w-full"
                       placeholder={isMyPosts ? "Cari berdasarkan tower, kategori, nama, atau email..." : "Cari berdasarkan tower, kategori, atau nama..."}
                     />
-                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || (isMyPosts && filterVisibility !== 'all')) && (
+                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all')) && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                         <button
                           type="button"
@@ -491,6 +501,7 @@ export default function MyMessagesIndex({
                             setFilterType('all');
                             setFilterStatus('all');
                             setFilterCategory('all');
+                            setFilterLocationType('all');
                             setFilterVisibility('all');
                             setSearchQuery('');
                           }}
@@ -555,7 +566,7 @@ export default function MyMessagesIndex({
                 )}
               </div>
 
-              {/* Category Filter - Full width on second row */}
+              {/* Category Filter and Location Type Filter - Full width on second row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="sm:col-span-2 lg:col-span-1">
                   <InputLabel htmlFor="filterCategory" value="Kategori" />
@@ -571,12 +582,27 @@ export default function MyMessagesIndex({
                     ))}
                   </select>
                 </div>
+
+                {/* Location Type Filter */}
+                <div className="sm:col-span-2 lg:col-span-1">
+                  <InputLabel htmlFor="filterLocationType" value="Lokasi" />
+                  <select
+                    id="filterLocationType"
+                    value={filterLocationType}
+                    onChange={(e) => setFilterLocationType(e.target.value as 'all' | 'Tower' | 'Fiber Optik')}
+                    className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
+                  >
+                    <option value="all">Semua Lokasi</option>
+                    <option value="Tower">Tower</option>
+                    <option value="Fiber Optik">Fiber Optik</option>
+                  </select>
+                </div>
               </div>
 
               {/* Results count and active filters */}
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || (isMyPosts && filterVisibility !== 'all') || searchQuery) && (
+                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all') || searchQuery) && (
                     <>
                       <span className="text-sm text-gray-600">Filter aktif:</span>
                       {filterType !== 'all' && (
@@ -611,6 +637,19 @@ export default function MyMessagesIndex({
                           <button
                             onClick={() => setFilterCategory('all')}
                             className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-purple-200"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </span>
+                      )}
+                      {filterLocationType !== 'all' && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          Lokasi: {filterLocationType}
+                          <button
+                            onClick={() => setFilterLocationType('all')}
+                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-indigo-200"
                           >
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -675,6 +714,7 @@ export default function MyMessagesIndex({
                       setFilterType('all');
                       setFilterStatus('all');
                       setFilterCategory('all');
+                      setFilterLocationType('all');
                       setFilterVisibility('all');
                       setSearchQuery('');
                     }}

@@ -7,14 +7,23 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class TowerOwnerDashboardRedirectMiddleware
+/**
+ * Middleware untuk redirect tower_owner dan provider_owner dari dashboard.
+ * 
+ * Tower owner akan di-redirect ke halaman tower management.
+ * Provider owner akan di-redirect ke halaman FO management.
+ * Admin dan operator tetap dapat mengakses dashboard.
+ */
+class OwnerDashboardRedirectMiddleware
 {
     use HandlesUserRedirects;
 
     /**
      * Handle an incoming request.
-     * Redirect tower owners from dashboard to towers page
-     * Redirect provider owners from dashboard to FO management page
+     * 
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -27,17 +36,6 @@ class TowerOwnerDashboardRedirectMiddleware
         return $next($request);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 

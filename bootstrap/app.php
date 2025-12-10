@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register custom middleware aliases
         $middleware->alias([
-            'tower.owner.dashboard.redirect' => \App\Http\Middleware\TowerOwnerDashboardRedirectMiddleware::class,
+            'owner.dashboard.redirect' => \App\Http\Middleware\OwnerDashboardRedirectMiddleware::class,
             'tower.owner.access.control' => \App\Http\Middleware\TowerOwnerAccessControlMiddleware::class,
             'provider.owner.access.control' => \App\Http\Middleware\ProviderOwnerAccessControlMiddleware::class,
             'fo.access' => \App\Http\Middleware\FoAccessMiddleware::class,

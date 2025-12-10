@@ -310,9 +310,12 @@ abstract class MessageableController extends Controller
         
         if (isAuthenticated()) {
             $userId = auth()->id();
-            // For authenticated users (complainant and tower_owner), use their email automatically
-            if (auth()->user()->isComplainant() || auth()->user()->isTowerOwner()) {
-                $email = auth()->user()->email;
+            $user = auth()->user();
+            
+            // For authenticated users who should auto-fill (complainant, tower_owner, provider_owner)
+            // use their email automatically
+            if ($user->shouldAutoFillContactInfo()) {
+                $email = $user->email;
             }
         } else {
             // For anonymous users, email is required

@@ -6,11 +6,21 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Middleware untuk mengontrol akses ke halaman FO (Fiber Optic) management.
+ * 
+ * Mengizinkan admin, operator, dan provider_owner untuk mengakses halaman FO.
+ * Untuk provider_owner, akses lebih lanjut dibatasi oleh ProviderOwnerAccessControlMiddleware
+ * yang memastikan mereka hanya bisa mengakses FO points yang dimiliki provider mereka.
+ */
 class FoAccessMiddleware
 {
     /**
      * Handle an incoming request.
-     * Allow admin, operator, and provider_owner to access FO-related pages (CRUD operations)
+     * 
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -22,5 +32,4 @@ class FoAccessMiddleware
         return $next($request);
     }
 }
-
 

@@ -36,15 +36,27 @@ class FoManagementController extends Controller
     public function routesList(Request $request): Response
     {
         $area = $request->get('area', 'ungaran');
+        $user = auth()->user();
 
         // Get FO Routes with pagination (excluding heavy path_coordinates field)
-        $foRoutes = FoRoute::select([
+        $foRoutesQuery = FoRoute::select([
             'id', 'name', 'area', 'status', 'color', 'total_distance',
             'total_points', 'description', 'created_at', 'updated_at',
         ])
-            ->when($area, fn ($q) => $q->where('area', $area))
-            ->orderBy('name')
-            ->paginate(50)
+            ->when($area, fn ($q) => $q->where('area', $area));
+
+        // For provider_owner, only show routes that have points with their provider
+        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+            $foRoutesQuery->whereHas('points', function($q) use ($user, $area) {
+                $q->where('fo_points.area', $area)
+                  ->whereHas('providers', function($providerQuery) use ($user) {
+                      $providerQuery->where('fo_providers.id', $user->fo_provider_id)
+                                    ->wherePivot('is_active', true);
+                  });
+            });
+        }
+
+        $foRoutes = $foRoutesQuery->orderBy('name')->paginate(50)
             ->through(function ($route) {
                 return [
                     'id' => $route->id,
@@ -61,14 +73,27 @@ class FoManagementController extends Controller
                 ];
             });
 
-        // Get comprehensive statistics for routes
+        // Get comprehensive statistics for routes (filtered for provider_owner)
+        $statsQuery = FoRoute::when($area, fn ($q) => $q->where('area', $area));
+        
+        // For provider_owner, filter statistics by their provider
+        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+            $statsQuery->whereHas('points', function($q) use ($user, $area) {
+                $q->where('fo_points.area', $area)
+                  ->whereHas('providers', function($providerQuery) use ($user) {
+                      $providerQuery->where('fo_providers.id', $user->fo_provider_id)
+                                    ->wherePivot('is_active', true);
+                  });
+            });
+        }
+
         $stats = [
-            'total_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->count(),
-            'active_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            'total_distance' => (float) FoRoute::when($area, fn ($q) => $q->where('area', $area))->sum('total_distance'),
-            'total_points' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->sum('total_points'),
+            'total_routes' => (clone $statsQuery)->count(),
+            'active_routes' => (clone $statsQuery)->where('status', 'active')->count(),
+            'inactive_routes' => (clone $statsQuery)->where('status', 'inactive')->count(),
+            'maintenance_routes' => (clone $statsQuery)->where('status', 'maintenance')->count(),
+            'total_distance' => (float) (clone $statsQuery)->sum('total_distance'),
+            'total_points' => (clone $statsQuery)->sum('total_points'),
             'health_score' => $this->calculateHealthScore($area),
         ];
 
@@ -1149,14 +1174,23 @@ class FoManagementController extends Controller
     /**
      * Get current providers for a point formatted for frontend
      * DRY: Consistent format dengan availableProviders
+     * For provider_owner, only return their own provider if it exists in the point
      */
     private function getCurrentProviders(FoPoint $foPoint): array
     {
-        return $foPoint->providers()
+        $user = auth()->user();
+        
+        $query = $foPoint->providers()
             ->wherePivot('is_active', true)
             ->select('fo_providers.id', 'fo_providers.name')
-            ->orderByPivot('sort_order')
-            ->get()
+            ->orderByPivot('sort_order');
+        
+        // For provider_owner, only show their own provider if it exists in this point
+        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+            $query->where('fo_providers.id', $user->fo_provider_id);
+        }
+        
+        return $query->get()
             ->map(function ($provider) {
                 return [
                     'id' => $provider->id,

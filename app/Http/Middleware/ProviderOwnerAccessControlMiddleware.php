@@ -7,11 +7,20 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\FoPoint;
 
+/**
+ * Middleware untuk membatasi akses provider_owner hanya ke FO points yang dimiliki provider mereka.
+ * 
+ * Middleware ini bekerja setelah FoAccessMiddleware dan hanya berlaku untuk provider_owner.
+ * Admin dan operator dapat mengakses semua FO points tanpa batasan.
+ */
 class ProviderOwnerAccessControlMiddleware
 {
     /**
      * Handle an incoming request.
-     * Restrict provider owners to only access FO points they own
+     * 
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -45,5 +54,4 @@ class ProviderOwnerAccessControlMiddleware
         return $next($request);
     }
 }
-
 

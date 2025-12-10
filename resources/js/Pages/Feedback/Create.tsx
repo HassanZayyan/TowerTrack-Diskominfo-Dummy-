@@ -76,7 +76,8 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
   const { errors, auth, turnstileSiteKey } = usePage().props as any;
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
-  const isAuthenticatedUser = isComplainant || isTowerOwner;
+  const isProviderOwner = !!(auth?.user && auth.user.role === 'provider_owner');
+  const isAuthenticatedUser = isComplainant || isTowerOwner || isProviderOwner;
   
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,

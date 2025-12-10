@@ -7,11 +7,20 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Tower;
 
+/**
+ * Middleware untuk membatasi akses tower_owner hanya ke tower yang mereka miliki.
+ * 
+ * Middleware ini bekerja setelah TowerAccessMiddleware dan hanya berlaku untuk tower_owner.
+ * Admin dan operator dapat mengakses semua tower tanpa batasan.
+ */
 class TowerOwnerAccessControlMiddleware
 {
     /**
      * Handle an incoming request.
-     * Restrict tower owners to only access towers they own
+     * 
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -45,6 +54,4 @@ class TowerOwnerAccessControlMiddleware
         return $next($request);
     }
 }
-
-
 
