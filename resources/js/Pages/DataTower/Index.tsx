@@ -4,7 +4,7 @@ import AppBar from '@/Components/AppBar';
 import Footer from '@/Components/Footer';
 import HeroSection from '@/Components/HeroSection';
 import AnimatedButton from '@/Components/AnimatedButton';
-import TowerDetailModal from '@/Components/TowerDetailModal';
+import TowerDetailModal from '@/Components/DetailModal';
 import AlertToast from '@/Components/AlertToast';
 import StaggeredContainer from '@/Components/StaggeredContainer';
 import { useDebounce } from '@/Hooks/useDebounce';

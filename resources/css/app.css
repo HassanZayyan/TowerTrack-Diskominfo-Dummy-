@@ -292,3 +292,42 @@ select[class*="appearance-none"] {
         will-change: auto;
     }
 }
+
+/* ===================================
+   CUSTOM TOOLTIP STYLES FOR MAP
+   Compact, user-friendly tooltip design
+   =================================== */
+
+.custom-tooltip .leaflet-tooltip {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    max-width: 260px;
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.custom-tooltip .leaflet-tooltip-top:before,
+.custom-tooltip .leaflet-tooltip-bottom:before,
+.custom-tooltip .leaflet-tooltip-left:before,
+.custom-tooltip .leaflet-tooltip-right:before {
+    border-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+.custom-tooltip .leaflet-tooltip-top:after,
+.custom-tooltip .leaflet-tooltip-bottom:after,
+.custom-tooltip .leaflet-tooltip-left:after,
+.custom-tooltip .leaflet-tooltip-right:after {
+    border-color: white transparent;
+}
+
+/* Ensure tooltip content is properly styled */
+.custom-tooltip .leaflet-tooltip-content {
+    margin: 0;
+    padding: 0;
+}

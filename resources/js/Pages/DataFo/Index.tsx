@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AppBar from '@/Components/AppBar';
@@ -14,7 +14,9 @@ import FoStats from '@/Components/DataFo/FoStats';
 import FoFilters from '@/Components/DataFo/FoFilters';
 import FoTable from '@/Components/DataFo/FoTable';
 import FoDetailModal from '@/Components/DataFo/FoDetailModal';
+import { FoPointDetailModal } from '@/Components/DetailModal';
 import { getIconByImagesAndSide } from '@/utils/foIconUtils';
+import { getFOStatusColor } from '@/utils/statusHelpers';
 import { useRouteCache } from '@/Hooks/useRouteCache';
 import { getRouteCacheKey, formatTimestamp } from '@/utils/routeCacheUtils';
 
@@ -122,6 +124,27 @@ function FitBounds({ bounds }: { bounds: { north: number; south: number; east: n
   return null;
 }
 
+// Component to center map on a specific point
+function CenterOnPoint({ point, onCentered }: { point: { lat: number; lng: number } | null; onCentered: () => void }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (point && point.lat && point.lng) {
+      const lat = Number(point.lat);
+      const lng = Number(point.lng);
+      
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        map.flyTo([lat, lng], 17, {
+          duration: 1.5
+        });
+        onCentered();
+      }
+    }
+  }, [point, map, onCentered]);
+  
+  return null;
+}
+
 export default function DataFoIndex({ 
   foPoints = [], 
   foRoutes = [],
@@ -153,6 +176,9 @@ export default function DataFoIndex({
   const [detailData, setDetailData] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [selectedFoPoint, setSelectedFoPoint] = useState<FoPoint | null>(null);
+  const [showFoPointModal, setShowFoPointModal] = useState(false);
+  const [centerPoint, setCenterPoint] = useState<{ lat: number; lng: number } | null>(null);
   
   // Handle detailData from Inertia props (when using only: ['detailData'])
   useEffect(() => {
@@ -532,6 +558,60 @@ export default function DataFoIndex({
     setShowDetailModal(false);
     setDetailData(null);
     setDetailLoading(false);
+  };
+
+  const handleViewMap = (point: FoPoint) => {
+    // Modal sudah ditutup dari FoPointDetailModal, jadi tidak perlu setShowFoPointModal(false) lagi
+    
+    // Find the map center point for the FO point
+    const lat = Number(point.latitude);
+    const lng = Number(point.longitude);
+    
+    const hasValidCoords = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+    // If valid coordinates, programmatically focus on the point
+    if (hasValidCoords) {
+      // Pastikan body position sudah direstore (safety check)
+      if (document.body.style.position === 'fixed') {
+        const scrollY = document.body.style.top ? -parseInt(document.body.style.top) : window.scrollY;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      }
+      
+      // Scroll to the map section with center alignment for better visibility
+      const mapElement = document.querySelector('[data-section="map"]') as HTMLElement;
+      if (mapElement) {
+        // First, scroll to center the map in viewport
+        mapElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Set center point after a small delay to ensure scroll completes and map renders
+        setTimeout(() => {
+          setCenterPoint({ lat, lng });
+        }, 400);
+      } else {
+        // Fallback if element not found
+        setCenterPoint({ lat, lng });
+      }
+    } else {
+      setToast({
+        show: true,
+        type: 'warning',
+        title: 'Koordinat Belum Terdata',
+        message: 'Titik FO ini belum memiliki titik koordinat yang valid, sehingga tidak dapat ditampilkan di peta.',
+      });
+    }
+  };
+
+  // Reset center point after map has centered
+  const handleCentered = () => {
+    setCenterPoint(null);
   };
 
   // Load route polyline on-demand with persistent sessionStorage cache
@@ -1020,6 +1100,9 @@ export default function DataFoIndex({
                 {/* Auto-fit bounds */}
                 {currentMapData.bounds && <FitBounds bounds={currentMapData.bounds} />}
                 
+                {/* Center on point when requested */}
+                {centerPoint && <CenterOnPoint point={centerPoint} onCentered={handleCentered} />}
+                
                  {/* Render FO Routes (Polylines) - Only selected and loaded routes */}
                  {Array.from(loadedRoutes.entries()).map(([routeId, routeData]) => {
                    // Only render if selected
@@ -1052,46 +1135,49 @@ export default function DataFoIndex({
                          }
                        }}
                      >
-                    <Popup maxWidth={300}>
-                      <div className="p-3 min-w-[250px]">
-                        <h4 className="font-semibold text-sm text-gray-900 mb-2">{routeData.name}</h4>
-                        <p className="text-xs text-gray-600 mb-3">{routeData.description}</p>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-gray-500">Total Titik:</span>
-                            <span className="text-xs font-medium">{routeData.total_points}</span>
+                    <Tooltip 
+                      permanent={false}
+                      direction="top"
+                      offset={[0, -10]}
+                      opacity={0.95}
+                      className="custom-tooltip"
+                    >
+                      <div className="p-2.5 min-w-[220px] max-w-[260px]">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: routeData.color }}></div>
+                          <h4 className="font-semibold text-xs text-gray-900 truncate">{routeData.name}</h4>
+                        </div>
+                        <div className="space-y-1 text-[10px]">
+                          <div className="flex justify-between gap-2">
+                            <span className="text-gray-500">Titik:</span>
+                            <span className="font-medium text-gray-700">{routeData.total_points}</span>
                           </div>
-                           <div className="flex justify-between items-center">
-                             <span className="text-xs text-gray-500">Jarak Total:</span>
-                             <span className="text-xs font-medium">
-                               {typeof routeData.total_distance === 'number' ? routeData.total_distance.toFixed(2) : '0.00'} km
-                             </span>
-                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: routeData.color }}></div>
-                            <span className="text-xs text-gray-500">
-                              {routeData.has_geojson ? 'Routing Optimal' : 'Jalur Aktif'}
+                          <div className="flex justify-between gap-2">
+                            <span className="text-gray-500">Jarak:</span>
+                            <span className="font-medium text-gray-700">
+                              {typeof routeData.total_distance === 'number' ? routeData.total_distance.toFixed(1) : '0.0'} km
                             </span>
                           </div>
-                          {/* Providers */}
                           {routeData.providers && routeData.providers.length > 0 && (
-                            <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
-                              <span className="text-xs text-gray-500">Provider:</span>
-                              <div className="flex flex-wrap gap-1">
-                                {routeData.providers.map((provider: Provider) => (
+                            <div className="pt-1 border-t border-gray-200">
+                              <div className="flex flex-wrap gap-0.5">
+                                {routeData.providers.slice(0, 2).map((provider: Provider) => (
                                   <span
                                     key={provider.id}
-                                    className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                    className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700"
                                   >
                                     {provider.name}
                                   </span>
                                 ))}
+                                {routeData.providers.length > 2 && (
+                                  <span className="text-[9px] text-gray-500">+{routeData.providers.length - 2}</span>
+                                )}
                               </div>
                             </div>
                           )}
                         </div>
                       </div>
-                     </Popup>
+                    </Tooltip>
                    </Polyline>
                    );
                  })}
@@ -1104,6 +1190,51 @@ export default function DataFoIndex({
                      return null;
                    }
                    
+                   // Build description for popup (consistent with data-tower format)
+                   const buildDescription = () => {
+                     const parts: string[] = [];
+                     
+                     // Deskripsi
+                     if (point.description && point.description.trim()) {
+                       parts.push(point.description);
+                     }
+                     
+                     // Tipe
+                     if (point.type) {
+                       parts.push(`Tipe: ${point.type.charAt(0).toUpperCase() + point.type.slice(1)}`);
+                     }
+                     
+                     // Jalur
+                     if (point.route_name) {
+                       parts.push(`Jalur: ${point.route_name}`);
+                     }
+                     
+                     // Urutan
+                     if (point.sequence_number) {
+                       parts.push(`Urutan: #${point.sequence_number}`);
+                     }
+                     
+                     // Posisi (Kiri/Kanan)
+                     if (point.side_of_road && point.side_of_road !== 'unknown') {
+                       const sideLabel = point.side_of_road === 'left' ? 'Kiri' : 'Kanan';
+                       parts.push(`Posisi: ${sideLabel}`);
+                     }
+                     
+                     // Status
+                     if (point.status) {
+                       const statusConfig = getFOStatusColor(point.status);
+                       parts.push(`Status: ${statusConfig.label}`);
+                     }
+                     
+                     // Provider (if available)
+                     if (point.providers && Array.isArray(point.providers) && point.providers.length > 0) {
+                       const providerNames = point.providers.map((p: any) => p.name || p).join(', ');
+                       parts.push(`Provider: ${providerNames}`);
+                     }
+                     
+                     return parts.length > 0 ? parts.join('<br/>') : 'Tidak ada informasi tambahan';
+                   };
+                   
                    return (
                      <Marker
                        key={point.id}
@@ -1112,86 +1243,67 @@ export default function DataFoIndex({
                        eventHandlers={{
                          click: () => {
                            console.log('Point clicked:', point.name);
-                           setSelectedPoint(point);
+                           setSelectedFoPoint(point);
+                           setShowFoPointModal(true);
                          }
                        }}
                      >
-                    <Popup maxWidth={300}>
-                      <div className="p-3 min-w-[250px]">
-                        <h4 className="font-semibold text-sm text-gray-900 mb-2">{point.name}</h4>
-                        <p className="text-xs text-gray-600 mb-3">{point.description || 'Tidak ada deskripsi'}</p>
-                        
-                        <div className="space-y-2 mb-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-gray-500">Jalur:</span>
-                            <span className="text-xs font-medium">{point.route_name}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-gray-500">Urutan:</span>
-                            <span className="text-xs font-medium">#{point.sequence_number}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {point.type.charAt(0).toUpperCase() + point.type.slice(1)}
-                            </span>
-                            {point.side_of_road && point.side_of_road !== 'unknown' && (
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                point.side_of_road === 'left' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {point.side_of_road === 'left' ? '⬅️ Kiri' : '➡️ Kanan'}
-                              </span>
-                            )}
-                          </div>
-                          {/* Providers */}
-                          {point.providers && point.providers.length > 0 && (
-                            <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
-                              <span className="text-xs text-gray-500">Provider:</span>
-                              <div className="flex flex-wrap gap-1">
-                                {point.providers.map((provider) => (
-                                  <span
-                                    key={provider.id}
-                                    className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                                  >
-                                    {provider.name}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Images */}
-                        {point.has_images && (
-                          <div className="space-y-2">
-                            <h5 className="text-xs font-medium text-gray-700">Gambar:</h5>
-                            <div className="grid grid-cols-3 gap-2">
-                              {point.images.isp && (
-                                <a href={point.images.isp} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-                                  ISP
-                                </a>
-                              )}
-                              {point.images.pole && (
-                                <a href={point.images.pole} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-                                  Tiang
-                                </a>
-                              )}
-                              {point.images.junction_box && (
-                                <a href={point.images.junction_box} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-                                  JB
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
-                        <p className="text-xs text-gray-500 mt-2">
-                          {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
-                        </p>
-                      </div>
-                     </Popup>
-                   </Marker>
+                       <Tooltip 
+                         permanent={false}
+                         direction="top"
+                         offset={[0, -10]}
+                         opacity={0.95}
+                         className="custom-tooltip"
+                       >
+                         <div className="p-2.5 min-w-[200px] max-w-[240px]">
+                           <h4 className="font-semibold text-xs text-gray-900 mb-1.5 truncate">
+                             {point.name || 'Belum Terdata'}
+                           </h4>
+                           <div className="space-y-1 text-[10px] text-gray-600">
+                             {point.route_name && (
+                               <div className="flex items-start gap-1.5">
+                                 <span className="text-gray-400 flex-shrink-0">📍</span>
+                                 <span className="truncate">{point.route_name}</span>
+                               </div>
+                             )}
+                             {point.sequence_number && (
+                               <div className="flex items-center gap-1.5">
+                                 <span className="text-gray-400 flex-shrink-0">#</span>
+                                 <span>Urutan: {point.sequence_number}</span>
+                               </div>
+                             )}
+                             {point.side_of_road && point.side_of_road !== 'unknown' && (
+                               <div className="flex items-center gap-1.5">
+                                 <div 
+                                   className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                     point.side_of_road === 'left' ? 'bg-blue-500' : 'bg-red-500'
+                                   }`}
+                                 />
+                                 <span>Posisi: {point.side_of_road === 'left' ? 'Kiri' : 'Kanan'}</span>
+                               </div>
+                             )}
+                             {point.providers && Array.isArray(point.providers) && point.providers.length > 0 && (
+                               <div className="flex items-start gap-1.5 pt-1 border-t border-gray-200">
+                                 <span className="text-gray-400 flex-shrink-0 text-[9px]">🌐</span>
+                                 <div className="flex flex-wrap gap-0.5 flex-1">
+                                   {point.providers.slice(0, 2).map((p: any, idx: number) => (
+                                     <span
+                                       key={idx}
+                                       className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700"
+                                     >
+                                       {p.name || p}
+                                     </span>
+                                   ))}
+                                   {point.providers.length > 2 && (
+                                     <span className="text-[9px] text-gray-500">+{point.providers.length - 2}</span>
+                                   )}
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       </Tooltip>
+                     </Marker>
                    );
                  })}
               </MapContainer>
@@ -1296,6 +1408,17 @@ export default function DataFoIndex({
          loading={detailLoading}
          onClose={handleCloseDetailModal}
        />
+
+      {/* FO Point Detail Modal */}
+      <FoPointDetailModal
+        isOpen={showFoPointModal}
+        onClose={() => {
+          setShowFoPointModal(false);
+          setSelectedFoPoint(null);
+        }}
+        point={selectedFoPoint}
+        onViewMap={selectedFoPoint ? () => handleViewMap(selectedFoPoint) : undefined}
+      />
 
       {/* Toast Notification */}
       <AlertToast

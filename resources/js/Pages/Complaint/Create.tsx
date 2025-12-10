@@ -75,6 +75,8 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [autoFilledLocationType, setAutoFilledLocationType] = useState<'tower' | 'fo_point' | null>(null);
   
   // CAPTCHA states
   const [captchaToken, setCaptchaToken] = useState<string>('');
@@ -183,6 +185,71 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
       reportable_id: '' 
     }));
   }, []);
+
+  // Auto-fill tower or FO point data from URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const towerId = urlParams.get('tower_id');
+    const towerName = urlParams.get('tower_name');
+    const foPointId = urlParams.get('fo_point_id');
+    const foPointName = urlParams.get('fo_point_name');
+    const locationType = urlParams.get('location_type');
+    
+    // Handle tower auto-fill
+    // Check for tower: either with location_type='tower' or without location_type (backward compatibility)
+    if (towerId && towerName && (locationType === 'tower' || !locationType)) {
+      // Find the tower in the towers array to get complete data
+      const selectedTower = towers.find(tower => tower.id.toString() === towerId);
+      
+      if (selectedTower) {
+        // Use the handleLocationSelect function to properly set the form data
+        handleLocationSelect(selectedTower, 'tower');
+        setForm(prev => ({ ...prev, location_type_filter: 'tower' }));
+        setIsAutoFilled(true);
+        setAutoFilledLocationType('tower');
+      } else {
+        // If tower not found in array, still set basic info from URL params
+        const decodedTowerName = decodeURIComponent(towerName);
+        setForm(prev => ({
+          ...prev,
+          reportable_type: 'App\\Models\\Tower' as const,
+          reportable_id: towerId,
+          lokasi_tower: decodedTowerName,
+          lokasi_tower_display: decodedTowerName,
+          location_type_filter: 'tower',
+        }));
+        setIsAutoFilled(true);
+        setAutoFilledLocationType('tower');
+      }
+    }
+    
+    // Handle FO point auto-fill
+    if (foPointId && foPointName && locationType === 'fo_point') {
+      // Find the FO point in the foPoints array to get complete data
+      const selectedFoPoint = foPoints.find(point => point.id.toString() === foPointId);
+      
+      if (selectedFoPoint) {
+        // Use the handleLocationSelect function to properly set the form data
+        handleLocationSelect(selectedFoPoint, 'fo_point');
+        setForm(prev => ({ ...prev, location_type_filter: 'fo_point' }));
+        setIsAutoFilled(true);
+        setAutoFilledLocationType('fo_point');
+      } else {
+        // If FO point not found in array, still set basic info from URL params
+        const decodedFoPointName = decodeURIComponent(foPointName);
+        setForm(prev => ({
+          ...prev,
+          reportable_type: 'App\\Models\\FoPoint' as const,
+          reportable_id: foPointId,
+          lokasi_tower: decodedFoPointName,
+          lokasi_tower_display: decodedFoPointName,
+          location_type_filter: 'fo_point',
+        }));
+        setIsAutoFilled(true);
+        setAutoFilledLocationType('fo_point');
+      }
+    }
+  }, [towers, foPoints, handleLocationSelect]); // Include dependencies
 
   const handleFileError = useCallback((message: string) => {
     showErrorDialog('Error Upload File', message);
@@ -534,6 +601,17 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                 <p className="text-yellow-800 text-sm">
                   <strong>Info:</strong> Nama dan email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field tersebut.
                 </p>
+              </div>
+            )}
+            
+            {isAutoFilled && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <span className="material-icons-outlined text-green-600 mr-2">check_circle</span>
+                  <p className="text-green-800 text-sm">
+                    <strong>{autoFilledLocationType === 'fo_point' ? 'Fiber Optik Dipilih Otomatis:' : 'Tower Dipilih Otomatis:'}</strong> Data lokasi {autoFilledLocationType === 'fo_point' ? 'fiber optik' : 'tower'} <strong>{form.lokasi_tower_display || form.lokasi_tower}</strong> telah diisi otomatis berdasarkan pilihan Anda sebelumnya.
+                  </p>
+                </div>
               </div>
             )}
             
