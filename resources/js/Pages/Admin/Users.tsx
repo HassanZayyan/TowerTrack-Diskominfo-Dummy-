@@ -7,13 +7,31 @@ import HeroSection from '@/Components/HeroSection';
 import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
 import ModalBackdrop from '@/Components/ModalBackdrop';
 import ModalContainer from '@/Components/ModalContainer';
+import { Pagination } from '@/Components/Pagination';
 
-interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null }
+interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null }
 
-interface Props { users: User[] }
+interface PaginationData {
+  data: User[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  links?: { url: string | null; label: string; active: boolean }[];
+}
 
-const UsersPage: React.FC<Props> = ({ users = [] }) => {
-  const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner'; password?: string; banned?: boolean }>({ name: '', email: '', role: 'operator', banned: false });
+interface Props { 
+  users: PaginationData;
+}
+
+const UsersPage: React.FC<Props> = ({ users }) => {
+  const usersList = users?.data || [];
+  const pagination = users ? {
+    current_page: users.current_page,
+    last_page: users.last_page,
+    total: users.total,
+  } : null;
+  const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; password?: string; banned?: boolean }>({ name: '', email: '', role: 'operator', banned: false });
   const { auth } = usePage().props as any;
   const [showPassword, setShowPassword] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -49,7 +67,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
   // Fungsi untuk validasi email
   const validateEmail = () => {
     // Jika sedang edit, kita perlu mengecualikan email user yang sedang diedit
-    const existingEmails = users.filter(user => !form.id || user.id !== form.id).map(user => user.email.toLowerCase());
+    const existingEmails = usersList.filter(user => !form.id || user.id !== form.id).map(user => user.email.toLowerCase());
     
     if (existingEmails.includes(form.email.toLowerCase())) {
       setEmailError('Email ini sudah digunakan oleh pengguna lain');
@@ -75,7 +93,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     }
     
     // Konfirmasi jika user akan dibanned atau diunban
-    if (form.id && form.banned !== users.find(u => u.id === form.id)?.banned) {
+    if (form.id && form.banned !== usersList.find((u: User) => u.id === form.id)?.banned) {
       const isBanning = form.banned || false;
       setBanDialogData({
         userName: form.name,
@@ -89,9 +107,9 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     
     if (form.id) {
       // Untuk semua user, admin dapat mengubah semua field termasuk status banned
-      // Namun untuk complainant dan tower_owner, hanya kirim data yang relevan
-      const originalUser = users.find(u => u.id === form.id);
-      if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner')) {
+      // Namun untuk complainant, tower_owner, dan provider_owner, hanya kirim data yang relevan
+      const originalUser = usersList.find(u => u.id === form.id);
+      if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner' || originalUser.role === 'provider_owner')) {
         const updateData = {
           role: form.role,
           banned: form.banned // Admin dapat membanned semua role
@@ -177,9 +195,9 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
     setIsProcessing(true);
     
     if (banDialogData.userId) {
-      // Admin dapat membanned semua role termasuk complainant dan tower_owner
-      const originalUser = users.find(u => u.id === banDialogData.userId);
-      if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner')) {
+      // Admin dapat membanned semua role termasuk complainant, tower_owner, dan provider_owner
+      const originalUser = usersList.find(u => u.id === banDialogData.userId);
+      if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner' || originalUser.role === 'provider_owner')) {
         const updateData = {
           role: originalUser.role,
           banned: banDialogData.isBanning // Gunakan status banned dari dialog konfirmasi
@@ -272,7 +290,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
             <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
             </svg>
-            Daftar Pengguna ({users.length})
+            Daftar Pengguna ({pagination?.total || 0})
           </h3>
         </div>
         
@@ -316,7 +334,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {users.length === 0 ? (
+              {usersList.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
                     <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,7 +345,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                   </td>
                 </tr>
               ) : (
-                users.map((u, index) => (
+                usersList.map((u, index) => (
                   <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${
                     u.id === auth.user.id 
                       ? 'bg-red-50 border-l-4 border-red-500' 
@@ -408,8 +426,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                           <button 
                             className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
                             onClick={() => {
-                              // Untuk complainant users atau tower_owner, preserve original name dan email
-                              if (u.role === 'complainant' || u.role === 'tower_owner') {
+                              // Untuk complainant users, tower_owner, atau provider_owner, preserve original name dan email
+                              if (u.role === 'complainant' || u.role === 'tower_owner' || u.role === 'provider_owner') {
                                 setForm({ 
                                   id: u.id, 
                                   name: u.name, 
@@ -474,7 +492,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
 
         {/* Mobile Card View */}
         <div className="md:hidden">
-          {users.length === 0 ? (
+          {usersList.length === 0 ? (
             <div className="px-4 py-12 text-center text-gray-500">
               <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -484,7 +502,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {users.map((u, index) => (
+              {usersList.map((u, index) => (
                 <div key={u.id} className={`p-4 ${
                   u.id === auth.user.id 
                     ? 'bg-red-50 border-l-4 border-red-500' 
@@ -573,8 +591,8 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                       <button 
                         className="w-full inline-flex items-center justify-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-sm font-medium"
                         onClick={() => {
-                          // Untuk complainant users atau tower_owner, preserve original name dan email
-                          if (u.role === 'complainant' || u.role === 'tower_owner') {
+                          // Untuk complainant users, tower_owner, atau provider_owner, preserve original name dan email
+                          if (u.role === 'complainant' || u.role === 'tower_owner' || u.role === 'provider_owner') {
                             setForm({ 
                               id: u.id, 
                               name: u.name, 
@@ -634,6 +652,19 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
             </div>
           )}
         </div>
+
+        {/* Pagination - Shared for Desktop and Mobile */}
+        {pagination && pagination.last_page > 1 && (
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200">
+            <Pagination
+              currentPage={pagination.current_page}
+              lastPage={pagination.last_page}
+              onPageChange={(page) => {
+                router.get(route('admin.users.index'), { page }, { preserveState: true, preserveScroll: true });
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modal untuk tambah/edit user */}
@@ -651,7 +682,7 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                 </svg>
                 <div>
                   {form.id ? 'Edit User' : 'Tambah User Baru'}
-                  {form.id && (form.role === 'complainant' || form.role === 'tower_owner') && (
+                  {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
                     <p className="text-xs text-gray-500 font-normal mt-1">
                       Hanya role dan status akun yang dapat diubah
                     </p>
@@ -682,17 +713,17 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
                     <input 
                       className={`w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
-                        form.id && (form.role === 'complainant' || form.role === 'tower_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
+                        form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
                       }`}
                       placeholder="Masukkan nama lengkap" 
                       value={form.name} 
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner'))}
+                      disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
                       required 
                     />
-                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner') && (
+                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Nama user dengan role {form.role === 'complainant' ? 'complainant' : 'tower owner'} tidak dapat diubah
+                        Nama user dengan role {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'} tidak dapat diubah
                       </p>
                     )}
                   </div>
@@ -700,18 +731,18 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     <label className="text-sm font-medium text-gray-700">Email</label>
                     <input 
                       className={`w-full border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 focus:ring-2 ${emailError ? 'focus:ring-red-400' : 'focus:ring-yellow-400'} focus:border-transparent transition-all ${
-                        form.id && (form.role === 'complainant' || form.role === 'tower_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
+                        form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
                       }`} 
                       type="email"
                       placeholder="Masukkan email" 
                       value={form.email} 
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner'))}
+                      disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
                       required 
                     />
-                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner') && (
+                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Email user dengan role {form.role === 'complainant' ? 'complainant' : 'tower owner'} tidak dapat diubah
+                        Email user dengan role {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'} tidak dapat diubah
                       </p>
                     )}
                     {emailError && (
@@ -734,10 +765,11 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                       <option value="admin">Admin</option>
                       <option value="complainant">Complainant</option>
                       <option value="tower_owner">Tower Owner</option>
+                      <option value="provider_owner">Provider Owner</option>
                     </select>
-                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner') && (
+                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Role dapat diubah untuk user {form.role === 'complainant' ? 'complainant' : 'tower owner'}
+                        Role dapat diubah untuk user {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'}
                       </p>
                     )}
                   </div>
@@ -785,25 +817,25 @@ const UsersPage: React.FC<Props> = ({ users = [] }) => {
                     <div className="relative">
                       <input 
                         className={`w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
-                          form.id && (form.role === 'complainant' || form.role === 'tower_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
+                          form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
                         }`} 
                         type={showPassword ? 'text' : 'password'}
                         placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
                         value={form.password ?? ''} 
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner'))}
+                        disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
                         required={!form.id}
                       />
-                      {form.id && (form.role === 'complainant' || form.role === 'tower_owner') && (
+                      {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Password user dengan role {form.role === 'complainant' ? 'complainant' : 'tower owner'} tidak dapat diubah
+                          Password user dengan role {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'} tidak dapat diubah
                         </p>
                       )}
                       <button
                         type="button"
                         className="absolute right-0 top-1/2 -translate-y-1/2 pr-3 flex items-center justify-center"
                         onClick={() => setShowPassword(!showPassword)}
-                        disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner'))}
+                        disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
                       >
                         {showPassword ? (
                           <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

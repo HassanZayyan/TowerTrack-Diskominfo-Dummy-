@@ -12,10 +12,16 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        // Include soft deleted users
+        // Get pagination parameters
+        $perPage = max(1, min(100, (int) $request->get('per_page', 15)));
+        $page = max(1, (int) $request->get('page', 1));
+
+        // Include soft deleted users with pagination
         $users = User::withTrashed()
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'role', 'created_at', 'banned', 'deleted_at']);
+            ->paginate($perPage, ['id', 'name', 'email', 'role', 'created_at', 'banned', 'deleted_at'], 'page', $page)
+            ->withQueryString();
+
         return Inertia::render('Admin/Users', [
             'users' => $users,
         ]);
