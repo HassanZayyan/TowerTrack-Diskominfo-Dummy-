@@ -263,10 +263,11 @@ class ComplaintController extends MessageableController
 
     /**
      * Store a response from reporter or staff.
+     * This is the public route - admin/operator should use admin pages for official responses.
      */
     public function storeResponse(StoreMessageResponseRequest $request, Report $report)
     {
-        return $this->handleResponseSubmission($request, $report, $this->getConfig());
+        return $this->handleResponseSubmission($request, $report, $this->getConfig(), true);
     }
 }
 

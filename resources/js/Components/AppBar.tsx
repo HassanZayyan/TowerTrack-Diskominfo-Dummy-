@@ -33,13 +33,11 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
     { href: '/data-fo', label: 'Jalur FO', icon: 'timeline' },
   ];
 
-  // Add "My Messages" link for all users (authenticated and anonymous)
+  // Add "Pesan Publik" link for all users (including admin/operator)
+  // Dynamic label: "Pesan Saya" for authenticated users (complainant/tower_owner), "Pesan Publik" for others
   const isAdminOrOperator = user && ['admin', 'operator'].includes(user.role);
-  if (!isAdminOrOperator) {
-    // Dynamic label: "Pesan Saya" for authenticated users (complainant/tower_owner), "Pesan Publik" for guests
-    const messageLabel = user && ['complainant', 'tower_owner'].includes(user.role) ? 'Pesan Saya' : 'Pesan Publik';
-    links.push({ href: '/my-messages', label: messageLabel, icon: 'message' });
-  }
+  const messageLabel = user && ['complainant', 'tower_owner'].includes(user.role) ? 'Pesan Saya' : 'Pesan Publik';
+  links.push({ href: '/my-messages', label: messageLabel, icon: 'message' });
 
   // Show complaint and feedback form links for non-admin/operator users
   // Keep them visible for logged-out users so they are encouraged to log in to submit.

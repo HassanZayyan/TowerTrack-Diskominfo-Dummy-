@@ -206,13 +206,15 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/points/import', [FoManagementController::class, 'importFoPoints'])->name('fo-management.points.import.process');
         Route::get('/fo-management/points/import/template', [FoManagementController::class, 'downloadFoPointsTemplate'])->name('fo-management.points.import.template');
 
-        // Master Provider Management (CRUD) - DRY: Consolidated in FoManagementController
+        // Master Provider Management - READ ONLY: Providers are now managed via User Management
+        // Only index route is enabled for viewing providers (read-only)
         Route::get('/fo-management/providers', [FoManagementController::class, 'indexProviders'])->name('fo-management.providers.index');
-        Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
-        Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
-        Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
+        // CRUD routes disabled - use User Management instead
+        // Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
+        // Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
+        // Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
         
-        // Quick create provider from point form
+        // Quick create provider from point form - Still available for convenience
         Route::post('/fo-management/providers/quick-create', [FoManagementController::class, 'quickCreateProvider'])
             ->name('fo-management.providers.quick-create');
 

@@ -9,7 +9,7 @@ import ModalBackdrop from '@/Components/ModalBackdrop';
 import ModalContainer from '@/Components/ModalContainer';
 import { Pagination } from '@/Components/Pagination';
 
-interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null }
+interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null; fo_provider_id?: number | null; provider?: { id: number; name: string } | null }
 
 interface PaginationData {
   data: User[];
@@ -31,7 +31,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
     last_page: users.last_page,
     total: users.total,
   } : null;
-  const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; password?: string; banned?: boolean }>({ name: '', email: '', role: 'operator', banned: false });
+  const [form, setForm] = useState<{ id?: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; password?: string; banned?: boolean; provider_name?: string }>({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
   const { auth } = usePage().props as any;
   const [showPassword, setShowPassword] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -110,13 +110,17 @@ const UsersPage: React.FC<Props> = ({ users }) => {
       // Namun untuk complainant, tower_owner, dan provider_owner, hanya kirim data yang relevan
       const originalUser = usersList.find(u => u.id === form.id);
       if (originalUser && (originalUser.role === 'complainant' || originalUser.role === 'tower_owner' || originalUser.role === 'provider_owner')) {
-        const updateData = {
+        const updateData: any = {
           role: form.role,
           banned: form.banned // Admin dapat membanned semua role
         };
+        // Include provider_name for provider_owner role
+        if (form.role === 'provider_owner' && form.provider_name) {
+          updateData.provider_name = form.provider_name;
+        }
         router.put(route('admin.users.update', { user: form.id }), updateData, {
           onSuccess: () => {
-            setForm({ name: '', email: '', role: 'operator', banned: false });
+            setForm({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
             setShowPassword(false);
             setShowModal(false);
             setEmailError('');
@@ -125,7 +129,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
       } else {
         router.put(route('admin.users.update', { user: form.id }), form, {
           onSuccess: () => {
-            setForm({ name: '', email: '', role: 'operator', banned: false });
+            setForm({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
             setShowPassword(false);
             setShowModal(false);
             setEmailError('');
@@ -135,7 +139,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
     } else {
       router.post(route('admin.users.store'), form, {
         onSuccess: () => {
-          setForm({ name: '', email: '', role: 'operator', banned: false });
+          setForm({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
           setShowPassword(false);
           setShowModal(false);
           setEmailError('');
@@ -258,7 +262,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
             <>
               <button
                 onClick={() => {
-                  setForm({ name: '', email: '', role: 'operator' });
+                  setForm({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
                   setShowPassword(false);
                   setShowModal(true);
                 }}
@@ -434,6 +438,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                                   email: u.email, 
                                   role: u.role, 
                                   banned: u.banned || false,
+                                  provider_name: u.provider?.name || '',
                                   password: undefined // Reset password field
                                 });
                               } else {
@@ -442,7 +447,8 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                                   name: u.name, 
                                   email: u.email, 
                                   role: u.role, 
-                                  banned: u.banned || false 
+                                  banned: u.banned || false,
+                                  provider_name: ''
                                 });
                               }
                               setShowModal(true);
@@ -599,6 +605,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                               email: u.email, 
                               role: u.role, 
                               banned: u.banned || false,
+                              provider_name: u.provider?.name || '',
                               password: undefined // Reset password field
                             });
                           } else {
@@ -607,7 +614,8 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                               name: u.name, 
                               email: u.email, 
                               role: u.role, 
-                              banned: u.banned || false 
+                              banned: u.banned || false,
+                              provider_name: ''
                             });
                           }
                           setShowModal(true);
@@ -759,7 +767,15 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                     <select 
                       className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
                       value={form.role} 
-                      onChange={(e) => setForm({ ...form, role: e.target.value as any })}
+                      onChange={(e) => {
+                        const newRole = e.target.value as any;
+                        // Clear provider_name if changing away from provider_owner
+                        setForm({ 
+                          ...form, 
+                          role: newRole,
+                          provider_name: newRole === 'provider_owner' ? form.provider_name : ''
+                        });
+                      }}
                     >
                       <option value="operator">Operator</option>
                       <option value="admin">Admin</option>
@@ -773,6 +789,28 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                       </p>
                     )}
                   </div>
+                  
+                  {/* Provider Name Input - Only show for provider_owner role */}
+                  {form.role === 'provider_owner' && (
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Nama Provider <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
+                        type="text"
+                        placeholder="Masukkan nama provider (contoh: Telkom Indonesia, MyRepublic, dll)" 
+                        value={form.provider_name || ''} 
+                        onChange={(e) => setForm({ ...form, provider_name: e.target.value })}
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {form.id 
+                          ? 'Ubah nama provider. Jika provider dengan nama ini sudah ada, akan digunakan provider yang ada. Jika belum ada, akan dibuat provider baru.'
+                          : 'Masukkan nama provider. Sistem akan otomatis membuat provider baru jika belum ada, atau menggunakan provider yang sudah ada jika nama sudah terdaftar.'}
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Banned status checkbox - muncul saat edit user dan tambah user baru */}
                   <div className="space-y-2">

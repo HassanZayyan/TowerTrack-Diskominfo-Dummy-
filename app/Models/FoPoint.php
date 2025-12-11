@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\FoProvider;
 
 /**
  * FO Point Model
@@ -31,8 +32,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property-read string|null $isp_image_url
  * @property-read string|null $pole_image_url
  * @property-read string|null $junction_box_image_url
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\FoProvider> $providers
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\FoProvider> $activeProviders
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, FoProvider> $providers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, FoProvider> $activeProviders
  */
 class FoPoint extends Model
 {

@@ -8,6 +8,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * User Model
+ * 
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $password
+ * @property string $role
+ * @property bool $banned
+ * @property int|null $owner_id
+ * @property int|null $fo_provider_id
+ * @property string|null $avatar
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ */
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -88,10 +105,11 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if user is provider owner
+     * Returns true only if user has provider_owner role AND has a provider assigned
      */
     public function isProviderOwner(): bool
     {
-        return $this->role === 'provider_owner';
+        return $this->role === 'provider_owner' && $this->fo_provider_id !== null;
     }
 
     /**

@@ -41,8 +41,6 @@ export default function MyMessagesIndex({
   isMyPosts = false
 }: MyMessagesProps) {
   const { auth } = usePage().props as any;
-  const isStaff = !!(auth?.user && ['admin','operator'].includes(auth.user.role));
-
   const [email, setEmail] = React.useState('');
   
   // Pagination state
@@ -56,14 +54,6 @@ export default function MyMessagesIndex({
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterVisibility, setFilterVisibility] = React.useState<'all' | 'public' | 'private'>('all');
   const [filterLocationType, setFilterLocationType] = React.useState<'all' | 'Tower' | 'Fiber Optik'>('all');
-
-  React.useEffect(() => {
-    if (isStaff) {
-      router.visit('/admin');
-    }
-  }, [isStaff]);
-
-  if (isStaff) return null;
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -374,7 +364,8 @@ export default function MyMessagesIndex({
         </StaggeredContainer>
 
         {/* Show info banner for authenticated users about public messages */}
-        {!isAnonymous && auth?.user && !isMyPosts && (
+        {/* Hide "Pesan Saya" button for admin/operator - they should only use public messages page */}
+        {!isAnonymous && auth?.user && !isMyPosts && !['admin', 'operator'].includes(auth.user.role) && (
           <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
             <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-md">
               <div className="flex items-start gap-4">

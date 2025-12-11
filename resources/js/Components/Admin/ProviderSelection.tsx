@@ -1,9 +1,4 @@
-import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { router, useForm, usePage } from '@inertiajs/react';
-import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
-import ModalBackdrop from '@/Components/ModalBackdrop';
-import ModalContainer from '@/Components/ModalContainer';
+import React from 'react';
 
 interface Provider {
   id: number;
@@ -29,27 +24,6 @@ export default function ProviderSelection({
   label = 'Pilih Provider',
   useBackdropBlur = false,
 }: ProviderSelectionProps) {
-  const [showProviderDialog, setShowProviderDialog] = useState(false);
-  const { auth } = usePage().props as any;
-  const user = auth?.user;
-  const canCreateProvider = user && !['provider_owner'].includes(user.role);
-  
-  // Use Inertia.js useForm for proper CSRF handling and form management
-  const { 
-    data: providerForm, 
-    setData: setProviderForm, 
-    post: postProvider, 
-    processing: isCreatingProvider, 
-    errors: providerFormErrors, 
-    reset: resetProviderForm,
-    clearErrors: clearProviderErrors
-  } = useForm({
-    name: '',
-    description: '',
-  });
-
-  // Prevent body scroll saat dialog terbuka
-  useBodyScrollLock(showProviderDialog);
 
   // Handle checkbox change
   const handleProviderCheckboxChange = (providerId: number, checked: boolean) => {
@@ -61,42 +35,6 @@ export default function ProviderSelection({
     }
   };
 
-  // Handle quick create provider using Inertia.js standard
-  const handleCreateProvider = () => {
-    if (!providerForm.name.trim()) {
-      return;
-    }
-
-    postProvider(route('admin.fo-management.providers.quick-create'), {
-      preserveState: true,
-      preserveScroll: true,
-      onSuccess: (page: any) => {
-        // Backend returns Inertia response with newProvider in flash data
-        const newProvider = page?.props?.flash?.newProvider;
-        
-        if (newProvider) {
-          // Add new provider to selection immediately
-          const currentProviders = providers || [];
-          onChange([...currentProviders, newProvider.id]);
-        }
-        
-        // Reload available providers to get updated list using router.get
-        router.get(window.location.pathname, {}, {
-          only: ['availableProviders'],
-          preserveState: true,
-          preserveScroll: true,
-          onSuccess: () => {
-            setShowProviderDialog(false);
-            resetProviderForm();
-          },
-        });
-      },
-      onError: (errors) => {
-        // Errors are automatically handled by Inertia.js and available in providerFormErrors
-        console.error('Error creating provider:', errors);
-      },
-    });
-  };
 
   const colorClasses = {
     purple: {
@@ -180,25 +118,6 @@ export default function ProviderSelection({
             ) : (
               <p className="text-sm text-gray-500 italic text-center py-2">Tidak ada provider tersedia</p>
             )}
-
-            {/* Button: Tambah Provider Baru - Hidden for provider_owner */}
-            {canCreateProvider && (
-              <div className="pt-3 border-t border-gray-200 mt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowProviderDialog(true);
-                    clearProviderErrors();
-                  }}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold ${colors.button} border-2 rounded-lg transition-all`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Tambah Provider Baru (Lainnya)
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Helper text */}
@@ -216,134 +135,6 @@ export default function ProviderSelection({
           )}
         </div>
       </div>
-
-      {/* Quick Create Provider Dialog - Using Portal */}
-      {showProviderDialog && typeof window !== 'undefined' && createPortal(
-        <ModalBackdrop
-          onClick={() => {
-            if (!isCreatingProvider) {
-              setShowProviderDialog(false);
-              resetProviderForm();
-            }
-          }}
-          opacity={50}
-          zIndex={100}
-        >
-          <ModalContainer 
-            maxWidth="md" 
-            maxHeight="90vh"
-            onClick={(e) => e.stopPropagation()}
-            className="p-6"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Tambah Provider Baru</h3>
-              <button
-                onClick={() => {
-                  if (!isCreatingProvider) {
-                    setShowProviderDialog(false);
-                    resetProviderForm();
-                  }
-                }}
-                disabled={isCreatingProvider}
-                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="new_provider_name" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nama Provider <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="new_provider_name"
-                  value={providerForm.name}
-                  onChange={(e) => {
-                    setProviderForm('name', e.target.value);
-                    clearProviderErrors('name');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isCreatingProvider && providerForm.name.trim()) {
-                      handleCreateProvider();
-                    }
-                  }}
-                  className={`w-full px-4 py-2 rounded-xl border-2 ${
-                    providerFormErrors.name ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-purple-500'
-                  } ${colors.focusRing} focus:ring-4 focus:outline-none transition-all`}
-                  placeholder="Contoh: Telkomsel, XL, dll"
-                  disabled={isCreatingProvider}
-                />
-                {providerFormErrors.name && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {typeof providerFormErrors.name === 'string' ? providerFormErrors.name : providerFormErrors.name[0]}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="new_provider_description" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Deskripsi <span className="text-gray-500 text-xs">(Opsional)</span>
-                </label>
-                <textarea
-                  id="new_provider_description"
-                  value={providerForm.description}
-                  onChange={(e) => setProviderForm('description', e.target.value)}
-                  rows={3}
-                  className={`w-full px-4 py-2 rounded-xl border-2 ${
-                    providerFormErrors.description ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-purple-500'
-                  } ${colors.focusRing} focus:ring-4 focus:outline-none resize-none transition-all`}
-                  placeholder="Deskripsi singkat tentang provider..."
-                  disabled={isCreatingProvider}
-                />
-                {providerFormErrors.description && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {typeof providerFormErrors.description === 'string' ? providerFormErrors.description : providerFormErrors.description[0]}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isCreatingProvider) {
-                      setShowProviderDialog(false);
-                      resetProviderForm();
-                    }
-                  }}
-                  disabled={isCreatingProvider}
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateProvider}
-                  disabled={isCreatingProvider || !providerForm.name.trim()}
-                  className={`flex-1 px-4 py-2 bg-gradient-to-r ${colors.dialogButton} text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2`}
-                >
-                  {isCreatingProvider ? (
-                    <>
-                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Menambahkan...
-                    </>
-                  ) : (
-                    'Tambahkan'
-                  )}
-                </button>
-              </div>
-            </div>
-          </ModalContainer>
-        </ModalBackdrop>,
-        document.body
-      )}
     </>
   );
 }

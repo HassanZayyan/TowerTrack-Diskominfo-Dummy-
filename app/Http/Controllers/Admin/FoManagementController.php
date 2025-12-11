@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
+use App\Models\User;
 use App\Imports\FoPointsImport;
 use App\Imports\FoPointsTemplateExport;
 use App\Rules\GoogleDriveUrl;
@@ -28,7 +29,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FoManagementController extends Controller
 {
-    use HasFoPointValidation, HasFoRouteStatistics, HasGeoJsonGeneration, HasCacheInvalidation, \App\Traits\HasResourceOwnership;
+    use HasFoPointValidation, HasFoRouteStatistics, HasGeoJsonGeneration, HasCacheInvalidation, \App\Traits\HasResourceOwnership, \App\Traits\HandlesProviderOwner;
     /**
      * Display list of FO routes (main entry point)
      * Optimized: path_coordinates excluded to reduce payload size
@@ -46,12 +47,11 @@ class FoManagementController extends Controller
             ->when($area, fn ($q) => $q->where('area', $area));
 
         // For provider_owner, only show routes that have points with their provider
-        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+        if ($user && $user->isProviderOwner()) {
             $foRoutesQuery->whereHas('points', function($q) use ($user, $area) {
                 $q->where('fo_points.area', $area)
-                  ->whereHas('providers', function($providerQuery) use ($user) {
-                      $providerQuery->where('fo_providers.id', $user->fo_provider_id)
-                                    ->wherePivot('is_active', true);
+                  ->whereHas('providers', function($providerQ) use ($user) {
+                      $providerQ->where('fo_providers.id', $user->fo_provider_id);
                   });
             });
         }
@@ -77,12 +77,11 @@ class FoManagementController extends Controller
         $statsQuery = FoRoute::when($area, fn ($q) => $q->where('area', $area));
         
         // For provider_owner, filter statistics by their provider
-        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+        if ($user && $user->isProviderOwner()) {
             $statsQuery->whereHas('points', function($q) use ($user, $area) {
                 $q->where('fo_points.area', $area)
-                  ->whereHas('providers', function($providerQuery) use ($user) {
-                      $providerQuery->where('fo_providers.id', $user->fo_provider_id)
-                                    ->wherePivot('is_active', true);
+                  ->whereHas('providers', function($providerQ) use ($user) {
+                      $providerQ->where('fo_providers.id', $user->fo_provider_id);
                   });
             });
         }
@@ -354,24 +353,13 @@ class FoManagementController extends Controller
         $user = auth()->user();
         
         // For provider_owner: validate and auto-assign provider
-        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
-            // If providers are provided, validate they only selected their own provider
-            if (!empty($providers)) {
-                $invalidProviders = array_diff($providers, [$user->fo_provider_id]);
-                if (!empty($invalidProviders)) {
-                    abort(403, 'Anda hanya dapat memilih provider milik Anda sendiri.');
-                }
-            } else {
-                // Auto-assign provider if not provided
-                $providers = [$user->fo_provider_id];
-            }
-        }
+        $providers = $this->validateAndAssignProviderForOwner($providers, $user);
 
         $point = FoPoint::create($validated);
 
         // Sync providers if provided
         if (! empty($providers)) {
-            $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
+            $syncData = FoProvider::buildSyncData($providers);
             $point->providers()->sync($syncData);
         }
 
@@ -460,24 +448,14 @@ class FoManagementController extends Controller
         $providers = $validated['providers'] ?? [];
         unset($validated['providers']);
         
-        // For provider_owner: validate they only selected their own provider
+        // For provider_owner: validate and auto-assign provider
         $user = auth()->user();
-        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
-            if (!empty($providers)) {
-                $invalidProviders = array_diff($providers, [$user->fo_provider_id]);
-                if (!empty($invalidProviders)) {
-                    abort(403, 'Anda hanya dapat memilih provider milik Anda sendiri.');
-                }
-            } else {
-                // Auto-assign provider if not provided
-                $providers = [$user->fo_provider_id];
-            }
-        }
+        $providers = $this->validateAndAssignProviderForOwner($providers, $user);
 
         $foPoint->update($validated);
 
         // Sync providers
-        $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
+        $syncData = FoProvider::buildSyncData($providers);
         $foPoint->providers()->sync($syncData);
 
         // Invalidate FO points cache for data-fo page
@@ -1155,7 +1133,7 @@ class FoManagementController extends Controller
             ->select('id', 'name', 'default_sort_order');
         
         // For provider_owner, only show their own provider
-        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+        if ($user && $user->isProviderOwner()) {
             $query->where('id', $user->fo_provider_id);
         }
         
@@ -1186,7 +1164,7 @@ class FoManagementController extends Controller
             ->orderByPivot('sort_order');
         
         // For provider_owner, only show their own provider if it exists in this point
-        if ($user && $user->role === 'provider_owner' && $user->fo_provider_id) {
+        if ($user && $user->isProviderOwner()) {
             $query->where('fo_providers.id', $user->fo_provider_id);
         }
         
@@ -1200,25 +1178,6 @@ class FoManagementController extends Controller
             ->toArray();
     }
 
-    /**
-     * Build sync data for provider pivot table
-     * DRY: Reusable method untuk sync providers
-     */
-    private function buildProviderSyncData(array $providerIds): array
-    {
-        $syncData = [];
-        foreach ($providerIds as $index => $providerId) {
-            $masterProvider = FoProvider::find($providerId);
-            if ($masterProvider) {
-                $syncData[$providerId] = [
-                    'is_active' => true,
-                    'sort_order' => $masterProvider->default_sort_order ?? $index,
-                ];
-            }
-        }
-
-        return $syncData;
-    }
 
     /**
      * Normalize image fields to null if empty, dash, or whitespace-only
@@ -1273,12 +1232,8 @@ class FoManagementController extends Controller
      */
     public function storeProvider(Request $request): RedirectResponse
     {
-        $user = auth()->user();
-        
         // Provider owners cannot create new providers
-        if ($user && $user->role === 'provider_owner') {
-            abort(403, 'Anda tidak memiliki izin untuk menambahkan provider baru.');
-        }
+        $this->ensureNotProviderOwner();
         
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:fo_providers,name',
@@ -1289,15 +1244,14 @@ class FoManagementController extends Controller
 
         // Get max sort order jika tidak disediakan
         if (! isset($validated['default_sort_order'])) {
-            $maxSortOrder = FoProvider::max('default_sort_order') ?? 0;
-            $validated['default_sort_order'] = $maxSortOrder + 1;
+            $validated['default_sort_order'] = FoProvider::getNextSortOrder();
         }
 
         $provider = FoProvider::create($validated);
 
         return redirect()
             ->route('admin.fo-management.providers.index')
-            ->with('success', 'Provider berhasil ditambahkan');
+            ->with('success', 'Provider berhasil ditambahkan.');
     }
 
     /**
@@ -1354,12 +1308,8 @@ class FoManagementController extends Controller
      */
     public function quickCreateProvider(Request $request): RedirectResponse
     {
-        $user = auth()->user();
-        
         // Provider owners cannot create new providers
-        if ($user && $user->role === 'provider_owner') {
-            abort(403, 'Anda tidak memiliki izin untuk menambahkan provider baru.');
-        }
+        $this->ensureNotProviderOwner();
         
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:fo_providers,name',
@@ -1367,12 +1317,10 @@ class FoManagementController extends Controller
         ]);
 
         // Get max sort order untuk menempatkan di akhir
-        $maxSortOrder = FoProvider::max('default_sort_order') ?? 0;
-
         $provider = FoProvider::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'default_sort_order' => $maxSortOrder + 1,
+            'default_sort_order' => FoProvider::getNextSortOrder(),
             'is_active' => true,
         ]);
 

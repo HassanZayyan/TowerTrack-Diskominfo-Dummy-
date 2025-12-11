@@ -247,14 +247,9 @@ class TowerOwnerSeeder extends Seeder
             $newProviders = $newProviders->take($neededProviders);
 
             // Build sync data for pivot table
-            $syncData = [];
-            foreach ($newProviders as $provider) {
-                $syncData[$provider->id] = [
-                    'is_active' => true,
-                    'sort_order' => $provider->default_sort_order ?? 0,
-                ];
-                $totalAssignments++;
-            }
+            $providerIds = $newProviders->pluck('id')->toArray();
+            $syncData = FoProvider::buildSyncData($providerIds);
+            $totalAssignments += count($syncData);
 
             // Sync providers to point (add new ones without removing existing)
             if (!empty($syncData)) {

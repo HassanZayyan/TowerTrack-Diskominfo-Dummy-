@@ -58,7 +58,14 @@ class MyMessagesController extends BaseController
             return redirect()->route('my.messages');
         }
 
-        $userId = auth()->id();
+        $user = auth()->user();
+        
+        // Admin and operator cannot access "Pesan Saya" - redirect to public messages
+        if (in_array($user->role, ['admin', 'operator'], true)) {
+            return redirect()->route('my.messages')->with('message', 'Admin dan operator tidak dapat mengakses halaman Pesan Saya. Silakan gunakan halaman pesan publik untuk melihat pesan.');
+        }
+
+        $userId = $user->id;
         $pagination = $this->getPaginationParams($request, 15);
 
         // Cache key includes user ID and pagination params

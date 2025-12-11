@@ -25,23 +25,35 @@ export function useCanRespond({
   return useMemo(() => {
     const isAdmin = isAuthenticated && normalizedRole === 'admin';
     const isOperator = isAuthenticated && normalizedRole === 'operator';
+    const isAdminOrOperator = isAdmin || isOperator;
     const isOwner = Boolean(
       isAuthenticated && user_id && authUser?.id && Number(user_id) === Number(authUser.id)
     );
     const hasReporter = Boolean(user_id);
     
-    // Determine who can respond
+    // Admin/operator cannot respond from public pages - they must use admin pages for official responses
+    // This hook is used in public pages (ShowReport, ShowFeedback), so admin/operator should not be able to respond
+    if (isAdminOrOperator) {
+      return {
+        canRespond: false,
+        responseDescription: undefined,
+        isAdmin,
+        isOperator,
+        isOwner,
+        hasReporter,
+      };
+    }
+    
+    // Determine who can respond (only for non-admin/operator users)
     let canRespond = false;
     
     if (hasReporter) {
-      // For authenticated reports/feedbacks: only admin/operator and reporter can respond
-      const isAdminOrOperator = isAdmin || isOperator;
-      canRespond = isAdminOrOperator || isOwner;
+      // For authenticated reports/feedbacks: only reporter (owner) can respond
+      canRespond = isOwner;
     } else {
-      // For anonymous reports/feedbacks: only admin/operator and guest can respond
-      const isAdminOrOperator = isAdmin || isOperator;
+      // For anonymous reports/feedbacks: only guest can respond
       const canGuestRespond = !isAuthenticated && (!!email || !!phone);
-      canRespond = isAdminOrOperator || canGuestRespond;
+      canRespond = canGuestRespond;
     }
 
     const responseDescription = !isAuthenticated && !hasReporter

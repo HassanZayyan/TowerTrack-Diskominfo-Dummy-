@@ -299,10 +299,11 @@ class FeedbackController extends MessageableController
 
     /**
      * Store a response from feedback sender or staff.
+     * This is the public route - admin/operator should use admin pages for official responses.
      */
     public function storeResponse(StoreMessageResponseRequest $request, Feedback $feedback)
     {
-        return $this->handleResponseSubmission($request, $feedback, $this->getConfig());
+        return $this->handleResponseSubmission($request, $feedback, $this->getConfig(), true);
     }
 
 }

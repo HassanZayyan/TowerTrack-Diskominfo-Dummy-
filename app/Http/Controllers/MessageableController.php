@@ -154,11 +154,13 @@ abstract class MessageableController extends Controller
 
     /**
      * Handle storing of responses for a messageable model.
+     * 
+     * @param bool $isPublicContext Whether this is called from public page (true) or admin page (false)
      */
-    protected function handleResponseSubmission(StoreMessageResponseRequest $request, $model, array $config): RedirectResponse
+    protected function handleResponseSubmission(StoreMessageResponseRequest $request, $model, array $config, bool $isPublicContext = false): RedirectResponse
     {
         $validated = $request->validated();
-        $senderContext = $this->resolveSenderContext($request, $model, $config);
+        $senderContext = $this->resolveSenderContext($request, $model, $config, $isPublicContext);
 
         $payload = array_merge($senderContext, [
             'message' => $validated['message'],
@@ -174,17 +176,31 @@ abstract class MessageableController extends Controller
      * Resolve the sender information for the response.
      *
      * @param  array<string, mixed>  $config
+     * @param  bool  $isPublicContext Whether this is called from public page (true) or admin page (false)
      * @return array<string, mixed>
      */
-    protected function resolveSenderContext(Request $request, $model, array $config): array
+    protected function resolveSenderContext(Request $request, $model, array $config, bool $isPublicContext = false): array
     {
         $user = $request->user();
 
         if ($user) {
             $isReporter = (int) $model->user_id === (int) $user->id;
             $isAdmin = method_exists($user, 'isAdmin') && $user->isAdmin();
+            $isOperator = $user->role === 'operator';
+            $isAdminOrOperator = $isAdmin || $isOperator;
             
-            // Admin can always reply
+            // Prevent admin/operator from creating official responses from public pages
+            // They should use admin pages for official responses (with email notifications and status updates)
+            if ($isPublicContext && $isAdminOrOperator) {
+                $messageType = $model instanceof \App\Models\Report ? 'laporan' : 'masukan';
+                $adminRoute = $model instanceof \App\Models\Report 
+                    ? route('admin.complaints.show', $model)
+                    : route('admin.feedbacks.show', $model);
+                
+                abort(403, "Admin dan operator tidak dapat membalas pesan resmi dari halaman publik. Silakan gunakan halaman admin untuk membalas {$messageType} ini: {$adminRoute}");
+            }
+            
+            // Admin can always reply (from admin pages)
             if ($isAdmin) {
                 return [
                     'user_id' => $user->id,
@@ -214,7 +230,6 @@ abstract class MessageableController extends Controller
             
             // For anonymous reports, only admin and operator can reply
             // Tower owner cannot reply to anonymous reports (same as complainant)
-            $isOperator = $user->role === 'operator';
             if ($isOperator) {
                 return [
                     'user_id' => $user->id,
