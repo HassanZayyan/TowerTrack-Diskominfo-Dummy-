@@ -267,9 +267,9 @@ const ManagementTable: React.FC<Props> = ({
               )}
             </div>
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative">
             <select
-              className="w-full sm:w-auto border border-gray-300 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent"
+              className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 sm:px-4 sm:py-3 pr-8 sm:pr-10 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent appearance-none bg-white"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -278,6 +278,11 @@ const ManagementTable: React.FC<Props> = ({
               <option value="in_progress">Progress</option>
               <option value="closed">Selesai</option>
             </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
@@ -449,7 +454,7 @@ const ManagementTable: React.FC<Props> = ({
                             value={item.status}
                             onChange={(e) => handleStatusChange(item.id, e.target.value)}
                             disabled={updatingStatus[item.id]}
-                            className={`text-xs font-medium border rounded-lg px-2 py-1 transition-all focus:ring-2 focus:ring-offset-1 ${
+                            className={`text-xs font-medium border rounded-lg px-2 py-1 pr-6 transition-all focus:ring-2 focus:ring-offset-1 ${
                               updatingStatus[item.id] 
                                 ? 'opacity-50 cursor-not-allowed' 
                                 : 'cursor-pointer hover:shadow-md'
@@ -523,7 +528,7 @@ const ManagementTable: React.FC<Props> = ({
                         value={item.status}
                         onChange={(e) => handleStatusChange(item.id, e.target.value)}
                         disabled={updatingStatus[item.id]}
-                        className={`text-xs font-medium border rounded-full px-2 py-1 transition-all focus:ring-2 focus:ring-offset-1 ${
+                        className={`text-xs font-medium border rounded-full px-2 py-1 pr-6 transition-all focus:ring-2 focus:ring-offset-1 ${
                           updatingStatus[item.id] 
                             ? 'opacity-50 cursor-not-allowed' 
                             : 'cursor-pointer hover:shadow-md'
