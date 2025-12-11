@@ -67,7 +67,11 @@ export default function LocationCard({
   return (
     <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
+        <div className={`p-2 bg-gradient-to-br rounded-lg shadow-sm ${
+          isFoPoint 
+            ? 'from-blue-500 to-blue-600' 
+            : 'from-indigo-500 to-indigo-600'
+        }`}>
           {locationIcon}
         </div>
         <h5 className="text-sm font-bold text-gray-900">{label}</h5>

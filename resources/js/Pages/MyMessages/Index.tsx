@@ -547,7 +547,10 @@ export default function MyMessagesIndex({
                     <option value="resolved">Selesai</option>
                   </select>
                 </div>
+              </div>
 
+              {/* Second row: Visibilitas, Kategori, Lokasi - aligned in same row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Visibility Filter - Only show for My Posts page */}
                 {isMyPosts && (
                   <div>
@@ -564,11 +567,9 @@ export default function MyMessagesIndex({
                     </select>
                   </div>
                 )}
-              </div>
 
-              {/* Category Filter and Location Type Filter - Full width on second row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="sm:col-span-2 lg:col-span-1">
+                {/* Category Filter */}
+                <div className={isMyPosts ? '' : 'sm:col-span-2 lg:col-span-1'}>
                   <InputLabel htmlFor="filterCategory" value="Kategori" />
                   <select
                     id="filterCategory"
@@ -584,7 +585,7 @@ export default function MyMessagesIndex({
                 </div>
 
                 {/* Location Type Filter */}
-                <div className="sm:col-span-2 lg:col-span-1">
+                <div className={isMyPosts ? '' : 'sm:col-span-2 lg:col-span-1'}>
                   <InputLabel htmlFor="filterLocationType" value="Lokasi" />
                   <select
                     id="filterLocationType"
