@@ -124,6 +124,11 @@ const UsersPage: React.FC<Props> = ({ users }) => {
             setShowPassword(false);
             setShowModal(false);
             setEmailError('');
+          },
+          onError: (errors: any) => {
+            if (errors.email) {
+              setEmailError(Array.isArray(errors.email) ? errors.email[0] : errors.email);
+            }
           }
         });
       } else {
@@ -133,6 +138,11 @@ const UsersPage: React.FC<Props> = ({ users }) => {
             setShowPassword(false);
             setShowModal(false);
             setEmailError('');
+          },
+          onError: (errors: any) => {
+            if (errors.email) {
+              setEmailError(Array.isArray(errors.email) ? errors.email[0] : errors.email);
+            }
           }
         });
       }
@@ -143,6 +153,11 @@ const UsersPage: React.FC<Props> = ({ users }) => {
           setShowPassword(false);
           setShowModal(false);
           setEmailError('');
+        },
+        onError: (errors: any) => {
+          if (errors.email) {
+            setEmailError(Array.isArray(errors.email) ? errors.email[0] : errors.email);
+          }
         }
       });
     }

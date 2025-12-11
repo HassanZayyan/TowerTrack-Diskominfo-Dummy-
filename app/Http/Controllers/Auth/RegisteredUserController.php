@@ -47,6 +47,8 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'cf-turnstile-response' => 'required|string',
+        ], [
+            'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain.',
         ]);
 
         // Verify CAPTCHA

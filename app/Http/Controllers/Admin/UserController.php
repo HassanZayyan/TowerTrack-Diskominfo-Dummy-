@@ -38,6 +38,8 @@ class UserController extends Controller
             'role' => 'required|in:admin,operator,complainant,tower_owner,provider_owner',
             'provider_name' => 'required_if:role,provider_owner|string|max:255',
             'banned' => 'boolean',
+        ], [
+            'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain.',
         ]);
 
         // Auto-create provider for provider_owner role
@@ -83,6 +85,8 @@ class UserController extends Controller
             'provider_name' => 'required_if:role,provider_owner|string|max:255',
             'password' => 'nullable|string|min:8',
             'banned' => 'boolean',
+        ], [
+            'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain.',
         ]);
 
         // Handle provider_owner role
