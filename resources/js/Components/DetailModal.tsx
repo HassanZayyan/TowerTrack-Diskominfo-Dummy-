@@ -57,6 +57,12 @@ export interface DetailModalProps {
   canSendComplaint?: boolean;
   showDetailSelector?: boolean;
   defaultEmptyValue?: string;
+  imageGallery?: Array<{
+    id: string;
+    label: string;
+    url: string | null;
+    color?: string;
+  }>;
 }
 
 const DetailModal: React.FC<DetailModalProps> = ({
@@ -80,7 +86,8 @@ const DetailModal: React.FC<DetailModalProps> = ({
   canSendFeedback = true,
   canSendComplaint = true,
   showDetailSelector = true,
-  defaultEmptyValue = 'Belum Terdata'
+  defaultEmptyValue = 'Belum Terdata',
+  imageGallery = []
 }) => {
   const { auth } = usePage().props as any;
   const [selectedDetail, setSelectedDetail] = useState<string>('-- Pilih Detail --');
@@ -343,6 +350,83 @@ const DetailModal: React.FC<DetailModalProps> = ({
                       </div>
                     );
                   })}
+                </div>
+              )}
+              
+              {/* Image Gallery Section */}
+              {imageGallery.length > 0 && imageGallery.some(img => img.url && img.url.trim() !== '') && (
+                <div className="mt-6 sm:mt-8">
+                  <div className="flex items-center mb-4">
+                    <div className="mr-3 p-2 bg-gray-100 rounded-lg">
+                      <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900">Dokumentasi Gambar</h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {imageGallery.map((image) => {
+                      const hasValidUrl = image.url && image.url !== '-' && image.url.trim() !== '';
+                      const color = image.color || 'blue';
+                      const bgColorClass = color === 'red' ? 'bg-red-100' : color === 'green' ? 'bg-green-100' : 'bg-blue-100';
+                      const textColorClass = color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : 'text-blue-600';
+                      const buttonBgClass = color === 'red' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 
+                                           color === 'green' ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 
+                                           'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
+                      
+                      return (
+                        <div key={image.id} className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="text-center">
+                            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${bgColorClass}`}>
+                              {image.id === 'isp' && (
+                                <svg className={`w-6 h-6 ${textColorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                              {image.id === 'pole' && (
+                                <svg className={`w-6 h-6 ${textColorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                              )}
+                              {image.id === 'junction_box' && (
+                                <svg className={`w-6 h-6 ${textColorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                              )}
+                              {!['isp', 'pole', 'junction_box'].includes(image.id) && (
+                                <svg className={`w-6 h-6 ${textColorClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </div>
+                            <label className="block text-sm font-bold text-gray-700 mb-3">
+                              {image.label}
+                            </label>
+                            {hasValidUrl ? (
+                              <button
+                                onClick={() => window.open(image.url!, '_blank', 'noopener,noreferrer')}
+                                className={`w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonBgClass}`}
+                                title={`Lihat gambar ${image.label}`}
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Lihat Gambar
+                              </button>
+                            ) : (
+                              <div className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-lg cursor-not-allowed border-2 border-dashed border-gray-300">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                                </svg>
+                                Tidak Tersedia
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -750,6 +834,28 @@ export const FoPointDetailModal: React.FC<FoPointDetailModalProps> = ({
     link.click();
   };
 
+  // Prepare image gallery data
+  const imageGallery = [
+    {
+      id: 'isp',
+      label: 'ISP',
+      url: point?.images?.isp || null,
+      color: 'red'
+    },
+    {
+      id: 'pole',
+      label: 'Tiang',
+      url: point?.images?.pole || null,
+      color: 'green'
+    },
+    {
+      id: 'junction_box',
+      label: 'Junction Box',
+      url: point?.images?.junction_box || null,
+      color: 'blue'
+    }
+  ];
+
   return (
     <DetailModal
       isOpen={isOpen}
@@ -774,6 +880,7 @@ export const FoPointDetailModal: React.FC<FoPointDetailModalProps> = ({
         fo_point_name: encodeURIComponent(data.name || ''),
         location_type: 'fo_point'
       })}
+      imageGallery={imageGallery}
       theme={{
         headerBgColor: '#DC2626',
         headerTextColor: '#FFFFFF',

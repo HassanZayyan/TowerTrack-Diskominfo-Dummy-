@@ -1300,6 +1300,43 @@ export default function DataFoIndex({
                                  </div>
                                </div>
                              )}
+                             {/* Foto yang tersedia */}
+                             {point.images && (
+                               <div className="flex items-start gap-1.5 pt-1 border-t border-gray-200">
+                                 <span className="text-gray-400 flex-shrink-0 text-[9px]">📷</span>
+                                 <div className="flex flex-wrap gap-1 flex-1">
+                                   {point.images.isp && point.images.isp !== '-' && point.images.isp.trim() !== '' && (
+                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-red-100 text-red-700 border border-red-200">
+                                       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                       </svg>
+                                       ISP
+                                     </span>
+                                   )}
+                                   {point.images.pole && point.images.pole !== '-' && point.images.pole.trim() !== '' && (
+                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700 border border-green-200">
+                                       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                       </svg>
+                                       Tiang
+                                     </span>
+                                   )}
+                                   {point.images.junction_box && point.images.junction_box !== '-' && point.images.junction_box.trim() !== '' && (
+                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                       </svg>
+                                       JB
+                                     </span>
+                                   )}
+                                   {(!point.images.isp || point.images.isp === '-' || point.images.isp.trim() === '') &&
+                                    (!point.images.pole || point.images.pole === '-' || point.images.pole.trim() === '') &&
+                                    (!point.images.junction_box || point.images.junction_box === '-' || point.images.junction_box.trim() === '') && (
+                                     <span className="text-[9px] text-gray-500 italic">Tidak ada foto</span>
+                                   )}
+                                 </div>
+                               </div>
+                             )}
                            </div>
                          </div>
                        </Tooltip>
