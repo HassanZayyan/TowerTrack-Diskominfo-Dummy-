@@ -433,20 +433,28 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
             'Masalah Lokasi GPS Ditemukan', 
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
+          setIsSubmitting(false);
+          return; // Block submission if GPS quality is too poor
         } else if (userLocationResult.validation.confidence === 'medium') {
           showWarningDialog(
             'Akurasi Lokasi Sedang', 
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
+          // Medium confidence allows submission but warns user
         }
       }
       
       if (locationHasCoordinates) {
         // Additional validation against location coordinates for distance check
-        locationValidation = await requestLocationAndValidate({
-          latitude: Number(selectedLocation.latitude),
-          longitude: Number(selectedLocation.longitude)
-        }, 1); // 1 km maximum distance
+        // Reuse coordinates from first GPS capture to avoid double capture
+        locationValidation = await requestLocationAndValidate(
+          {
+            latitude: Number(selectedLocation.latitude),
+            longitude: Number(selectedLocation.longitude)
+          },
+          1, // 1 km maximum distance
+          userLocationResult?.coordinates // Reuse coordinates from first capture
+        );
         
         if (!locationValidation.success) {
           // Provide more informative location error messages

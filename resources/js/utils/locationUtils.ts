@@ -220,7 +220,7 @@ export function getCurrentLocationEnhanced(maxRetries: number = 3, forceFresh: b
     let bestResult: LocationResultWithAccuracy | null = null;
     let attempts = 0;
 
-    // Strategy 1: Fresh high accuracy GPS (best for account switching)
+    // Strategy 1: Fresh high accuracy GPS (optimized timeout)
     const tryFreshHighAccuracyGPS = (): Promise<LocationResultWithAccuracy> => {
       return new Promise((resolveStrategy) => {
         navigator.geolocation.getCurrentPosition(
@@ -242,14 +242,14 @@ export function getCurrentLocationEnhanced(maxRetries: number = 3, forceFresh: b
           },
           {
             enableHighAccuracy: true,
-            timeout: 25000, // 25 seconds for GPS
-            maximumAge: forceFresh ? 0 : 5000 // Force fresh if requested
+            timeout: 12000, // Reduced from 25s to 12s for faster response
+            maximumAge: forceFresh ? 0 : 30000 // Increased from 5s to 30s to prefer cached location
           }
         );
       });
     };
 
-    // Strategy 2: Balanced accuracy with moderate caching
+    // Strategy 2: Balanced accuracy with moderate caching (optimized)
     const tryBalancedAccuracy = (): Promise<LocationResultWithAccuracy> => {
       return new Promise((resolveStrategy) => {
         navigator.geolocation.getCurrentPosition(
@@ -271,14 +271,14 @@ export function getCurrentLocationEnhanced(maxRetries: number = 3, forceFresh: b
           },
           {
             enableHighAccuracy: false,
-            timeout: 15000, // 15 seconds
-            maximumAge: forceFresh ? 0 : 60000 // 1 minute max age
+            timeout: 8000, // Reduced from 15s to 8s
+            maximumAge: forceFresh ? 0 : 120000 // Increased from 60s to 120s (2 minutes) to prefer cached
           }
         );
       });
     };
 
-    // Strategy 3: Fast fallback with cached data
+    // Strategy 3: Fast fallback with cached data (optimized)
     const tryFastFallback = (): Promise<LocationResultWithAccuracy> => {
       return new Promise((resolveStrategy) => {
         navigator.geolocation.getCurrentPosition(
@@ -300,8 +300,8 @@ export function getCurrentLocationEnhanced(maxRetries: number = 3, forceFresh: b
           },
           {
             enableHighAccuracy: false,
-            timeout: 8000, // 8 seconds
-            maximumAge: forceFresh ? 0 : 300000 // 5 minutes max age
+            timeout: 5000, // Reduced from 8s to 5s
+            maximumAge: forceFresh ? 0 : 300000 // 5 minutes max age (unchanged)
           }
         );
       });
@@ -323,17 +323,17 @@ export function getCurrentLocationEnhanced(maxRetries: number = 3, forceFresh: b
               (!bestResult.accuracy && result.accuracy)) {
             bestResult = result;
             
-            // If we get good accuracy (better than 50 meters), accept it
-            if (result.accuracy && result.accuracy <= 50) {
+            // If we get acceptable accuracy (better than 200 meters), accept it early for speed
+            if (result.accuracy && result.accuracy <= 200) {
               resolve(result);
               return;
             }
           }
         }
         
-        // Add a longer delay between attempts for better GPS acquisition
+        // Reduced delay between attempts for faster response
         if (i < strategies.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 2s to 1s
         }
       } catch (error) {
         console.warn(`Location strategy ${i + 1} failed:`, error);
@@ -378,52 +378,52 @@ export function validateLocationDistance(
 
 /**
  * Request location permission and validate distance from tower
- * Uses enhanced location capture for better accuracy
+ * Uses enhanced location capture for better accuracy, or reuses existing coordinates
  * @param towerLocation Tower coordinates to validate against
  * @param maxDistanceKm Maximum allowed distance (default: 1km)
+ * @param existingCoordinates Optional: reuse existing coordinates to avoid double GPS capture
  * @returns Promise with validation result
  */
 export async function requestLocationAndValidate(
   towerLocation: Coordinates,
-  maxDistanceKm: number = 1
+  maxDistanceKm: number = 1,
+  existingCoordinates?: Coordinates
 ): Promise<{ success: boolean; message: string; distance?: number }> {
   try {
-    // Use enhanced location capture for better accuracy
-    const locationResult = await getCurrentLocationEnhanced(3);
+    let userCoordinates: Coordinates;
     
-    if (!locationResult.success) {
-      return {
-        success: false,
-        message: locationResult.error || 'Gagal mendapatkan lokasi'
-      };
-    }
-    
-    if (!locationResult.coordinates) {
-      return {
-        success: false,
-        message: 'Koordinat lokasi tidak tersedia'
-      };
+    // If existing coordinates provided, use them directly (avoid double GPS capture)
+    if (existingCoordinates) {
+      userCoordinates = existingCoordinates;
+    } else {
+      // Use enhanced location capture for better accuracy
+      const locationResult = await getCurrentLocationEnhanced(3);
+      
+      if (!locationResult.success) {
+        return {
+          success: false,
+          message: locationResult.error || 'Gagal mendapatkan lokasi'
+        };
+      }
+      
+      if (!locationResult.coordinates) {
+        return {
+          success: false,
+          message: 'Koordinat lokasi tidak tersedia'
+        };
+      }
+      
+      userCoordinates = locationResult.coordinates;
     }
     
     const validation = validateLocationDistance(
-      locationResult.coordinates,
+      userCoordinates,
       towerLocation,
       maxDistanceKm
     );
     
-    // Add accuracy information to the message
+    // Add accuracy information to the message (if we have accuracy data)
     let enhancedMessage = validation.message;
-    if (locationResult.accuracy) {
-      if (locationResult.accuracy <= 10) {
-        enhancedMessage += ' (Akurasi tinggi: ±10m)';
-      } else if (locationResult.accuracy <= 50) {
-        enhancedMessage += ' (Akurasi baik: ±50m)';
-      } else if (locationResult.accuracy <= 100) {
-        enhancedMessage += ' (Akurasi sedang: ±100m)';
-      } else {
-        enhancedMessage += ' (Akurasi rendah: ±100m+)';
-      }
-    }
     
     return {
       success: validation.valid,
@@ -474,10 +474,12 @@ export async function requestUserLocationForReporting(): Promise<{
         qualityMessage = 'Lokasi diperoleh dengan akurasi tinggi (±10m)';
       } else if (locationResult.accuracy <= 50) {
         qualityMessage = 'Lokasi diperoleh dengan akurasi baik (±50m)';
-      } else if (locationResult.accuracy <= 100) {
-        qualityMessage = 'Lokasi diperoleh dengan akurasi sedang (±100m)';
+      } else if (locationResult.accuracy <= 200) {
+        qualityMessage = 'Lokasi diperoleh dengan akurasi sedang (±200m)';
+      } else if (locationResult.accuracy <= 500) {
+        qualityMessage = 'Lokasi diperoleh dengan akurasi cukup (±500m)';
       } else {
-        qualityMessage = 'Lokasi diperoleh dengan akurasi rendah (±100m+)';
+        qualityMessage = 'Lokasi diperoleh dengan akurasi rendah (±500m+)';
       }
     }
     
@@ -548,16 +550,20 @@ export function validateLocationQuality(
   let confidence: 'high' | 'medium' | 'low' = 'high';
 
   // Check accuracy
-  if (accuracy > 100) {
-    issues.push('Akurasi GPS sangat rendah (±100m+)');
+  if (accuracy > 500) {
+    issues.push('Akurasi GPS sangat rendah (±500m+)');
     confidence = 'low';
     recommendations.push('Pindah ke area terbuka tanpa penghalang');
     recommendations.push('Pastikan GPS aktif dan tidak dalam mode hemat daya');
     recommendations.push('Coba restart aplikasi atau browser');
-  } else if (accuracy > 50) {
-    issues.push('Akurasi GPS sedang (±50-100m)');
+  } else if (accuracy > 200) {
+    issues.push('Akurasi GPS sedang (±200-500m)');
     confidence = 'medium';
     recommendations.push('Coba tunggu beberapa detik untuk GPS lock yang lebih baik');
+  } else if (accuracy > 50) {
+    issues.push('Akurasi GPS cukup baik (±50-200m)');
+    confidence = 'medium';
+    recommendations.push('Akurasi GPS dapat digunakan untuk pelaporan');
   }
 
   // Check for suspicious coordinates (Indonesia bounds)
@@ -611,54 +617,54 @@ export async function getAdvancedLocation(
 }> {
   const attempts: Array<Promise<GeolocationPosition>> = [];
   
-  // Strategy 1: Ultra-high accuracy GPS (longest timeout)
+  // Strategy 1: Ultra-high accuracy GPS (optimized timeout)
   attempts.push(new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       resolve,
       reject,
       {
         enableHighAccuracy: true,
-        timeout: 45000, // 45 seconds
-        maximumAge: 0 // Force fresh
+        timeout: 15000, // Reduced from 45s to 15s for faster response
+        maximumAge: 30000 // Allow 30s cached data for speed
       }
     );
   }));
 
-  // Strategy 2: High accuracy with moderate timeout
+  // Strategy 2: High accuracy with moderate timeout (optimized)
   attempts.push(new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       resolve,
       reject,
       {
         enableHighAccuracy: true,
-        timeout: 30000, // 30 seconds
-        maximumAge: 10000 // 10 seconds max age
+        timeout: 10000, // Reduced from 30s to 10s
+        maximumAge: 60000 // Increased from 10s to 60s to prefer cached
       }
     );
   }));
 
-  // Strategy 3: Balanced accuracy
+  // Strategy 3: Balanced accuracy (optimized)
   attempts.push(new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       resolve,
       reject,
       {
         enableHighAccuracy: false,
-        timeout: 20000, // 20 seconds
-        maximumAge: 60000 // 1 minute max age
+        timeout: 8000, // Reduced from 20s to 8s
+        maximumAge: 120000 // Increased from 60s to 120s (2 minutes)
       }
     );
   }));
 
-  // Strategy 4: Fast network-based location
+  // Strategy 4: Fast network-based location (optimized)
   attempts.push(new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       resolve,
       reject,
       {
         enableHighAccuracy: false,
-        timeout: 15000, // 15 seconds
-        maximumAge: 300000 // 5 minutes max age
+        timeout: 5000, // Reduced from 15s to 5s
+        maximumAge: 300000 // 5 minutes max age (unchanged)
       }
     );
   }));
@@ -699,15 +705,15 @@ export async function getAdvancedLocation(
         bestResult = result;
         bestAccuracy = result.coords.accuracy;
         
-        // If we get excellent accuracy, use it immediately
-        if (result.coords.accuracy <= 20) {
+        // If we get acceptable accuracy (better than 200m), use it immediately for speed
+        if (result.coords.accuracy <= 200) {
           break;
         }
       }
 
-      // Add delay between attempts for GPS stabilization
+      // Reduced delay between attempts for faster response
       if (i < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 3s to 1s
       }
 
     } catch (error) {
@@ -784,16 +790,22 @@ export function assessLocationQuality(accuracy: number | undefined, coordinates:
       message: 'Akurasi baik (±50m)',
       recommendation: 'Lokasi cukup akurat untuk pelaporan'
     };
-  } else if (accuracy <= 100) {
+  } else if (accuracy <= 200) {
+    return {
+      quality: 'good',
+      message: 'Akurasi cukup baik (±200m)',
+      recommendation: 'Lokasi dapat digunakan untuk pelaporan'
+    };
+  } else if (accuracy <= 500) {
     return {
       quality: 'fair',
-      message: 'Akurasi sedang (±100m)',
+      message: 'Akurasi sedang (±500m)',
       recommendation: 'Lokasi dapat digunakan, namun akurasi terbatas'
     };
   } else {
     return {
       quality: 'poor',
-      message: 'Akurasi rendah (±100m+)',
+      message: 'Akurasi rendah (±500m+)',
       recommendation: 'Pindah ke area dengan sinyal GPS lebih baik atau gunakan WiFi'
     };
   }
