@@ -7,33 +7,23 @@ import AssetGrid from '@/Components/MyMessages/AssetGrid';
 import MessageResponseTimeline, { MessageResponseItem } from '@/Components/MyMessages/MessageResponseTimeline';
 import MessageResponseForm from '@/Components/MyMessages/MessageResponseForm';
 import MessageActionDialog from '@/Components/MyMessages/MessageActionDialog';
+import LocationCard from '@/Components/MyMessages/LocationCard';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDateWithTime } from '@/utils/dateHelpers';
-import { useGuestAutoRedirect } from '@/Hooks/useGuestAutoRedirect';
 import type { Feedback } from '@/types/messages';
 
 type ShowPrivateFeedbackProps = {
   feedback: Feedback;
   statuses?: Array<{ id: number; name: string; slug: string; color: string; icon: string }>;
-  email?: string;
-  phone?: string;
 };
 
-export default function ShowPrivateFeedback({ feedback, statuses = [], email, phone }: ShowPrivateFeedbackProps) {
+export default function ShowPrivateFeedback({ feedback, statuses = [] }: ShowPrivateFeedbackProps) {
   const { auth } = usePage().props as any;
   const [previewAsset, setPreviewAsset] = useState<{ file_path: string; file_type?: string } | null>(null);
   const [isResponseModalOpen, setResponseModalOpen] = useState(false);
 
   const authUser = auth?.user;
   const isAuthenticated = Boolean(authUser);
-
-  // Auto-redirect with query params from cookie if not in URL (only for guest users)
-  useGuestAutoRedirect({
-    email,
-    phone,
-    isAuthenticated,
-    currentPath: window.location.pathname,
-  });
 
   const handleResponseSuccess = React.useCallback(() => {
     router.reload({ only: ['feedback'] });
@@ -43,17 +33,13 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
     typeof authUser?.role === 'string' ? authUser.role.toLowerCase() : undefined;
   const isStaff = isAuthenticated && normalizedRole ? staffRoles.includes(normalizedRole) : false;
   const isOwner = isAuthenticated && feedback.user_id && Number(feedback.user_id) === Number(authUser.id);
-  const hasGuestAccess = !isAuthenticated && Boolean(email) && Boolean(phone);
-  const canRespond = isStaff || isOwner || hasGuestAccess;
+  const canRespond = isStaff || isOwner;
 
   const responseStatusResolver = (statusValue: string | null | undefined) => {
     return getStatusColor(statusValue ?? '');
   };
 
-
-  const backUrl = email && phone 
-    ? `/my-messages/private?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`
-    : '/my-messages/private';
+  const backUrl = '/my-messages/my-posts';
 
   return (
     <MainLayout title={`Detail Masukan Pribadi #${feedback.id}`} currentPage="/my-messages">
@@ -133,26 +119,11 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
         {/* Tower & Category Information */}
         <StaggeredContainer delay={200} animationType="fadeInUp" duration={400}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <h5 className="text-sm font-bold text-gray-900">Lokasi Tower</h5>
-              </div>
-              <div className="font-semibold text-gray-900 text-base mb-1">{feedback.tower?.site_name ?? '-'}</div>
-              {feedback.tower?.alamat_menara && (
-                <div className="text-sm text-gray-600 flex items-start gap-1">
-                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {feedback.tower.alamat_menara}
-                </div>
-              )}
-            </div>
+            <LocationCard
+              tower={feedback.tower}
+              feedbackable={feedback.feedbackable}
+              feedbackableType={feedback.feedbackable_type}
+            />
             <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm">
@@ -229,7 +200,6 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
                       triggerFullWidth={true}
                       triggerClassName="w-full sm:w-auto whitespace-nowrap"
                     title="Kirim Balasan"
-                    description={!isAuthenticated ? 'Email dan nomor telepon otomatis diisi sesuai data pengirim.' : undefined}
                     maxWidth="3xl"
                     isOpen={isResponseModalOpen}
                     setOpen={setResponseModalOpen}
@@ -241,15 +211,14 @@ export default function ShowPrivateFeedback({ feedback, statuses = [], email, ph
                         id={feedback.id}
                         canRespond={canRespond}
                         defaultSenderName={authUser?.name ?? feedback.sender_name ?? ''}
-                        defaultEmail={authUser?.email ?? email ?? feedback.email ?? ''}
-                        defaultPhone={phone ?? feedback.sender_phone ?? ''}
+                        defaultEmail={authUser?.email ?? feedback.email ?? ''}
+                        defaultPhone={feedback.sender_phone ?? ''}
                         onSuccess={() => {
                           handleResponseSuccess();
                           close();
                         }}
-                        showContactFields={!isAuthenticated}
-                        lockContactFields={!isAuthenticated}
-                        description={!isAuthenticated ? 'Email dan nomor telepon otomatis diisi sesuai data pengirim.' : undefined}
+                        showContactFields={false}
+                        lockContactFields={true}
                       />
                     )}
                   </MessageActionDialog>

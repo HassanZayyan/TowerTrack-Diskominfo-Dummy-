@@ -53,32 +53,28 @@ abstract class MessageableController extends Controller
     
     /**
      * Validate private access.
-     * 
-     * @return array [email, phone]
+     * Requires authentication - only authenticated users can access private messages.
      */
-    protected function validatePrivateAccess($model, Request $request, string $phoneField): array
+    protected function validatePrivateAccess($model, Request $request, string $phoneField): void
     {
-        $email = $request->query('email');
-        $phone = $request->query('phone');
-        
         if ($model->is_public) {
             abort(404, 'Pesan tidak ditemukan atau tidak pribadi.');
         }
         
-        if (!$email || !$phone) {
-            abort(404, 'Email dan nomor telepon diperlukan untuk mengakses pesan pribadi.');
+        // Require authentication
+        if (!auth()->check()) {
+            abort(403, 'Anda harus login untuk mengakses pesan pribadi.');
         }
         
-        if ($model->email !== $email || $model->$phoneField !== $phone) {
+        $user = auth()->user();
+        
+        // Check if user owns the message or is staff/admin
+        $isOwner = $model->user_id && $model->user_id === $user->id;
+        $isStaff = in_array($user->role, ['admin', 'operator', 'tower_owner', 'provider_owner', 'staff']);
+        
+        if (!$isOwner && !$isStaff) {
             abort(403, 'Anda tidak memiliki akses ke pesan ini.');
         }
-
-        // For guest users (no user_id), require email verification
-        if (!$model->user_id && method_exists($model, 'hasVerifiedEmail') && !$model->hasVerifiedEmail()) {
-            abort(403, 'Email Anda belum diverifikasi. Silakan periksa email Anda dan klik link verifikasi yang telah dikirim, atau gunakan fitur "Kirim Ulang Verifikasi Email" untuk mendapatkan link baru.');
-        }
-        
-        return [$email, $phone];
     }
     
     /**
@@ -87,8 +83,13 @@ abstract class MessageableController extends Controller
      */
     protected function loadPublicRelationships($model, array $config): array
     {
+        // Determine the polymorphic relationship name based on model type
+        $polymorphicRelation = $model instanceof \App\Models\Report ? 'reportable' : 'feedbackable';
+        
+        // Load polymorphic relationship without select() to avoid SQL errors
+        // Different models (Tower vs FoPoint) have different columns
         $relationships = [
-            'tower:id,site_name,alamat_menara',
+            $polymorphicRelation, // Load all columns to avoid SQL errors
             'user:id,name,email,role',
             $config['assets_relation'] => function($q) use ($config) {
                 $q->select($config['assets_select']);
@@ -131,8 +132,13 @@ abstract class MessageableController extends Controller
      */
     protected function loadPrivateRelationships($model, array $config): void
     {
+        // Determine the polymorphic relationship name based on model type
+        $polymorphicRelation = $model instanceof \App\Models\Report ? 'reportable' : 'feedbackable';
+        
+        // Load polymorphic relationship without select() to avoid SQL errors
+        // Different models (Tower vs FoPoint) have different columns
         $relationships = [
-            'tower:id,site_name,alamat_menara',
+            $polymorphicRelation, // Load all columns to avoid SQL errors
             'user:id,name,email,role',
             $config['assets_relation'] => function($q) use ($config) {
                 $q->select($config['assets_select']);
@@ -148,11 +154,13 @@ abstract class MessageableController extends Controller
 
     /**
      * Handle storing of responses for a messageable model.
+     * 
+     * @param bool $isPublicContext Whether this is called from public page (true) or admin page (false)
      */
-    protected function handleResponseSubmission(StoreMessageResponseRequest $request, $model, array $config): RedirectResponse
+    protected function handleResponseSubmission(StoreMessageResponseRequest $request, $model, array $config, bool $isPublicContext = false): RedirectResponse
     {
         $validated = $request->validated();
-        $senderContext = $this->resolveSenderContext($request, $model, $config);
+        $senderContext = $this->resolveSenderContext($request, $model, $config, $isPublicContext);
 
         $payload = array_merge($senderContext, [
             'message' => $validated['message'],
@@ -168,17 +176,31 @@ abstract class MessageableController extends Controller
      * Resolve the sender information for the response.
      *
      * @param  array<string, mixed>  $config
+     * @param  bool  $isPublicContext Whether this is called from public page (true) or admin page (false)
      * @return array<string, mixed>
      */
-    protected function resolveSenderContext(Request $request, $model, array $config): array
+    protected function resolveSenderContext(Request $request, $model, array $config, bool $isPublicContext = false): array
     {
         $user = $request->user();
 
         if ($user) {
             $isReporter = (int) $model->user_id === (int) $user->id;
             $isAdmin = method_exists($user, 'isAdmin') && $user->isAdmin();
+            $isOperator = $user->role === 'operator';
+            $isAdminOrOperator = $isAdmin || $isOperator;
             
-            // Admin can always reply
+            // Prevent admin/operator from creating official responses from public pages
+            // They should use admin pages for official responses (with email notifications and status updates)
+            if ($isPublicContext && $isAdminOrOperator) {
+                $messageType = $model instanceof \App\Models\Report ? 'laporan' : 'masukan';
+                $adminRoute = $model instanceof \App\Models\Report 
+                    ? route('admin.complaints.show', $model)
+                    : route('admin.feedbacks.show', $model);
+                
+                abort(403, "Admin dan operator tidak dapat membalas pesan resmi dari halaman publik. Silakan gunakan halaman admin untuk membalas {$messageType} ini: {$adminRoute}");
+            }
+            
+            // Admin can always reply (from admin pages)
             if ($isAdmin) {
                 return [
                     'user_id' => $user->id,
@@ -208,7 +230,6 @@ abstract class MessageableController extends Controller
             
             // For anonymous reports, only admin and operator can reply
             // Tower owner cannot reply to anonymous reports (same as complainant)
-            $isOperator = $user->role === 'operator';
             if ($isOperator) {
                 return [
                     'user_id' => $user->id,
@@ -304,9 +325,12 @@ abstract class MessageableController extends Controller
         
         if (isAuthenticated()) {
             $userId = auth()->id();
-            // For authenticated users (complainant and tower_owner), use their email automatically
-            if (auth()->user()->isComplainant() || auth()->user()->isTowerOwner()) {
-                $email = auth()->user()->email;
+            $user = auth()->user();
+            
+            // For authenticated users who should auto-fill (complainant, tower_owner, provider_owner)
+            // use their email automatically
+            if ($user->shouldAutoFillContactInfo()) {
+                $email = $user->email;
             }
         } else {
             // For anonymous users, email is required
@@ -355,6 +379,22 @@ abstract class MessageableController extends Controller
         }
         
         return $rules;
+    }
+
+    /**
+     * Validate that private messages can only be created by authenticated users.
+     * 
+     * @param array $validated Validated request data
+     * @throws \Illuminate\Http\Exceptions\HttpResponseException
+     */
+    protected function validatePrivateMessageAccess(array $validated): void
+    {
+        // Check if user is trying to create a private message
+        $isPrivate = !($validated['is_public'] ?? true);
+        
+        if ($isPrivate && isGuest()) {
+            abort(403, 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.');
+        }
     }
 
     /**

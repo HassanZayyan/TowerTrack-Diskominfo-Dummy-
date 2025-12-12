@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Tower;
 use App\Models\Report;
 use App\Models\User;
+use App\Models\Feedback;
+use App\Models\FoPoint;
+use App\Models\ReportResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -26,9 +29,9 @@ class DashboardController extends Controller
         
         // Get counts by feedback status (string slugs)
         try {
-            $feedbackPendingCount = \App\Models\Feedback::where('status', 'pending')->count();
-            $feedbackInProgressCount = \App\Models\Feedback::where('status', 'in_progress')->count();
-            $feedbackClosedCount = \App\Models\Feedback::where('status', 'closed')->count();
+            $feedbackPendingCount = Feedback::where('status', 'pending')->count();
+            $feedbackInProgressCount = Feedback::where('status', 'in_progress')->count();
+            $feedbackClosedCount = Feedback::where('status', 'closed')->count();
         } catch (\Throwable $e) {
             $feedbackPendingCount = 0;
             $feedbackInProgressCount = 0;
@@ -36,35 +39,51 @@ class DashboardController extends Controller
         }
         
         // Get recent reports with tower information
-        $recentReports = Report::with(['tower'])
+        $recentReports = Report::with(['reportable', 'statusRelation'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($report) {
+                // Get tower name from polymorphic relationship
+                $towerName = 'N/A';
+                if ($report->reportable instanceof Tower) {
+                    $towerName = $report->reportable->site_name ?? 'N/A';
+                } elseif ($report->reportable instanceof FoPoint) {
+                    $towerName = $report->reportable->name ?? 'N/A';
+                }
+                
                 return [
                     'id' => $report->id,
                     'title' => 'Laporan #' . $report->id, // Generate title from ID since we don't have title field
-                    // Use status slug for frontend compatibility
-                    'status' => optional($report->status)->slug ?? 'pending',
+                    // Use status slug for frontend compatibility (status accessor already returns slug string)
+                    'status' => $report->status ?? 'pending',
                     'created_at' => $report->created_at->format('Y-m-d H:i'),
-                    'tower_name' => $report->tower ? $report->tower->site_name : 'N/A',
+                    'tower_name' => $towerName,
                     'description' => substr($report->message, 0, 100) . '...', // Use message instead of description
                 ];
             });
 
         // Recent feedbacks with tower information
         try {
-            $recentFeedbacks = \App\Models\Feedback::with(['tower'])
+            $recentFeedbacks = Feedback::with(['feedbackable'])
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
                 ->map(function ($fb) {
+                    // Get tower name from polymorphic relationship
+                    $towerName = 'N/A';
+                    if ($fb->feedbackable instanceof Tower) {
+                        $towerName = $fb->feedbackable->site_name ?? 'N/A';
+                    } elseif ($fb->feedbackable instanceof FoPoint) {
+                        $towerName = $fb->feedbackable->name ?? 'N/A';
+                    }
+                    
                     return [
                         'id' => $fb->id,
                         'title' => 'Masukan #' . $fb->id,
                         'status' => $fb->status ?? 'pending',
                         'created_at' => $fb->created_at->format('Y-m-d H:i'),
-                        'tower_name' => $fb->tower ? $fb->tower->site_name : 'N/A',
+                        'tower_name' => $towerName,
                         'description' => substr($fb->message, 0, 100) . '...',
                     ];
                 });
@@ -75,7 +94,7 @@ class DashboardController extends Controller
         // Activity today metrics (basic implementation)
         $todayStart = Carbon::today();
         $newReportsToday = Report::where('created_at', '>=', $todayStart)->count();
-        $respondedReportsToday = \App\Models\ReportResponse::where('created_at', '>=', $todayStart)->count();
+        $respondedReportsToday = ReportResponse::where('created_at', '>=', $todayStart)->count();
         $updatedTowersToday = Tower::where('updated_at', '>=', $todayStart)->count();
 
         // Get reports by category for chart

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Traits\HandlesUserRedirects;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,8 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
+    use HandlesUserRedirects;
+
     /**
      * Display the login view.
      */
@@ -34,11 +37,24 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
-        // Redirect staff (admin/operator/tower_owner) to admin area by default
-        if ($user && in_array($user->role, ['admin', 'operator', 'tower_owner'], true)) {
-            return redirect()->intended(route('admin.dashboard', absolute: false));
+        
+        // Check for return URL (from private message redirect)
+        $returnTo = $request->query('return_to');
+        $selectPrivate = $request->query('select_private') === 'true';
+
+        if ($returnTo && filter_var($returnTo, FILTER_VALIDATE_URL) === false) {
+            // Only allow relative URLs for security
+            $returnTo = ltrim(parse_url($returnTo, PHP_URL_PATH) ?? $returnTo, '/');
+            
+            // Redirect back to form with private selection flag
+            if ($selectPrivate) {
+                return redirect($returnTo)->with('select_private', true);
+            }
+            return redirect($returnTo);
         }
-        return redirect()->intended(route('dashboard', absolute: false));
+
+        // Use trait method for consistent redirects
+        return redirect()->intended($this->getRedirectDestination($user, false));
     }
 
     /**

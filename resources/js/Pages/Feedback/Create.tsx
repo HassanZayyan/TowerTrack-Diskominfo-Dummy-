@@ -1,22 +1,21 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Turnstile } from '@marsidev/react-turnstile';
 import MainLayout from '@/Layouts/MainLayout';
 
 import FileUpload from '@/Components/FileUpload';
-import TowerSelectionInput from '@/Components/Feedback/Map/TowerSelectionInput';
+import LocationSelectionInput from '@/Components/LocationSelectionInput';
 import AlertDialog from '@/Components/AlertDialog';
 import PageHeader from '@/Components/PageHeader';
 import AnimatedButton from '@/Components/AnimatedButton';
+import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
 
 import { validatePhoneNumber } from '@/utils/validationUtils';
 import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
+import { handlePrivateSelection, restoreFormState, shouldSelectPrivate } from '@/utils/privateMessageUtils';
+import { Tower, FoPoint, LocationType } from '@/types/messages';
 import 'leaflet/dist/leaflet.css';
 
-interface Tower {
-  id: number;
-  site_name: string;
-  alamat_menara?: string;
+interface TowerWithCoords extends Tower {
   latitude: number | string;
   longitude: number | string;
   tinggi_menara?: number;
@@ -26,8 +25,14 @@ interface Tower {
   site_type?: string | null;
 }
 
+interface FoPointWithCoords extends FoPoint {
+  latitude: number | string;
+  longitude: number | string;
+}
+
 interface FeedbackCreateProps {
-  towers: Tower[];
+  towers: TowerWithCoords[];
+  foPoints?: FoPointWithCoords[];
 }
 
 const INITIAL_FORM_STATE = {
@@ -36,13 +41,15 @@ const INITIAL_FORM_STATE = {
   kategori: '',
   lokasi_tower: '',
   lokasi_tower_display: '',
-  tower_id: '',
+  feedbackable_type: '' as '' | 'App\\Models\\Tower' | 'App\\Models\\FoPoint',
+  feedbackable_id: '',
   pesan: '',
   email: '',
-  is_public: false,
+  is_public: true,
   reporter_latitude: '',
   reporter_longitude: '',
   reporter_accuracy: '',
+  location_type_filter: 'tower' as 'tower' | 'fo_point', // Filter untuk memilih tower atau FO point
 };
 
 const INITIAL_VALIDATION_STATE = {
@@ -65,11 +72,12 @@ const FEEDBACK_CATEGORIES = [
 const MAX_MESSAGE_LENGTH = 1000;
 const MAX_DISTANCE_KM = 1;
 
-export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
+export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackCreateProps) {
   const { errors, auth, turnstileSiteKey } = usePage().props as any;
   const isComplainant = !!(auth?.user && auth.user.role === 'complainant');
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
-  const isAuthenticatedUser = isComplainant || isTowerOwner;
+  const isProviderOwner = !!(auth?.user && auth.user.role === 'provider_owner');
+  const isAuthenticatedUser = isComplainant || isTowerOwner || isProviderOwner;
   
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
@@ -83,34 +91,38 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [autoFilledLocationType, setAutoFilledLocationType] = useState<'tower' | 'fo_point' | null>(null);
   
   // CAPTCHA states
   const [captchaToken, setCaptchaToken] = useState<string>('');
-  const captchaRef = useRef<any>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  
-  // Detect mobile screen size
+  const captchaRef = useRef<TurnstileCaptchaRef>(null);
+
+  // Restore form state after login/register
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-  
-  // DEBUG: Cek nilai turnstileSiteKey
-  useEffect(() => {
-    console.log('🔍 CAPTCHA DEBUG (Feedback):');
-    console.log('turnstileSiteKey:', turnstileSiteKey);
-    console.log('Type:', typeof turnstileSiteKey);
-    console.log('Is empty?', !turnstileSiteKey);
-    console.log('auth:', auth);
-    console.log('isAuthenticatedUser:', isAuthenticatedUser);
-    console.log('Should show CAPTCHA:', !isAuthenticatedUser && turnstileSiteKey);
-  }, [turnstileSiteKey, auth, isAuthenticatedUser]);
+    if (isAuthenticatedUser) {
+      const restoredState = restoreFormState();
+      const shouldSelectPrivateFlag = shouldSelectPrivate();
+      
+      if (restoredState && restoredState.type === 'feedback') {
+        // Restore form data
+        setForm(prev => ({
+          ...prev,
+          ...restoredState.form,
+          // Ensure private is selected if it was selected before or flag is set
+          is_public: shouldSelectPrivateFlag ? false : (restoredState.form.is_public ?? false),
+        }));
+        
+        // Restore files if any (Note: File objects can't be serialized, so this might need adjustment)
+        if (restoredState.files && restoredState.files.length > 0) {
+          // Files can't be restored from JSON, but we can show a message
+          console.log('Form state restored. Please re-upload files if needed.');
+        }
+      } else if (shouldSelectPrivateFlag) {
+        // If no restored state but private flag is set, just set private
+        setForm(prev => ({ ...prev, is_public: false }));
+      }
+    }
+  }, [isAuthenticatedUser]);
   
   // Dialog states
   const [showDialog, setShowDialog] = useState(false);
@@ -134,58 +146,109 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     setShowDialog(true);
   }, []);
 
-  // Handle tower selection (both from search and map)
-  const handleTowerSelection = useCallback((tower: Tower) => {
-    const fullAddress = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
+  // Handle location selection (both from search and map)
+  const handleLocationSelect = useCallback((location: Tower | FoPoint, type: LocationType) => {
+    let displayName = '';
+    let feedbackableType: 'App\\Models\\Tower' | 'App\\Models\\FoPoint';
+    
+    if (type === 'tower') {
+      const tower = location as TowerWithCoords;
+      displayName = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
+      feedbackableType = 'App\\Models\\Tower';
+    } else {
+      const foPoint = location as FoPointWithCoords;
+      displayName = `${foPoint.name}${foPoint.area ? ' - ' + foPoint.area : ''}${foPoint.route_name ? ' (' + foPoint.route_name + ')' : ''}`;
+      feedbackableType = 'App\\Models\\FoPoint';
+    }
+    
     setForm(prev => ({
       ...prev,
-      tower_id: String(tower.id),
-      lokasi_tower: tower.site_name,
-      lokasi_tower_display: fullAddress,
+      feedbackable_type: feedbackableType,
+      feedbackable_id: String(location.id),
+      lokasi_tower: type === 'tower' ? (location as Tower).site_name : (location as FoPoint).name,
+      lokasi_tower_display: displayName,
     }));
     
     if (validation.lokasi_tower) {
       setValidation(prev => ({ ...prev, lokasi_tower: false }));
     }
-  }, [validation.lokasi_tower]);
+  }, [validation]);
 
-  // Handle clear tower selection
-  const handleTowerClear = useCallback(() => {
+  // Handle clear location selection
+  const handleLocationClear = useCallback(() => {
     setForm(prev => ({ 
       ...prev, 
       lokasi_tower: '', 
       lokasi_tower_display: '', 
-      tower_id: '' 
+      feedbackable_type: '' as '' | 'App\\Models\\Tower' | 'App\\Models\\FoPoint',
+      feedbackable_id: '' 
     }));
   }, []);
 
-  // Auto-fill tower data from URL parameters
+  // Auto-fill tower or FO point data from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const towerId = urlParams.get('tower_id');
     const towerName = urlParams.get('tower_name');
+    const foPointId = urlParams.get('fo_point_id');
+    const foPointName = urlParams.get('fo_point_name');
+    const locationType = urlParams.get('location_type');
     
-    if (towerId && towerName) {
+    // Handle tower auto-fill
+    // Check for tower: either with location_type='tower' or without location_type (backward compatibility)
+    if (towerId && towerName && (locationType === 'tower' || !locationType)) {
       // Find the tower in the towers array to get complete data
       const selectedTower = towers.find(tower => tower.id.toString() === towerId);
       
       if (selectedTower) {
-        // Use the handleTowerSelection function to properly set the form data
-        handleTowerSelection(selectedTower);
+        // Use the handleLocationSelect function to properly set the form data
+        handleLocationSelect(selectedTower, 'tower');
+        setForm(prev => ({ ...prev, location_type_filter: 'tower' }));
         setIsAutoFilled(true);
+        setAutoFilledLocationType('tower');
       } else {
         // If tower not found in array, still set basic info from URL params
         const decodedTowerName = decodeURIComponent(towerName);
         setForm(prev => ({
           ...prev,
-          tower_id: towerId,
+          feedbackable_type: 'App\\Models\\Tower' as const,
+          feedbackable_id: towerId,
           lokasi_tower: decodedTowerName,
           lokasi_tower_display: decodedTowerName,
+          location_type_filter: 'tower',
         }));
         setIsAutoFilled(true);
+        setAutoFilledLocationType('tower');
       }
     }
-  }, [towers, handleTowerSelection]); // Include dependencies
+    
+    // Handle FO point auto-fill
+    if (foPointId && foPointName && locationType === 'fo_point') {
+      // Find the FO point in the foPoints array to get complete data
+      const selectedFoPoint = foPoints.find(point => point.id.toString() === foPointId);
+      
+      if (selectedFoPoint) {
+        // Use the handleLocationSelect function to properly set the form data
+        handleLocationSelect(selectedFoPoint, 'fo_point');
+        setForm(prev => ({ ...prev, location_type_filter: 'fo_point' }));
+        setIsAutoFilled(true);
+        setAutoFilledLocationType('fo_point');
+      } else {
+        // If FO point not found in array, still set basic info from URL params
+        const decodedFoPointName = decodeURIComponent(foPointName);
+        setForm(prev => ({
+          ...prev,
+          feedbackable_type: 'App\\Models\\FoPoint' as const,
+          feedbackable_id: foPointId,
+          lokasi_tower: decodedFoPointName,
+          lokasi_tower_display: decodedFoPointName,
+          location_type_filter: 'fo_point',
+        }));
+        setIsAutoFilled(true);
+        setAutoFilledLocationType('fo_point');
+      }
+    }
+  }, [towers, foPoints, handleLocationSelect]); // Include dependencies
 
   const sanitizePhoneNumber = useCallback((value: string): string => {
     // Only allow numbers, + and - at the beginning
@@ -272,7 +335,8 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
     formData.append('sender_name', isAuthenticatedUser ? (auth?.user?.name || '') : formToUse.nama.trim());
     formData.append('sender_phone', formToUse.telepon.trim());
     formData.append('category', formToUse.kategori.trim());
-    formData.append('tower_id', formToUse.tower_id);
+    formData.append('feedbackable_type', formToUse.feedbackable_type);
+    formData.append('feedbackable_id', formToUse.feedbackable_id);
     formData.append('message', formToUse.pesan.trim());
     
     // Append visibility (is_public)
@@ -325,6 +389,25 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       return;
     }
 
+    // Validate private message access for guest users
+    if (!form.is_public && !isAuthenticatedUser) {
+      showErrorDialog(
+        'Login Diperlukan', 
+        'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'
+      );
+      // Redirect to register
+      handlePrivateSelection(
+        false,
+        window.location.pathname,
+        {
+          form: form,
+          files: files,
+          type: 'feedback'
+        }
+      );
+      return;
+    }
+
     // Validate CAPTCHA for guest users
     if (!isAuthenticatedUser && !captchaToken) {
       showErrorDialog('Verifikasi Diperlukan', 'Mohon selesaikan verifikasi CAPTCHA terlebih dahulu.');
@@ -338,15 +421,34 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       return;
     }
     
-    // Find selected tower to get coordinates
-    const selectedTower = towers.find(tower => tower.id.toString() === form.tower_id);
-    if (!selectedTower) {
-      showErrorDialog('Data Tower Tidak Tersedia', 'Tower yang dipilih tidak ditemukan');
+    // Find selected location (tower or FO point) to get coordinates
+    let selectedLocation: TowerWithCoords | FoPointWithCoords | undefined;
+    let locationHasCoordinates = false;
+    
+    if (form.feedbackable_type === 'App\\Models\\Tower') {
+      selectedLocation = towers.find(tower => tower.id.toString() === form.feedbackable_id);
+      if (!selectedLocation) {
+        showErrorDialog('Data Tower Tidak Tersedia', 'Tower yang dipilih tidak ditemukan');
+        return;
+      }
+      locationHasCoordinates = hasValidTowerCoordinates(selectedLocation as TowerWithCoords);
+    } else if (form.feedbackable_type === 'App\\Models\\FoPoint') {
+      selectedLocation = foPoints.find(point => point.id.toString() === form.feedbackable_id);
+      if (!selectedLocation) {
+        showErrorDialog('Data FO Point Tidak Tersedia', 'FO Point yang dipilih tidak ditemukan');
+        return;
+      }
+      const lat = Number(selectedLocation.latitude);
+      const lon = Number(selectedLocation.longitude);
+      locationHasCoordinates = (
+        Number.isFinite(lat) && Number.isFinite(lon) &&
+        lat !== 0 && lon !== 0 &&
+        Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+      );
+    } else {
+      showErrorDialog('Lokasi Tidak Valid', 'Silakan pilih lokasi (Tower atau FO Point)');
       return;
     }
-    
-    // Check if tower has valid coordinates
-    const towerHasCoordinates = hasValidTowerCoordinates(selectedTower);
     
     setIsSubmitting(true);
     
@@ -356,12 +458,12 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
       let userLocationResult: Awaited<ReturnType<typeof getLocationForAccountSwitching>> | undefined;
       
       // Always request user location for documentation and validation
-      // Use advanced account-switching optimized location capture with tower validation
+      // Use advanced account-switching optimized location capture with location validation
       userLocationResult = await getLocationForAccountSwitching(
         auth?.user?.id, 
-        towerHasCoordinates ? {
-          latitude: Number(selectedTower.latitude),
-          longitude: Number(selectedTower.longitude)
+        locationHasCoordinates ? {
+          latitude: Number(selectedLocation.latitude),
+          longitude: Number(selectedLocation.longitude)
         } : undefined,
         5 // Use more attempts for better accuracy
       );
@@ -418,20 +520,28 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
             'Masalah Lokasi GPS Ditemukan', 
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
+          setIsSubmitting(false);
+          return; // Block submission if GPS quality is too poor
         } else if (userLocationResult.validation.confidence === 'medium') {
           showWarningDialog(
             'Akurasi Lokasi Sedang', 
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
+          // Medium confidence allows submission but warns user
         }
       }
       
-      if (towerHasCoordinates) {
-        // Additional validation against tower coordinates for distance check
-        locationValidation = await requestLocationAndValidate({
-          latitude: Number(selectedTower.latitude),
-          longitude: Number(selectedTower.longitude)
-        }, MAX_DISTANCE_KM);
+      if (locationHasCoordinates) {
+        // Additional validation against location coordinates for distance check
+        // Reuse coordinates from first GPS capture to avoid double capture
+        locationValidation = await requestLocationAndValidate(
+          {
+            latitude: Number(selectedLocation.latitude),
+            longitude: Number(selectedLocation.longitude)
+          },
+          MAX_DISTANCE_KM,
+          userLocationResult?.coordinates // Reuse coordinates from first capture
+        );
         
         if (!locationValidation.success) {
           // Provide more informative location error messages
@@ -440,9 +550,10 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           
           if (locationValidation.message.includes('terlalu jauh')) {
             locationTitle = 'Jarak Terlalu Jauh';
-            locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
+            const locationType = form.feedbackable_type === 'App\\Models\\Tower' ? 'tower' : 'FO Point';
+            locationMessage = `${locationValidation.message} Silakan mendekati ${locationType} atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
           } else {
-            locationMessage = 'Gagal memvalidasi jarak ke tower. Silakan coba lagi.';
+            locationMessage = 'Gagal memvalidasi jarak ke lokasi. Silakan coba lagi.';
           }
           
           showWarningDialog(locationTitle, locationMessage);
@@ -450,7 +561,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           return;
         }
       } else {
-        // Tower has no coordinates, just log for documentation
+        // Location has no coordinates, just log for documentation
         locationValidation = { success: true, message: 'Lokasi berhasil diperoleh untuk dokumentasi' };
       }
       
@@ -495,9 +606,9 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
           } else if (errors.sender_phone || errors.telepon) {
             errorTitle = 'Format Telepon Salah';
             errorMessage = 'Nomor telepon tidak valid. Pastikan menggunakan format yang benar (contoh: 08123456789).';
-          } else if (errors.tower_id) {
-            errorTitle = 'Tower Tidak Valid';
-            errorMessage = 'Tower yang dipilih tidak valid. Silakan pilih tower yang tersedia.';
+          } else if (errors.feedbackable_id || errors.feedbackable_type) {
+            errorTitle = 'Lokasi Tidak Valid';
+            errorMessage = 'Lokasi yang dipilih tidak valid. Silakan pilih lokasi (Tower atau FO Point) yang tersedia.';
           } else if (errors.message || errors.pesan) {
             errorTitle = 'Pesan Tidak Valid';
             errorMessage = 'Pesan terlalu panjang atau mengandung karakter yang tidak diizinkan.';
@@ -553,7 +664,7 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 <div className="flex items-center">
                   <span className="material-icons-outlined text-green-600 mr-2">check_circle</span>
                   <p className="text-green-800 text-sm">
-                    <strong>Tower Dipilih Otomatis:</strong> Data lokasi tower <strong>{form.lokasi_tower}</strong> telah diisi otomatis berdasarkan pilihan Anda sebelumnya.
+                    <strong>{autoFilledLocationType === 'fo_point' ? 'Fiber Optik Dipilih Otomatis:' : 'Tower Dipilih Otomatis:'}</strong> Data lokasi {autoFilledLocationType === 'fo_point' ? 'fiber optik' : 'tower'} <strong>{form.lokasi_tower_display || form.lokasi_tower}</strong> telah diisi otomatis berdasarkan pilihan Anda sebelumnya.
                   </p>
                 </div>
               </div>
@@ -620,26 +731,64 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 
                 <div className="md:col-span-2">
                   <label className="block text-gray-700 font-medium mb-3">
-                    Visibilitas Masukan <span className="text-red-600">*</span>
+                    Tipe Masukan <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
-                        name="is_public"
-                        checked={!form.is_public}
-                        onChange={() => setForm(prev => ({ ...prev, is_public: false }))}
+                        id="location_type_tower"
+                        name="location_type_filter"
+                        checked={form.location_type_filter === 'tower'}
+                        onChange={() => {
+                          // Clear selection if current selection doesn't match new filter
+                          if (form.feedbackable_type === 'App\\Models\\FoPoint') {
+                            handleLocationClear();
+                          }
+                          setForm(prev => ({ ...prev, location_type_filter: 'tower' }));
+                        }}
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
                       <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
+                        <div className="font-medium text-gray-900">Tower</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          Hanya Anda dan admin yang dapat melihat masukan ini. Gunakan email Anda untuk melacak status.
+                          Pilih lokasi tower untuk masukan
                         </div>
                       </div>
                     </label>
                     
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        id="location_type_fo"
+                        name="location_type_filter"
+                        checked={form.location_type_filter === 'fo_point'}
+                        onChange={() => {
+                          // Clear selection if current selection doesn't match new filter
+                          if (form.feedbackable_type === 'App\\Models\\Tower') {
+                            handleLocationClear();
+                          }
+                          setForm(prev => ({ ...prev, location_type_filter: 'fo_point' }));
+                        }}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Fiber Optik</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Pilih lokasi FO Point untuk masukan
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-medium mb-3">
+                    Visibilitas Masukan <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
@@ -653,6 +802,38 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                         <div className="font-medium text-gray-900">Terbuka (Public)</div>
                         <div className="text-sm text-gray-600 mt-1">
                           Masukan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                      <input
+                        type="radio"
+                        name="is_public"
+                        checked={!form.is_public}
+                        onChange={() => {
+                          const allowed = handlePrivateSelection(
+                            isAuthenticatedUser,
+                            window.location.pathname,
+                            {
+                              form: { ...form, is_public: false },
+                              files: files,
+                              type: 'feedback'
+                            }
+                          );
+                          if (allowed) {
+                            setForm(prev => ({ ...prev, is_public: false }));
+                          }
+                        }}
+                        className="mt-1 sm:mt-0"
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {isAuthenticatedUser 
+                            ? 'Hanya Anda dan admin yang dapat melihat masukan ini.'
+                            : 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'}
                         </div>
                       </div>
                     </label>
@@ -703,16 +884,18 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
                 </div>
               </div>
               
-              <TowerSelectionInput
-                towers={towers}
-                selectedTowerId={form.tower_id}
-                selectedTowerDisplay={form.lokasi_tower_display}
-                onTowerSelect={handleTowerSelection}
-                onClear={handleTowerClear}
-                label="Lokasi Tower"
+              <LocationSelectionInput
+                towers={form.location_type_filter === 'tower' ? towers : []}
+                foPoints={form.location_type_filter === 'fo_point' ? foPoints : []}
+                selectedLocationId={form.feedbackable_id}
+                selectedLocationDisplay={form.lokasi_tower_display}
+                selectedLocationType={form.feedbackable_type === 'App\\Models\\Tower' ? 'tower' : form.feedbackable_type === 'App\\Models\\FoPoint' ? 'fo_point' : undefined}
+                onLocationSelect={handleLocationSelect}
+                onClear={handleLocationClear}
+                label={form.location_type_filter === 'tower' ? "Lokasi Tower" : "Lokasi FO Point"}
                 required={true}
                 error={validation.lokasi_tower}
-                errorMessage="Lokasi tower harus dipilih"
+                errorMessage="Lokasi harus dipilih"
                 className="mb-6"
               />
               
@@ -748,46 +931,15 @@ export default function FeedbackCreate({ towers }: FeedbackCreateProps) {
               
               {/* CAPTCHA widget - only for guest users */}
               {!isAuthenticatedUser && (
-                <div className="mb-6 w-full overflow-hidden">
-                  {turnstileSiteKey ? (
-                    <div className="w-full flex justify-center sm:justify-start">
-                      <div className="w-full max-w-[300px] sm:max-w-none" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-                        <Turnstile
-                          ref={captchaRef}
-                          siteKey={turnstileSiteKey}
-                          onSuccess={(token) => {
-                            console.log('✅ CAPTCHA Success, token:', token);
-                            setCaptchaToken(token);
-                          }}
-                          onError={(error) => {
-                            console.error('❌ CAPTCHA Error:', error);
-                            setCaptchaToken('');
-                            showErrorDialog('CAPTCHA Error', 'Terjadi kesalahan pada verifikasi. Silakan refresh halaman.');
-                          }}
-                          onExpire={() => {
-                            console.log('⏰ CAPTCHA Expired');
-                            setCaptchaToken('');
-                          }}
-                          options={{
-                            theme: 'light',
-                            size: isMobile ? 'compact' : 'normal',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800 font-medium">
-                        ⚠️ Error: CAPTCHA tidak dapat dimuat. turnstileSiteKey = {String(turnstileSiteKey)}
-                      </p>
-                      <p className="text-xs text-red-600 mt-1">
-                        Silakan refresh halaman atau hubungi administrator.
-                      </p>
-                    </div>
-                  )}
-                  {errors?.captcha && (
-                    <p className="mt-2 text-sm text-red-600">{errors.captcha}</p>
-                  )}
+                <div className="mb-6">
+                  <TurnstileCaptcha
+                    ref={captchaRef}
+                    siteKey={turnstileSiteKey || ''}
+                    onTokenChange={setCaptchaToken}
+                    error={(errors as any)?.captcha || (errors as any)?.['cf-turnstile-response']}
+                    size="normal"
+                    theme="light"
+                  />
                 </div>
               )}
 

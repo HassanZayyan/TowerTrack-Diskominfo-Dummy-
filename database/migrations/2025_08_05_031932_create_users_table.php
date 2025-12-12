@@ -18,8 +18,9 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('avatar')->nullable();
             $table->string('password');
-            $table->enum('role', ['admin', 'operator', 'complainant', 'tower_owner'])->default('complainant');
+            $table->enum('role', ['admin', 'operator', 'complainant', 'tower_owner', 'provider_owner'])->default('complainant');
             $table->unsignedBigInteger('owner_id')->nullable();
+            $table->unsignedBigInteger('fo_provider_id')->nullable();
             $table->boolean('banned')->default(false);
             $table->rememberToken();
             $table->timestamps();
@@ -27,6 +28,8 @@ return new class extends Migration
             
             // Add foreign key constraint for owner_id
             $table->foreign('owner_id')->references('id')->on('owners')->onDelete('set null');
+            // Note: fo_provider_id foreign key will be added in create_fo_providers_table migration
+            // after fo_providers table is created
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

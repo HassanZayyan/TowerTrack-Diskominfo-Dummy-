@@ -267,9 +267,9 @@ const ManagementTable: React.FC<Props> = ({
               )}
             </div>
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative">
             <select
-              className="w-full sm:w-auto border border-gray-300 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent"
+              className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 sm:px-4 sm:py-3 pr-8 sm:pr-10 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent appearance-none bg-white"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -278,6 +278,11 @@ const ManagementTable: React.FC<Props> = ({
               <option value="in_progress">Progress</option>
               <option value="closed">Selesai</option>
             </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
@@ -330,7 +335,7 @@ const ManagementTable: React.FC<Props> = ({
                       {type === 'complaints' ? 'Keluhan' : 'Masukan'}
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tower
+                      Type
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Visibilitas
@@ -431,19 +436,12 @@ const ManagementTable: React.FC<Props> = ({
                         </div>
                       </td>
                       <td className="px-3 py-4 align-top">
-                        <div className="text-sm text-gray-700">
-                          <div className="font-medium truncate" title={item.tower?.site_name || '-'}>
-                            {item.tower?.site_name || '-'}
-                          </div>
-                          {item.tower?.alamat_menara && (
-                            <div className="text-xs text-gray-500 truncate mt-1" title={item.tower.alamat_menara}>
-                              {item.tower.alamat_menara.length > 30 
-                                ? `${item.tower.alamat_menara.substring(0, 30)}...`
-                                : item.tower.alamat_menara
-                              }
-                            </div>
-                          )}
-                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                          {isReport(item, type) 
+                            ? (item.reportable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                            : (item.feedbackable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                          }
+                        </span>
                       </td>
                       <td className="px-3 py-4 align-top">
                         <div className="flex justify-center">
@@ -456,7 +454,7 @@ const ManagementTable: React.FC<Props> = ({
                             value={item.status}
                             onChange={(e) => handleStatusChange(item.id, e.target.value)}
                             disabled={updatingStatus[item.id]}
-                            className={`text-xs font-medium border rounded-lg px-2 py-1 transition-all focus:ring-2 focus:ring-offset-1 ${
+                            className={`text-xs font-medium border rounded-lg px-2 py-1 pr-6 transition-all focus:ring-2 focus:ring-offset-1 ${
                               updatingStatus[item.id] 
                                 ? 'opacity-50 cursor-not-allowed' 
                                 : 'cursor-pointer hover:shadow-md'
@@ -530,7 +528,7 @@ const ManagementTable: React.FC<Props> = ({
                         value={item.status}
                         onChange={(e) => handleStatusChange(item.id, e.target.value)}
                         disabled={updatingStatus[item.id]}
-                        className={`text-xs font-medium border rounded-full px-2 py-1 transition-all focus:ring-2 focus:ring-offset-1 ${
+                        className={`text-xs font-medium border rounded-full px-2 py-1 pr-6 transition-all focus:ring-2 focus:ring-offset-1 ${
                           updatingStatus[item.id] 
                             ? 'opacity-50 cursor-not-allowed' 
                             : 'cursor-pointer hover:shadow-md'
@@ -555,14 +553,14 @@ const ManagementTable: React.FC<Props> = ({
                     <div className="text-sm text-gray-600 line-clamp-3">{item.message}</div>
                   </div>
                   
-                  {item.tower && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-700 truncate">{item.tower.site_name}</div>
-                      {item.tower.alamat_menara && (
-                        <div className="text-xs text-gray-500 truncate">{item.tower.alamat_menara}</div>
-                      )}
-                    </div>
-                  )}
+                  <div className="mb-3">
+                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                      {isReport(item, type) 
+                        ? (item.reportable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                        : (item.feedbackable_type === 'App\\Models\\FoPoint' ? 'Fiber Optik' : 'Tower')
+                      }
+                    </span>
+                  </div>
                   
                   {getItemAssets(item).length > 0 && (
                     <div className="grid grid-cols-2 gap-2 mb-3">

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FoPoint;
 use App\Models\FoProvider;
 use App\Models\FoRoute;
+use App\Models\User;
 use App\Imports\FoPointsImport;
 use App\Imports\FoPointsTemplateExport;
 use App\Rules\GoogleDriveUrl;
@@ -28,7 +29,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FoManagementController extends Controller
 {
-    use HasFoPointValidation, HasFoRouteStatistics, HasGeoJsonGeneration, HasCacheInvalidation;
+    use HasFoPointValidation, HasFoRouteStatistics, HasGeoJsonGeneration, HasCacheInvalidation, \App\Traits\HasResourceOwnership, \App\Traits\HandlesProviderOwner;
     /**
      * Display list of FO routes (main entry point)
      * Optimized: path_coordinates excluded to reduce payload size
@@ -36,15 +37,26 @@ class FoManagementController extends Controller
     public function routesList(Request $request): Response
     {
         $area = $request->get('area', 'ungaran');
+        $user = auth()->user();
 
         // Get FO Routes with pagination (excluding heavy path_coordinates field)
-        $foRoutes = FoRoute::select([
+        $foRoutesQuery = FoRoute::select([
             'id', 'name', 'area', 'status', 'color', 'total_distance',
             'total_points', 'description', 'created_at', 'updated_at',
         ])
-            ->when($area, fn ($q) => $q->where('area', $area))
-            ->orderBy('name')
-            ->paginate(50)
+            ->when($area, fn ($q) => $q->where('area', $area));
+
+        // For provider_owner, only show routes that have points with their provider
+        if ($user && $user->isProviderOwner()) {
+            $foRoutesQuery->whereHas('points', function($q) use ($user, $area) {
+                $q->where('fo_points.area', $area)
+                  ->whereHas('providers', function($providerQ) use ($user) {
+                      $providerQ->where('fo_providers.id', $user->fo_provider_id);
+                  });
+            });
+        }
+
+        $foRoutes = $foRoutesQuery->orderBy('name')->paginate(50)
             ->through(function ($route) {
                 return [
                     'id' => $route->id,
@@ -61,14 +73,26 @@ class FoManagementController extends Controller
                 ];
             });
 
-        // Get comprehensive statistics for routes
+        // Get comprehensive statistics for routes (filtered for provider_owner)
+        $statsQuery = FoRoute::when($area, fn ($q) => $q->where('area', $area));
+        
+        // For provider_owner, filter statistics by their provider
+        if ($user && $user->isProviderOwner()) {
+            $statsQuery->whereHas('points', function($q) use ($user, $area) {
+                $q->where('fo_points.area', $area)
+                  ->whereHas('providers', function($providerQ) use ($user) {
+                      $providerQ->where('fo_providers.id', $user->fo_provider_id);
+                  });
+            });
+        }
+
         $stats = [
-            'total_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->count(),
-            'active_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count(),
-            'inactive_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'inactive')->count(),
-            'maintenance_routes' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'maintenance')->count(),
-            'total_distance' => (float) FoRoute::when($area, fn ($q) => $q->where('area', $area))->sum('total_distance'),
-            'total_points' => FoRoute::when($area, fn ($q) => $q->where('area', $area))->sum('total_points'),
+            'total_routes' => (clone $statsQuery)->count(),
+            'active_routes' => (clone $statsQuery)->where('status', 'active')->count(),
+            'inactive_routes' => (clone $statsQuery)->where('status', 'inactive')->count(),
+            'maintenance_routes' => (clone $statsQuery)->where('status', 'maintenance')->count(),
+            'total_distance' => (float) (clone $statsQuery)->sum('total_distance'),
+            'total_points' => (clone $statsQuery)->sum('total_points'),
             'health_score' => $this->calculateHealthScore($area),
         ];
 
@@ -133,11 +157,18 @@ class FoManagementController extends Controller
             $foRoute = $geoJsonResult['route'];
 
             // Step 5: Build response data and store in cache for 24 hours
-            $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration) {
+            $user = auth()->user();
+            $controller = $this; // Capture $this for use in closure
+            $geoJsonData = Cache::remember($cacheKey, 86400, function () use ($foRoute, $needsGeneration, $user, $controller) {
                 // Get all points for this route ordered by sequence
-                $points = FoPoint::where('route_name', $foRoute->name)
-                    ->where('area', $foRoute->area)
-                    ->orderBy('sequence_number')
+                /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $pointsQuery */
+                $pointsQuery = FoPoint::where('route_name', $foRoute->name)
+                    ->where('area', $foRoute->area);
+                
+                // Filter by ownership for provider owners (using trait method)
+                $pointsQuery = $controller->filterByOwnership($pointsQuery, $user, 'fo_point');
+                
+                $points = $pointsQuery->orderBy('sequence_number')
                     ->get();
 
                 // Build coordinates array from points
@@ -202,9 +233,14 @@ class FoManagementController extends Controller
     public function routeDetail(Request $request, FoRoute $foRoute): Response
     {
         // Get points in this route with pagination
-        $points = FoPoint::where('route_name', $foRoute->name)
-            ->where('area', $foRoute->area)
-            ->orderBy('sequence_number')
+        /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $pointsQuery */
+        $pointsQuery = FoPoint::where('route_name', $foRoute->name)
+            ->where('area', $foRoute->area);
+        
+        // Filter by ownership for provider owners
+        $pointsQuery = $this->filterByOwnership($pointsQuery, auth()->user(), 'fo_point');
+        
+        $points = $pointsQuery->orderBy('sequence_number')
             ->paginate(20)
             ->through(function ($point) {
                 return [
@@ -223,23 +259,17 @@ class FoManagementController extends Controller
                 ];
             });
 
-        // Get route statistics
+        // Get route statistics (filtered for provider owners)
+        /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $statsQuery */
+        $statsQuery = FoPoint::where('route_name', $foRoute->name)
+            ->where('area', $foRoute->area);
+        $statsQuery = $this->filterByOwnership($statsQuery, auth()->user(), 'fo_point');
+        
         $routeStats = [
-            'active_points' => FoPoint::where('route_name', $foRoute->name)
-                ->where('area', $foRoute->area)
-                ->where('status', 'active')
-                ->count(),
-            'inactive_points' => FoPoint::where('route_name', $foRoute->name)
-                ->where('area', $foRoute->area)
-                ->where('status', 'inactive')
-                ->count(),
-            'maintenance_points' => FoPoint::where('route_name', $foRoute->name)
-                ->where('area', $foRoute->area)
-                ->where('status', 'maintenance')
-                ->count(),
-            'points_by_type' => FoPoint::where('route_name', $foRoute->name)
-                ->where('area', $foRoute->area)
-                ->selectRaw('type, COUNT(*) as count')
+            'active_points' => (clone $statsQuery)->where('status', 'active')->count(),
+            'inactive_points' => (clone $statsQuery)->where('status', 'inactive')->count(),
+            'maintenance_points' => (clone $statsQuery)->where('status', 'maintenance')->count(),
+            'points_by_type' => (clone $statsQuery)->selectRaw('type, COUNT(*) as count')
                 ->groupBy('type')
                 ->get()
                 ->map(function ($item) {
@@ -280,9 +310,11 @@ class FoManagementController extends Controller
      */
     public function createPoint(FoRoute $foRoute): Response
     {
-        // Get the next sequence number for this route
-        $nextSequence = FoPoint::where('route_name', $foRoute->name)
-            ->max('sequence_number') + 1;
+        // Get the next sequence number for this route (filtered for provider owners)
+        /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $nextSequenceQuery */
+        $nextSequenceQuery = FoPoint::where('route_name', $foRoute->name);
+        $nextSequenceQuery = $this->filterByOwnership($nextSequenceQuery, auth()->user(), 'fo_point');
+        $nextSequence = $nextSequenceQuery->max('sequence_number') + 1;
 
         return Inertia::render('Admin/FoManagement/PointCreate', [
             'foRoute' => [
@@ -318,11 +350,16 @@ class FoManagementController extends Controller
         $providers = $validated['providers'] ?? [];
         unset($validated['route_id'], $validated['providers']);
 
+        $user = auth()->user();
+        
+        // For provider_owner: validate and auto-assign provider
+        $providers = $this->validateAndAssignProviderForOwner($providers, $user);
+
         $point = FoPoint::create($validated);
 
         // Sync providers if provided
         if (! empty($providers)) {
-            $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
+            $syncData = FoProvider::buildSyncData($providers);
             $point->providers()->sync($syncData);
         }
 
@@ -410,11 +447,15 @@ class FoManagementController extends Controller
         // Extract providers
         $providers = $validated['providers'] ?? [];
         unset($validated['providers']);
+        
+        // For provider_owner: validate and auto-assign provider
+        $user = auth()->user();
+        $providers = $this->validateAndAssignProviderForOwner($providers, $user);
 
         $foPoint->update($validated);
 
         // Sync providers
-        $syncData = $this->buildProviderSyncData($providers); // DRY: Use helper method
+        $syncData = FoProvider::buildSyncData($providers);
         $foPoint->providers()->sync($syncData);
 
         // Invalidate FO points cache for data-fo page
@@ -604,10 +645,12 @@ class FoManagementController extends Controller
      */
     public function editRoute(FoRoute $foRoute): Response
     {
-        // Get all points in this route (ordered by sequence)
-        $points = FoPoint::where('route_name', $foRoute->name)
-            ->where('area', $foRoute->area)
-            ->orderBy('sequence_number')
+        // Get all points in this route (ordered by sequence, filtered for provider owners)
+        /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $pointsQuery */
+        $pointsQuery = FoPoint::where('route_name', $foRoute->name)
+            ->where('area', $foRoute->area);
+        $pointsQuery = $this->filterByOwnership($pointsQuery, auth()->user(), 'fo_point');
+        $points = $pointsQuery->orderBy('sequence_number')
             ->get()
             ->map(function ($point) {
                 return [
@@ -894,10 +937,15 @@ class FoManagementController extends Controller
     {
         $fileName = 'fo_points_'.date('Ymd_His').'.csv';
 
+        /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $query */
         $query = FoPoint::query();
         if ($area = $request->get('area')) {
             $query->where('area', $area);
         }
+        
+        // Filter by ownership for provider owners
+        $query = $this->filterByOwnership($query, auth()->user(), 'fo_point');
+        
         if (($status = $request->get('status')) && $status !== 'all') {
             $query->where('status', $status);
         }
@@ -1047,8 +1095,13 @@ class FoManagementController extends Controller
     private function calculateHealthScore(?string $area): float
     {
         try {
-            $activePoints = FoPoint::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count();
-            $totalPoints = FoPoint::when($area, fn ($q) => $q->where('area', $area))->count();
+            $user = auth()->user();
+            /** @var \Illuminate\Database\Eloquent\Builder<FoPoint> $baseQuery */
+            $baseQuery = FoPoint::when($area, fn ($q) => $q->where('area', $area));
+            $baseQuery = $this->filterByOwnership($baseQuery, $user, 'fo_point');
+            
+            $activePoints = (clone $baseQuery)->where('status', 'active')->count();
+            $totalPoints = (clone $baseQuery)->count();
             $activeRoutes = FoRoute::when($area, fn ($q) => $q->where('area', $area))->where('status', 'active')->count();
             $totalRoutes = FoRoute::when($area, fn ($q) => $q->where('area', $area))->count();
 
@@ -1070,12 +1123,21 @@ class FoManagementController extends Controller
     /**
      * Get available providers formatted for frontend
      * DRY: Reusable method untuk menghindari duplikasi query
+     * For provider_owner, only return their own provider
      */
     private function getAvailableProviders(): array
     {
-        return FoProvider::active()
-            ->select('id', 'name', 'default_sort_order')
-            ->orderBy('default_sort_order')
+        $user = auth()->user();
+        
+        $query = FoProvider::active()
+            ->select('id', 'name', 'default_sort_order');
+        
+        // For provider_owner, only show their own provider
+        if ($user && $user->isProviderOwner()) {
+            $query->where('id', $user->fo_provider_id);
+        }
+        
+        return $query->orderBy('default_sort_order')
             ->orderBy('name')
             ->get()
             ->map(function ($provider) {
@@ -1090,14 +1152,23 @@ class FoManagementController extends Controller
     /**
      * Get current providers for a point formatted for frontend
      * DRY: Consistent format dengan availableProviders
+     * For provider_owner, only return their own provider if it exists in the point
      */
     private function getCurrentProviders(FoPoint $foPoint): array
     {
-        return $foPoint->providers()
+        $user = auth()->user();
+        
+        $query = $foPoint->providers()
             ->wherePivot('is_active', true)
             ->select('fo_providers.id', 'fo_providers.name')
-            ->orderByPivot('sort_order')
-            ->get()
+            ->orderByPivot('sort_order');
+        
+        // For provider_owner, only show their own provider if it exists in this point
+        if ($user && $user->isProviderOwner()) {
+            $query->where('fo_providers.id', $user->fo_provider_id);
+        }
+        
+        return $query->get()
             ->map(function ($provider) {
                 return [
                     'id' => $provider->id,
@@ -1107,25 +1178,6 @@ class FoManagementController extends Controller
             ->toArray();
     }
 
-    /**
-     * Build sync data for provider pivot table
-     * DRY: Reusable method untuk sync providers
-     */
-    private function buildProviderSyncData(array $providerIds): array
-    {
-        $syncData = [];
-        foreach ($providerIds as $index => $providerId) {
-            $masterProvider = FoProvider::find($providerId);
-            if ($masterProvider) {
-                $syncData[$providerId] = [
-                    'is_active' => true,
-                    'sort_order' => $masterProvider->default_sort_order ?? $index,
-                ];
-            }
-        }
-
-        return $syncData;
-    }
 
     /**
      * Normalize image fields to null if empty, dash, or whitespace-only
@@ -1180,6 +1232,9 @@ class FoManagementController extends Controller
      */
     public function storeProvider(Request $request): RedirectResponse
     {
+        // Provider owners cannot create new providers
+        $this->ensureNotProviderOwner();
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:fo_providers,name',
             'description' => 'nullable|string|max:500',
@@ -1189,15 +1244,14 @@ class FoManagementController extends Controller
 
         // Get max sort order jika tidak disediakan
         if (! isset($validated['default_sort_order'])) {
-            $maxSortOrder = FoProvider::max('default_sort_order') ?? 0;
-            $validated['default_sort_order'] = $maxSortOrder + 1;
+            $validated['default_sort_order'] = FoProvider::getNextSortOrder();
         }
 
         $provider = FoProvider::create($validated);
 
         return redirect()
             ->route('admin.fo-management.providers.index')
-            ->with('success', 'Provider berhasil ditambahkan');
+            ->with('success', 'Provider berhasil ditambahkan.');
     }
 
     /**
@@ -1254,18 +1308,19 @@ class FoManagementController extends Controller
      */
     public function quickCreateProvider(Request $request): RedirectResponse
     {
+        // Provider owners cannot create new providers
+        $this->ensureNotProviderOwner();
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:fo_providers,name',
             'description' => 'nullable|string|max:500',
         ]);
 
         // Get max sort order untuk menempatkan di akhir
-        $maxSortOrder = FoProvider::max('default_sort_order') ?? 0;
-
         $provider = FoProvider::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'default_sort_order' => $maxSortOrder + 1,
+            'default_sort_order' => FoProvider::getNextSortOrder(),
             'is_active' => true,
         ]);
 

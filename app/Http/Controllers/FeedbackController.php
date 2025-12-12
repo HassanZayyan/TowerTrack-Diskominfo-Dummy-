@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Feedback;
 use App\Models\FeedbackAsset;
 use App\Models\Tower;
+use App\Models\FoPoint;
 use App\Services\LocationSecurityService;
 use App\Services\CaptchaService;
 use App\Http\Requests\StoreMessageResponseRequest;
@@ -46,7 +47,7 @@ class FeedbackController extends MessageableController
         ];
     }
     /**
-     * Show feedback form with towers from database.
+     * Show feedback form with towers and FO points from database.
      */
     public function index(): Response
     {
@@ -67,8 +68,33 @@ class FeedbackController extends MessageableController
             ->get()
             ->toArray();
 
+        $foPoints = FoPoint::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($point) {
+                return [
+                    'id' => $point->id,
+                    'name' => $point->name,
+                    'latitude' => (float) $point->latitude,
+                    'longitude' => (float) $point->longitude,
+                    'area' => $point->area,
+                    'route_name' => $point->route_name,
+                    'type' => $point->type,
+                    'status' => $point->status,
+                    'description' => $point->description,
+                    'side_of_road' => $point->side_of_road ?? 'unknown',
+                    'images' => [
+                        'isp' => $point->isp_image_url,
+                        'pole' => $point->pole_image_url,
+                        'junction_box' => $point->junction_box_image_url,
+                    ],
+                ];
+            })
+            ->toArray();
+
         return Inertia::render('Feedback/Create', [
             'towers' => $towers,
+            'foPoints' => $foPoints,
         ]);
     }
 
@@ -80,12 +106,29 @@ class FeedbackController extends MessageableController
         $rules = [
             'sender_phone' => 'required|string|max:20', // Phone number is required for all users
             'category' => 'required|string|max:100',
-            'tower_id' => 'required|exists:towers,id',
+            'feedbackable_type' => 'required|in:App\\Models\\Tower,App\\Models\\FoPoint',
+            'feedbackable_id' => [
+                'required',
+                function ($attribute, $value, $fail) use ($request) {
+                    $type = $request->input('feedbackable_type');
+                    if ($type === 'App\\Models\\Tower') {
+                        if (!Tower::find($value)) {
+                            $fail('Tower tidak ditemukan.');
+                        }
+                    } elseif ($type === 'App\\Models\\FoPoint') {
+                        if (!FoPoint::find($value)) {
+                            $fail('FO Point tidak ditemukan.');
+                        }
+                    } else {
+                        $fail('Tipe lokasi tidak valid.');
+                    }
+                },
+            ],
             'message' => 'required|string|max:1000',
             'sender_name' => 'required|string|max:100',
-            'email' => isAuthenticated() && (auth()->user()->isComplainant() || auth()->user()->isTowerOwner())
-                ? 'prohibited' // Email not allowed for authenticated users (complainant and tower_owner)
-                : 'required|email|max:255', // Email now required for anonymous users
+            'email' => isAuthenticated() && auth()->user()->shouldAutoFillContactInfo()
+                ? 'prohibited' // Email not allowed for authenticated users who should auto-fill
+                : 'required|email|max:255', // Email required for anonymous users
             'is_public' => 'required|boolean', // Visibility option
             'reporter_latitude' => 'nullable|numeric',
             'reporter_longitude' => 'nullable|numeric',
@@ -107,6 +150,9 @@ class FeedbackController extends MessageableController
             return $captchaError;
         }
 
+        // Validate private message access (must be authenticated)
+        $this->validatePrivateMessageAccess($validated);
+
         // Handle user ID and email for authenticated vs anonymous users
         [$userId, $email] = $this->resolveUserAndEmail($validated);
 
@@ -126,7 +172,8 @@ class FeedbackController extends MessageableController
         }
 
         $feedbackData = [
-            'tower_id' => $validated['tower_id'],
+            'feedbackable_type' => $validated['feedbackable_type'],
+            'feedbackable_id' => $validated['feedbackable_id'],
             'user_id' => $userId,
             'email' => $email,
             'sender_phone' => $validated['sender_phone'],
@@ -201,16 +248,19 @@ class FeedbackController extends MessageableController
             // Redirect to public show page (with comments)
             return redirect()->route('public.feedbacks.show', $feedback);
         } else {
-            // For private feedbacks, check access
+            // For private feedbacks, require authentication
             if (auth()->check() && $feedback->user_id === auth()->id()) {
                 // Authenticated user viewing their own private feedback
                 return redirect()->route('public.feedbacks.show', $feedback);
             } else {
-                // Redirect to private tracking page
-                return redirect()->route('my.messages.private', [
-                    'email' => $feedback->email,
-                    'phone' => $feedback->sender_phone,
-                ]);
+                // Not authenticated or not owner - redirect to my-posts or login
+                if (auth()->check()) {
+                    return redirect()->route('my.messages.myposts');
+                } else {
+                    return redirect()->route('login')->withErrors([
+                        'message' => 'Anda harus login untuk mengakses pesan pribadi.'
+                    ]);
+                }
             }
         }
     }
@@ -233,27 +283,27 @@ class FeedbackController extends MessageableController
 
     /**
      * Display a private feedback detail page (without comments).
+     * Requires authentication.
      */
     public function showPrivate(Feedback $feedback, Request $request): Response
     {
         $config = $this->getConfig();
-        [$email, $phone] = $this->validatePrivateAccess($feedback, $request, $config['phone_field']);
+        $this->validatePrivateAccess($feedback, $request, $config['phone_field']);
         $this->loadPrivateRelationships($feedback, $config);
 
         return Inertia::render('MyMessages/ShowPrivateFeedback', [
             'feedback' => $feedback,
             'statuses' => $this->getStatuses(),
-            'email' => $email,
-            'phone' => $phone,
         ]);
     }
 
     /**
      * Store a response from feedback sender or staff.
+     * This is the public route - admin/operator should use admin pages for official responses.
      */
     public function storeResponse(StoreMessageResponseRequest $request, Feedback $feedback)
     {
-        return $this->handleResponseSubmission($request, $feedback, $this->getConfig());
+        return $this->handleResponseSubmission($request, $feedback, $this->getConfig(), true);
     }
 
 }

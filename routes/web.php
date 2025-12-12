@@ -13,9 +13,8 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\StaffMiddleware;
 use App\Http\Middleware\NonStaffMiddleware;
-use App\Http\Middleware\TowerOwnerMiddleware;
-use App\Http\Middleware\TowerOwnerAccessMiddleware;
 use App\Http\Middleware\TowerAccessMiddleware;
+use App\Http\Middleware\FoAccessMiddleware;
 use App\Http\Controllers\Admin\FoManagementController;
 use App\Http\Controllers\MyMessagesController;
 use App\Services\PublicMessageQueryService;
@@ -28,6 +27,8 @@ Route::get('/dashboard', function () {
     $user = auth()->user();
     if ($user && $user->role === 'tower_owner') {
         return redirect()->route('admin.towers.index');
+    } elseif ($user && $user->role === 'provider_owner') {
+        return redirect()->route('admin.fo-management.routes.list');
     } elseif ($user && in_array($user->role, ['admin', 'operator'], true)) {
         return redirect()->route('admin.dashboard');
     } else {
@@ -82,19 +83,18 @@ Route::get('/my-messages', [MyMessagesController::class, 'index'])->name('my.mes
 // "Pesan Saya" route - Show user's own messages (both public and private)
 Route::get('/my-messages/my-posts', [MyMessagesController::class, 'myPosts'])->middleware('auth')->name('my.messages.myposts');
 
-// Guest private message tracking route
-Route::get('/my-messages/private', [MyMessagesController::class, 'privateTracking'])->name('my.messages.private');
-
 // Public detail pages for reports and feedbacks (with comments)
 Route::get('/my-messages/reports/{report}', [ComplaintController::class, 'showPublic'])
     ->name('public.reports.show');
 Route::get('/my-messages/feedbacks/{feedback}', [FeedbackController::class, 'showPublic'])
     ->name('public.feedbacks.show');
 
-// Private detail pages for reports and feedbacks (without comments, requires email & phone)
+// Private detail pages for reports and feedbacks (requires authentication)
 Route::get('/my-messages/private/reports/{report}', [ComplaintController::class, 'showPrivate'])
+    ->middleware('auth')
     ->name('private.reports.show');
 Route::get('/my-messages/private/feedbacks/{feedback}', [FeedbackController::class, 'showPrivate'])
+    ->middleware('auth')
     ->name('private.feedbacks.show');
 
 Route::post('/my-messages/reports/{report}/responses', [ComplaintController::class, 'storeResponse'])
@@ -115,10 +115,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Admin/Operator/Tower Owner routes (staff) - All staff can access dashboard and towers
+// Admin/Operator/Tower Owner/Provider Owner routes (staff) - All staff can access dashboard
 Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
-    // Dashboard - accessible by admin and operator only (not tower_owner)
-    Route::middleware(['tower.owner.dashboard.redirect'])->group(function () {
+    // Dashboard - accessible by admin and operator only (tower_owner and provider_owner redirected)
+    Route::middleware(['owner.dashboard.redirect'])->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
     });
 
@@ -149,16 +149,16 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
 
     // Tower management - accessible by admin, operator, and tower_owner (full CRUD operations)
     Route::middleware([TowerAccessMiddleware::class, 'tower.owner.access.control'])->group(function () {
-        Route::get('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'index'])->name('towers.index');
-        Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerController::class, 'create'])->name('towers.create');
-        Route::post('/towers', [\App\Http\Controllers\Admin\TowerController::class, 'store'])->name('towers.store');
-        Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerController::class, 'update'])->name('towers.update');
+        Route::get('/towers', [\App\Http\Controllers\Admin\TowerManagementController::class, 'index'])->name('towers.index');
+        Route::get('/towers/create', [\App\Http\Controllers\Admin\TowerManagementController::class, 'create'])->name('towers.create');
+        Route::post('/towers', [\App\Http\Controllers\Admin\TowerManagementController::class, 'store'])->name('towers.store');
+        Route::put('/towers/{tower}', [\App\Http\Controllers\Admin\TowerManagementController::class, 'update'])->name('towers.update');
         
         // Tower Import
-        Route::get('/towers/import', [\App\Http\Controllers\Admin\TowerController::class, 'showImportForm'])->name('towers.import');
-        Route::post('/towers/import/preview', [\App\Http\Controllers\Admin\TowerController::class, 'previewImport'])->name('towers.import.preview');
-        Route::post('/towers/import', [\App\Http\Controllers\Admin\TowerController::class, 'import'])->name('towers.import.process');
-        Route::get('/towers/import/template', [\App\Http\Controllers\Admin\TowerController::class, 'downloadTemplate'])->name('towers.import.template');
+        Route::get('/towers/import', [\App\Http\Controllers\Admin\TowerManagementController::class, 'showImportForm'])->name('towers.import');
+        Route::post('/towers/import/preview', [\App\Http\Controllers\Admin\TowerManagementController::class, 'previewImport'])->name('towers.import.preview');
+        Route::post('/towers/import', [\App\Http\Controllers\Admin\TowerManagementController::class, 'import'])->name('towers.import.process');
+        Route::get('/towers/import/template', [\App\Http\Controllers\Admin\TowerManagementController::class, 'downloadTemplate'])->name('towers.import.template');
     });
 
     // Feedback management actions
@@ -166,8 +166,9 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
     Route::post('/feedbacks/{feedback}/respond', [\App\Http\Controllers\Admin\FeedbackController::class, 'respond'])->name('feedbacks.respond');
     Route::put('/feedbacks/{feedback}/status', [\App\Http\Controllers\Admin\FeedbackController::class, 'updateStatus'])->name('feedbacks.updateStatus');
 
-    // FO management routes: admin and operator can CRUD
-    Route::middleware('admin_or_operator')->group(function () {
+    // FO management routes: admin, operator, and provider_owner can CRUD
+    // Provider owner access is further restricted by ProviderOwnerAccessControlMiddleware
+    Route::middleware([FoAccessMiddleware::class, 'provider.owner.access.control'])->group(function () {
         // Main FO Management Routes (Route-first flow)
         Route::get('/fo-management', [FoManagementController::class, 'routesList'])->name('fo-management.routes.list');
         
@@ -205,22 +206,18 @@ Route::middleware(['auth', StaffMiddleware::class])->prefix('admin')->name('admi
         Route::post('/fo-management/points/import', [FoManagementController::class, 'importFoPoints'])->name('fo-management.points.import.process');
         Route::get('/fo-management/points/import/template', [FoManagementController::class, 'downloadFoPointsTemplate'])->name('fo-management.points.import.template');
 
-        // Master Provider Management (CRUD) - DRY: Consolidated in FoManagementController
+        // Master Provider Management - READ ONLY: Providers are now managed via User Management
+        // Only index route is enabled for viewing providers (read-only)
         Route::get('/fo-management/providers', [FoManagementController::class, 'indexProviders'])->name('fo-management.providers.index');
-        Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
-        Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
-        Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
+        // CRUD routes disabled - use User Management instead
+        // Route::post('/fo-management/providers', [FoManagementController::class, 'storeProvider'])->name('fo-management.providers.store');
+        // Route::put('/fo-management/providers/{foProvider}', [FoManagementController::class, 'updateProvider'])->name('fo-management.providers.update');
+        // Route::delete('/fo-management/providers/{foProvider}', [FoManagementController::class, 'destroyProvider'])->name('fo-management.providers.destroy');
         
-        // Quick create provider from point form
+        // Quick create provider from point form - Still available for convenience
         Route::post('/fo-management/providers/quick-create', [FoManagementController::class, 'quickCreateProvider'])
             ->name('fo-management.providers.quick-create');
 
-    });
-
-    // Tower owner specific routes
-    Route::middleware(TowerOwnerMiddleware::class)->group(function () {
-        // Add tower owner specific routes here if needed
-        // For now, they can access the general admin routes through StaffMiddleware
     });
 });
 

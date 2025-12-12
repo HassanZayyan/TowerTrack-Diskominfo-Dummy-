@@ -15,9 +15,11 @@ trait HandlesUserRedirects
     {
         $destination = route('dashboard', absolute: false);
 
-        if (in_array($user->role, ['admin', 'operator', 'tower_owner'], true)) {
+        if (in_array($user->role, ['admin', 'operator', 'tower_owner', 'provider_owner'], true)) {
             if ($user->role === 'tower_owner') {
                 $destination = route('admin.towers.index', absolute: false);
+            } elseif ($user->role === 'provider_owner') {
+                $destination = route('admin.fo-management.routes.list', absolute: false);
             } else {
                 $destination = route('admin.dashboard', absolute: false);
             }

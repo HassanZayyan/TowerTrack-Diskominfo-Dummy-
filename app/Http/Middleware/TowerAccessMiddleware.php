@@ -6,11 +6,21 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Middleware untuk mengontrol akses ke halaman tower management.
+ * 
+ * Mengizinkan admin, operator, dan tower_owner untuk mengakses halaman tower.
+ * Untuk tower_owner, akses lebih lanjut dibatasi oleh TowerOwnerAccessControlMiddleware
+ * yang memastikan mereka hanya bisa mengakses tower yang mereka miliki.
+ */
 class TowerAccessMiddleware
 {
     /**
      * Handle an incoming request.
-     * Allow admin, operator, and tower_owner to access tower-related pages (CRUD operations)
+     * 
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {

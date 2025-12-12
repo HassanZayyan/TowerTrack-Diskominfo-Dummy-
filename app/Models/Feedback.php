@@ -17,7 +17,8 @@ class Feedback extends Model
     protected $table = 'feedbacks';
     
     protected $fillable = [
-        'tower_id',
+        'feedbackable_type',
+        'feedbackable_id',
         'user_id',
         'email',
         'sender_phone',
@@ -38,9 +39,28 @@ class Feedback extends Model
         'is_public' => 'boolean',
     ];
     
+    /**
+     * Polymorphic relationship to Tower or FoPoint
+     */
+    public function feedbackable()
+    {
+        return $this->morphTo();
+    }
+    
+    /**
+     * Get the tower if feedbackable is a Tower (for backward compatibility)
+     */
     public function tower()
     {
-        return $this->belongsTo(Tower::class);
+        return $this->feedbackable_type === Tower::class ? $this->feedbackable : null;
+    }
+    
+    /**
+     * Get the FO point if feedbackable is a FoPoint
+     */
+    public function foPoint()
+    {
+        return $this->feedbackable_type === FoPoint::class ? $this->feedbackable : null;
     }
     
     public function user()
@@ -66,20 +86,17 @@ class Feedback extends Model
         static::created(function ($feedback) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_feedbacks:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
         });
 
         static::updated(function ($feedback) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_feedbacks:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('feedbacks:*');
         });
 
         static::deleted(function ($feedback) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_feedbacks:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('feedbacks:*');
         });
     }

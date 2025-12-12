@@ -226,6 +226,11 @@ const PointsTable = ({
   onSelectAll,
   routeId,
   onShowDetail,
+  onBulkActivate,
+  onBulkDeactivate,
+  onBulkDelete,
+  isProcessing,
+  areAllSelectedPointsActive,
 }: { 
   points: FoPoint[]; 
   canEdit: boolean; 
@@ -235,6 +240,11 @@ const PointsTable = ({
   onSelectAll: (selected: boolean) => void;
   routeId: number;
   onShowDetail: (point: FoPoint) => void;
+  onBulkActivate: () => void;
+  onBulkDeactivate: () => void;
+  onBulkDelete: () => void;
+  isProcessing: boolean;
+  areAllSelectedPointsActive: boolean;
 }) => {
   const allSelected = points.length > 0 && selectedPoints.length === points.length;
   const someSelected = selectedPoints.length > 0 && selectedPoints.length < points.length;
@@ -261,25 +271,41 @@ const PointsTable = ({
               
               {selectedPoints.length > 0 && (
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  {areAllSelectedPointsActive ? (
+                    <button 
+                      className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={onBulkDeactivate}
+                      disabled={isProcessing}
+                      title="Nonaktifkan titik yang dipilih"
+                    >
+                      <svg className="w-4 h-4 mr-1 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {isProcessing ? 'Memproses...' : `Nonaktifkan (${selectedPoints.length})`}
+                    </button>
+                  ) : (
+                    <button 
+                      className="group inline-flex items-center justify-center px-3 py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={onBulkActivate}
+                      disabled={isProcessing}
+                      title="Aktifkan titik yang dipilih"
+                    >
+                      <svg className="w-4 h-4 mr-1 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {isProcessing ? 'Memproses...' : `Aktifkan (${selectedPoints.length})`}
+                    </button>
+                  )}
                   <button 
-                    className="group inline-flex items-center justify-center px-3 py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
-                    onClick={() => console.log('Bulk activate')}
-                    title="Aktifkan titik yang dipilih"
-                  >
-                    <svg className="w-4 h-4 mr-1 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Aktifkan ({selectedPoints.length})
-                  </button>
-                  <button 
-                    className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
-                    onClick={() => console.log('Bulk delete')}
+                    className="group inline-flex items-center justify-center px-3 py-2 bg-red-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={onBulkDelete}
+                    disabled={isProcessing}
                     title="Hapus titik yang dipilih"
                   >
                     <svg className="w-4 h-4 mr-1 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                    Hapus ({selectedPoints.length})
+                    {isProcessing ? 'Memproses...' : `Hapus (${selectedPoints.length})`}
                   </button>
                 </div>
               )}
@@ -462,7 +488,8 @@ export default function RouteDetail() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [pointToDelete, setPointToDelete] = useState<FoPoint | null>(null);
-  const canEdit = ['admin', 'operator'].includes(auth.user.role);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const canEdit = ['admin', 'operator', 'provider_owner'].includes(auth.user.role);
 
   // Prevent body scroll saat modal terbuka (Detail atau Delete)
   useBodyScrollLock(showDetailDialog || showDeleteDialog);
@@ -516,6 +543,77 @@ export default function RouteDetail() {
     setSelectedPointDetail(null);
   };
 
+  // Check if all selected points are active
+  const areAllSelectedPointsActive = () => {
+    if (selectedPoints.length === 0) return false;
+    const selectedPointsData = points.data.filter(p => selectedPoints.includes(p.id));
+    return selectedPointsData.every(p => p.status === 'active');
+  };
+
+  // Bulk activate handler
+  const handleBulkActivate = () => {
+    if (selectedPoints.length === 0 || isProcessing) return;
+    
+    setIsProcessing(true);
+    router.post(route('admin.fo-management.points.bulk-action'), {
+      action: 'activate',
+      point_ids: selectedPoints,
+    }, {
+      onSuccess: () => {
+        setSelectedPoints([]);
+        setIsProcessing(false);
+      },
+      onError: () => {
+        alert('Terjadi kesalahan saat mengaktifkan titik.');
+        setIsProcessing(false);
+      }
+    });
+  };
+
+  // Bulk deactivate handler
+  const handleBulkDeactivate = () => {
+    if (selectedPoints.length === 0 || isProcessing) return;
+    
+    setIsProcessing(true);
+    router.post(route('admin.fo-management.points.bulk-action'), {
+      action: 'deactivate',
+      point_ids: selectedPoints,
+    }, {
+      onSuccess: () => {
+        setSelectedPoints([]);
+        setIsProcessing(false);
+      },
+      onError: () => {
+        alert('Terjadi kesalahan saat menonaktifkan titik.');
+        setIsProcessing(false);
+      }
+    });
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = () => {
+    if (selectedPoints.length === 0 || isProcessing) return;
+    
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedPoints.length} titik yang dipilih? Tindakan ini tidak dapat dibatalkan.`)) {
+      return;
+    }
+    
+    setIsProcessing(true);
+    router.post(route('admin.fo-management.points.bulk-action'), {
+      action: 'delete',
+      point_ids: selectedPoints,
+    }, {
+      onSuccess: () => {
+        setSelectedPoints([]);
+        setIsProcessing(false);
+      },
+      onError: () => {
+        alert('Terjadi kesalahan saat menghapus titik.');
+        setIsProcessing(false);
+      }
+    });
+  };
+
   return (
     <AdminLayout title={`Detail Jalur - ${foRoute.name}`}>
       <Head title={`Detail Jalur - ${foRoute.name}`} />
@@ -537,6 +635,11 @@ export default function RouteDetail() {
           onSelectAll={handleSelectAll}
           routeId={foRoute.id}
           onShowDetail={handleShowDetail}
+          onBulkActivate={handleBulkActivate}
+          onBulkDeactivate={handleBulkDeactivate}
+          onBulkDelete={handleBulkDelete}
+          isProcessing={isProcessing}
+          areAllSelectedPointsActive={areAllSelectedPointsActive()}
         />
 
         {/* Pagination */}

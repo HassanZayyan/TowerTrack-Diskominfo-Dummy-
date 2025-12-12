@@ -16,7 +16,8 @@ class Report extends Model
     use HasGuestEmailVerification;
     
     protected $fillable = [
-        'tower_id',
+        'reportable_type',
+        'reportable_id',
         'user_id',
         'email',
         'reporter_name',
@@ -39,9 +40,28 @@ class Report extends Model
         'is_public' => 'boolean',
     ];
     
+    /**
+     * Polymorphic relationship to Tower or FoPoint
+     */
+    public function reportable()
+    {
+        return $this->morphTo();
+    }
+    
+    /**
+     * Get the tower if reportable is a Tower (for backward compatibility)
+     */
     public function tower()
     {
-        return $this->belongsTo(Tower::class);
+        return $this->reportable_type === Tower::class ? $this->reportable : null;
+    }
+    
+    /**
+     * Get the FO point if reportable is a FoPoint
+     */
+    public function foPoint()
+    {
+        return $this->reportable_type === FoPoint::class ? $this->reportable : null;
     }
     
     public function assets()
@@ -94,20 +114,17 @@ class Report extends Model
         static::created(function ($report) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_reports:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
         });
 
         static::updated(function ($report) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_reports:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('reports:*');
         });
 
         static::deleted(function ($report) {
             CacheService::invalidateByPattern('my_messages:*');
             CacheService::invalidateByPattern('my_posts_reports:*');
-            CacheService::invalidateByPattern('guest_private_messages:*');
             CacheService::invalidateByPattern('reports:*');
         });
     }

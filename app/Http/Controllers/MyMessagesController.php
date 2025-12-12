@@ -6,6 +6,7 @@ use App\Models\Feedback;
 use App\Models\Report;
 use App\Services\CacheService;
 use App\Services\PublicMessageQueryService;
+use App\Traits\HasMessageableRelationships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +19,7 @@ use Inertia\Response;
  */
 class MyMessagesController extends BaseController
 {
+    use HasMessageableRelationships;
     /**
      * Display public messages (reports and feedbacks)
      * 
@@ -56,7 +58,14 @@ class MyMessagesController extends BaseController
             return redirect()->route('my.messages');
         }
 
-        $userId = auth()->id();
+        $user = auth()->user();
+        
+        // Admin and operator cannot access "Pesan Saya" - redirect to public messages
+        if (in_array($user->role, ['admin', 'operator'], true)) {
+            return redirect()->route('my.messages')->with('message', 'Admin dan operator tidak dapat mengakses halaman Pesan Saya. Silakan gunakan halaman pesan publik untuk melihat pesan.');
+        }
+
+        $userId = $user->id;
         $pagination = $this->getPaginationParams($request, 15);
 
         // Cache key includes user ID and pagination params
@@ -67,15 +76,7 @@ class MyMessagesController extends BaseController
         $reports = $this->cachedPaginate(
             'my_posts_reports',
             function () use ($userId) {
-                return Report::with([
-                    'tower:id,site_name,alamat_menara',
-                    'user:id,name,email',
-                    'responses' => function ($q) {
-                        $q->select('id', 'report_id', 'message', 'created_at', 'user_id', 'sender_type', 'sender_name', 'sender_email', 'sender_phone')
-                            ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-                    },
-                    'images:id,report_id,file_path,file_type'
-                ])
+                return Report::with($this->getReportRelationships())
                     ->withCount(['allComments as comments_count'])
                     ->where('user_id', $userId)
                     ->orderByDesc('created_at');
@@ -92,15 +93,7 @@ class MyMessagesController extends BaseController
                 $feedbacks = $this->cachedPaginate(
                     'my_posts_feedbacks',
                     function () use ($userId) {
-                        return Feedback::with([
-                            'tower:id,site_name,alamat_menara',
-                            'user:id,name,email',
-                            'assets:id,feedback_id,file_path,file_type',
-                            'responses' => function ($q) {
-                                $q->select('id', 'feedback_id', 'created_at', 'user_id', 'message', 'sender_type', 'sender_name', 'sender_email', 'sender_phone')
-                                    ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                            }
-                        ])
+                        return Feedback::with($this->getFeedbackRelationships())
                             ->withCount(['allComments as comments_count'])
                             ->where('user_id', $userId)
                             ->orderByDesc('created_at');
@@ -123,86 +116,5 @@ class MyMessagesController extends BaseController
         ]);
     }
 
-    /**
-     * Display guest private messages
-     * 
-     * @param Request $request
-     * @return Response
-     */
-    public function privateTracking(Request $request): Response
-    {
-        $email = $request->query('email');
-        $phone = $request->query('phone');
-
-        if (!$email || !$phone) {
-            return Inertia::render('MyMessages/PrivateTracking', [
-                'reports' => [],
-                'feedbacks' => [],
-                'email' => $email,
-                'phone' => $phone,
-            ]);
-        }
-
-        // Cache key for guest private messages
-        $cacheKey = CacheService::key('guest_private_messages', [
-            'email' => $email,
-            'phone' => $phone,
-        ]);
-
-        $data = CacheService::remember($cacheKey, function () use ($email, $phone) {
-            // Get private reports
-            $reports = Report::with([
-                'tower:id,site_name,alamat_menara',
-                'responses' => function ($q) {
-                    $q->select('id', 'report_id', 'message', 'created_at', 'user_id', 'sender_type', 'sender_name', 'sender_email', 'sender_phone')
-                        ->with(['user:id,name', 'assets:id,report_response_id,file_path,file_type']);
-                },
-                'images:id,report_id,file_path,file_type'
-                ])
-                ->withCount(['allComments as comments_count'])
-                ->where('email', $email)
-                ->where('reporter_phone', $phone)
-                ->where('is_public', false)
-                ->whereNull('user_id')
-                ->whereNotNull('email_verified_at')
-                ->orderByDesc('created_at')
-                ->get();
-
-            // Get private feedbacks
-            $feedbacks = collect();
-            if (class_exists(Feedback::class) && Schema::hasTable('feedbacks')) {
-                try {
-                    $feedbacks = Feedback::with([
-                        'tower:id,site_name,alamat_menara',
-                        'assets:id,feedback_id,file_path,file_type',
-                        'responses' => function ($q) {
-                            $q->select('id', 'feedback_id', 'created_at', 'user_id', 'message', 'sender_type', 'sender_name', 'sender_email', 'sender_phone')
-                                ->with(['user:id,name', 'assets:id,feedback_response_id,file_path,file_type']);
-                        }
-                    ])
-                        ->withCount(['allComments as comments_count'])
-                        ->where('email', $email)
-                        ->where('sender_phone', $phone)
-                        ->where('is_public', false)
-                        ->whereNull('user_id')
-                        ->whereNotNull('email_verified_at')
-                        ->orderByDesc('created_at')
-                        ->get();
-                } catch (\Exception $e) {
-                    \Log::warning('Feedbacks table access failed: ' . $e->getMessage());
-                }
-            }
-
-            return [
-                'reports' => $reports,
-                'feedbacks' => $feedbacks,
-            ];
-        }, 1800); // 30 minutes cache
-
-        return Inertia::render('MyMessages/PrivateTracking', array_merge($data, [
-            'email' => $email,
-            'phone' => $phone,
-        ]));
-    }
 }
 

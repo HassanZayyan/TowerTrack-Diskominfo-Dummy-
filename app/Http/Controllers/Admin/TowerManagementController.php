@@ -18,7 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-class TowerController extends Controller
+class TowerManagementController extends Controller
 {
     /**
      * Normalize incoming tower payload: convert empty strings to null for nullable numeric/date fields
@@ -420,6 +420,7 @@ class TowerController extends Controller
         ]);
 
         // Handle owner update
+        // Tower hanya boleh memiliki 1 owner per tower
         if (array_key_exists('owner_id', $validated)) {
             // For tower owners, force them to keep their own owner record
             if (auth()->user() && auth()->user()->role === 'tower_owner') {
@@ -428,7 +429,7 @@ class TowerController extends Controller
                 $tower->owners()->detach();
                 $tower->owners()->attach($ownerId);
             } else {
-                // For admin/operator, allow owner changes
+                // For admin/operator, allow owner changes but ensure only 1 owner
                 // First, detach all existing owners
                 $tower->owners()->detach();
                 
@@ -440,12 +441,11 @@ class TowerController extends Controller
                     if (!Owner::where('id', $ownerId)->exists()) {
                         return back()->withErrors(['owner_id' => 'Owner yang dipilih tidak ditemukan.']);
                     }
-                }
-                
-                // Attach new owner if selected
-                if ($ownerId) {
+                    
+                    // Attach only the selected owner (ensuring only 1 owner per tower)
                     $tower->owners()->attach($ownerId);
                 }
+                // Note: If owner_id is empty, tower will have no owner (admin/operator can remove owner)
             }
         }
 
@@ -619,6 +619,7 @@ class TowerController extends Controller
 
     /**
      * Get available owners (helper method)
+     * DRY: Consistent format dengan getCurrentOwners
      */
     protected function getAvailableOwners()
     {
@@ -626,6 +627,35 @@ class TowerController extends Controller
             return Owner::where('id', auth()->user()->owner_id)->orderBy('name')->get();
         }
         return Owner::orderBy('name')->get();
+    }
+
+    /**
+     * Get current owners for a tower formatted for frontend
+     * DRY: Consistent format dengan getAvailableOwners
+     * For tower_owner, only return their own owner if it exists in the tower
+     */
+    protected function getCurrentOwners(Tower $tower): array
+    {
+        $user = auth()->user();
+        
+        $query = $tower->owners()
+            ->select('owners.id', 'owners.name', 'owners.alamat')
+            ->orderBy('owners.name');
+        
+        // For tower_owner, only show their own owner if it exists in this tower
+        if ($user && $user->role === 'tower_owner' && $user->owner_id) {
+            $query->where('owners.id', $user->owner_id);
+        }
+        
+        return $query->get()
+            ->map(function ($owner) {
+                return [
+                    'id' => $owner->id,
+                    'name' => $owner->name,
+                    'alamat' => $owner->alamat,
+                ];
+            })
+            ->toArray();
     }
 }
 

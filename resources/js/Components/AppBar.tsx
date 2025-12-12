@@ -33,13 +33,11 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
     { href: '/data-fo', label: 'Jalur FO', icon: 'timeline' },
   ];
 
-  // Add "My Messages" link for all users (authenticated and anonymous)
+  // Add "Pesan Publik" link for all users (including admin/operator)
+  // Dynamic label: "Pesan Saya" for authenticated users (complainant/tower_owner), "Pesan Publik" for others
   const isAdminOrOperator = user && ['admin', 'operator'].includes(user.role);
-  if (!isAdminOrOperator) {
-    // Dynamic label: "Pesan Saya" for authenticated users (complainant/tower_owner), "Pesan Publik" for guests
-    const messageLabel = user && ['complainant', 'tower_owner'].includes(user.role) ? 'Pesan Saya' : 'Pesan Publik';
-    links.push({ href: '/my-messages', label: messageLabel, icon: 'message' });
-  }
+  const messageLabel = user && ['complainant', 'tower_owner'].includes(user.role) ? 'Pesan Saya' : 'Pesan Publik';
+  links.push({ href: '/my-messages', label: messageLabel, icon: 'message' });
 
   // Show complaint and feedback form links for non-admin/operator users
   // Keep them visible for logged-out users so they are encouraged to log in to submit.
@@ -80,8 +78,10 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
           <div className="flex justify-between items-center">
             {/* Logo/Brand */}
             <div className="flex items-center">
-              <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-6 w-6 sm:h-8 sm:w-8 mr-2 sm:mr-3" />
-              <h1 className="text-xl sm:text-2xl font-bold" style={{ color: '#FFD700' }}>TowerTrack</h1>
+              <div className="p-1.5 sm:p-2 rounded-lg shadow-sm" style={{ backgroundColor: '#FFD700' }}>
+                <img src="/images/kab-smg-logo.png" alt="Kabupaten Semarang" className="h-6 w-6 sm:h-8 sm:w-8" />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold ml-2 sm:ml-3" style={{ color: '#FFD700' }}>TowerTrack</h1>
             </div>
 
             {/* Right side: nav links + auth - Hidden on small screens, visible on medium and up */}
@@ -184,7 +184,24 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                       </Dropdown>
                     </div>
 
-                    {['admin','operator','tower_owner'].includes(user.role) && (
+                    {user.role === 'provider_owner' && (
+                      <Link 
+                        href={route('admin.fo-management.routes.list')} 
+                        className="flex-none inline-flex w-fit items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
+                        style={{ color: 'white' }}
+                      >
+                        <span className="material-icons-outlined mr-1.5 sm:mr-2 text-base lg:text-lg">
+                          timeline
+                        </span>
+                        <span className="hidden lg:inline">
+                          Manajemen FO
+                        </span>
+                        <span className="lg:hidden text-xs">
+                          FO
+                        </span>
+                      </Link>
+                    )}
+                    {['admin','operator','tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
                       <Link 
                         href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
                         className="flex-none inline-flex w-fit items-center px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 hover:scale-105 text-sm lg:text-base" 
@@ -297,7 +314,20 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                         <span className="material-icons-outlined mr-3 text-lg">person</span>
                         <span>Profil</span>
                       </Link>
-                      {['admin','operator','tower_owner'].includes(user.role) && (
+                      {user.role === 'provider_owner' && (
+                        <Link 
+                          href={route('admin.fo-management.routes.list')} 
+                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" 
+                          style={{ color: 'white' }} 
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <span className="material-icons-outlined mr-3 text-lg">
+                            timeline
+                          </span>
+                          <span>Manajemen FO</span>
+                        </Link>
+                      )}
+                      {['admin','operator','tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
                         <Link 
                           href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
                           className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-sm" 

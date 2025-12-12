@@ -1,6 +1,6 @@
 /**
  * Shared types for MyMessages pages
- * Used across Index.tsx, PrivateTracking.tsx, Admin pages, and related components
+ * Used across Index.tsx, Admin pages, and related components
  */
 
 // Base types for media items
@@ -26,7 +26,34 @@ export type Tower = {
   id: number;
   site_name: string;
   alamat_menara?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  tinggi_menara?: number;
+  site_type?: string | null;
 };
+
+// Base types for FO Point
+export type FoPoint = {
+  id: number;
+  name: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  area?: string;
+  route_name?: string;
+  type?: string;
+  status?: string;
+  description?: string;
+  side_of_road?: 'left' | 'right' | 'unknown' | null;
+  images?: {
+    isp: string | null;
+    pole: string | null;
+    junction_box: string | null;
+  };
+};
+
+// Union type for location (Tower or FoPoint)
+export type Location = Tower | FoPoint;
+export type LocationType = 'tower' | 'fo_point';
 
 // Base types for user
 export type User = {
@@ -48,7 +75,9 @@ export type StatusItem = {
 // Report item type (for MyMessages pages)
 export type ReportItem = {
   id: number;
-  tower_id: number;
+  tower_id?: number; // Deprecated: use reportable_id instead
+  reportable_type?: string; // Polymorphic type: 'App\\Models\\Tower' or 'App\\Models\\FoPoint'
+  reportable_id?: number; // Polymorphic ID
   category: string;
   message: string;
   status: string;
@@ -58,7 +87,8 @@ export type ReportItem = {
   reporter_phone?: string | null; // For anonymous users
   user_id?: number | null;
   user?: { id: number; name: string; email: string } | null; // For authenticated users
-  tower?: { id: number; site_name: string; alamat_menara?: string };
+  tower?: { id: number; site_name: string; alamat_menara?: string }; // Deprecated: use reportable instead
+  reportable?: { id: number; site_name?: string; name?: string; alamat_menara?: string }; // Polymorphic relationship
   responses?: Array<{ id: number; report_id: number; created_at: string }>;
   comments_count?: number; // Count of approved top-level comments
   is_public?: boolean; // Visibility flag for filtering
@@ -81,7 +111,9 @@ export type Report = ReportItem & {
 // Feedback item type (for MyMessages pages)
 export type FeedbackItem = {
   id: number;
-  tower_id: number;
+  tower_id?: number; // Deprecated: use feedbackable_id instead
+  feedbackable_type?: string; // Polymorphic type: 'App\\Models\\Tower' or 'App\\Models\\FoPoint'
+  feedbackable_id?: number; // Polymorphic ID
   category: string;
   message: string;
   status: string;
@@ -91,7 +123,8 @@ export type FeedbackItem = {
   sender_phone?: string | null; // For anonymous users
   user_id?: number | null;
   user?: { id: number; name: string; email: string } | null; // For authenticated users
-  tower?: { id: number; site_name: string; alamat_menara?: string };
+  tower?: { id: number; site_name: string; alamat_menara?: string }; // Deprecated: use feedbackable instead
+  feedbackable?: { id: number; site_name?: string; name?: string; alamat_menara?: string }; // Polymorphic relationship
   responses?: Array<{ id: number; feedback_id: number; created_at: string }>;
   comments_count?: number; // Count of approved top-level comments
   is_public?: boolean; // Visibility flag for filtering
@@ -117,6 +150,7 @@ export type MessageItem = {
   type: 'Keluhan' | 'Masukan';
   created_at: string;
   towerName: string;
+  locationType?: 'Tower' | 'Fiber Optik'; // Type of location (Tower or Fiber Optik)
   category: string;
   status: string | undefined | null;
   responsesCount: number;

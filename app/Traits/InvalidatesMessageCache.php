@@ -91,7 +91,6 @@ trait InvalidatesMessageCache
     {
         $patterns = [
             'my_messages:*',
-            'guest_private_messages:*',
         ];
 
         // Add specific patterns based on parent type

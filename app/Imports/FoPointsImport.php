@@ -501,18 +501,8 @@ class FoPointsImport implements
      */
     protected function attachProviders(FoPoint $point, array $providerIds): void
     {
-        $syncData = [];
-        foreach ($providerIds as $index => $providerId) {
-            $provider = FoProvider::find($providerId);
-            if ($provider) {
-                $syncData[$providerId] = [
-                    'is_active' => true,
-                    'sort_order' => $provider->default_sort_order ?? $index,
-                ];
-            }
-        }
-        
-        if (!empty($syncData)) {
+        if (!empty($providerIds)) {
+            $syncData = FoProvider::buildSyncData($providerIds);
             $point->providers()->sync($syncData);
         }
     }

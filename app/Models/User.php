@@ -8,6 +8,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * User Model
+ * 
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $password
+ * @property string $role
+ * @property bool $banned
+ * @property int|null $owner_id
+ * @property int|null $fo_provider_id
+ * @property string|null $avatar
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ */
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -25,6 +42,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'banned',
         'owner_id',
+        'fo_provider_id',
         'avatar',
     ];
 
@@ -53,12 +71,12 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user is staff (admin, operator, or tower_owner)
-     * Tower owner is considered staff for basic admin access
+     * Check if user is staff (admin, operator, tower_owner, or provider_owner)
+     * Tower owner and provider owner are considered staff for basic admin access
      */
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'operator', 'tower_owner'], true);
+        return in_array($this->role, ['admin', 'operator', 'tower_owner', 'provider_owner'], true);
     }
 
     /**
@@ -86,11 +104,29 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if user is provider owner
+     * Returns true only if user has provider_owner role AND has a provider assigned
+     */
+    public function isProviderOwner(): bool
+    {
+        return $this->role === 'provider_owner' && $this->fo_provider_id !== null;
+    }
+
+    /**
      * Check if user is complainant
      */
     public function isComplainant(): bool
     {
         return $this->role === 'complainant';
+    }
+
+    /**
+     * Check if user should have auto-filled name and email in forms
+     * (complainant, tower_owner, and provider_owner)
+     */
+    public function shouldAutoFillContactInfo(): bool
+    {
+        return $this->isComplainant() || $this->isTowerOwner() || $this->isProviderOwner();
     }
 
     /**
@@ -118,6 +154,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Relationship with provider (for provider owners)
+     */
+    public function provider()
+    {
+        return $this->belongsTo(FoProvider::class, 'fo_provider_id');
+    }
+
+    /**
      * Get towers owned by this user (if tower owner)
      */
     public function ownedTowers()
@@ -127,5 +171,17 @@ class User extends Authenticatable implements MustVerifyEmail
         }
         
         return $this->owner ? $this->owner->towers : collect();
+    }
+
+    /**
+     * Get FO points owned by this user (if provider owner)
+     */
+    public function ownedFoPoints()
+    {
+        if ($this->role !== 'provider_owner') {
+            return collect();
+        }
+        
+        return $this->provider ? $this->provider->foPoints : collect();
     }
 }

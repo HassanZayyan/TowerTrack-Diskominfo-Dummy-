@@ -41,8 +41,6 @@ export default function MyMessagesIndex({
   isMyPosts = false
 }: MyMessagesProps) {
   const { auth } = usePage().props as any;
-  const isStaff = !!(auth?.user && ['admin','operator'].includes(auth.user.role));
-
   const [email, setEmail] = React.useState('');
   
   // Pagination state
@@ -55,14 +53,7 @@ export default function MyMessagesIndex({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterVisibility, setFilterVisibility] = React.useState<'all' | 'public' | 'private'>('all');
-
-  React.useEffect(() => {
-    if (isStaff) {
-      router.visit('/admin');
-    }
-  }, [isStaff]);
-
-  if (isStaff) return null;
+  const [filterLocationType, setFilterLocationType] = React.useState<'all' | 'Tower' | 'Fiber Optik'>('all');
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,37 +75,65 @@ export default function MyMessagesIndex({
       ? feedbacks
       : (feedbacks && 'data' in feedbacks ? feedbacks.data : []);
     
-    const complaintItems = (reportsData || []).map((r) => ({
-      id: `report-${r.id}`,
-      type: 'Keluhan' as const,
-      created_at: r.created_at,
-      towerName: r.tower?.site_name ?? '-',
-      category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
-      status: r.status || 'pending',
-      responsesCount: r.responses?.length ?? 0,
-      commentsCount: r.comments_count ?? 0,
-      // Extract sender info - prefer authenticated user info over anonymous info
-      senderName: r.user?.name || r.reporter_name || 'Anonymous',
-      senderEmail: r.user?.email || r.email || '-',
-      isAnonymous: !r.user_id, // Anonymous if no user_id
-      isPublic: r.is_public ?? false, // Extract visibility flag
-    }));
+    const complaintItems = (reportsData || []).map((r) => {
+      // Determine location type from reportable_type
+      // Fallback to checking reportable object properties if reportable_type is not available
+      let locationType: 'Tower' | 'Fiber Optik' = 'Tower';
+      if (r.reportable_type === 'App\\Models\\FoPoint') {
+        locationType = 'Fiber Optik';
+      } else if (r.reportable_type === 'App\\Models\\Tower') {
+        locationType = 'Tower';
+      } else if (r.reportable) {
+        // Fallback: check if reportable has 'name' (FoPoint) or 'site_name' (Tower)
+        locationType = r.reportable.name && !r.reportable.site_name ? 'Fiber Optik' : 'Tower';
+      }
+      return {
+        id: `report-${r.id}`,
+        type: 'Keluhan' as const,
+        created_at: r.created_at,
+        towerName: r.tower?.site_name ?? r.reportable?.site_name ?? r.reportable?.name ?? '-',
+        locationType: locationType as 'Tower' | 'Fiber Optik',
+        category: (r.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
+        status: r.status || 'pending',
+        responsesCount: r.responses?.length ?? 0,
+        commentsCount: r.comments_count ?? 0,
+        // Extract sender info - prefer authenticated user info over anonymous info
+        senderName: r.user?.name || r.reporter_name || 'Anonymous',
+        senderEmail: r.user?.email || r.email || '-',
+        isAnonymous: !r.user_id, // Anonymous if no user_id
+        isPublic: r.is_public ?? false, // Extract visibility flag
+      };
+    });
 
-    const feedbackItems = (feedbacksData || []).map((f) => ({
-      id: `feedback-${f.id}`,
-      type: 'Masukan' as const,
-      created_at: f.created_at,
-      towerName: f.tower?.site_name ?? '-',
-      category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
-      status: f.status || 'pending',
-      responsesCount: f.responses?.length ?? 0,
-      commentsCount: f.comments_count ?? 0,
-      // Extract sender info - prefer authenticated user info over anonymous info
-      senderName: f.user?.name || f.sender_name || 'Anonymous',
-      senderEmail: f.user?.email || f.email || '-',
-      isAnonymous: !f.user_id, // Anonymous if no user_id
-      isPublic: f.is_public ?? false, // Extract visibility flag
-    }));
+    const feedbackItems = (feedbacksData || []).map((f) => {
+      // Determine location type from feedbackable_type
+      // Fallback to checking feedbackable object properties if feedbackable_type is not available
+      let locationType: 'Tower' | 'Fiber Optik' = 'Tower';
+      if (f.feedbackable_type === 'App\\Models\\FoPoint') {
+        locationType = 'Fiber Optik';
+      } else if (f.feedbackable_type === 'App\\Models\\Tower') {
+        locationType = 'Tower';
+      } else if (f.feedbackable) {
+        // Fallback: check if feedbackable has 'name' (FoPoint) or 'site_name' (Tower)
+        locationType = f.feedbackable.name && !f.feedbackable.site_name ? 'Fiber Optik' : 'Tower';
+      }
+      return {
+        id: `feedback-${f.id}`,
+        type: 'Masukan' as const,
+        created_at: f.created_at,
+        towerName: f.tower?.site_name ?? f.feedbackable?.site_name ?? f.feedbackable?.name ?? '-',
+        locationType: locationType as 'Tower' | 'Fiber Optik',
+        category: (f.category || 'Umum').replace(/\[Dari:\s*[^\]]+\]/gi, '').trim(),
+        status: f.status || 'pending',
+        responsesCount: f.responses?.length ?? 0,
+        commentsCount: f.comments_count ?? 0,
+        // Extract sender info - prefer authenticated user info over anonymous info
+        senderName: f.user?.name || f.sender_name || 'Anonymous',
+        senderEmail: f.user?.email || f.email || '-',
+        isAnonymous: !f.user_id, // Anonymous if no user_id
+        isPublic: f.is_public ?? false, // Extract visibility flag
+      };
+    });
 
     return [...complaintItems, ...feedbackItems];
   }, [reports, feedbacks]);
@@ -149,6 +168,11 @@ export default function MyMessagesIndex({
       result = result.filter(item => item.category === filterCategory);
     }
 
+    // Filter by location type (Tower/Fiber Optik)
+    if (filterLocationType !== 'all') {
+      result = result.filter(item => item.locationType === filterLocationType);
+    }
+
     // Filter by visibility (only for my posts page)
     if (isMyPosts && filterVisibility !== 'all') {
       if (filterVisibility === 'public') {
@@ -175,7 +199,7 @@ export default function MyMessagesIndex({
     }
 
     return result;
-  }, [sortedItems, filterType, filterStatus, filterCategory, filterVisibility, searchQuery, isMyPosts]);
+  }, [sortedItems, filterType, filterStatus, filterCategory, filterLocationType, filterVisibility, searchQuery, isMyPosts]);
 
   // Apply pagination
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -188,18 +212,22 @@ export default function MyMessagesIndex({
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filterType, filterStatus, filterCategory, filterVisibility, searchQuery, itemsPerPage]);
+  }, [filterType, filterStatus, filterCategory, filterLocationType, filterVisibility, searchQuery, itemsPerPage]);
   
   // Navigate to detail page for public messages
   const openDetail = React.useCallback((it: MessageItem) => {
     const [typ, raw] = it.id.split('-');
     const id = Number(raw);
+    
+    // Add query parameter if coming from my-posts page
+    const fromParam = isMyPosts ? '?from=my-posts' : '';
+    
     if (typ === 'report') {
-      router.visit(`/my-messages/reports/${id}`);
+      router.visit(`/my-messages/reports/${id}${fromParam}`);
     } else if (typ === 'feedback') {
-      router.visit(`/my-messages/feedbacks/${id}`);
+      router.visit(`/my-messages/feedbacks/${id}${fromParam}`);
     }
-  }, []);
+  }, [isMyPosts]);
   
   const [previewAsset, setPreviewAsset] = React.useState<{ file_path: string; file_type?: string } | null>(null);
 
@@ -335,45 +363,9 @@ export default function MyMessagesIndex({
           </div>
         </StaggeredContainer>
 
-        {/* Show info banner for anonymous users about private message tracking */}
-        {isAnonymous && (
-          <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
-            <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg shadow-md">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <div className="p-2 bg-amber-500 rounded-lg shadow-sm">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-amber-900 mb-2">💡 Informasi Penting</h3>
-                  <p className="text-sm text-amber-800 leading-relaxed mb-3">
-                    Halaman ini menampilkan semua pesan <span className="font-semibold">publik</span>. Jika Anda ingin melihat pesan <span className="font-semibold">pribadi</span> yang Anda kirim, silakan gunakan fitur tracking pesan pribadi.
-                  </p>
-                  <AnimatedButton
-                    variant="outline"
-                    size="sm"
-                    animation="scale"
-                    onClick={() => router.visit('/my-messages/private')}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    }
-                    className="border-amber-600 text-amber-800 hover:bg-amber-600 hover:text-white"
-                  >
-                    Lacak Pesan Pribadi
-                  </AnimatedButton>
-                </div>
-              </div>
-            </div>
-          </StaggeredContainer>
-        )}
-
         {/* Show info banner for authenticated users about public messages */}
-        {!isAnonymous && auth?.user && !isMyPosts && (
+        {/* Hide "Pesan Saya" button for admin/operator - they should only use public messages page */}
+        {!isAnonymous && auth?.user && !isMyPosts && !['admin', 'operator'].includes(auth.user.role) && (
           <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
             <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-md">
               <div className="flex items-start gap-4">
@@ -492,7 +484,7 @@ export default function MyMessagesIndex({
                       className="pl-10 pr-20 block w-full"
                       placeholder={isMyPosts ? "Cari berdasarkan tower, kategori, nama, atau email..." : "Cari berdasarkan tower, kategori, atau nama..."}
                     />
-                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || (isMyPosts && filterVisibility !== 'all')) && (
+                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all')) && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                         <button
                           type="button"
@@ -500,6 +492,7 @@ export default function MyMessagesIndex({
                             setFilterType('all');
                             setFilterStatus('all');
                             setFilterCategory('all');
+                            setFilterLocationType('all');
                             setFilterVisibility('all');
                             setSearchQuery('');
                           }}
@@ -545,7 +538,10 @@ export default function MyMessagesIndex({
                     <option value="resolved">Selesai</option>
                   </select>
                 </div>
+              </div>
 
+              {/* Second row: Visibilitas, Kategori, Lokasi - aligned in same row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Visibility Filter - Only show for My Posts page */}
                 {isMyPosts && (
                   <div>
@@ -562,11 +558,9 @@ export default function MyMessagesIndex({
                     </select>
                   </div>
                 )}
-              </div>
 
-              {/* Category Filter - Full width on second row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="sm:col-span-2 lg:col-span-1">
+                {/* Category Filter */}
+                <div className={isMyPosts ? '' : 'sm:col-span-2 lg:col-span-1'}>
                   <InputLabel htmlFor="filterCategory" value="Kategori" />
                   <select
                     id="filterCategory"
@@ -580,12 +574,27 @@ export default function MyMessagesIndex({
                     ))}
                   </select>
                 </div>
+
+                {/* Location Type Filter */}
+                <div className={isMyPosts ? '' : 'sm:col-span-2 lg:col-span-1'}>
+                  <InputLabel htmlFor="filterLocationType" value="Lokasi" />
+                  <select
+                    id="filterLocationType"
+                    value={filterLocationType}
+                    onChange={(e) => setFilterLocationType(e.target.value as 'all' | 'Tower' | 'Fiber Optik')}
+                    className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
+                  >
+                    <option value="all">Semua Lokasi</option>
+                    <option value="Tower">Tower</option>
+                    <option value="Fiber Optik">Fiber Optik</option>
+                  </select>
+                </div>
               </div>
 
               {/* Results count and active filters */}
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || (isMyPosts && filterVisibility !== 'all') || searchQuery) && (
+                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all') || searchQuery) && (
                     <>
                       <span className="text-sm text-gray-600">Filter aktif:</span>
                       {filterType !== 'all' && (
@@ -620,6 +629,19 @@ export default function MyMessagesIndex({
                           <button
                             onClick={() => setFilterCategory('all')}
                             className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-purple-200"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </span>
+                      )}
+                      {filterLocationType !== 'all' && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          Lokasi: {filterLocationType}
+                          <button
+                            onClick={() => setFilterLocationType('all')}
+                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-indigo-200"
                           >
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -684,6 +706,7 @@ export default function MyMessagesIndex({
                       setFilterType('all');
                       setFilterStatus('all');
                       setFilterCategory('all');
+                      setFilterLocationType('all');
                       setFilterVisibility('all');
                       setSearchQuery('');
                     }}

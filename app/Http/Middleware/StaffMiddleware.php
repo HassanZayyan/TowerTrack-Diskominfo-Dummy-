@@ -9,13 +9,13 @@ use Symfony\Component\HttpFoundation\Response;
 class StaffMiddleware
 {
     /**
-     * Allow admin, operator, and tower_owner.
-     * Tower owner access is further restricted by TowerOwnerAccessMiddleware for specific routes
+     * Allow admin, operator, tower_owner, and provider_owner.
+     * Tower owner and provider owner access is further restricted by access control middleware for specific routes
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user || !in_array($user->role, ['admin','operator','tower_owner'], true)) {
+        if (!$user || !in_array($user->role, ['admin','operator','tower_owner','provider_owner'], true)) {
             abort(403, 'Unauthorized');
         }
 

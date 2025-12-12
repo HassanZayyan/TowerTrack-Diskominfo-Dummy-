@@ -229,94 +229,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
         {/* Navigation Links */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            {user?.role !== 'tower_owner' && (
-              <li>
-                <Link 
-                  href={route('admin.dashboard')} 
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive('/admin/dashboard') 
-                      ? 'font-semibold shadow-md' 
-                      : 'hover:bg-white/10'
-                  }`}
-                  style={{ 
-                    backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'transparent',
-                    color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
-                  }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
-                  </svg>
-                  Dashboard
-                </Link>
-              </li>
-            )}
-            {user?.role === 'admin' && (
-              <li>
-                <Link 
-                  href={route('admin.users.index')} 
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive('/admin/users') 
-                      ? 'font-semibold shadow-md' 
-                      : 'hover:bg-white/10'
-                  }`}
-                  style={{ 
-                    backgroundColor: isActive('/admin/users') ? '#FFD700' : 'transparent',
-                    color: isActive('/admin/users') ? '#B71C1C' : '#FFFFFF'
-                  }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                  </svg>
-                  Users
-                </Link>
-              </li>
-            )}
-            {user?.role !== 'tower_owner' && (
-              <li>
-                <Link 
-                  href={route('admin.messages.index')}
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive('/admin/messages') 
-                      ? 'font-semibold shadow-md' 
-                      : 'hover:bg-white/10'
-                  }`}
-                  style={{ 
-                    backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'transparent',
-                    color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
-                  }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  Messages
-                </Link>
-              </li>
-            )}
-            <li>
-              <Link 
-                href={route('admin.towers.index')} 
-                onClick={handleNavClick}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  isActive('/admin/towers') 
-                    ? 'font-semibold shadow-md' 
-                    : 'hover:bg-white/10'
-                }`}
-                style={{ 
-                  backgroundColor: isActive('/admin/towers') ? '#FFD700' : 'transparent',
-                  color: isActive('/admin/towers') ? '#B71C1C' : '#FFFFFF'
-                }}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                Towers
-              </Link>
-            </li>
-            {(user?.role === 'admin' || user?.role === 'operator') && (
+            {/* For provider_owner, only show Fiber Optic */}
+            {user?.role === 'provider_owner' ? (
               <li>
                 <Link 
                   href={route('admin.fo-management.routes.list')} 
@@ -337,6 +251,118 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
                   Fiber Optic
                 </Link>
               </li>
+            ) : (
+              <>
+                {user?.role !== 'tower_owner' && (
+                  <li>
+                    <Link 
+                      href={route('admin.dashboard')} 
+                      onClick={handleNavClick}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                        isActive('/admin/dashboard') 
+                          ? 'font-semibold shadow-md' 
+                          : 'hover:bg-white/10'
+                      }`}
+                      style={{ 
+                        backgroundColor: isActive('/admin/dashboard') ? '#FFD700' : 'transparent',
+                        color: isActive('/admin/dashboard') ? '#B71C1C' : '#FFFFFF'
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
+                      </svg>
+                      Dashboard
+                    </Link>
+                  </li>
+                )}
+                {user?.role === 'admin' && (
+                  <li>
+                    <Link 
+                      href={route('admin.users.index')} 
+                      onClick={handleNavClick}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                        isActive('/admin/users') 
+                          ? 'font-semibold shadow-md' 
+                          : 'hover:bg-white/10'
+                      }`}
+                      style={{ 
+                        backgroundColor: isActive('/admin/users') ? '#FFD700' : 'transparent',
+                        color: isActive('/admin/users') ? '#B71C1C' : '#FFFFFF'
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                      </svg>
+                      Users
+                    </Link>
+                  </li>
+                )}
+                {user?.role !== 'tower_owner' && (
+                  <li>
+                    <Link 
+                      href={route('admin.messages.index')}
+                      onClick={handleNavClick}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                        isActive('/admin/messages') 
+                          ? 'font-semibold shadow-md' 
+                          : 'hover:bg-white/10'
+                      }`}
+                      style={{ 
+                        backgroundColor: isActive('/admin/messages') ? '#FFD700' : 'transparent',
+                        color: isActive('/admin/messages') ? '#B71C1C' : '#FFFFFF'
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      Messages
+                    </Link>
+                  </li>
+                )}
+                <li>
+                  <Link 
+                    href={route('admin.towers.index')} 
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                      isActive('/admin/towers') 
+                        ? 'font-semibold shadow-md' 
+                        : 'hover:bg-white/10'
+                    }`}
+                    style={{ 
+                      backgroundColor: isActive('/admin/towers') ? '#FFD700' : 'transparent',
+                      color: isActive('/admin/towers') ? '#B71C1C' : '#FFFFFF'
+                    }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Towers
+                  </Link>
+                </li>
+                {(user?.role === 'admin' || user?.role === 'operator') && (
+                  <li>
+                    <Link 
+                      href={route('admin.fo-management.routes.list')} 
+                      onClick={handleNavClick}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                        isActive('/admin/fo-management') 
+                          ? 'font-semibold shadow-md' 
+                          : 'hover:bg-white/10'
+                      }`}
+                      style={{ 
+                        backgroundColor: isActive('/admin/fo-management') ? '#FFD700' : 'transparent',
+                        color: isActive('/admin/fo-management') ? '#B71C1C' : '#FFFFFF'
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      Fiber Optic
+                    </Link>
+                  </li>
+                )}
+              </>
             )}
           </ul>
         </nav>

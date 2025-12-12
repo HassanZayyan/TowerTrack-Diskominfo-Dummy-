@@ -34,13 +34,22 @@ class DatabaseSeeder extends Seeder
             // Seed tower owner user accounts (must be after OwnerSeeder, before ReportFeedbackSeeder)
             TowerOwnerUserSeeder::class,
             StatusSeeder::class,
-            ReportFeedbackSeeder::class, // Sample reports and feedbacks (requires TowerOwnerUserSeeder)
         ]);
 
-        // Seed FO points and routes from CSV/images
+        // Seed FO points first (required by ReportFeedbackSeeder)
         $this->call([
             FoPointsFromCsvSeeder::class,
+        ]);
+
+        // Sample reports and feedbacks (requires TowerOwnerUserSeeder and FoPointsFromCsvSeeder)
+        $this->call([
+            ReportFeedbackSeeder::class,
+        ]);
+
+        // Seed FO providers and routes (must be after FoPointsFromCsvSeeder)
+        $this->call([
             ProviderSeeder::class, // Create master providers and assign to points (must be after FoPointsFromCsvSeeder)
+            ProviderOwnerUserSeeder::class, // Create provider owner users (must be after ProviderSeeder)
             FoRoutesFromPointsSeeder::class,
         ]);
         

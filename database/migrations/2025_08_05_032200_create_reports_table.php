@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::create('reports', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tower_id')->constrained('towers')->onDelete('cascade');
+            // Polymorphic relationship to Tower or FoPoint
+            $table->string('reportable_type');
+            $table->unsignedBigInteger('reportable_id');
+            $table->index(['reportable_type', 'reportable_id']); // Index for better performance
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // Made nullable for anonymous users
             $table->string('email')->nullable(); // For anonymous users
             $table->timestamp('email_verified_at')->nullable();
