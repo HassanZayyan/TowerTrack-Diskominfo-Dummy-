@@ -68,7 +68,7 @@ Aplikasi ini memiliki **4 role** yang terdaftar di database dan **1 guest user**
 ### 1. Clone Repositori
 
 ```bash
-git clone https://github.com/username-anda/Tagging_Tower_Kominfo.git
+git clone https://github.com/HassanZayyan/Tagging_Tower_Kominfo.git
 cd Tagging_Tower_Kominfo
 ```
 
