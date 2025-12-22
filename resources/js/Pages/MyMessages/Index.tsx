@@ -320,26 +320,26 @@ export default function MyMessagesIndex({
     <MainLayout title={pageTitle} currentPage="/my-messages">
       <Head title={pageTitle} />
       
-      <div className="p-4 sm:p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <StaggeredContainer delay={0} animationType="fadeInUp" duration={500}>
-          <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
+          <div className="relative rounded-xl shadow-lg mb-6 sm:mb-8 px-4 sm:px-6 md:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-red-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
             
-            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                  <div className="p-1.5 sm:p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md flex-shrink-0">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent truncate">
                     {pageTitle}
                   </h1>
                 </div>
-                <p className="text-sm sm:text-base text-gray-700 ml-14">
+                <p className="text-xs sm:text-sm md:text-base text-gray-700 ml-0 sm:ml-11 md:ml-14">
                   {isMyPosts 
                     ? 'Lihat semua pesan Anda, baik yang publik maupun pribadi'
                     : isAnonymous 
@@ -457,16 +457,16 @@ export default function MyMessagesIndex({
 
             {/* Filters and Search */}
             <StaggeredContainer delay={200} animationType="scaleIn" duration={400}>
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5 sm:p-6 mb-6">
-                <div className="flex items-center gap-2 mb-5">
-                  <div className="p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-sm">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5 md:p-6 mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 mb-4 sm:mb-5">
+                  <div className="p-1.5 sm:p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-sm flex-shrink-0">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Filter & Pencarian</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Filter & Pencarian</h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
                 {/* Search */}
                 <div className="sm:col-span-2">
                   <InputLabel htmlFor="search" value="Cari" />
@@ -541,7 +541,7 @@ export default function MyMessagesIndex({
               </div>
 
               {/* Second row: Visibilitas, Kategori, Lokasi - aligned in same row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Visibility Filter - Only show for My Posts page */}
                 {isMyPosts && (
                   <div>
@@ -550,7 +550,7 @@ export default function MyMessagesIndex({
                       id="filterVisibility"
                       value={filterVisibility}
                       onChange={(e) => setFilterVisibility(e.target.value as 'all' | 'public' | 'private')}
-                      className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
+                      className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm text-sm"
                     >
                       <option value="all">Semua (Publik & Privat)</option>
                       <option value="public">Publik</option>
@@ -760,8 +760,8 @@ export default function MyMessagesIndex({
             {/* Pagination Controls */}
             {filteredItems.length > 0 && (
               <StaggeredContainer delay={350} animationType="fadeInUp" duration={400}>
-                <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 mt-6">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-5 mt-4 sm:mt-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
                   {/* Items per page */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-700">Tampilkan:</span>

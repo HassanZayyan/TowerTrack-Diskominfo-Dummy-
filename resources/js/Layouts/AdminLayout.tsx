@@ -145,7 +145,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
                 />
               </div>
             </button>
-            <Link href="/" className="text-lg font-semibold whitespace-nowrap" style={{ color: '#FFD700' }}>TowerTrack</Link>
+            <Link 
+              href="/" 
+              className="text-lg font-semibold whitespace-nowrap hover:opacity-80 transition-opacity duration-200 flex items-center gap-2 px-3 py-1.5 rounded border-2" 
+              style={{ color: '#B71C1C', backgroundColor: '#FFD700', borderColor: '#FFD700' }}
+            >
+              <span className="material-icons-outlined text-base">arrow_back</span>
+              <span>Kembali ke Web</span>
+            </Link>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <span className="text-sm hidden sm:inline" style={{ color: '#FFD700' }}>{user?.name} ({user?.role})</span>
@@ -393,7 +400,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
           </button>
         </div>
       </div>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
         {children}
       </main>
       

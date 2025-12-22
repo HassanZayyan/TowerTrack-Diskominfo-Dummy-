@@ -6,14 +6,14 @@ const Footer: React.FC = () => {
       {/* Header with Logo and Title */}
       <div className="px-4 sm:px-6 lg:px-8 py-6 border-b border-red-700">
         <div className="flex items-center justify-center gap-3">
-          <div className="p-2 sm:p-3 rounded-lg shadow-sm" style={{ backgroundColor: '#FFD700' }}>
+          <div className="p-2 sm:p-3 rounded-lg shadow-sm border border-white/20" style={{ backgroundColor: '#FFFFFF' }}>
             <img 
               src="/images/kab-smg-logo.png" 
               alt="Logo Kabupaten Semarang" 
               className="w-12 h-12 sm:w-16 sm:h-16"
             />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-yellow-400" style={{ color: '#FFD700' }}>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white" style={{ color: '#FFFFFF' }}>
             TowerTrack
           </h2>
         </div>

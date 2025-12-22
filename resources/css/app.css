@@ -51,6 +51,48 @@
     z-index: 30;
 }
 
+/* Prevent image distortion in AppBar */
+.app-bar img {
+    object-fit: contain;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Ensure logo container maintains aspect ratio */
+.app-bar .logo-container {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Responsive text truncation for AppBar */
+.app-bar .truncate-responsive {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Tablet-specific optimizations (640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .app-bar {
+        /* Ensure proper spacing on tablets */
+        min-height: 48px;
+    }
+    
+    .app-bar .container {
+        /* Prevent horizontal overflow */
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    /* Ensure buttons don't overflow */
+    .app-bar button,
+    .app-bar a {
+        max-width: 100%;
+        overflow: hidden;
+    }
+}
+
 /* Map marker styles */
 .map-marker-green {
     background-color: #22c55e;

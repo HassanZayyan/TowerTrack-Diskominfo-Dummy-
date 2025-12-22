@@ -593,7 +593,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     <MainLayout title="Form Keluhan" currentPage="/complaint">
       <Head title="Form Keluhan" />
       
-      <div className="p-4 sm:p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <PageHeader
           title={isAuthenticatedUser ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
           description="Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi"
@@ -601,22 +601,22 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         />
         
         <div className="bg-white rounded-lg shadow-md">
-          <div className="p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-6">Form Keluhan</h2>
+          <div className="p-3 sm:p-4 md:p-6">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-600 mb-4 sm:mb-6">Form Keluhan</h2>
             
             {isAuthenticatedUser && (
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800 text-sm">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-xs sm:text-sm">
                   <strong>Info:</strong> Nama dan email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field tersebut.
                 </p>
               </div>
             )}
             
             {isAutoFilled && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center">
-                  <span className="material-icons-outlined text-green-600 mr-2">check_circle</span>
-                  <p className="text-green-800 text-sm">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start sm:items-center">
+                  <span className="material-icons-outlined text-green-600 mr-2 text-base sm:text-lg flex-shrink-0">check_circle</span>
+                  <p className="text-green-800 text-xs sm:text-sm">
                     <strong>{autoFilledLocationType === 'fo_point' ? 'Fiber Optik Dipilih Otomatis:' : 'Tower Dipilih Otomatis:'}</strong> Data lokasi {autoFilledLocationType === 'fo_point' ? 'fiber optik' : 'tower'} <strong>{form.lokasi_tower_display || form.lokasi_tower}</strong> telah diisi otomatis berdasarkan pilihan Anda sebelumnya.
                   </p>
                 </div>
@@ -624,9 +624,9 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
             )}
             
             <form onSubmit={handleSubmit} noValidate>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
                     Nama Lengkap <span className="text-red-600">*</span>
                   </label>
                   <input
@@ -634,18 +634,18 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                     name="nama"
                     value={isAuthenticatedUser ? (auth?.user?.name || '') : form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 ${isAuthenticatedUser ? 'bg-gray-100' : ''}`}
+                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base ${isAuthenticatedUser ? 'bg-gray-100' : ''}`}
                     placeholder="Masukkan nama lengkap"
                     maxLength={100}
                     readOnly={isAuthenticatedUser}
                   />
                   {validation.nama && (
-                    <p className="text-red-500 text-sm mt-1">Nama lengkap harus diisi</p>
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">Nama lengkap harus diisi</p>
                   )}
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
                     No. Telepon <span className="text-red-600">*</span>
                   </label>
                   <input
@@ -653,18 +653,18 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base`}
                     placeholder="Masukkan nomor telepon"
                     maxLength={15}
                   />
                   {validation.telepon && (
-                    <p className="text-red-500 text-sm mt-1">Nomor telepon harus diisi</p>
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">Nomor telepon harus diisi</p>
                   )}
                 </div>
                 
                 {!isAuthenticatedUser && (
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
                       Email <span className="text-red-600">*</span>
                     </label>
                     <input
@@ -672,22 +672,22 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                       name="email"
                       value={form.email}
                       onChange={handleChange}
-                      className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                      className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base`}
                       placeholder="Masukkan email (untuk melacak status)"
                       maxLength={100}
                     />
                     {validation.email && (
-                      <p className="text-red-500 text-sm mt-1">Email harus diisi dengan format yang valid</p>
+                      <p className="text-red-500 text-xs sm:text-sm mt-1">Email harus diisi dengan format yang valid</p>
                     )}
                   </div>
                 )}
                 
                 <div className="md:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-3">
+                  <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
                     Tipe Laporan <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="location_type_tower"
@@ -703,15 +703,15 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Tower</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Tower</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           Pilih lokasi tower untuk laporan
                         </div>
                       </div>
                     </label>
                     
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="location_type_fo"
@@ -727,9 +727,9 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Fiber Optik</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Fiber Optik</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           Pilih lokasi FO Point untuk laporan
                         </div>
                       </div>
@@ -738,10 +738,10 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-3">
+                  <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
                     Visibilitas Laporan <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
@@ -796,7 +796,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
                     Kategori Keluhan <span className="text-red-600">*</span>
                   </label>
                   {!isOtherCategory ? (
@@ -804,7 +804,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                       name="kategori"
                       value={form.kategori}
                       onChange={handleCategoryChange}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 text-base sm:text-sm p-3`}
+                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 text-sm sm:text-base p-2.5 sm:p-3`}
                     >
                       <option value="">Pilih kategori</option>
                       <option value="Kerusakan">Kerusakan</option>
@@ -860,31 +860,31 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                 className="mb-6"
               />
               
-              <div className="mb-6">
-                <label className="block text-gray-700 font-medium mb-2">
+              <div className="mb-4 sm:mb-6">
+                <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
                   Pesan/Keluhan <span className="text-red-600">*</span>
                 </label>
                 <textarea
                   name="pesan"
                   value={form.pesan}
                   onChange={handleChange}
-                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3 resize-vertical`}
-                  rows={6}
+                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 resize-vertical text-sm sm:text-base`}
+                  rows={5}
                   placeholder="Jelaskan keluhan Anda secara detail..."
                   maxLength={1000}
                   minLength={10}
                 />
                 {validation.pesan && (
-                  <p className="text-red-500 text-sm mt-1">Pesan harus diisi</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">Pesan harus diisi</p>
                 )}
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-gray-500 text-xs sm:text-sm mt-1">
                   {form.pesan.length}/1000 karakter
                 </p>
               </div>
               
               {/* CAPTCHA widget - only for guest users */}
               {!isAuthenticatedUser && (
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                   <TurnstileCaptcha
                     ref={captchaRef}
                     siteKey={turnstileSiteKey || ''}
@@ -896,7 +896,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                 </div>
               )}
 
-              <div className="flex items-center justify-start gap-3 sm:gap-4 flex-wrap">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-start gap-2 sm:gap-3 md:gap-4">
                 <AnimatedButton
                   type="button"
                   variant="secondary"

@@ -22,8 +22,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       <AppBar currentPage={currentPage} />
       
       {/* Main Content */}
-      <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 flex-1 w-full">
-        <main className="py-6">{children}</main>
+      <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8 flex-1 w-full">
+        <main className="py-4 sm:py-6">{children}</main>
       </div>
       
       {/* Footer - Full Width */}

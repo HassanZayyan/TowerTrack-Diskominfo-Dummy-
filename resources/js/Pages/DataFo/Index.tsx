@@ -28,9 +28,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Add custom CSS for map container
+// Add custom CSS for map container - responsive height
 const mapContainerStyle = {
-  height: '500px',
+  height: '400px', // Smaller on mobile
   width: '100%',
   position: 'relative' as const,
   zIndex: 1
@@ -812,7 +812,7 @@ export default function DataFoIndex({
         backgroundImage="/images/fo-hero-section.png"
         fullScreen={true}
         actions={
-          <>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
             <AnimatedButton
               variant="glass"
               size="lg"
@@ -822,10 +822,11 @@ export default function DataFoIndex({
                 mapSection?.scrollIntoView({ behavior: 'smooth' });
               }}
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               }
+              className="w-full sm:w-auto"
             >
               Lihat Peta FO
             </AnimatedButton>
@@ -838,22 +839,23 @@ export default function DataFoIndex({
                 tableSection?.scrollIntoView({ behavior: 'smooth' });
               }}
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               }
+              className="w-full sm:w-auto"
             >
               Lihat Data Tabel
             </AnimatedButton>
-          </>
+          </div>
         }
       />
 
       {/* Content Section */}
       <div className="flex-1">
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-          <main className="py-6">
-            <div className="p-4 sm:p-6">
+        <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8">
+          <main className="py-4 sm:py-6">
+            <div className="p-3 sm:p-4 md:p-6">
 
 
         {/* Statistics */}  
@@ -882,23 +884,23 @@ export default function DataFoIndex({
         {/* Map Section */}
         <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
           <div className="bg-white rounded-lg shadow mb-6 overflow-hidden" data-section="map">
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-3 sm:p-4 md:p-6 border-b border-gray-200">
             {/* Header Content - Responsive Layout */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
               {/* Title and Description Section */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
-                <p className="text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">Peta Jalur Fiber Optic</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">Visualisasi titik dan jalur FO di area Ungaran</p>
               </div>
 
               {/* Action Buttons Section - Responsive Button Layout */}
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col xs:flex-row gap-2 flex-wrap">
                 {/* Provider Filter Dropdown */}
-                <div className="w-full sm:w-auto">
+                <div className="w-full xs:w-auto min-w-[150px]">
                   <select
                     value={selectedProvider}
                     onChange={(e) => handleProviderChange(e.target.value)}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm pr-8 bg-white hover:bg-gray-50 transition-colors"
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-xs sm:text-sm pr-8 bg-white hover:bg-gray-50 transition-colors"
                     title="Filter berdasarkan provider"
                     aria-label="Filter provider"
                   >
@@ -916,7 +918,7 @@ export default function DataFoIndex({
                 </div>
                 <button 
                   onClick={() => setShowMarkers(!showMarkers)}
-                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2 w-full sm:w-auto ${
+                  className={`px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 sm:gap-2 w-full xs:w-auto ${
                     showMarkers 
                       ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' 
                       : 'text-white hover:opacity-90'
@@ -925,7 +927,7 @@ export default function DataFoIndex({
                   title={showMarkers ? "Sembunyikan marker untuk melihat jalur dengan jelas" : "Tampilkan marker"}
                   aria-label={showMarkers ? "Sembunyikan marker" : "Tampilkan marker"}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     {showMarkers ? (
                       <>
                         {/* Eye icon - markers visible */}
@@ -943,21 +945,21 @@ export default function DataFoIndex({
                 </button>
                 <button 
                   onClick={handleExport}
-                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 w-full xs:w-auto"
                   title="Export data ke CSV"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   Export
                 </button>
                 <button 
                   onClick={handleFullscreen}
-                  className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto" 
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 w-full xs:w-auto" 
                   style={{ backgroundColor: '#B71C1C' }}
                   title={isFullscreen ? "Keluar dari fullscreen" : "Masuk ke mode fullscreen"}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     {isFullscreen ? (
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" />
                     ) : (
@@ -970,28 +972,28 @@ export default function DataFoIndex({
             </div>
 
             {/* Route Selection Dropdown */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 sm:p-4">
               {/* Header Section - Responsive Layout */}
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-3">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
                 {/* Title and Description Section */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-gray-900 mb-1">
+                  <h4 className="text-xs sm:text-sm font-medium text-gray-900 mb-1">
                     📍 Pilih Jalur FO untuk Ditampilkan
                   </h4>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-[10px] sm:text-xs text-gray-600">
                     Klik jalur di bawah untuk menampilkan jalur fiber optic di peta
                   </p>
                 </div>
                 
                 {/* Action Button Section */}
-                <div className="flex justify-center lg:justify-end">
+                <div className="flex justify-center md:justify-end">
                   <button
                     onClick={handleToggleAllRoutes}
-                    className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90 transition-all flex items-center justify-center gap-1 shadow-sm w-full sm:w-auto"
+                    className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium text-white rounded-md hover:opacity-90 transition-all flex items-center justify-center gap-1 shadow-sm w-full xs:w-auto"
                     style={{ backgroundColor: '#B71C1C' }}
                     title={selectedRouteIds.length === currentMapData.routes.length ? "Sembunyikan semua jalur" : "Tampilkan semua jalur"}
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     {selectedRouteIds.length === currentMapData.routes.length ? 'Sembunyikan Semua' : 'Tampilkan Semua'}
@@ -999,7 +1001,7 @@ export default function DataFoIndex({
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2">
                 {currentMapData.routes.map((route: any) => {
                   const isSelected = selectedRouteIds.includes(route.id);
                   const isLoading = loadingRoutes.has(route.id);
@@ -1010,7 +1012,7 @@ export default function DataFoIndex({
                       key={route.id}
                       onClick={() => handleRouteSelection(route.id)}
                       disabled={isLoading}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                      className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                         isSelected
                           ? 'bg-white border-2 shadow-sm'
                           : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -1021,18 +1023,18 @@ export default function DataFoIndex({
                       title={`${route.name} - ${route.total_distance?.toFixed(1) || 0} km`}
                     >
                       <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: route.color || '#3B82F6' }}
                       />
-                      <span className="flex-1 text-left truncate text-gray-900">{route.name}</span>
+                      <span className="flex-1 text-left truncate text-gray-900 text-xs sm:text-sm">{route.name}</span>
                       {isLoading && (
                         <div className="flex items-center gap-1">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                          <span className="text-xs text-gray-500">Loading...</span>
+                          <div className="animate-spin rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 border-b-2 border-red-600"></div>
+                          <span className="text-[10px] sm:text-xs text-gray-500 hidden xs:inline">Loading...</span>
                         </div>
                       )}
                       {isSelected && isLoaded && (
-                        <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       )}
@@ -1077,8 +1079,8 @@ export default function DataFoIndex({
             
             <div 
               ref={mapContainerRef}
-              className={`w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`} 
-              style={isFullscreen ? { height: '100vh', width: '100vw' } : mapContainerStyle}
+              className={`w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : 'h-[400px] sm:h-[500px] md:h-[600px]'}`} 
+              style={isFullscreen ? { height: '100vh', width: '100vw' } : {}}
             >
               <MapContainer
                 center={mapCenter}
@@ -1347,21 +1349,22 @@ export default function DataFoIndex({
             </div>
             
             {/* Controls overlay */}
-            <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2">
-              <div className="text-xs text-gray-600">
-                Zoom: Mouse wheel | Pan: Drag
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-white rounded-lg shadow-lg p-1.5 sm:p-2">
+              <div className="text-[10px] sm:text-xs text-gray-600">
+                <span className="hidden sm:inline">Zoom: Mouse wheel | Pan: Drag</span>
+                <span className="sm:hidden">Zoom & Pan</span>
               </div>
             </div>
           </div>
             
           {/* Map Legend */}
-          <div className="p-4 bg-gray-50 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Legenda Titik FO:</h4>
+          <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200">
+            <h4 className="text-xs sm:text-sm font-medium text-gray-900 mb-2 sm:mb-3">Legenda Titik FO:</h4>
             
             {/* Side of Road Legend */}
-            <div className="mb-4 pb-4 border-b border-gray-200">
-              <h5 className="text-xs font-semibold text-gray-700 mb-2">Sisi Jalan:</h5>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-gray-200">
+              <h5 className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1.5 sm:mb-2">Sisi Jalan:</h5>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full border-3 border-blue-500 flex items-center justify-center bg-blue-100">
                     <span className="text-xs font-bold text-blue-600">L</span>
@@ -1383,38 +1386,38 @@ export default function DataFoIndex({
               </div>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '7px' }}>PIJ</div>
-                <span className="text-xs text-gray-700">Pole + ISP + JB</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '7px' }}>PIJ</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">Pole + ISP + JB</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>PI</div>
-                <span className="text-xs text-gray-700">Pole + ISP</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>PI</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">Pole + ISP</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>JB</div>
-                <span className="text-xs text-gray-700">Pole + Joint Box</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>JB</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">Pole + Joint Box</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">P</div>
-                <span className="text-xs text-gray-700">Pole Saja</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white">P</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">Pole Saja</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">I</div>
-                <span className="text-xs text-gray-700">ISP Saja</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-cyan-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white">I</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">ISP Saja</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">J</div>
-                <span className="text-xs text-gray-700">Joint Box Saja</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white">J</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">Joint Box Saja</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>IJ</div>
-                <span className="text-xs text-gray-700">ISP + Joint Box</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-pink-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white" style={{ fontSize: '8px' }}>IJ</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">ISP + Joint Box</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white">?</div>
-                <span className="text-xs text-gray-700">Tidak Ada Gambar</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm border-2 border-white">?</div>
+                <span className="text-[10px] sm:text-xs text-gray-700">Tidak Ada Gambar</span>
               </div>
             </div>
           </div>

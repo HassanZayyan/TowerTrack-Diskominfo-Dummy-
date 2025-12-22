@@ -260,7 +260,7 @@ export default function DataTowerIndex({
         backgroundImage="/images/hero-section.png"
         fullScreen={true}
         actions={
-          <>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
             <AnimatedButton
               variant="glass"
               size="lg"
@@ -270,10 +270,11 @@ export default function DataTowerIndex({
                 if (mapElement) mapElement.scrollIntoView({ behavior: 'smooth' });
               }}
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               }
+              className="w-full sm:w-auto"
             >
               Lihat Peta
             </AnimatedButton>
@@ -286,22 +287,23 @@ export default function DataTowerIndex({
                 if (tableTop) (tableTop as HTMLElement).scrollIntoView({ behavior: 'smooth' });
               }}
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               }
+              className="w-full sm:w-auto"
             >
               Lihat Tabel
             </AnimatedButton>
-          </>
+          </div>
         }
       />
       
       {/* Content Section */}
       <div className="flex-1">
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-          <main className="py-6">
-            <div className="p-4 sm:p-6">
+        <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8">
+          <main className="py-4 sm:py-6">
+            <div className="p-3 sm:p-4 md:p-6">
               {/* Statistics Header */}
               <TowerStats 
                 total={total}
@@ -334,7 +336,7 @@ export default function DataTowerIndex({
               {/* Table Section */}
               <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
                 <div className="bg-white rounded-lg shadow" id="data-table-top">
-                <div className="p-4 border-b">
+                <div className="p-3 sm:p-4 md:p-6 border-b">
                   <TowerFilters
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}

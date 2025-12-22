@@ -87,21 +87,21 @@ export default function ShowReport({ report, statuses = [], comments, commentCou
     <MainLayout title={`Detail Keluhan #${report.id}`} currentPage="/my-messages">
       <Head title={`Detail Keluhan #${report.id}`} />
       
-      <div className="p-4 sm:p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         {/* Back Button */}
         <StaggeredContainer delay={0} animationType="fadeInLeft" duration={400}>
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <AnimatedButton
               variant="outline"
               size="md"
               animation="scale"
               onClick={() => router.visit(returnUrl)}
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                 </svg>
               }
-              className="border-red-500 text-red-700 hover:bg-red-500 hover:text-white"
+              className="border-red-500 text-red-700 hover:bg-red-500 hover:text-white text-xs sm:text-sm"
             >
               {buttonLabel}
             </AnimatedButton>
@@ -109,14 +109,14 @@ export default function ShowReport({ report, statuses = [], comments, commentCou
         </StaggeredContainer>
 
         <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
-          <div className="relative rounded-xl shadow-lg mb-8 px-6 sm:px-8 py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="relative rounded-xl shadow-lg mb-6 sm:mb-8 px-4 sm:px-6 md:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
+            <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md flex-shrink-0">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent truncate">
                 Detail Keluhan #{report.id}
               </h1>
             </div>
@@ -125,16 +125,16 @@ export default function ShowReport({ report, statuses = [], comments, commentCou
 
         {/* Sender Information Card */}
         <StaggeredContainer delay={150} animationType="fadeInUp" duration={400}>
-          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-5 border border-teal-200 shadow-sm mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-md">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-4 sm:p-5 border border-teal-200 shadow-sm mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <div className="p-2 sm:p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-md flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
-              <h4 className="text-base font-bold text-gray-900">Informasi Pengirim</h4>
+              <h4 className="text-sm sm:text-base font-bold text-gray-900">Informasi Pengirim</h4>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
                 <div className="text-xs font-medium text-teal-700 mb-1.5">Nama</div>
                 <div className="flex items-center gap-2">
