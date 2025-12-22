@@ -48,6 +48,42 @@ Aplikasi web untuk mengelola dan memantau data menara telekomunikasi di Kabupate
 - **Manajemen State**: Inertia.js
 - **CAPTCHA**: Cloudflare Turnstile
 
+## 📋 Persyaratan Sistem
+
+### PHP Version
+- **PHP 8.3 atau lebih tinggi** (wajib)
+- Pastikan menggunakan **PHP 64-bit** (bukan 32-bit)
+- Beberapa dependensi seperti `maennchen/zipstream-php` memerlukan PHP 8.3+
+
+### Rekomendasi Environment
+- **Laragon** (disarankan untuk Windows)
+  - Download: https://laragon.org/download/
+  - Laragon menyediakan PHP 8.3+ dan semua tools yang diperlukan (MySQL, Composer, dll)
+  - Mudah untuk switch antara versi PHP
+  - Built-in terminal dan database management
+
+### Tools Lainnya
+- **Composer** (untuk PHP dependencies)
+- **Node.js & npm** (untuk JavaScript dependencies)
+- **MySQL** atau database server lainnya
+- **Git** (untuk clone repository)
+
+### Verifikasi Instalasi
+```bash
+# Cek versi PHP (harus 8.3 atau lebih tinggi)
+php -v
+
+# Cek apakah PHP 64-bit
+php -r "echo PHP_INT_SIZE * 8 . '-bit' . PHP_EOL;"
+
+# Cek versi Composer
+composer --version
+
+# Cek versi Node.js
+node -v
+npm -v
+```
+
 ## 👥 Peran Pengguna
 
 Aplikasi ini memiliki **4 role** yang terdaftar di database dan **1 guest user** (unauthenticated):
@@ -74,6 +110,8 @@ cd Tagging_Tower_Kominfo
 
 ### 2. Install Dependencies
 
+**⚠️ Pastikan PHP 8.3+ sudah terinstall sebelum menjalankan `composer install`**
+
 ```bash
 # Install PHP dependencies (helper functions akan otomatis ter-load)
 composer install
@@ -81,6 +119,12 @@ composer install
 # Install JavaScript dependencies
 npm install
 ```
+
+**Catatan**: Jika muncul error tentang PHP version, pastikan:
+- PHP versi 8.3 atau lebih tinggi sudah terinstall
+- Menggunakan PHP 64-bit
+- Path PHP sudah benar di environment variables
+- Jika menggunakan Laragon, pastikan versi PHP yang aktif adalah 8.3+
 
 ### 3. Konfigurasi Environment
 
@@ -298,6 +342,18 @@ composer dump-autoload
 ---
 
 ## ⚠️ Troubleshooting
+
+### Error: PHP version tidak kompatibel saat `composer install`
+**Error**: `maennchen/zipstream-php requires php-64bit ^8.3 -> your php-64bit version (8.2.x) does not satisfy that requirement`
+
+**Solusi**:
+1. Upgrade PHP ke versi 8.3 atau lebih tinggi
+2. Jika menggunakan Laragon:
+   - Buka Laragon
+   - Klik kanan → PHP → pilih versi 8.3 atau lebih tinggi
+   - Restart Laragon
+3. Verifikasi versi PHP: `php -v`
+4. Jalankan `composer update` atau `composer install` lagi
 
 ### Helper functions tidak tersedia
 ```bash
