@@ -686,8 +686,8 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                   <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
                     Tipe Laporan <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
-                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="location_type_tower"
@@ -711,7 +711,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                       </div>
                     </label>
                     
-                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="location_type_fo"
@@ -742,7 +742,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                     Visibilitas Laporan <span className="text-red-600">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="is_public_public"
@@ -752,15 +752,15 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Terbuka (Public)</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Terbuka (Public)</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           Keluhan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
                         </div>
                       </div>
                     </label>
                     
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="is_public_private"
@@ -783,9 +783,9 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Tertutup (Private)</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           {isAuthenticatedUser 
                             ? 'Hanya Anda dan admin yang dapat melihat keluhan ini.'
                             : 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'}

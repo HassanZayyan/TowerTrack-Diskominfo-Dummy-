@@ -29,7 +29,7 @@ export default function FoStats({ filteredPoints, filteredRoutes, selectedArea }
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       <StaggeredContainer delay={100} animationType="fadeInUp" duration={600}>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105 hover:-translate-y-1 cursor-pointer" style={{ borderLeftColor: '#B71C1C' }}>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105 hover:-translate-y-1" style={{ borderLeftColor: '#B71C1C' }}>
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-red-100 rounded-md flex items-center justify-center transition-all duration-300">
@@ -48,7 +48,7 @@ export default function FoStats({ filteredPoints, filteredRoutes, selectedArea }
       </StaggeredContainer>
       
       <StaggeredContainer delay={200} animationType="fadeInUp" duration={600}>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105 hover:-translate-y-1 cursor-pointer" style={{ borderLeftColor: '#1B5E20' }}>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105 hover:-translate-y-1" style={{ borderLeftColor: '#1B5E20' }}>
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center transition-all duration-300">
@@ -66,7 +66,7 @@ export default function FoStats({ filteredPoints, filteredRoutes, selectedArea }
       </StaggeredContainer>
       
       <StaggeredContainer delay={300} animationType="fadeInUp" duration={600}>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105 hover:-translate-y-1 cursor-pointer" style={{ borderLeftColor: '#2563eb' }}>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105 hover:-translate-y-1" style={{ borderLeftColor: '#2563eb' }}>
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center transition-all duration-300">

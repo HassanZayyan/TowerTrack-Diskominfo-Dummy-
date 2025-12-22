@@ -733,8 +733,8 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                   <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
                     Tipe Masukan <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="location_type_tower"
@@ -750,15 +750,15 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Tower</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Tower</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           Pilih lokasi tower untuk masukan
                         </div>
                       </div>
                     </label>
                     
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         id="location_type_fo"
@@ -774,9 +774,9 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Fiber Optik</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Fiber Optik</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           Pilih lokasi FO Point untuk masukan
                         </div>
                       </div>
@@ -785,11 +785,11 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-3">
+                  <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
                     Visibilitas Masukan <span className="text-red-600">*</span>
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         name="is_public"
@@ -798,15 +798,15 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Terbuka (Public)</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Terbuka (Public)</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           Masukan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
                         </div>
                       </div>
                     </label>
                     
-                    <label className="flex items-start sm:items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
                       <input
                         type="radio"
                         name="is_public"
@@ -828,9 +828,9 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                         className="mt-1 sm:mt-0"
                         style={{ accentColor: '#DC2626' }}
                       />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Tertutup (Private)</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="font-medium text-gray-900 text-sm sm:text-base">Tertutup (Private)</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                           {isAuthenticatedUser 
                             ? 'Hanya Anda dan admin yang dapat melihat masukan ini.'
                             : 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'}

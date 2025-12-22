@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { router } from '@inertiajs/react';
 
 // Lazy load LeafletMap for better initial page load performance
@@ -58,6 +59,7 @@ export default function TowerMap({
   mapRef
 }: TowerMapProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenElement, setFullscreenElement] = useState<HTMLElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Fullscreen functionality
@@ -75,6 +77,8 @@ export default function TowerMap({
           (mapContainerRef.current as any).msRequestFullscreen();
         }
         setIsFullscreen(true);
+        // Automatically enable measurement mode when entering fullscreen
+        setMeasureEnabled(true);
       } else {
         // Exit fullscreen
         if (document.exitFullscreen) {
@@ -94,12 +98,10 @@ export default function TowerMap({
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).msFullscreenElement
-      );
+      const currentFullscreenEl = document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).msFullscreenElement;
+      const isCurrentlyFullscreen = !!currentFullscreenEl;
       setIsFullscreen(isCurrentlyFullscreen);
+      setFullscreenElement(isCurrentlyFullscreen ? (currentFullscreenEl as HTMLElement) : null);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -111,7 +113,7 @@ export default function TowerMap({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('msfullscreenchange', handleFullscreenChange);
     };
-  }, []);
+  }, [isFullscreen]);
 
   return (
     <div id="map-section" className="bg-white rounded-lg shadow mb-6 overflow-hidden">
@@ -223,7 +225,7 @@ export default function TowerMap({
         </div>
       </div>
       
-      <div className="relative">
+        <div className="relative">
         <div 
           ref={mapContainerRef}
           className={`w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`} 
@@ -260,6 +262,31 @@ export default function TowerMap({
             />
           </Suspense>
         </div>
+        
+        {/* Distance Card - Only shown in fullscreen mode when measurement is enabled */}
+        {isFullscreen && measureEnabled && distance > 0 && (
+          (() => {
+            const cardElement = (
+              <div className="fixed top-4 left-4 z-[60] bg-white rounded-lg shadow-lg p-4 border border-gray-200">
+                <div className="text-sm font-medium text-gray-700">
+                  Jarak: <span className="font-semibold text-gray-900">{distance.toFixed(1)} m</span>
+                  {distance > 1000 && (
+                    <span className="text-gray-600"> ({(distance / 1000).toFixed(2)} km)</span>
+                  )}
+                </div>
+              </div>
+            );
+            
+            // When in fullscreen, render inside the fullscreen element, not document.body
+            // The fullscreen element becomes the root viewport
+            // Use state-tracked fullscreen element to ensure it's available
+            if (fullscreenElement) {
+              return createPortal(cardElement, fullscreenElement);
+            }
+            
+            return cardElement;
+          })()
+        )}
         
         {/* Controls overlay */}
         <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2">
