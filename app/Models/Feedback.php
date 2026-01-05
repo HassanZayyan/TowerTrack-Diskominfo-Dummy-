@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Traits\Commentable;
 use App\Traits\HasGuestEmailVerification;
 use App\Services\CacheService;
@@ -25,14 +26,16 @@ class Feedback extends Model
         'sender_name',
         'category',
         'message',
-        'status',
-        'reporter_latitude',
-        'reporter_longitude',
-        'reporter_accuracy',
+        'status_id',
+        'sender_latitude',
+        'sender_longitude',
+        'sender_accuracy',
         'location_captured_at',
         'is_public',
         'email_verified_at',
     ];
+
+    protected $appends = ['status'];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
@@ -76,6 +79,28 @@ class Feedback extends Model
     public function responses()
     {
         return $this->hasMany(FeedbackResponse::class);
+    }
+
+    public function statusRelation()
+    {
+        return $this->belongsTo(Status::class, 'status_id');
+    }
+
+    /**
+     * Get the status slug attribute from status_id
+     */
+    protected function status(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $statusMap = [
+                    1 => 'pending',
+                    2 => 'in_progress',
+                    3 => 'closed',
+                ];
+                return $statusMap[$this->status_id] ?? 'pending';
+            }
+        );
     }
 
     /**

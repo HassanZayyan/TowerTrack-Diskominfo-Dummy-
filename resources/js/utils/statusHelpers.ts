@@ -24,16 +24,17 @@ export type FOStatusConfig = {
 /**
  * Get status color configuration for message statuses (reports/feedbacks).
  * 
- * @param status Status value (pending, in_progress, responded, resolved, closed)
+ * @param status Status value (pending, in_progress, closed)
  * @returns Status configuration with background color, text color, and label
  */
 export function getStatusColor(status: string | undefined | null): StatusConfig {
   const statusConfig: Record<string, StatusConfig> = {
     pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
     in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
-    responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
-    resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
     closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
+    // Backward compatibility for old status values
+    responded: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
+    resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
   };
 
   if (!status) {
@@ -129,7 +130,8 @@ export function getStatusBadgeClass(status: string | undefined | null): string {
     pending: 'bg-red-100 text-red-800 border-red-300',
     in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
     closed: 'bg-green-100 text-green-800 border-green-300',
-    responded: 'bg-green-100 text-green-800 border-green-300',
+    // Backward compatibility for old status values
+    responded: 'bg-orange-100 text-orange-800 border-orange-300',
     resolved: 'bg-green-100 text-green-800 border-green-300',
   };
 
@@ -147,7 +149,8 @@ export function getStatusLabel(status: string | undefined | null): string {
     pending: 'BARU',
     in_progress: 'PROGRESS',
     closed: 'SELESAI',
-    responded: 'DIBALAS',
+    // Backward compatibility for old status values
+    responded: 'PROGRESS',
     resolved: 'SELESAI',
   };
 

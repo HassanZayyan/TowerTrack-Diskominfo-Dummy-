@@ -185,23 +185,8 @@ trait HasAdminResponseHandling
      */
     protected function updateModelStatus($model, $statusId, array $config)
     {
-        // For Feedback, convert status_id to status string
-        if ($model instanceof \App\Models\Feedback) {
-            $statusMap = [
-                '1' => 'pending',
-                '2' => 'in_progress',
-                '3' => 'closed'
-            ];
-            
-            $statusValue = is_numeric($statusId) && isset($statusMap[$statusId]) 
-                ? $statusMap[$statusId] 
-                : $statusId;
-            
-            $model->update(['status' => $statusValue]);
-        } else {
-            // For Report, use status_id directly
-            $model->update(['status_id' => $statusId]);
-        }
+        // Both Report and Feedback now use status_id directly
+        $model->update(['status_id' => $statusId]);
     }
 
     /**

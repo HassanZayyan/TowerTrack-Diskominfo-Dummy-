@@ -9,6 +9,8 @@ use App\Models\FoPoint;
 use App\Services\LocationSecurityService;
 use App\Services\CaptchaService;
 use App\Http\Requests\StoreMessageResponseRequest;
+use App\Rules\PhoneNumber;
+use App\Helpers\PhoneHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -104,7 +106,7 @@ class FeedbackController extends MessageableController
     public function store(Request $request)
     {
         $rules = [
-            'sender_phone' => 'required|string|max:20', // Phone number is required for all users
+            'sender_phone' => ['required', 'string', 'max:20', new PhoneNumber()], // Phone number is required for all users
             'category' => 'required|string|max:100',
             'feedbackable_type' => 'required|in:App\\Models\\Tower,App\\Models\\FoPoint',
             'feedbackable_id' => [
@@ -130,9 +132,13 @@ class FeedbackController extends MessageableController
                 ? 'prohibited' // Email not allowed for authenticated users who should auto-fill
                 : 'required|email|max:255', // Email required for anonymous users
             'is_public' => 'required|boolean', // Visibility option
+            // Accept both reporter_* (for backward compatibility) and sender_* (new format)
             'reporter_latitude' => 'nullable|numeric',
             'reporter_longitude' => 'nullable|numeric',
             'reporter_accuracy' => 'nullable|numeric',
+            'sender_latitude' => 'nullable|numeric',
+            'sender_longitude' => 'nullable|numeric',
+            'sender_accuracy' => 'nullable|numeric',
             // Terima berbagai nama field untuk kompatibilitas frontend
             'assets.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400', // 100MB
             'foto.*' => 'nullable|file|mimes:jpeg,png,jpg,mp4,mov,avi,mkv|max:102400',
@@ -156,17 +162,30 @@ class FeedbackController extends MessageableController
         // Handle user ID and email for authenticated vs anonymous users
         [$userId, $email] = $this->resolveUserAndEmail($validated);
 
-        // Handle reporter coordinates - completely optional, never blocks submission
+        // Handle sender coordinates - completely optional, never blocks submission
+        // Accept both reporter_* (for backward compatibility) and sender_* (new format)
         $locationData = [];
-        if (!empty($validated['reporter_latitude']) && !empty($validated['reporter_longitude'])) {
+        $latitude = $validated['sender_latitude'] ?? $validated['reporter_latitude'] ?? null;
+        $longitude = $validated['sender_longitude'] ?? $validated['reporter_longitude'] ?? null;
+        $accuracy = $validated['sender_accuracy'] ?? $validated['reporter_accuracy'] ?? null;
+        
+        if (!empty($latitude) && !empty($longitude)) {
             $coordinatesResult = LocationSecurityService::validateCoordinates(
-                (float) $validated['reporter_latitude'],
-                (float) $validated['reporter_longitude'],
-                isset($validated['reporter_accuracy']) ? (float) $validated['reporter_accuracy'] : null
+                (float) $latitude,
+                (float) $longitude,
+                $accuracy !== null ? (float) $accuracy : null
             );
             
             if ($coordinatesResult !== null) {
-                $locationData = $coordinatesResult;
+                // Map reporter_* fields to sender_* fields for feedbacks
+                $locationData = [
+                    'sender_latitude' => $coordinatesResult['reporter_latitude'],
+                    'sender_longitude' => $coordinatesResult['reporter_longitude'],
+                    'location_captured_at' => $coordinatesResult['location_captured_at'],
+                ];
+                if (isset($coordinatesResult['reporter_accuracy'])) {
+                    $locationData['sender_accuracy'] = $coordinatesResult['reporter_accuracy'];
+                }
             }
             // Always continue - coordinates are completely optional
         }
@@ -176,12 +195,12 @@ class FeedbackController extends MessageableController
             'feedbackable_id' => $validated['feedbackable_id'],
             'user_id' => $userId,
             'email' => $email,
-            'sender_phone' => $validated['sender_phone'],
+            'sender_phone' => PhoneHelper::normalize($validated['sender_phone']),
             'sender_name' => $validated['sender_name'],
             'category' => $validated['category'],
             'message' => $validated['message'],
             'is_public' => $validated['is_public'] ?? false,
-            'status' => 'pending',
+            'status_id' => 1, // 1 = pending
             // Set email_verified_at based on user type
             // Authenticated users are auto-verified, guest users need email verification
             'email_verified_at' => isAuthenticated() ? now() : null,
@@ -202,10 +221,11 @@ class FeedbackController extends MessageableController
         }
 
         // Store guest contact data in cookie for auto-fill (only for guest users)
+        // Normalize phone number before storing to ensure consistency with database format
         if (isGuest()) {
             \App\Helpers\GuestCookieHelper::store([
                 'email' => $email,
-                'phone' => $validated['sender_phone'],
+                'phone' => PhoneHelper::normalize($validated['sender_phone']),
                 'name' => $validated['sender_name'],
             ]);
         }

@@ -64,7 +64,16 @@ class FeedbackController extends Controller
 
         // Apply status filter
         if ($status !== 'all') {
-            $query->where('status', $status);
+            // Convert status slug to status_id
+            $statusMap = [
+                'pending' => 1,
+                'in_progress' => 2,
+                'closed' => 3,
+            ];
+            $statusId = $statusMap[$status] ?? null;
+            if ($statusId) {
+                $query->where('status_id', $statusId);
+            }
         }
         
         $feedbacks = $query->get();

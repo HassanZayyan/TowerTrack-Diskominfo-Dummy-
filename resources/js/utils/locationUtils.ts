@@ -549,13 +549,25 @@ export function validateLocationQuality(
   const recommendations: string[] = [];
   let confidence: 'high' | 'medium' | 'low' = 'high';
 
-  // Check accuracy
+  // If tower has no coordinates, we don't need strict GPS accuracy validation
+  // because we can't validate distance anyway. Only validate for basic sanity.
+  const hasTowerCoords = !!towerCoordinates;
+
+  // Check accuracy - only enforce strict validation if tower has coordinates
   if (accuracy > 500) {
-    issues.push('Akurasi GPS sangat rendah (±500m+)');
-    confidence = 'low';
-    recommendations.push('Pindah ke area terbuka tanpa penghalang');
-    recommendations.push('Pastikan GPS aktif dan tidak dalam mode hemat daya');
-    recommendations.push('Coba restart aplikasi atau browser');
+    if (hasTowerCoords) {
+      // Strict validation only when we need to check distance to tower
+      issues.push('Akurasi GPS sangat rendah (±500m+)');
+      confidence = 'low';
+      recommendations.push('Pindah ke area terbuka tanpa penghalang');
+      recommendations.push('Pastikan GPS aktif dan tidak dalam mode hemat daya');
+      recommendations.push('Coba restart aplikasi atau browser');
+    } else {
+      // Tower has no coordinates - accuracy is less critical, just warn
+      issues.push('Akurasi GPS rendah (±500m+) - tidak mempengaruhi validasi karena tower tidak memiliki koordinat');
+      confidence = 'medium'; // Don't block submission
+      recommendations.push('Akurasi GPS rendah, namun tidak mempengaruhi pengiriman laporan');
+    }
   } else if (accuracy > 200) {
     issues.push('Akurasi GPS sedang (±200-500m)');
     confidence = 'medium';

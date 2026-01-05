@@ -138,16 +138,36 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     setShowDialog(true);
   }, []);
 
+  const sanitizePhoneNumber = useCallback((value: string): string => {
+    // Remove all non-digit characters except + at the beginning
+    let cleaned = value.replace(/[^\d+]/g, '');
+    
+    // Ensure + only appears at the beginning
+    if (cleaned.includes('+')) {
+      const parts = cleaned.split('+');
+      cleaned = '+' + parts.join('');
+    }
+    
+    // Limit length to 20 characters
+    return cleaned.slice(0, 20);
+  }, []);
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    const newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    let newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    
+    // Special sanitization for phone number
+    if (name === 'telepon' && typeof newValue === 'string') {
+      newValue = sanitizePhoneNumber(newValue);
+    }
+    
     setForm(prev => ({ ...prev, [name]: newValue }));
     
     // Clear validation error if typing
     if (validation[name as keyof typeof validation] !== undefined) {
       setValidation(prev => ({ ...prev, [name]: false }));
     }
-  }, [validation]);
+  }, [validation, sanitizePhoneNumber]);
 
   const handleLocationSelect = useCallback((location: Tower | FoPoint, type: LocationType) => {
     let displayName = '';
@@ -256,9 +276,15 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   }, [showErrorDialog]);
 
   const validateForm = useCallback(() => {
+    // Phone validation regex (supports Indonesian and international)
+    // Indonesian: 08xx, 628xx, +628xx (9-12 digits after country code)
+    // International: +[country code][number] (7-15 digits total)
+    const phoneRegex = /^(\+?62|0)[0-9]{9,12}$|^\+?[1-9]\d{7,14}$/;
+    const cleanedPhone = form.telepon.replace(/[^\d+]/g, '');
+    
     const newValidation = {
       nama: isAuthenticatedUser ? false : !form.nama.trim(), // Skip name validation for authenticated users
-      telepon: !form.telepon.trim(),
+      telepon: !form.telepon.trim() || !phoneRegex.test(cleanedPhone),
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim(),
@@ -428,13 +454,22 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         const issues = userLocationResult.validation.issues;
         const recommendations = userLocationResult.validation.recommendations;
         
-        if (userLocationResult.validation.confidence === 'low') {
+        // Only block submission if GPS confidence is low AND tower has coordinates
+        // If tower has no coordinates, we can't validate distance anyway, so allow submission
+        if (userLocationResult.validation.confidence === 'low' && locationHasCoordinates) {
           showWarningDialog(
             'Masalah Lokasi GPS Ditemukan', 
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
           setIsSubmitting(false);
-          return; // Block submission if GPS quality is too poor
+          return; // Block submission if GPS quality is too poor AND tower has coordinates
+        } else if (userLocationResult.validation.confidence === 'low' && !locationHasCoordinates) {
+          // Tower has no coordinates - GPS accuracy is less critical, just warn but allow submission
+          showWarningDialog(
+            'Akurasi Lokasi Rendah', 
+            `${issues.join('. ')}. ${recommendations.join('. ')}. Karena tower tidak memiliki koordinat, validasi jarak tidak diperlukan dan pengiriman tetap dapat dilakukan.`
+          );
+          // Allow submission to continue
         } else if (userLocationResult.validation.confidence === 'medium') {
           showWarningDialog(
             'Akurasi Lokasi Sedang', 
@@ -658,7 +693,11 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                     maxLength={15}
                   />
                   {validation.telepon && (
-                    <p className="text-red-500 text-xs sm:text-sm mt-1">Nomor telepon harus diisi</p>
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">
+                      {!form.telepon.trim() 
+                        ? 'Nomor telepon harus diisi' 
+                        : 'Format nomor telepon tidak valid. Gunakan format: 08xx, 628xx, atau +628xx'}
+                    </p>
                   )}
                 </div>
                 

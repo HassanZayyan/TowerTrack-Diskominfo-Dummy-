@@ -46,9 +46,9 @@ const INITIAL_FORM_STATE = {
   pesan: '',
   email: '',
   is_public: true,
-  reporter_latitude: '',
-  reporter_longitude: '',
-  reporter_accuracy: '',
+  sender_latitude: '',
+  sender_longitude: '',
+  sender_accuracy: '',
   location_type_filter: 'tower' as 'tower' | 'fo_point', // Filter untuk memilih tower atau FO point
 };
 
@@ -251,8 +251,17 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
   }, [towers, foPoints, handleLocationSelect]); // Include dependencies
 
   const sanitizePhoneNumber = useCallback((value: string): string => {
-    // Only allow numbers, + and - at the beginning
-    return value.replace(/[^0-9+\-]/g, '').slice(0, 15);
+    // Remove all non-digit characters except + at the beginning
+    let cleaned = value.replace(/[^\d+]/g, '');
+    
+    // Ensure + only appears at the beginning
+    if (cleaned.includes('+')) {
+      const parts = cleaned.split('+');
+      cleaned = '+' + parts.join('');
+    }
+    
+    // Limit length to 20 characters
+    return cleaned.slice(0, 20);
   }, []);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -294,9 +303,15 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
   }, []);
 
   const validateForm = useCallback(() => {
+    // Phone validation regex (supports Indonesian and international)
+    // Indonesian: 08xx, 628xx, +628xx (9-12 digits after country code)
+    // International: +[country code][number] (7-15 digits total)
+    const phoneRegex = /^(\+?62|0)[0-9]{9,12}$|^\+?[1-9]\d{7,14}$/;
+    const cleanedPhone = form.telepon.replace(/[^\d+]/g, '');
+    
     const newValidation = {
       nama: isAuthenticatedUser ? false : !form.nama.trim(), // Skip name validation for authenticated users
-      telepon: !form.telepon.trim(),
+      telepon: !form.telepon.trim() || !phoneRegex.test(cleanedPhone),
       kategori: !form.kategori.trim(),
       lokasi_tower: !form.lokasi_tower.trim(),
       pesan: !form.pesan.trim(),
@@ -343,11 +358,11 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
     formData.append('is_public', formToUse.is_public ? '1' : '0');
     
     // Append coordinates if available
-    if (formToUse.reporter_latitude && formToUse.reporter_longitude) {
-      formData.append('reporter_latitude', formToUse.reporter_latitude);
-      formData.append('reporter_longitude', formToUse.reporter_longitude);
-      if (formToUse.reporter_accuracy) {
-        formData.append('reporter_accuracy', formToUse.reporter_accuracy);
+    if (formToUse.sender_latitude && formToUse.sender_longitude) {
+      formData.append('sender_latitude', formToUse.sender_latitude);
+      formData.append('sender_longitude', formToUse.sender_longitude);
+      if (formToUse.sender_accuracy) {
+        formData.append('sender_accuracy', formToUse.sender_accuracy);
       }
     }
     
@@ -501,9 +516,9 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
       if (userLocationResult.coordinates) {
         const updatedForm = {
           ...form,
-          reporter_latitude: userLocationResult.coordinates.latitude.toString(),
-          reporter_longitude: userLocationResult.coordinates.longitude.toString(),
-          reporter_accuracy: userLocationResult.accuracy?.toString() || ''
+          sender_latitude: userLocationResult.coordinates.latitude.toString(),
+          sender_longitude: userLocationResult.coordinates.longitude.toString(),
+          sender_accuracy: userLocationResult.accuracy?.toString() || ''
         };
         setForm(updatedForm);
       }
@@ -515,13 +530,22 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
         const issues = userLocationResult.validation.issues;
         const recommendations = userLocationResult.validation.recommendations;
         
-        if (userLocationResult.validation.confidence === 'low') {
+        // Only block submission if GPS confidence is low AND tower has coordinates
+        // If tower has no coordinates, we can't validate distance anyway, so allow submission
+        if (userLocationResult.validation.confidence === 'low' && locationHasCoordinates) {
           showWarningDialog(
             'Masalah Lokasi GPS Ditemukan', 
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
           setIsSubmitting(false);
-          return; // Block submission if GPS quality is too poor
+          return; // Block submission if GPS quality is too poor AND tower has coordinates
+        } else if (userLocationResult.validation.confidence === 'low' && !locationHasCoordinates) {
+          // Tower has no coordinates - GPS accuracy is less critical, just warn but allow submission
+          showWarningDialog(
+            'Akurasi Lokasi Rendah', 
+            `${issues.join('. ')}. ${recommendations.join('. ')}. Karena tower tidak memiliki koordinat, validasi jarak tidak diperlukan dan pengiriman tetap dapat dilakukan.`
+          );
+          // Allow submission to continue
         } else if (userLocationResult.validation.confidence === 'medium') {
           showWarningDialog(
             'Akurasi Lokasi Sedang', 
@@ -568,9 +592,9 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
       // Create and submit form data
       const updatedFormData = userLocationCaptured && userLocationResult?.coordinates ? {
         ...form,
-        reporter_latitude: userLocationResult.coordinates.latitude.toString(),
-        reporter_longitude: userLocationResult.coordinates.longitude.toString(),
-        reporter_accuracy: userLocationResult.accuracy?.toString() || ''
+        sender_latitude: userLocationResult.coordinates.latitude.toString(),
+        sender_longitude: userLocationResult.coordinates.longitude.toString(),
+        sender_accuracy: userLocationResult.accuracy?.toString() || ''
       } : form;
       const formData = createFormData(updatedFormData);
       
@@ -702,10 +726,14 @@ export default function FeedbackCreate({ towers = [], foPoints = [] }: FeedbackC
                     onChange={handleChange}
                     className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base`}
                     placeholder="Masukkan nomor telepon"
-                    maxLength={15}
+                    maxLength={20}
                   />
                   {validation.telepon && (
-                    <p className="text-red-500 text-xs sm:text-sm mt-1">Nomor telepon harus diisi</p>
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">
+                      {!form.telepon.trim() 
+                        ? 'Nomor telepon harus diisi' 
+                        : 'Format nomor telepon tidak valid. Gunakan format: 08xx, 628xx, atau +628xx'}
+                    </p>
                   )}
                 </div>
                 
