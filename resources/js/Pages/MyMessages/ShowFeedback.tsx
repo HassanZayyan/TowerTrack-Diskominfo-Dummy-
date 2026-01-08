@@ -214,10 +214,10 @@ export default function ShowFeedback({ feedback, statuses = [], comments, commen
         {canRespond && (
           <StaggeredContainer delay={340} animationType="fadeInUp" duration={400}>
             <div className="mb-6">
-              <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-indigo-200 p-6 space-y-4">
+              <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl shadow-lg border border-teal-200 p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-2 flex-1">
-                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm flex-shrink-0">
+                    <div className="p-2 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-sm flex-shrink-0">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                       </svg>
@@ -269,7 +269,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments, commen
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-indigo-100 bg-white/70 px-4 py-3 text-sm text-indigo-700 shadow-sm">
+                <div className="rounded-lg border border-teal-100 bg-white/70 px-4 py-3 text-sm text-teal-700 shadow-sm">
                   Catatan: perubahan status dan balasan akan tampil pada riwayat balasan di bawah.
                 </div>
               </div>
@@ -285,6 +285,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments, commen
                 status={feedback.status}
                 statusResolver={responseStatusResolver}
                 heading="Balasan"
+                accentColorClass="from-orange-500 to-orange-600"
                 onPreviewAsset={(asset) => setPreviewAsset(asset)}
               />
             </div>
@@ -297,7 +298,7 @@ export default function ShowFeedback({ feedback, statuses = [], comments, commen
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm">
+                  <div className="p-2 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-sm">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>

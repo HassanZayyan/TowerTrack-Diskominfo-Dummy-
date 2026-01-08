@@ -98,21 +98,21 @@ export default function CommentForm({
           </svg>
         }
         title="Tulis Komentar"
-        iconBgColor="blue"
+        iconBgColor="orange"
       />
 
       <form onSubmit={submit} className="space-y-4">
         {/* Reply indicator */}
         {replyingTo && (
-          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-blue-700">
+          <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
+            <span className="text-sm text-orange-700">
               Membalas ke <strong>{replyingTo}</strong>
             </span>
             {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                className="text-sm text-orange-600 hover:text-orange-800 font-medium transition-colors"
               >
                 Batal
               </button>

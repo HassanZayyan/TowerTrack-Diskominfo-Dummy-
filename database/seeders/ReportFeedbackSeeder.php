@@ -22,10 +22,10 @@ class ReportFeedbackSeeder extends Seeder
     {
         // Get or create users with different roles
         $adminUser = User::firstOrCreate(
-            ['email' => 'admin@kominfo.go.id'],
+            ['email' => 'admin@dummy.local'],
             [
-                'name' => 'Admin Kominfo',
-                'password' => bcrypt('password'),
+                'name' => 'Admin User',
+                'password' => bcrypt('password123'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
             ]
@@ -41,25 +41,16 @@ class ReportFeedbackSeeder extends Seeder
             ]
         );
 
-        // Get existing tower owner user from TowerOwnerUserSeeder
-        $towerOwnerUser = User::where('email', 'ptdayamitratelekomun@towerowner.local')
-            ->where('role', 'tower_owner')
-            ->first();
+        // Get existing tower owner user (any tower owner user)
+        $towerOwnerUser = User::where('role', 'tower_owner')->first();
         
         if (!$towerOwnerUser) {
-            // Fallback: get first tower_owner user if the specific one doesn't exist
-            $towerOwnerUser = User::where('role', 'tower_owner')->first();
-            
-            if (!$towerOwnerUser) {
-                $this->command->error('❌ Tower owner user tidak ditemukan!');
-                $this->command->error('   Jalankan TowerOwnerUserSeeder terlebih dahulu: php artisan db:seed --class=TowerOwnerUserSeeder');
-                return;
-            }
-            
-            $this->command->warn("⚠ User tower owner spesifik tidak ditemukan, menggunakan: {$towerOwnerUser->email}");
-        } else {
-            $this->command->info("✓ Menggunakan tower owner user: {$towerOwnerUser->email}");
+            $this->command->error('❌ Tower owner user tidak ditemukan!');
+            $this->command->error('   Jalankan TowerOwnerUserSeeder terlebih dahulu: php artisan db:seed --class=TowerOwnerUserSeeder');
+            return;
         }
+        
+        $this->command->info("✓ Menggunakan tower owner user: {$towerOwnerUser->email}");
 
         // Get statuses
         $pendingStatus = Status::where('slug', 'pending')->first();
@@ -100,9 +91,8 @@ class ReportFeedbackSeeder extends Seeder
         $this->command->info("✓ Menggunakan {$towers->count()} tower dari database");
         $this->command->info("✓ Menggunakan {$foPoints->count()} FoPoint dari database");
 
-        // Check if seeder has already been run
-        if (Report::where('email', 'siti.nurhaliza@gmail.com')->exists() || 
-            Feedback::where('email', 'dewi.lestari98@gmail.com')->exists()) {
+        // Check if seeder has already been run (using a more generic check)
+        if (Report::count() > 0 || Feedback::count() > 0) {
             $this->command->warn('⚠ Seeder sudah pernah dijalankan sebelumnya.');
             $this->command->info('  Untuk menjalankan ulang, hapus data reports dan feedbacks terlebih dahulu.');
             return;

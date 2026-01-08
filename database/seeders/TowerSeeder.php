@@ -11,6 +11,8 @@ class TowerSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Creates towers with REAL coordinates from CSV but DUMMY information.
+     * This approach maintains realistic map visualization while protecting sensitive data.
      */
     public function run(): void
     {
@@ -18,6 +20,8 @@ class TowerSeeder extends Seeder
         
         if (!file_exists($csvFile)) {
             $this->command->error('CSV file not found: ' . $csvFile);
+            $this->command->warn('Falling back to dummy coordinates...');
+            $this->generateDummyTowers();
             return;
         }
 
@@ -27,66 +31,147 @@ class TowerSeeder extends Seeder
         // Skip header row
         fgetcsv($handle);
         
+        $towerCounter = 1;
+        $towerTypes = ['Monopole', 'Guyed', 'Self-Supporting', 'Lattice'];
+        $siteTypes = ['Macro', 'Micro', 'Small Cell'];
+        $jenisIjin = ['Izin Prinsip', 'Izin Operasional', 'Izin Permanen'];
+        $statusIjin = ['Aktif', 'Non-Aktif', 'Dalam Proses'];
+        
         while (($row = fgetcsv($handle)) !== false) {
-            if (count($row) >= 13) { // Ensure minimum required columns
-                // Parse longitude and latitude
-                $longitude = !empty(trim($row[6])) ? (float) trim($row[6]) : null;
-                $latitude = !empty(trim($row[7])) ? (float) trim($row[7]) : null;
-                
-                // Parse dates
-                $tanggalIjin = null;
-                $berlakuHingga = null;
-                
-                if (!empty(trim($row[16]))) {
-                    try {
-                        $tanggalIjin = Carbon::createFromFormat('d/m/Y', trim($row[16]))->format('Y-m-d');
-                    } catch (\Exception $e) {
-                        // If date parsing fails, leave as null
-                    }
-                }
-                
-                if (!empty(trim($row[17]))) {
-                    try {
-                        $berlakuHingga = Carbon::createFromFormat('d/m/Y', trim($row[17]))->format('Y-m-d');
-                    } catch (\Exception $e) {
-                        // If date parsing fails, leave as null
-                    }
-                }
-                
-                $towers[] = [
-                    'site_id' => !empty(trim($row[3])) ? trim($row[3]) : null,
-                    'site_sap' => !empty(trim($row[4])) ? trim($row[4]) : null,
-                    'site_name' => trim($row[5]) ?: 'Site Name ' . (count($towers) + 1),
-                    'longitude' => $longitude,
-                    'latitude' => $latitude,
-                    'tinggi_menara' => !empty(trim($row[8])) ? (float) trim($row[8]) : null,
-                    'tinggi_bangunan' => !empty(trim($row[9])) ? (float) trim($row[9]) : null,
-                    'jumlah_pengguna' => !empty(trim($row[10])) ? (int) trim($row[10]) : null,
-                    'jumlah_kaki' => !empty(trim($row[11])) ? (int) trim($row[11]) : null,
-                    'alamat_menara' => trim($row[12]) ?: 'Alamat tidak tersedia',
-                    'tower_type' => !empty(trim($row[13])) ? trim($row[13]) : null,
-                    'site_type' => !empty(trim($row[14])) ? trim($row[14]) : null,
-                    'no_ijin' => !empty(trim($row[15])) ? trim($row[15]) : null,
-                    'tanggal_ijin' => $tanggalIjin,
-                    'berlaku_hingga' => $berlakuHingga,
-                    'jenis_ijin' => !empty(trim($row[18])) ? trim($row[18]) : null,
-                    'status_ijin' => !empty(trim($row[19])) ? trim($row[19]) : null,
-                    'prs' => !empty(trim($row[20])) ? trim($row[20]) : null,
-                    'prs_id' => !empty(trim($row[21])) ? trim($row[21]) : null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+            if (count($row) < 13) {
+                continue;
             }
+            
+            // Parse REAL coordinates from CSV
+            $longitude = !empty(trim($row[6])) ? (float) trim($row[6]) : null;
+            $latitude = !empty(trim($row[7])) ? (float) trim($row[7]) : null;
+            
+            // Skip if coordinates are invalid
+            if ($latitude === null || $longitude === null || 
+                abs($latitude) > 90 || abs($longitude) > 180 ||
+                ($latitude == 0 && $longitude == 0)) {
+                continue;
+            }
+            
+            // Parse dates (use real dates if available, otherwise generate dummy)
+            $tanggalIjin = null;
+            $berlakuHingga = null;
+            
+            if (!empty(trim($row[16]))) {
+                try {
+                    $tanggalIjin = Carbon::createFromFormat('d/m/Y', trim($row[16]));
+                } catch (\Exception $e) {
+                    // If parsing fails, generate dummy date
+                    $tanggalIjin = Carbon::now()->subYears(rand(1, 5))->subDays(rand(0, 365));
+                }
+            } else {
+                $tanggalIjin = Carbon::now()->subYears(rand(1, 5))->subDays(rand(0, 365));
+            }
+            
+            if (!empty(trim($row[17]))) {
+                try {
+                    $berlakuHingga = Carbon::createFromFormat('d/m/Y', trim($row[17]));
+                } catch (\Exception $e) {
+                    // If parsing fails, generate dummy date
+                    $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
+                }
+            } else {
+                $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
+            }
+            
+            // Generate DUMMY information
+            $towers[] = [
+                'site_id' => 'SITE' . str_pad($towerCounter, 4, '0', STR_PAD_LEFT),
+                'site_sap' => 'SAP' . str_pad($towerCounter, 5, '0', STR_PAD_LEFT),
+                'site_name' => 'Tower Site ' . $towerCounter,
+                'longitude' => $longitude, // REAL from CSV
+                'latitude' => $latitude, // REAL from CSV
+                'tinggi_menara' => !empty(trim($row[8])) ? (float) trim($row[8]) : (rand(30, 120) + (rand(0, 99) / 100)),
+                'tinggi_bangunan' => !empty(trim($row[9])) ? (float) trim($row[9]) : (rand(0, 50) + (rand(0, 99) / 100)),
+                'jumlah_pengguna' => !empty(trim($row[10])) ? (int) trim($row[10]) : rand(100, 5000),
+                'jumlah_kaki' => !empty(trim($row[11])) ? (int) trim($row[11]) : rand(3, 4),
+                'alamat_menara' => 'Jl. Dummy Street No. ' . $towerCounter . ', Kelurahan Dummy, Kecamatan Dummy, Kota Dummy', // DUMMY
+                'tower_type' => !empty(trim($row[13])) ? trim($row[13]) : $towerTypes[array_rand($towerTypes)],
+                'site_type' => !empty(trim($row[14])) ? trim($row[14]) : $siteTypes[array_rand($siteTypes)],
+                'no_ijin' => 'IJIN/' . date('Y') . '/' . str_pad($towerCounter, 4, '0', STR_PAD_LEFT), // DUMMY
+                'tanggal_ijin' => $tanggalIjin->format('Y-m-d'),
+                'berlaku_hingga' => $berlakuHingga->format('Y-m-d'),
+                'jenis_ijin' => !empty(trim($row[18])) ? trim($row[18]) : $jenisIjin[array_rand($jenisIjin)],
+                'status_ijin' => !empty(trim($row[19])) ? trim($row[19]) : $statusIjin[array_rand($statusIjin)],
+                'prs' => 'PRS-' . str_pad($towerCounter, 3, '0', STR_PAD_LEFT), // DUMMY
+                'prs_id' => 'PRSID' . str_pad($towerCounter, 4, '0', STR_PAD_LEFT), // DUMMY
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            
+            $towerCounter++;
         }
         
         fclose($handle);
         
         // Insert towers in chunks to avoid memory issues
+        if (!empty($towers)) {
+            $chunks = array_chunk($towers, 100);
+            foreach ($chunks as $chunk) {
+                DB::table('towers')->insert($chunk);
+            }
+            
+            $this->command->info('Inserted ' . count($towers) . ' towers with real coordinates and dummy information');
+        } else {
+            $this->command->warn('No towers were inserted. Check CSV file format.');
+        }
+    }
+    
+    /**
+     * Fallback: Generate dummy towers if CSV is not available
+     */
+    private function generateDummyTowers(): void
+    {
+        $towers = [];
+        $baseLat = -7.1390;
+        $baseLon = 110.4050;
+        
+        $towerTypes = ['Monopole', 'Guyed', 'Self-Supporting', 'Lattice'];
+        $siteTypes = ['Macro', 'Micro', 'Small Cell'];
+        $jenisIjin = ['Izin Prinsip', 'Izin Operasional', 'Izin Permanen'];
+        $statusIjin = ['Aktif', 'Non-Aktif', 'Dalam Proses'];
+        
+        for ($i = 1; $i <= 50; $i++) {
+            $latitude = $baseLat + (rand(-500, 500) / 10000);
+            $longitude = $baseLon + (rand(-500, 500) / 10000);
+            $tanggalIjin = Carbon::now()->subYears(rand(1, 5))->subDays(rand(0, 365));
+            $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
+            
+            $towers[] = [
+                'site_id' => 'SITE' . str_pad($i, 4, '0', STR_PAD_LEFT),
+                'site_sap' => 'SAP' . str_pad($i, 5, '0', STR_PAD_LEFT),
+                'site_name' => 'Tower Site ' . $i,
+                'longitude' => $longitude,
+                'latitude' => $latitude,
+                'tinggi_menara' => rand(30, 120) + (rand(0, 99) / 100),
+                'tinggi_bangunan' => rand(0, 50) + (rand(0, 99) / 100),
+                'jumlah_pengguna' => rand(100, 5000),
+                'jumlah_kaki' => rand(3, 4),
+                'alamat_menara' => 'Jl. Dummy Street No. ' . $i . ', Kelurahan Dummy, Kecamatan Dummy, Kota Dummy',
+                'tower_type' => $towerTypes[array_rand($towerTypes)],
+                'site_type' => $siteTypes[array_rand($siteTypes)],
+                'no_ijin' => 'IJIN/' . date('Y') . '/' . str_pad($i, 4, '0', STR_PAD_LEFT),
+                'tanggal_ijin' => $tanggalIjin->format('Y-m-d'),
+                'berlaku_hingga' => $berlakuHingga->format('Y-m-d'),
+                'jenis_ijin' => $jenisIjin[array_rand($jenisIjin)],
+                'status_ijin' => $statusIjin[array_rand($statusIjin)],
+                'prs' => 'PRS-' . str_pad($i, 3, '0', STR_PAD_LEFT),
+                'prs_id' => 'PRSID' . str_pad($i, 4, '0', STR_PAD_LEFT),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        
         $chunks = array_chunk($towers, 100);
         foreach ($chunks as $chunk) {
             DB::table('towers')->insert($chunk);
         }
         
-        $this->command->info('Inserted ' . count($towers) . ' towers');
+        $this->command->info('Inserted ' . count($towers) . ' dummy towers (fallback mode)');
     }
 }

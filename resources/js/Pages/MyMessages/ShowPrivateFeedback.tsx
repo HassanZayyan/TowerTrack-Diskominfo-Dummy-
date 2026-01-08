@@ -172,10 +172,10 @@ export default function ShowPrivateFeedback({ feedback, statuses = [] }: ShowPri
         {canRespond && (
           <StaggeredContainer delay={340} animationType="fadeInUp" duration={400}>
             <div className="mb-6">
-              <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-indigo-200 p-6 space-y-4">
+              <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl shadow-lg border border-amber-200 p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-2 flex-1">
-                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm flex-shrink-0">
+                    <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow-sm flex-shrink-0">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                       </svg>
@@ -225,7 +225,7 @@ export default function ShowPrivateFeedback({ feedback, statuses = [] }: ShowPri
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-indigo-100 bg-white/70 px-4 py-3 text-sm text-indigo-700 shadow-sm">
+                <div className="rounded-lg border border-amber-100 bg-white/70 px-4 py-3 text-sm text-amber-700 shadow-sm">
                   Balasan hanya dapat dilihat oleh pengirim masukan melalui halaman pelacakan pribadi.
                 </div>
               </div>
@@ -241,6 +241,7 @@ export default function ShowPrivateFeedback({ feedback, statuses = [] }: ShowPri
                 status={feedback.status}
                 statusResolver={responseStatusResolver}
                 heading="Riwayat Balasan"
+                accentColorClass="from-amber-500 to-amber-600"
                 onPreviewAsset={(asset) => setPreviewAsset(asset)}
               />
             </div>

@@ -190,7 +190,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
             }
-            className="border-blue-500 text-blue-700 hover:bg-blue-600 hover:text-white"
+            className="border-red-500 text-red-700 hover:bg-red-600 hover:text-white"
           >
             Kembali ke Daftar Masukan
           </AnimatedButton>
@@ -198,21 +198,21 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       </StaggeredContainer>
 
       <StaggeredContainer delay={100} animationType="fadeInUp" duration={500}>
-        <div className="relative rounded-xl shadow-lg mb-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50 border border-blue-100">
+        <div className="relative rounded-xl shadow-lg mb-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-yellow-50 border border-yellow-100">
           {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-yellow-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-yellow-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
           
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md flex-shrink-0">
+                <div className="p-2 bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-lg shadow-md flex-shrink-0">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-700 to-blue-600 bg-clip-text text-transparent break-words">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-yellow-700 to-yellow-600 bg-clip-text text-transparent break-words">
                     Detail Masukan #{feedback.id}
                   </h1>
                   <p className="text-xs sm:text-sm text-gray-600 mt-1">
@@ -234,9 +234,9 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
         <div className="lg:col-span-2 space-y-6">
           <StaggeredContainer delay={200} animationType="fadeInUp" duration={500}>
             {/* Sender Information Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-200 shadow-md">
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 sm:p-6 border border-orange-200 shadow-md">
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md flex-shrink-0">
+                <div className="p-2.5 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-md flex-shrink-0">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -244,9 +244,9 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                 <h3 className="text-lg font-bold text-gray-900">Informasi Pengirim</h3>
               </div>
               
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-orange-100">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-4 ring-white">
+                  <div className="flex-shrink-0 h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg ring-4 ring-white">
                     <span className="text-white font-bold text-2xl">
                       {(feedback.sender_name || extractSenderName(feedback.category).name || feedback.user?.name || '?').charAt(0).toUpperCase()}
                     </span>
@@ -273,7 +273,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     </div>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm flex-shrink-0 self-start sm:self-center">
+                <span className="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-orange-100 text-orange-800 border border-orange-200 shadow-sm flex-shrink-0 self-start sm:self-center">
                   {extractSenderName(feedback.category).category}
                 </span>
               </div>
@@ -284,14 +284,14 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
             {/* Message Content Card */}
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-md">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm">
+                <div className="p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-sm">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">Pesan Masukan</h3>
               </div>
-              <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gradient-to-br from-green-50 to-white p-5 rounded-lg border border-green-100">
+              <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gradient-to-br from-red-50 to-white p-5 rounded-lg border border-red-100">
                 {feedback.message}
               </div>
             </div>
@@ -388,9 +388,9 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
         <div className="lg:col-span-1 space-y-6">
           {/* Reply Form */}
           <StaggeredContainer delay={400} animationType="fadeInRight" duration={500}>
-            <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-indigo-200 p-6">
+            <div className="bg-gradient-to-br from-orange-50 to-white rounded-xl shadow-lg border border-orange-200 p-6">
               <div className="flex items-center gap-2 mb-5">
-                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
@@ -400,7 +400,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label htmlFor="status" className="flex text-sm font-semibold text-gray-700 mb-2 items-center gap-2">
-                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Update Status
@@ -410,7 +410,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                       id="status"
                       value={replyStatus}
                       onChange={handleStatusChange}
-                      className="w-full appearance-none bg-white border-2 border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 pr-10 py-3 px-4 cursor-pointer transition-all duration-200 hover:border-indigo-300 font-medium"
+                      className="w-full appearance-none bg-white border-2 border-orange-200 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 pr-10 py-3 px-4 cursor-pointer transition-all duration-200 hover:border-orange-300 font-medium"
                       required
                     >
                       <option value="pending">🔴 BARU</option>
@@ -418,7 +418,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                       <option value="closed">🟢 SELESAI</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
@@ -427,7 +427,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
 
                 <div>
                   <label htmlFor="message" className="flex text-sm font-semibold text-gray-700 mb-2 items-center gap-2">
-                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
                     Pesan Balasan
@@ -438,7 +438,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                     onChange={(e) => setReplyMessage(e.target.value)}
                     rows={6}
                     maxLength={1000}
-                    className="w-full border-2 border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 p-3 transition-all duration-200 hover:border-indigo-300"
+                    className="w-full border-2 border-orange-200 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 p-3 transition-all duration-200 hover:border-orange-300"
                     placeholder="Tulis balasan untuk masukan ini..."
                     required
                   ></textarea>
@@ -454,18 +454,18 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
 
                 <div>
                   <label className="flex text-sm font-semibold text-gray-700 mb-2 items-center gap-2">
-                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     Lampirkan Media <span className="text-gray-500 font-normal">(Opsional)</span>
                   </label>
-                  <div className="mt-1 flex justify-center px-6 pt-6 pb-6 border-2 border-indigo-200 border-dashed rounded-xl bg-white/50 backdrop-blur-sm hover:border-indigo-300 transition-colors">
+                  <div className="mt-1 flex justify-center px-6 pt-6 pb-6 border-2 border-orange-200 border-dashed rounded-xl bg-white/50 backdrop-blur-sm hover:border-orange-300 transition-colors">
                     <div className="space-y-2 text-center">
-                      <svg className="mx-auto h-12 w-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="mx-auto h-12 w-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                       <div className="flex text-sm text-gray-600">
-                        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-semibold text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-2 py-1">
+                        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-semibold text-orange-600 hover:text-orange-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-orange-500 px-2 py-1">
                           <span>Upload file</span>
                           <input
                             id="file-upload"
@@ -489,10 +489,10 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
                   {selectedFiles.length > 0 && (
                     <div className="mt-4 space-y-2">
                       {selectedFiles.map((file, index) => (
-                        <div key={index} className="relative bg-white border-2 border-indigo-100 rounded-lg p-3 hover:border-indigo-300 transition-colors">
+                        <div key={index} className="relative bg-white border-2 border-orange-100 rounded-lg p-3 hover:border-orange-300 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0 p-2 bg-indigo-100 rounded-lg">
-                              <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="flex-shrink-0 p-2 bg-orange-100 rounded-lg">
+                              <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 {file.type.startsWith('image/') ? (
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 ) : (
@@ -549,7 +549,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
       <StaggeredContainer delay={450} animationType="fadeInUp" duration={500}>
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mt-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-sm">
+            <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-sm">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -568,7 +568,7 @@ const FeedbackShow: React.FC<Props> = ({ feedback }) => {
               status={feedback.status}
               statusResolver={resolveFeedbackStatusStyle}
               heading={null}
-              accentColorClass="from-cyan-500 to-cyan-600"
+              accentColorClass="from-orange-500 to-orange-600"
               onPreviewAsset={(asset) => {
                 const mediaUrl = getMediaUrl(asset.file_path);
                 const type = asset.file_type === 'video' ? 'video' : 'image';

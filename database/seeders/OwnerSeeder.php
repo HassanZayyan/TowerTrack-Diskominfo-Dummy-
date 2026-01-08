@@ -10,44 +10,64 @@ class OwnerSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Creates dummy tower owners for presentation purposes.
      */
     public function run(): void
     {
-        $csvFile = database_path('../Data_menara_rev.csv');
-        
-        if (!file_exists($csvFile)) {
-            $this->command->error('CSV file not found: ' . $csvFile);
-            return;
-        }
+        $owners = [
+            [
+                'name' => 'PT Telekomunikasi Nusantara',
+                'alamat' => 'Jl. Gatot Subroto No. 52, Jakarta Selatan',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT Indosat Ooredoo',
+                'alamat' => 'Jl. Medan Merdeka Barat No. 21, Jakarta Pusat',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT XL Axiata',
+                'alamat' => 'Jl. HR Rasuna Said Kav. X-5, Jakarta Selatan',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT Smartfren Telecom',
+                'alamat' => 'Jl. Kebon Jeruk No. 27, Jakarta Barat',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT Dayamitra Telekomunikasi',
+                'alamat' => 'Jl. Jenderal Sudirman Kav. 28-30, Jakarta Pusat',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT Tower Bersama',
+                'alamat' => 'Jl. Prof. Dr. Satrio Kav. 18, Jakarta Selatan',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT Solusi Tunas Pratama',
+                'alamat' => 'Jl. Letjen S. Parman Kav. 28, Jakarta Barat',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'PT Protelindo',
+                'alamat' => 'Jl. TB Simatupang Kav. 7, Jakarta Selatan',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ];
 
-        $owners = [];
-        $handle = fopen($csvFile, 'r');
+        // Insert owners
+        DB::table('owners')->insert($owners);
         
-        // Skip header row
-        fgetcsv($handle);
-        
-        while (($row = fgetcsv($handle)) !== false) {
-            if (count($row) >= 3) {
-                $ownerName = trim($row[1]); // OWNER column
-                $ownerAddress = trim($row[2]); // ALAMAT OWNER column
-                
-                if (!empty($ownerName)) {
-                    $key = $ownerName . '|' . $ownerAddress;
-                    $owners[$key] = [
-                        'name' => $ownerName,
-                        'alamat' => $ownerAddress ?: 'Alamat tidak tersedia',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-            }
-        }
-        
-        fclose($handle);
-        
-        // Insert unique owners
-        DB::table('owners')->insert(array_values($owners));
-        
-        $this->command->info('Inserted ' . count($owners) . ' unique owners');
+        $this->command->info('Inserted ' . count($owners) . ' dummy owners');
     }
 }

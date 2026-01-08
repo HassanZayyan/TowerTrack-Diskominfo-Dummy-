@@ -10,7 +10,70 @@ use Illuminate\Support\Facades\File;
 class FoPointsFromCsvSeeder extends Seeder
 {
     /**
-     * Seed FO points by parsing the provided CSV and mapping images from the public folder.
+     * Mapping dari nama route real ke nama route dummy untuk keamanan data.
+     * Route names diubah menjadi generic untuk menghindari eksposisi informasi sensitif.
+     */
+    private function getRouteNameMapping(): array
+    {
+        return [
+            'Assalamah masuk Asmara' => 'Jalur FO Utama 1',
+            'Terminal - Assalamah' => 'Jalur FO Utama 2',
+            'Terminal - DPU' => 'Jalur FO Sekunder 1',
+            'Dinkes - Diskominfo' => 'Jalur FO Sekunder 2',
+            'Wujil - RSUD' => 'Jalur FO Utama 3',
+            'Assalamah - Taman Unyil' => 'Jalur FO Sekunder 3',
+            'Dishub - Bergas' => 'Jalur FO Sekunder 4',
+            'Pasar Karangjati - Kelurahan Karangjati' => 'Jalur FO Lokal 1',
+            'Setelah Terowongan TOL - Pertigaan Kajangan' => 'Jalur FO Utama 4',
+            'Polsek Bergas - Ngempon' => 'Jalur FO Sekunder 5',
+            'Polsek Bergas - Wujil' => 'Jalur FO Sekunder 6',
+            'Terowongan - Bangjo Asmara' => 'Jalur FO Utama 5',
+            'Kelurahan Genuk' => 'Jalur FO Lokal 2',
+            'SMADA' => 'Jalur FO Lokal 3',
+            'Alun-Alun Lama - Ungaran Barat' => 'Jalur FO Utama 6',
+            'RSUD - Terminal' => 'Jalur FO Utama 7',
+            'Kalongan - Jembatan Longsor' => 'Jalur FO Lokal 4',
+        ];
+    }
+
+    /**
+     * Get route name based on CSV line number (from original implementation).
+     * Returns REAL route name, which will be mapped to dummy name later.
+     */
+    private function getRouteNameByLine(int $lineNumber): string
+    {
+        $routeMapping = [
+            [3, 27, 'Assalamah masuk Asmara'],
+            [32, 42, 'Terminal - Assalamah'],
+            [47, 51, 'Terminal - DPU'],
+            [56, 69, 'Dinkes - Diskominfo'],
+            [74, 93, 'Wujil - RSUD'],
+            [98, 109, 'Assalamah - Taman Unyil'],
+            [114, 122, 'Dishub - Bergas'],
+            [127, 129, 'Pasar Karangjati - Kelurahan Karangjati'],
+            [134, 151, 'Setelah Terowongan TOL - Pertigaan Kajangan'],
+            [156, 171, 'Polsek Bergas - Ngempon'],
+            [176, 189, 'Polsek Bergas - Wujil'],
+            [194, 210, 'Terowongan - Bangjo Asmara'],
+            [215, 217, 'Kelurahan Genuk'],
+            [222, 224, 'SMADA'],
+            [229, 244, 'Alun-Alun Lama - Ungaran Barat'],
+            [249, 264, 'RSUD - Terminal'],
+            [269, 271, 'Kalongan - Jembatan Longsor'],
+        ];
+
+        foreach ($routeMapping as [$startLine, $endLine, $routeName]) {
+            if ($lineNumber >= $startLine && $lineNumber <= $endLine) {
+                return $routeName;
+            }
+        }
+
+        return 'Unknown Route';
+    }
+
+    /**
+     * Seed FO points with REAL coordinates from CSV but DUMMY route names and point names.
+     * Images are kept from original route (safe because route names are already dummy).
      */
     public function run(): void
     {
@@ -19,6 +82,8 @@ class FoPointsFromCsvSeeder extends Seeder
 
         if (!File::exists($csvPath)) {
             $this->command?->warn('CSV file not found: ' . $csvPath);
+            $this->command?->warn('Falling back to dummy data generation...');
+            $this->generateDummyFoPoints();
             return;
         }
 
@@ -30,11 +95,15 @@ class FoPointsFromCsvSeeder extends Seeder
         $this->disableForeignKeys();
         DB::table('fo_points')->truncate();
 
+        // Build image indexes if directory exists
         [$byExact, $byStem, $topFolderByRel] = $imagesDirExists
             ? $this->buildImageIndexes($imagesRoot)
             : [[], [], []];
 
-        // Parse CSV and process each row with line-based route assignment
+        // Get route name mapping
+        $routeNameMapping = $this->getRouteNameMapping();
+
+        // Parse CSV and process each row
         $totalCreated = 0;
         $routeCounts = [];
         $currentLine = 1;
@@ -49,16 +118,15 @@ class FoPointsFromCsvSeeder extends Seeder
                 continue;
             }
 
-            // Normalize row values: replace "-" with empty string
+            // Normalize row values
             $row = array_map(function ($v) {
                 if ($v === null) return '';
                 $v = trim((string) $v);
-                // Replace "-" with empty string
                 if ($v === '-') return '';
                 return $v;
             }, $row);
 
-            // Try to extract data from this row
+            // Extract data from row
             $record = $this->extractDataFromRow($row);
             if ($record === null) {
                 $currentLine++;
@@ -89,9 +157,11 @@ class FoPointsFromCsvSeeder extends Seeder
                 continue;
             }
 
-            // Get route name based on current line number
-            $routeName = $this->getRouteNameByLine($currentLine);
+            // Get REAL route name from line number, then map to DUMMY route name
+            $realRouteName = $this->getRouteNameByLine($currentLine);
+            $dummyRouteName = $routeNameMapping[$realRouteName] ?? 'Jalur FO ' . $sequenceNumber;
 
+            // Resolve images (keep original images - safe because route name is already dummy)
             $ispRel = $this->resolveImageRelativePath($ispRaw, $byExact, $byStem);
             $poleRel = $this->resolveImageRelativePath($poleRaw, $byExact, $byStem);
             $jbRel = $this->resolveImageRelativePath($jbRaw, $byExact, $byStem);
@@ -100,51 +170,137 @@ class FoPointsFromCsvSeeder extends Seeder
             $hasJbLink = $this->isValidUrl($linkJb);
             $type = ($hasJbImage || $hasJbLink) ? 'junction' : 'pole';
 
-            // Random side_of_road: 50% left, 50% right
+            // Random side_of_road
             $sideOfRoad = (rand(0, 1) === 0) ? 'left' : 'right';
 
-            // Normalize image fields: replace "-" with empty string
+            // Normalize image fields
             $ispImageFinal = ($linkIsp !== '' ? $linkIsp : $ispRel);
             $poleImageFinal = ($linkPole !== '' ? $linkPole : $poleRel);
             $jbImageFinal = ($linkJb !== '' ? $linkJb : $jbRel);
             
-            // Replace "-" with empty string
             if ($ispImageFinal === '-') $ispImageFinal = '';
             if ($poleImageFinal === '-') $poleImageFinal = '';
             if ($jbImageFinal === '-') $jbImageFinal = '';
 
+            // Create FO point with REAL coordinates, DUMMY name and route name
             FoPoint::create([
                 'sequence_number' => $sequenceNumber,
-                'name' => $name ?: ('Titik #' . $sequenceNumber),
-                'latitude' => $coords['latitude'],
-                'longitude' => $coords['longitude'],
+                'name' => 'Titik FO ' . $sequenceNumber, // DUMMY name
+                'latitude' => $coords['latitude'], // REAL from CSV
+                'longitude' => $coords['longitude'], // REAL from CSV
                 'original_coordinates' => $coordsRaw,
-                'route_name' => $routeName,
+                'route_name' => $dummyRouteName, // DUMMY route name
                 'area' => 'ungaran',
-                'description' => null,
+                'description' => 'Titik fiber optik untuk keperluan presentasi', // DUMMY description
                 'type' => $type,
                 'side_of_road' => $sideOfRoad,
                 'status' => 'active',
-                // Store link if provided, otherwise fallback to relative path if resolved
-                // "-" has been replaced with empty string
+                // Images are kept from original (safe because route name is dummy)
                 'isp_image' => $ispImageFinal,
                 'pole_image' => $poleImageFinal,
                 'junction_box_image' => $jbImageFinal,
                 'properties' => [
-                    'source' => 'csv',
+                    'source' => 'csv_with_dummy_names',
                     'csv_line' => $currentLine,
+                    'original_route_name' => $realRouteName, // Store original for reference (not displayed)
                     'link_mode' => ($linkIsp !== '' || $linkPole !== '' || $linkJb !== ''),
                 ],
             ]);
 
-            $routeCounts[$routeName] = ($routeCounts[$routeName] ?? 0) + 1;
+            $routeCounts[$dummyRouteName] = ($routeCounts[$dummyRouteName] ?? 0) + 1;
             $totalCreated++;
             $currentLine++;
         }
 
         $this->enableForeignKeys();
 
-        $this->command?->info("FO Points created: {$totalCreated}");
+        $this->command?->info("FO Points created: {$totalCreated} with real coordinates and dummy route names");
+        foreach ($routeCounts as $routeName => $count) {
+            $this->command?->line(" - {$routeName}: {$count} points");
+        }
+    }
+
+    /**
+     * Fallback: Generate dummy FO points if CSV is not available
+     */
+    private function generateDummyFoPoints(): void
+    {
+        $this->disableForeignKeys();
+        DB::table('fo_points')->truncate();
+
+        $routes = [
+            ['name' => 'Jalur FO Utama 1', 'points' => 25],
+            ['name' => 'Jalur FO Utama 2', 'points' => 11],
+            ['name' => 'Jalur FO Sekunder 1', 'points' => 5],
+            ['name' => 'Jalur FO Sekunder 2', 'points' => 14],
+            ['name' => 'Jalur FO Utama 3', 'points' => 20],
+            ['name' => 'Jalur FO Sekunder 3', 'points' => 12],
+            ['name' => 'Jalur FO Sekunder 4', 'points' => 9],
+            ['name' => 'Jalur FO Lokal 1', 'points' => 3],
+            ['name' => 'Jalur FO Utama 4', 'points' => 18],
+            ['name' => 'Jalur FO Sekunder 5', 'points' => 16],
+            ['name' => 'Jalur FO Sekunder 6', 'points' => 14],
+            ['name' => 'Jalur FO Utama 5', 'points' => 17],
+            ['name' => 'Jalur FO Lokal 2', 'points' => 3],
+            ['name' => 'Jalur FO Lokal 3', 'points' => 3],
+            ['name' => 'Jalur FO Utama 6', 'points' => 16],
+            ['name' => 'Jalur FO Utama 7', 'points' => 16],
+            ['name' => 'Jalur FO Lokal 4', 'points' => 3],
+        ];
+
+        $baseLat = -7.1390;
+        $baseLon = 110.4050;
+        $totalCreated = 0;
+        $routeCounts = [];
+        $sequenceNumber = 1;
+
+        foreach ($routes as $route) {
+            $routeName = $route['name'];
+            $numPoints = $route['points'];
+            $routeCounts[$routeName] = 0;
+
+            for ($i = 0; $i < $numPoints; $i++) {
+                $latOffset = ($i * 0.001) + (rand(-50, 50) / 10000);
+                $lonOffset = ($i * 0.001) + (rand(-50, 50) / 10000);
+                
+                $latitude = $baseLat + $latOffset;
+                $longitude = $baseLon + $lonOffset;
+
+                $hasJb = rand(0, 1) === 1;
+                $type = $hasJb ? 'junction' : 'pole';
+                $sideOfRoad = (rand(0, 1) === 0) ? 'left' : 'right';
+
+                FoPoint::create([
+                    'sequence_number' => $sequenceNumber,
+                    'name' => 'Titik FO ' . $sequenceNumber,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
+                    'original_coordinates' => number_format($latitude, 6) . ',' . number_format($longitude, 6),
+                    'route_name' => $routeName,
+                    'area' => 'ungaran',
+                    'description' => 'Dummy FO point untuk keperluan presentasi',
+                    'type' => $type,
+                    'side_of_road' => $sideOfRoad,
+                    'status' => 'active',
+                    'isp_image' => '',
+                    'pole_image' => '',
+                    'junction_box_image' => '',
+                    'properties' => [
+                        'source' => 'dummy_seeder',
+                        'generated_at' => now()->toISOString(),
+                        'is_dummy_data' => true,
+                    ],
+                ]);
+
+                $sequenceNumber++;
+                $routeCounts[$routeName]++;
+                $totalCreated++;
+            }
+        }
+
+        $this->enableForeignKeys();
+
+        $this->command?->info("FO Points created: {$totalCreated} (fallback mode)");
         foreach ($routeCounts as $routeName => $count) {
             $this->command?->line(" - {$routeName}: {$count} points");
         }
@@ -190,7 +346,6 @@ class FoPointsFromCsvSeeder extends Seeder
 
         // Try exact basename (case-insensitive)
         if (isset($byExact[$normalized])) {
-            // If multiple, prefer the shortest relative path (closest match)
             $candidates = $byExact[$normalized];
             usort($candidates, fn($a, $b) => strlen($a) <=> strlen($b));
             return $candidates[0] ?? null;
@@ -208,53 +363,17 @@ class FoPointsFromCsvSeeder extends Seeder
     }
 
     /**
-     * Get route name based on CSV line number according to the provided mapping.
-     */
-    private function getRouteNameByLine(int $lineNumber): string
-    {
-        $routeMapping = [
-            [3, 27, 'Assalamah masuk Asmara'],
-            [32, 42, 'Terminal - Assalamah'],
-            [47, 51, 'Terminal - DPU'],
-            [56, 69, 'Dinkes - Diskominfo'],
-            [74, 93, 'Wujil - RSUD'],
-            [98, 109, 'Assalamah - Taman Unyil'],
-            [114, 122, 'Dishub - Bergas'],
-            [127, 129, 'Pasar Karangjati - Kelurahan Karangjati'],
-            [134, 151, 'Setelah Terowongan TOL - Pertigaan Kajangan'],
-            [156, 171, 'Polsek Bergas - Ngempon'],
-            [176, 189, 'Polsek Bergas - Wujil'],
-            [194, 210, 'Terowongan - Bangjo Asmara'],
-            [215, 217, 'Kelurahan Genuk'],
-            [222, 224, 'SMADA'],
-            [229, 244, 'Alun-Alun Lama - Ungaran Barat'],
-            [249, 264, 'RSUD - Terminal'],
-            [269, 271, 'Kalongan - Jembatan Longsor'],
-        ];
-
-        foreach ($routeMapping as [$startLine, $endLine, $routeName]) {
-            if ($lineNumber >= $startLine && $lineNumber <= $endLine) {
-                return $routeName;
-            }
-        }
-
-        return 'Unknown Route';
-    }
-
-    /**
      * Extract data from a CSV row by detecting the data pattern.
      */
     private function extractDataFromRow(array $row): ?array
     {
         $len = count($row);
         
-        // Look for data patterns in the row
         for ($i = 0; $i <= $len - 6; $i++) {
             $nomor = trim($row[$i] ?? '');
             $namaLokasi = trim($row[$i + 1] ?? '');
             $koordinat = trim($row[$i + 2] ?? '');
             
-            // Check if this looks like a data row (has sequence number and location)
             if ($this->toInt($nomor) !== null && $namaLokasi !== '' && $koordinat !== '') {
                 return [
                     'nomor' => $nomor,
@@ -273,8 +392,6 @@ class FoPointsFromCsvSeeder extends Seeder
         return null;
     }
 
-
-
     /**
      * Parse coordinates from CSV. Returns ['latitude' => ?float, 'longitude' => ?float].
      */
@@ -285,24 +402,21 @@ class FoPointsFromCsvSeeder extends Seeder
         }
         $raw = trim($raw, " \t\n\r\0\x0B\"");
         
-        // Handle malformed coordinates like "-71858219,110.4368589" (missing decimal point)
+        // Handle malformed coordinates
         if (preg_match('/^(-?\d{8,})(\d{2,})[\s]*,[\s]*(-?\d+(?:\.\d+)?)$/', $raw, $m)) {
-            // Fix malformed latitude by adding decimal point
             $lat = (float) ($m[1] . '.' . $m[2]);
             $lng = (float) $m[3];
             
-            // Validate ranges
             if ($lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180) {
                 return ['latitude' => $lat, 'longitude' => $lng];
             }
         }
         
-        // Accept forms like "-7.121637,110.408685" or with spaces
+        // Accept forms like "-7.121637,110.408685"
         if (preg_match('/^(-?\d+(?:\.\d+)?)[\s]*,[\s]*(-?\d+(?:\.\d+)?)$/', $raw, $m)) {
             $lat = (float) $m[1];
             $lng = (float) $m[2];
             
-            // Validate ranges
             if ($lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180) {
                 return ['latitude' => $lat, 'longitude' => $lng];
             }
@@ -332,7 +446,6 @@ class FoPointsFromCsvSeeder extends Seeder
     private function normalizeFilename(string $name): string
     {
         $v = trim($name);
-        // Collapse multiple spaces and normalize case
         $v = preg_replace('/\s+/', ' ', $v);
         return mb_strtolower($v);
     }
@@ -390,5 +503,3 @@ class FoPointsFromCsvSeeder extends Seeder
         }
     }
 }
-
-

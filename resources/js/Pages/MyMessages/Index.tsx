@@ -367,18 +367,18 @@ export default function MyMessagesIndex({
         {/* Hide "Pesan Saya" button for admin/operator - they should only use public messages page */}
         {!isAnonymous && auth?.user && !isMyPosts && !['admin', 'operator'].includes(auth.user.role) && (
           <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
-            <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-md">
+            <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg shadow-md">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0">
-                  <div className="p-2 bg-blue-500 rounded-lg shadow-sm">
+                  <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow-sm">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-blue-900 mb-2">💡 Informasi Penting</h3>
-                  <p className="text-sm text-blue-800 leading-relaxed mb-3">
+                  <h3 className="text-base font-semibold text-amber-900 mb-2">💡 Informasi Penting</h3>
+                  <p className="text-sm text-amber-800 leading-relaxed mb-3">
                     Halaman ini menampilkan pesan <span className="font-semibold">publik</span> dari semua pengguna. Anda dapat melihat semua pesan publik yang dikirim oleh masyarakat.
                   </p>
                   <AnimatedButton
@@ -391,7 +391,7 @@ export default function MyMessagesIndex({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     }
-                    className="border-blue-600 text-blue-800 hover:bg-blue-600 hover:text-white"
+                    className="border-amber-600 text-amber-800 hover:bg-amber-600 hover:text-white"
                   >
                     Pesan Saya
                   </AnimatedButton>
@@ -424,18 +424,18 @@ export default function MyMessagesIndex({
             </StaggeredContainer>
             
             <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
-              <div className="mb-6 p-5 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg shadow-md">
+              <div className="mb-6 p-5 bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg shadow-md">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0">
-                    <div className="p-2 bg-green-500 rounded-lg shadow-sm">
+                    <div className="p-2 bg-red-500 rounded-lg shadow-sm">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-base font-semibold text-green-900 mb-2">💡 Informasi Penting</h3>
-                    <p className="text-sm text-green-800 leading-relaxed">
+                    <h3 className="text-base font-semibold text-red-900 mb-2">💡 Informasi Penting</h3>
+                    <p className="text-sm text-red-800 leading-relaxed">
                       Halaman ini menampilkan semua pesan yang Anda kirim, baik yang <span className="font-semibold">publik</span> maupun yang <span className="font-semibold">pribadi</span>. Anda dapat melihat status dan balasan admin untuk semua laporan Anda.
                     </p>
                   </div>

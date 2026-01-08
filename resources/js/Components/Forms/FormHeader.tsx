@@ -4,7 +4,7 @@ interface FormHeaderProps {
   icon: React.ReactNode;
   title: string;
   description?: string;
-  iconBgColor?: 'blue' | 'indigo' | 'red' | 'green' | 'purple';
+  iconBgColor?: 'blue' | 'indigo' | 'red' | 'green' | 'purple' | 'orange';
   className?: string;
 }
 
@@ -14,6 +14,7 @@ const iconBgColors = {
   red: 'bg-gradient-to-br from-red-500 to-red-600',
   green: 'bg-gradient-to-br from-green-500 to-green-600',
   purple: 'bg-gradient-to-br from-purple-500 to-purple-600',
+  orange: 'bg-gradient-to-br from-orange-500 to-orange-600',
 };
 
 /**
