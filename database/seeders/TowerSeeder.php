@@ -120,6 +120,9 @@ class TowerSeeder extends Seeder
         } else {
             $this->command->warn('No towers were inserted. Check CSV file format.');
         }
+        
+        // Generate towers without coordinates
+        $this->generateTowersWithoutCoordinates($towerCounter);
     }
     
     /**
@@ -173,5 +176,61 @@ class TowerSeeder extends Seeder
         }
         
         $this->command->info('Inserted ' . count($towers) . ' dummy towers (fallback mode)');
+        
+        // Generate towers without coordinates
+        $this->generateTowersWithoutCoordinates(51);
+    }
+    
+    /**
+     * Generate towers without coordinates (longitude and latitude are null)
+     * 
+     * @param int $startCounter Starting counter for tower numbering
+     */
+    private function generateTowersWithoutCoordinates(int $startCounter = 1): void
+    {
+        $towers = [];
+        
+        $towerTypes = ['Monopole', 'Guyed', 'Self-Supporting', 'Lattice'];
+        $siteTypes = ['Macro', 'Micro', 'Small Cell'];
+        $jenisIjin = ['Izin Prinsip', 'Izin Operasional', 'Izin Permanen'];
+        $statusIjin = ['Aktif', 'Non-Aktif', 'Dalam Proses'];
+        
+        for ($i = 0; $i < 50; $i++) {
+            $counter = $startCounter + $i;
+            $tanggalIjin = Carbon::now()->subYears(rand(1, 5))->subDays(rand(0, 365));
+            $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
+            
+            $towers[] = [
+                'site_id' => 'SITE' . str_pad($counter, 4, '0', STR_PAD_LEFT),
+                'site_sap' => 'SAP' . str_pad($counter, 5, '0', STR_PAD_LEFT),
+                'site_name' => 'Tower Site ' . $counter . ' (No Coordinates)',
+                'longitude' => null, // No coordinates
+                'latitude' => null, // No coordinates
+                'tinggi_menara' => rand(30, 120) + (rand(0, 99) / 100),
+                'tinggi_bangunan' => rand(0, 50) + (rand(0, 99) / 100),
+                'jumlah_pengguna' => rand(100, 5000),
+                'jumlah_kaki' => rand(3, 4),
+                'alamat_menara' => 'Jl. Dummy Street No. ' . $counter . ', Kelurahan Dummy, Kecamatan Dummy, Kota Dummy',
+                'tower_type' => $towerTypes[array_rand($towerTypes)],
+                'site_type' => $siteTypes[array_rand($siteTypes)],
+                'no_ijin' => 'IJIN/' . date('Y') . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT),
+                'tanggal_ijin' => $tanggalIjin->format('Y-m-d'),
+                'berlaku_hingga' => $berlakuHingga->format('Y-m-d'),
+                'jenis_ijin' => $jenisIjin[array_rand($jenisIjin)],
+                'status_ijin' => $statusIjin[array_rand($statusIjin)],
+                'prs' => 'PRS-' . str_pad($counter, 3, '0', STR_PAD_LEFT),
+                'prs_id' => 'PRSID' . str_pad($counter, 4, '0', STR_PAD_LEFT),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        
+        // Insert towers in chunks
+        $chunks = array_chunk($towers, 100);
+        foreach ($chunks as $chunk) {
+            DB::table('towers')->insert($chunk);
+        }
+        
+        $this->command->info('Inserted ' . count($towers) . ' towers without coordinates');
     }
 }
