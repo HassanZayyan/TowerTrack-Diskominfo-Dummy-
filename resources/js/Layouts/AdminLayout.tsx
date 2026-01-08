@@ -400,7 +400,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin' }) 
           </button>
         </div>
       </div>
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
+      <main 
+        className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden"
+        style={{ overflowY: 'visible', overflow: 'visible hidden' } as React.CSSProperties}
+      >
         {children}
       </main>
       

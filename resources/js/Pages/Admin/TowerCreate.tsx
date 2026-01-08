@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import AnimatedButton from '@/Components/AnimatedButton';
 import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface Owner {
@@ -263,29 +264,45 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
     <AdminLayout title="Tambah Tower">
       <Head title="Tambah Tower" />
       
-      {/* Header Section */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Tambah Tower Baru</h1>
-            <p className="text-sm sm:text-base text-gray-600">Masukkan informasi lengkap tower telekomunikasi yang akan didaftarkan</p>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl shadow-2xl mb-8 overflow-hidden">
+        <div className="px-4 sm:px-8 py-6 sm:py-8 text-white relative">
+          <div className="absolute inset-0 bg-black opacity-10"></div>
+          <div className="relative z-10">
+            {/* Mobile-First Header Layout */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="p-3 sm:p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm self-start">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-2 leading-tight">Tambah Tower Baru</h1>
+                  <p className="text-red-100 text-sm sm:text-lg leading-relaxed">
+                    Masukkan informasi lengkap tower telekomunikasi yang akan didaftarkan
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => router.get(route('admin.towers.index'))}
+                className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors w-full sm:w-auto"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Kembali
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => router.get(route('admin.towers.index'))}
-            className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Kembali
-          </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* Main Form Container */}
+      <div className="bg-white shadow-2xl rounded-2xl border border-gray-100 overflow-hidden">
+        <form onSubmit={handleSubmit}>
           {/* Tab Navigation */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-gray-200">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
             <nav className="overflow-x-hidden">
               <div className="grid grid-cols-4 gap-1 sm:gap-2">
                 {[
@@ -315,7 +332,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-4 sm:p-6">
+          <div className="space-y-6 sm:space-y-8 p-4 sm:p-8">
             {activeTab === 'basic' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
@@ -582,46 +599,45 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
             )}
           </div>
 
-          {/* Footer Actions */}
-          <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-                <span className="text-red-500">*</span> Field wajib diisi
+          {/* Submit Buttons */}
+          <div className="bg-white border-t border-gray-200 px-4 sm:px-8 py-4 sm:py-6 mt-6 sm:mt-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Pastikan semua data sudah benar sebelum menyimpan</span>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => router.get(route('admin.towers.index'))}
-                  className="w-full sm:w-auto px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 sm:px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-100 transition-all duration-200 flex items-center justify-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                   Batal
                 </button>
-                <button
+                <AnimatedButton
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full sm:w-auto px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  variant="primary"
+                  size="lg"
+                  animation="scale"
+                  loading={isSubmitting}
+                  icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  }
                 >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Menyimpan...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Simpan Tower
-                    </>
-                  )}
-                </button>
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Tower'}
+                </AnimatedButton>
               </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </AdminLayout>
   );
 };

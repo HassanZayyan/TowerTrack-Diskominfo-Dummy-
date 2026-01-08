@@ -48,8 +48,8 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
-      gradient: 'from-sky-500 to-sky-600',
-      bgGradient: 'from-sky-50 to-sky-100'
+      gradient: 'from-orange-500 to-orange-600',
+      bgGradient: 'from-orange-50 to-orange-100'
     },
     {
       label: 'Selesai',
