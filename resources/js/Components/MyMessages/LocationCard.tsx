@@ -29,37 +29,38 @@ export default function LocationCard({
   // Priority: reportable/feedbackable > tower/foPoint (for backward compatibility)
   const location = reportable || feedbackable || tower || foPoint;
   const locationType = reportableType || feedbackableType;
-  
+
   // Check if it's a FoPoint
-  const isFoPoint = 
+  const isFoPoint =
     locationType === 'App\\Models\\FoPoint' ||
     (location && 'name' in location && !('site_name' in location)) ||
     Boolean(foPoint);
-  
+
   // Check if it's a Tower
-  const isTower = 
+  const isTower =
     locationType === 'App\\Models\\Tower' ||
     (location && 'site_name' in location) ||
     Boolean(tower);
-  
+
   // Get display values - handle polymorphic types
-  const locationName = isTower 
-    ? (location as any)?.site_name 
+  const locationName = isTower
+    ? (location as any)?.site_name
     : (location as any)?.name;
-  
-  const locationAddress = isTower 
-    ? (location as any)?.alamat_menara 
+
+  const locationAddress = isTower
+    ? (location as any)?.alamat_menara
     : (location as any)?.description || (location as any)?.area;
-  
+
   const label = isFoPoint ? 'Lokasi Fiber Optik' : 'Lokasi Tower';
-  
+
+  // Icon for Fiber Optik (different from Tower)
   // Icon for Fiber Optik (different from Tower)
   const locationIcon = isFoPoint ? (
-    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 text-red-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
     </svg>
   ) : (
-    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 text-red-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
     </svg>
   );
@@ -67,11 +68,7 @@ export default function LocationCard({
   return (
     <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <div className={`p-2 bg-gradient-to-br rounded-lg shadow-sm ${
-          isFoPoint 
-            ? 'from-blue-500 to-blue-600' 
-            : 'from-indigo-500 to-indigo-600'
-        }`}>
+        <div className="p-2 bg-yellow-400 rounded-lg shadow-sm">
           {locationIcon}
         </div>
         <h5 className="text-sm font-bold text-gray-900">{label}</h5>

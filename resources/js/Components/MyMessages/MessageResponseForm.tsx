@@ -118,7 +118,7 @@ export default function MessageResponseForm({
         }
         title={heading}
         description={description}
-        iconBgColor="indigo"
+        iconBgColor="red"
       />
 
       <form onSubmit={handleSubmit} className="space-y-4">

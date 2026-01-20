@@ -19,16 +19,16 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
   const page = usePage();
   const { auth } = page.props as any;
   const user = auth?.user;
-  
+
   // Get current path - use window.location.pathname directly for immediate value
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  
+
   // Track path changes for Inertia navigation
   const [path, setPath] = useState(currentPath);
   useEffect(() => {
     setPath(window.location.pathname);
   }, [(page as any).component, (page as any).url]);
-  
+
   // Check if user is in admin panel
   const isInAdminPanel = path.startsWith('/admin') || currentPath.startsWith('/admin');
   const isStaffRole = user && ['admin', 'operator', 'tower_owner', 'provider_owner'].includes(user.role);
@@ -42,7 +42,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
     confirmText: 'Ya, Logout',
     cancelText: 'Batal'
   });
-  
+
   const links: AppBarLink[] = [
     { href: '/data-tower', label: 'Data Tower', icon: 'cell_tower' },
     { href: '/data-fo', label: 'Jalur FO', icon: 'timeline' },
@@ -94,15 +94,15 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
             {/* Logo/Brand - Responsive sizing */}
             <div className="flex items-center shrink-0 min-w-0 logo-container">
               <div className="p-1.5 sm:p-2 md:p-2 lg:p-2 rounded-lg shadow-sm shrink-0 border border-white/20" style={{ backgroundColor: '#FFD700' }}>
-                <img 
-                  src="/images/kab-smg-logo.png" 
-                  alt="Kabupaten Semarang" 
+                <img
+                  src="/images/kab-smg-logo.png"
+                  alt="Kabupaten Semarang"
                   className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 lg:h-8 lg:w-8 object-contain"
                   style={{ minWidth: '24px', minHeight: '24px', maxWidth: '100%' }}
                 />
               </div>
               {showBackToWeb ? (
-                <Link 
+                <Link
                   href="/"
                   className="text-xl sm:text-xl md:text-2xl lg:text-2xl font-bold ml-2 sm:ml-2.5 md:ml-3 lg:ml-3 shrink-0 truncate-responsive hover:opacity-80 transition-opacity duration-200 flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded border-2"
                   style={{ color: '#B71C1C', backgroundColor: '#FFD700', borderColor: '#FFD700' }}
@@ -126,13 +126,13 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     href={link.href}
                     className={`
                       flex items-center px-3 py-2 lg:px-4 rounded-lg transition-all duration-200 text-sm lg:text-base whitespace-nowrap shrink-0
-                      ${currentPage === link.href ? 
-                        'font-medium shadow-sm' : 
+                      ${currentPage === link.href ?
+                        'font-medium shadow-sm' :
                         'hover:bg-white hover:bg-opacity-10 hover:scale-105'
                       }
                     `}
-                    style={currentPage === link.href ? 
-                      { backgroundColor: '#FFD700', color: '#212121' } : 
+                    style={currentPage === link.href ?
+                      { backgroundColor: '#FFD700', color: '#212121' } :
                       { backgroundColor: 'transparent', color: '#FFFFFF' }
                     }
                     title={link.label}
@@ -154,8 +154,8 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                         <Dropdown.Trigger>
                           <button className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:opacity-90" style={{ backgroundColor: '#FFD700', color: '#212121' }}>
                             {user.avatar ? (
-                              <img 
-                                src={`/storage/${user.avatar}`} 
+                              <img
+                                src={`/storage/${user.avatar}`}
                                 alt={user.name}
                                 className="w-6 h-6 rounded-full object-cover mr-1.5 border border-white/20 shrink-0"
                                 style={{ minWidth: '24px', minHeight: '24px' }}
@@ -187,8 +187,8 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                           <div className="px-4 py-3 border-b border-white">
                             <div className="flex items-center">
                               {user.avatar ? (
-                                <img 
-                                  src={`/storage/${user.avatar}`} 
+                                <img
+                                  src={`/storage/${user.avatar}`}
                                   alt={user.name}
                                   className="w-10 h-10 rounded-full object-cover mr-3 border border-gray-200"
                                 />
@@ -214,9 +214,9 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     </div>
 
                     {user.role === 'provider_owner' && (
-                      <Link 
-                        href={route('admin.fo-management.routes.list')} 
-                        className="flex-none inline-flex w-fit items-center px-3 py-2 lg:px-4 rounded-lg transition-all duration-200 hover:opacity-90 hover:scale-105 text-sm lg:text-base" 
+                      <Link
+                        href={route('admin.fo-management.routes.list')}
+                        className="flex-none inline-flex w-fit items-center px-3 py-2 lg:px-4 rounded-lg transition-all duration-200 hover:opacity-90 hover:scale-105 text-sm lg:text-base"
                         style={{ backgroundColor: '#FFD700', color: '#212121' }}
                       >
                         <span className="material-icons-outlined mr-2 text-base lg:text-lg shrink-0">
@@ -227,10 +227,10 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                         </span>
                       </Link>
                     )}
-                    {['admin','operator','tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
-                      <Link 
-                        href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
-                        className="flex-none inline-flex w-fit items-center px-3 py-2 lg:px-4 rounded-lg transition-all duration-200 hover:opacity-90 hover:scale-105 text-sm lg:text-base" 
+                    {['admin', 'operator', 'tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
+                      <Link
+                        href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')}
+                        className="flex-none inline-flex w-fit items-center px-3 py-2 lg:px-4 rounded-lg transition-all duration-200 hover:opacity-90 hover:scale-105 text-sm lg:text-base"
                         style={{ backgroundColor: '#FFD700', color: '#212121' }}
                       >
                         <span className="material-icons-outlined mr-2 text-base lg:text-lg shrink-0">
@@ -241,9 +241,9 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                         </span>
                       </Link>
                     )}
-                    <button 
+                    <button
                       onClick={openDialog}
-                      className="flex-none inline-flex w-fit items-center px-3 py-2 rounded-lg transition-all duration-200 hover:opacity-90 hover:scale-105 text-sm lg:text-base" 
+                      className="flex-none inline-flex w-fit items-center px-3 py-2 rounded-lg transition-all duration-200 hover:opacity-90 hover:scale-105 text-sm lg:text-base"
                       style={{ backgroundColor: '#FFD700', color: '#212121' }}
                     >
                       <span className="material-icons-outlined mr-2 text-base lg:text-lg shrink-0">logout</span>
@@ -264,7 +264,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
             </div>
 
             {/* Mobile/Tablet menu button - Visible on mobile and tablet, hidden on desktop (lg and up) */}
-            <button 
+            <button
               className="lg:hidden p-1.5 rounded-lg hover:opacity-90 transition-all duration-200 shrink-0"
               style={{ backgroundColor: '#FFD700', color: '#212121' }}
               onClick={toggleMobileMenu}
@@ -285,17 +285,17 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
             <ul className="space-y-1">
               {links.map((link) => (
                 <li key={link.href}>
-                  <Link 
+                  <Link
                     href={link.href}
                     className={`
                       flex items-center p-3 rounded-lg transition-all duration-200
-                      ${currentPage === link.href ? 
-                        'font-medium shadow-sm' : 
+                      ${currentPage === link.href ?
+                        'font-medium shadow-sm' :
                         'hover:bg-white hover:bg-opacity-10 active:scale-95'
                       }
                     `}
-                    style={currentPage === link.href ? 
-                      { backgroundColor: '#FFD700', color: '#212121' } : 
+                    style={currentPage === link.href ?
+                      { backgroundColor: '#FFD700', color: '#212121' } :
                       { backgroundColor: 'transparent', color: '#FFFFFF' }
                     }
                     onClick={() => setMobileMenuOpen(false)}
@@ -311,8 +311,8 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     {/* User Role Display for Mobile */}
                     <div className="flex items-center px-3 py-2 rounded-lg bg-white/10">
                       {user.avatar ? (
-                        <img 
-                          src={`/storage/${user.avatar}`} 
+                        <img
+                          src={`/storage/${user.avatar}`}
                           alt={user.name}
                           className="w-8 h-8 rounded-full object-cover mr-3 border border-white/20"
                         />
@@ -327,20 +327,20 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Link 
+                      <Link
                         href={route('profile.edit')}
-                        className="flex items-center p-3 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm" 
-                        style={{ backgroundColor: '#FFD700', color: '#212121' }} 
+                        className="flex items-center p-3 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm"
+                        style={{ backgroundColor: '#FFD700', color: '#212121' }}
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <span className="material-icons-outlined mr-3 text-lg">person</span>
                         <span>Profil</span>
                       </Link>
                       {user.role === 'provider_owner' && (
-                        <Link 
-                          href={route('admin.fo-management.routes.list')} 
-                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm" 
-                          style={{ backgroundColor: '#FFD700', color: '#212121' }} 
+                        <Link
+                          href={route('admin.fo-management.routes.list')}
+                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm"
+                          style={{ backgroundColor: '#FFD700', color: '#212121' }}
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <span className="material-icons-outlined mr-3 text-lg">
@@ -349,11 +349,11 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                           <span>Manajemen FO</span>
                         </Link>
                       )}
-                      {['admin','operator','tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
-                        <Link 
-                          href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')} 
-                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm" 
-                          style={{ backgroundColor: '#FFD700', color: '#212121' }} 
+                      {['admin', 'operator', 'tower_owner'].includes(user.role) && user.role !== 'provider_owner' && (
+                        <Link
+                          href={user.role === 'tower_owner' ? route('admin.towers.index') : route('admin.dashboard')}
+                          className="flex items-center p-3 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm"
+                          style={{ backgroundColor: '#FFD700', color: '#212121' }}
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <span className="material-icons-outlined mr-3 text-lg">
@@ -364,12 +364,12 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                           </span>
                         </Link>
                       )}
-                      <button 
+                      <button
                         onClick={() => {
                           setMobileMenuOpen(false);
                           openDialog();
                         }}
-                        className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm w-full text-left" 
+                        className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 text-sm w-full text-left"
                         style={{ backgroundColor: '#FFD700', color: '#212121' }}
                       >
                         <span className="material-icons-outlined mr-3 text-lg">logout</span>
@@ -378,7 +378,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
                     </div>
                   </div>
                 ) : (
-                  <Link 
+                  <Link
                     href={route('login')}
                     className="flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-10 active:scale-95 text-base"
                     style={{ backgroundColor: 'transparent', color: '#FFFFFF' }}
@@ -393,7 +393,7 @@ const AppBar: React.FC<AppBarProps> = ({ currentPage = '' }) => {
           </nav>
         </div>
       )}
-      
+
       {/* Logout Confirmation Dialog */}
       <LogoutConfirmDialog {...dialogProps} />
     </>

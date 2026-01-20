@@ -104,7 +104,7 @@ export default function MessageActionDialog({
             </button>
           </div>
 
-          <div 
+          <div
             className="flex-1 overflow-y-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-12 sm:pb-6"
             style={{
               minHeight: 0, // Penting untuk flex scrolling

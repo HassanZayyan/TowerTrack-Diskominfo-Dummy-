@@ -7,12 +7,10 @@ import MessageStats from '@/Components/MyMessages/MessageStats';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
-import AnimatedButton from '@/Components/AnimatedButton';
-import StaggeredContainer from '@/Components/StaggeredContainer';
 import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDate } from '@/utils/dateHelpers';
-import { useMemoized, useFiltered, useSorted } from '@/Hooks/useMemoized';
+import { useMemoized, useSorted } from '@/Hooks/useMemoized';
 
 // Pagination type for Laravel LengthAwarePaginator
 type PaginationData<T> = {
@@ -33,8 +31,8 @@ type MyMessagesProps = {
   isMyPosts?: boolean; // Flag to indicate if this is the "My Posts" view
 };
 
-export default function MyMessagesIndex({ 
-  reports = [] as ReportItem[], 
+export default function MyMessagesIndex({
+  reports = [] as ReportItem[],
   feedbacks = [] as FeedbackItem[],
   showEmailInput = false,
   isAnonymous = false,
@@ -42,11 +40,11 @@ export default function MyMessagesIndex({
 }: MyMessagesProps) {
   const { auth } = usePage().props as any;
   const [email, setEmail] = React.useState('');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(5);
-  
+
   // Filter state
   const [filterType, setFilterType] = React.useState<'all' | 'Keluhan' | 'Masukan'>('all');
   const [filterStatus, setFilterStatus] = React.useState<string>('all');
@@ -54,6 +52,7 @@ export default function MyMessagesIndex({
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterVisibility, setFilterVisibility] = React.useState<'all' | 'public' | 'private'>('all');
   const [filterLocationType, setFilterLocationType] = React.useState<'all' | 'Tower' | 'Fiber Optik'>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false);
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,14 +66,14 @@ export default function MyMessagesIndex({
   const allItems: MessageItem[] = useMemoized(() => {
     // Extract data from pagination object or use array directly
     // Handle both array (public messages) and pagination object (my posts)
-    const reportsData = Array.isArray(reports) 
-      ? reports 
+    const reportsData = Array.isArray(reports)
+      ? reports
       : (reports && 'data' in reports ? reports.data : []);
-    
+
     const feedbacksData = Array.isArray(feedbacks)
       ? feedbacks
       : (feedbacks && 'data' in feedbacks ? feedbacks.data : []);
-    
+
     const complaintItems = (reportsData || []).map((r) => {
       // Determine location type from reportable_type
       // Fallback to checking reportable object properties if reportable_type is not available
@@ -139,7 +138,7 @@ export default function MyMessagesIndex({
   }, [reports, feedbacks]);
 
   // Sort items by date (newest first)
-  const sortedItems = useSorted(allItems, (a, b) => 
+  const sortedItems = useSorted(allItems, (a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
@@ -186,14 +185,14 @@ export default function MyMessagesIndex({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(item => {
-        const basicMatch = 
+        const basicMatch =
           item.towerName.toLowerCase().includes(query) ||
           item.category.toLowerCase().includes(query) ||
           item.senderName.toLowerCase().includes(query);
-        
+
         // Only search by email on "My Posts" page for privacy
         const emailMatch = isMyPosts ? item.senderEmail.toLowerCase().includes(query) : false;
-        
+
         return basicMatch || emailMatch;
       });
     }
@@ -213,22 +212,22 @@ export default function MyMessagesIndex({
   React.useEffect(() => {
     setCurrentPage(1);
   }, [filterType, filterStatus, filterCategory, filterLocationType, filterVisibility, searchQuery, itemsPerPage]);
-  
+
   // Navigate to detail page for public messages
   const openDetail = React.useCallback((it: MessageItem) => {
     const [typ, raw] = it.id.split('-');
     const id = Number(raw);
-    
+
     // Add query parameter if coming from my-posts page
     const fromParam = isMyPosts ? '?from=my-posts' : '';
-    
+
     if (typ === 'report') {
       router.visit(`/my-messages/reports/${id}${fromParam}`);
     } else if (typ === 'feedback') {
       router.visit(`/my-messages/feedbacks/${id}${fromParam}`);
     }
   }, [isMyPosts]);
-  
+
   const [previewAsset, setPreviewAsset] = React.useState<{ file_path: string; file_type?: string } | null>(null);
 
 
@@ -239,17 +238,17 @@ export default function MyMessagesIndex({
     };
 
     return (
-      <div className="bg-gradient-to-br from-teal-50 via-white to-teal-50 rounded-xl shadow-lg border border-teal-100 p-8 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg">
-          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center max-w-2xl mx-auto mt-8">
+        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Lihat Pesan Anda</h3>
-        <p className="text-gray-600 mb-8 max-w-md mx-auto">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Lihat Pesan Anda</h3>
+        <p className="text-gray-600 mb-6 max-w-md mx-auto">
           Masukkan email yang Anda gunakan saat mengirim keluhan atau masukan untuk melihat status dan respons dari admin.
         </p>
-        
+
         <form onSubmit={handleEmailSubmit} className="max-w-md mx-auto">
           <div className="mb-6">
             <InputLabel htmlFor="email" value="Alamat Email" className="text-left mb-2" />
@@ -273,21 +272,18 @@ export default function MyMessagesIndex({
               />
             </div>
           </div>
-          
-          <AnimatedButton
+
+          <PrimaryButton
             type="submit"
-            variant="primary"
-            size="lg"
-            animation="glow"
-            fullWidth
-            icon={
+            className="w-full justify-center py-3 text-base"
+          >
+            <span className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            }
-          >
-            Lihat Pesan Saya
-          </AnimatedButton>
+              Lihat Pesan Saya
+            </span>
+          </PrimaryButton>
         </form>
       </div>
     );
@@ -295,589 +291,442 @@ export default function MyMessagesIndex({
 
   // Memoize EmptyState to prevent unnecessary re-renders
   const EmptyState = React.memo(() => (
-    <StaggeredContainer delay={200} animationType="scaleIn" duration={500}>
-      <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-12 text-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Belum Ada Pesan</h3>
-        <p className="text-gray-600 max-w-md mx-auto text-base">
-          {isAnonymous 
-            ? 'Belum ada pesan publik yang tersedia saat ini. Pesan akan muncul ketika ada laporan dari masyarakat.' 
-            : 'Anda belum mengirimkan laporan apapun. Mulai laporkan keluhan atau berikan masukan Anda.'
-          }
-        </p>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center mt-6">
+      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
       </div>
-    </StaggeredContainer>
+      <h3 className="text-xl font-bold text-gray-900 mb-2">Belum Ada Pesan</h3>
+      <p className="text-gray-600 max-w-md mx-auto">
+        {isAnonymous
+          ? 'Belum ada pesan publik yang tersedia saat ini. Pesan akan muncul ketika ada laporan dari masyarakat.'
+          : 'Anda belum mengirimkan laporan apapun. Mulai laporkan keluhan atau berikan masukan Anda.'
+        }
+      </p>
+    </div>
   ));
 
   // Determine the title based on the view
   const pageTitle = isMyPosts ? "Pesan Saya" : (isAnonymous ? "Pesan Publik" : "Pesan Publik");
-  
-  return (
-    <MainLayout title={pageTitle} currentPage="/my-messages">
-      <Head title={pageTitle} />
-      
-      <div className="p-3 sm:p-4 md:p-6">
-        <StaggeredContainer delay={0} animationType="fadeInUp" duration={500}>
-          <div className="relative rounded-xl shadow-lg mb-6 sm:mb-8 px-4 sm:px-6 md:px-8 py-4 sm:py-6 overflow-hidden bg-gradient-to-br from-red-50 via-white to-red-50 border border-red-100">
-            {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-100/30 to-transparent rounded-full blur-3xl -z-0"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-red-100/20 to-transparent rounded-full blur-2xl -z-0"></div>
-            
-            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-                  <div className="p-1.5 sm:p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md flex-shrink-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-700 to-red-600 bg-clip-text text-transparent truncate">
-                    {pageTitle}
-                  </h1>
-                </div>
-                <p className="text-xs sm:text-sm md:text-base text-gray-700 ml-0 sm:ml-11 md:ml-14">
-                  {isMyPosts 
-                    ? 'Lihat semua pesan Anda, baik yang publik maupun pribadi'
-                    : isAnonymous 
-                      ? 'Pantau semua keluhan dan masukan publik dari seluruh masyarakat'
-                      : 'Pantau pesan publik dari semua pengguna'
-                  }
-                </p>
-              </div>
-              <div className="hidden sm:flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-xs text-gray-500 font-medium">Kabupaten</p>
-                  <p className="text-sm font-bold text-red-700">Semarang</p>
-                </div>
-                <img 
-                  src="/images/kab-smg-logo.png" 
-                  alt="Kabupaten Semarang" 
-                  className="h-12 w-12 object-contain drop-shadow-md" 
-                />
-              </div>
-            </div>
-          </div>
-        </StaggeredContainer>
 
-        {/* Show info banner for authenticated users about public messages */}
-        {/* Hide "Pesan Saya" button for admin/operator - they should only use public messages page */}
-        {!isAnonymous && auth?.user && !isMyPosts && !['admin', 'operator'].includes(auth.user.role) && (
-          <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
-            <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg shadow-md">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow-sm">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-amber-900 mb-2">💡 Informasi Penting</h3>
-                  <p className="text-sm text-amber-800 leading-relaxed mb-3">
-                    Halaman ini menampilkan pesan <span className="font-semibold">publik</span> dari semua pengguna. Anda dapat melihat semua pesan publik yang dikirim oleh masyarakat.
-                  </p>
-                  <AnimatedButton
-                    variant="outline"
-                    size="sm"
-                    animation="scale"
-                    onClick={() => router.visit('/my-messages/my-posts')}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    }
-                    className="border-amber-600 text-amber-800 hover:bg-amber-600 hover:text-white"
-                  >
-                    Pesan Saya
-                  </AnimatedButton>
-                </div>
-              </div>
-            </div>
-          </StaggeredContainer>
-        )}
+  const headerContent = (
+    <div className="bg-red-700 border-b border-red-800 w-full shadow-md relative z-10 overflow-hidden">
+      <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+        <div className="flex-1 text-center md:text-left">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-3 drop-shadow-sm">
+            {pageTitle}
+          </h1>
+          <p className="text-lg text-red-100 max-w-2xl leading-relaxed mx-auto md:mx-0">
+            {isMyPosts
+              ? 'Kelola semua pesan yang telah Anda kirim, baik yang bersifat publik maupun pribadi.'
+              : isAnonymous
+                ? 'Jelajahi aspirasi dan laporan terkini dari masyarakat Kabupaten Semarang.'
+                : 'Pantau pesan publik dari komunitas untuk wawasan yang lebih luas.'
+            }
+          </p>
 
-        {/* Show info banner for "My Posts" view with back button */}
-        {!isAnonymous && auth?.user && isMyPosts && (
-          <>
-            {/* Back Button */}
-            <StaggeredContainer delay={50} animationType="fadeInUp" duration={400}>
-              <div className="mb-4">
-                <AnimatedButton
-                  variant="primary"
-                  size="sm"
-                  animation="scale"
+          {/* Action Buttons */}
+          {!isAnonymous && auth?.user && (
+            <div className="mt-6 flex justify-center md:justify-start">
+              {isMyPosts ? (
+                <button
+                  type="button"
                   onClick={() => router.visit('/my-messages')}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                  }
+                  className="inline-flex items-center px-5 py-2.5 bg-yellow-400 text-red-900 font-bold rounded-lg shadow-lg hover:bg-yellow-300 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
                 >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
                   Kembali ke Pesan Publik
-                </AnimatedButton>
-              </div>
-            </StaggeredContainer>
-            
-            <StaggeredContainer delay={100} animationType="scaleIn" duration={400}>
-              <div className="mb-6 p-5 bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg shadow-md">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="p-2 bg-red-500 rounded-lg shadow-sm">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-semibold text-red-900 mb-2">💡 Informasi Penting</h3>
-                    <p className="text-sm text-red-800 leading-relaxed">
-                      Halaman ini menampilkan semua pesan yang Anda kirim, baik yang <span className="font-semibold">publik</span> maupun yang <span className="font-semibold">pribadi</span>. Anda dapat melihat status dan balasan admin untuk semua laporan Anda.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </StaggeredContainer>
-          </>
-        )}
+                </button>
+              ) : (
+                !['admin', 'operator'].includes(auth.user.role) && (
+                  <button
+                    type="button"
+                    onClick={() => router.visit('/my-messages/my-posts')}
+                    className="inline-flex items-center px-5 py-2.5 bg-yellow-400 text-red-900 font-bold rounded-lg shadow-lg hover:bg-yellow-300 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Pesan Saya
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </div>
+        <div className="hidden md:block flex-shrink-0">
+          <div className="bg-yellow-400 p-3 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-300">
+            <img
+              src="/images/kab-smg-logo.png"
+              alt="Logo Kabupaten Semarang"
+              className="h-20 w-auto object-contain drop-shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <MainLayout
+      title={pageTitle}
+      currentPage="/my-messages"
+      headerSlot={headerContent}
+    >
+      <Head title={pageTitle} />
+
+      <div className="animate-fade-in-up">
 
         {/* Show content if there are items */}
         {allItems.length > 0 && (
           <>
             {/* Summary Stats */}
-            <StaggeredContainer delay={150} animationType="fadeInUp" duration={400}>
-              <div className="mb-6">
-                <MessageStats items={allItems} />
-              </div>
-            </StaggeredContainer>
+            <div className="mb-6">
+              <MessageStats items={allItems} />
+            </div>
 
-            {/* Filters and Search */}
-            <StaggeredContainer delay={200} animationType="scaleIn" duration={400}>
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-5 md:p-6 mb-4 sm:mb-6">
-                <div className="flex items-center gap-2 mb-4 sm:mb-5">
-                  <div className="p-1.5 sm:p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-sm flex-shrink-0">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
+            {/* Main Content Area */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              {/* Top Bar: Tabs & Search */}
+              <div className="border-b border-gray-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-4 md:px-6 gap-4">
+                  {/* Type Tabs */}
+                  <div className="flex p-1 bg-gray-100 rounded-lg self-start md:self-auto">
+                    {(['all', 'Keluhan', 'Masukan'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setFilterType(type)}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${filterType === type
+                          ? 'bg-red-600 text-white shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                          }`}
+                      >
+                        {type === 'all' ? 'Semua' : type}
+                      </button>
+                    ))}
                   </div>
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Filter & Pencarian</h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
-                {/* Search */}
-                <div className="sm:col-span-2">
-                  <InputLabel htmlFor="search" value="Cari" />
-                  <div className="relative mt-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
+
+                  {/* Search & Filter Toggle */}
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <TextInput
+                        id="search"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                        placeholder="Cari pesan..."
+                      />
                     </div>
-                    <TextInput
-                      id="search"
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-20 block w-full"
-                      placeholder={isMyPosts ? "Cari berdasarkan tower, kategori, nama, atau email..." : "Cari berdasarkan tower, kategori, atau nama..."}
-                    />
-                    {(searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all')) && (
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFilterType('all');
-                            setFilterStatus('all');
-                            setFilterCategory('all');
-                            setFilterLocationType('all');
-                            setFilterVisibility('all');
-                            setSearchQuery('');
-                          }}
-                          className="text-gray-400 hover:text-gray-600 focus:outline-none"
-                          title="Reset semua filter"
+
+                    <button
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      className={`relative inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showAdvancedFilters || (filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all'))
+                        ? 'bg-red-50 border-red-200 text-red-700'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                      <svg className="h-5 w-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                      </svg>
+                      Filter
+                      {/* Active Filter Count Badge */}
+                      {((filterStatus !== 'all' ? 1 : 0) + (filterCategory !== 'all' ? 1 : 0) + (filterLocationType !== 'all' ? 1 : 0) + ((isMyPosts && filterVisibility !== 'all') ? 1 : 0)) > 0 && (
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                          {(filterStatus !== 'all' ? 1 : 0) + (filterCategory !== 'all' ? 1 : 0) + (filterLocationType !== 'all' ? 1 : 0) + ((isMyPosts && filterVisibility !== 'all') ? 1 : 0)}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Filters Panel */}
+              {showAdvancedFilters && (
+                <div className="p-4 md:px-6 md:py-5 border-b border-gray-100 bg-gray-50/50">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Status Filter */}
+                    <div>
+                      <InputLabel htmlFor="filterStatus" value="Status" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                      <select
+                        id="filterStatus"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                      >
+                        <option value="all">Semua Status</option>
+                        <option value="pending">Menunggu</option>
+                        <option value="in_progress">Sedang Diproses</option>
+                        <option value="closed">Selesai</option>
+                      </select>
+                    </div>
+
+                    {/* Category Filter */}
+                    <div>
+                      <InputLabel htmlFor="filterCategory" value="Kategori" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                      <select
+                        id="filterCategory"
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                      >
+                        <option value="all">Semua Kategori</option>
+                        {uniqueCategories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Location Type Filter */}
+                    <div>
+                      <InputLabel htmlFor="filterLocationType" value="Lokasi" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                      <select
+                        id="filterLocationType"
+                        value={filterLocationType}
+                        onChange={(e) => setFilterLocationType(e.target.value as 'all' | 'Tower' | 'Fiber Optik')}
+                        className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                      >
+                        <option value="all">Semua Lokasi</option>
+                        <option value="Tower">Tower</option>
+                        <option value="Fiber Optik">Fiber Optik</option>
+                      </select>
+                    </div>
+
+                    {/* Visibility Filter (Only My Posts) */}
+                    {isMyPosts && (
+                      <div>
+                        <InputLabel htmlFor="filterVisibility" value="Visibilitas" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                        <select
+                          id="filterVisibility"
+                          value={filterVisibility}
+                          onChange={(e) => setFilterVisibility(e.target.value as 'all' | 'public' | 'private')}
+                          className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
                         >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                          <option value="all">Semua Visibilitas</option>
+                          <option value="public">Publik</option>
+                          <option value="private">Privat</option>
+                        </select>
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Type Filter */}
-                <div>
-                  <InputLabel htmlFor="filterType" value="Tipe" />
-                  <select
-                    id="filterType"
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value as 'all' | 'Keluhan' | 'Masukan')}
-                    className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
-                  >
-                    <option value="all">Semua Tipe</option>
-                    <option value="Keluhan">Keluhan</option>
-                    <option value="Masukan">Masukan</option>
-                  </select>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterStatus('all');
+                        setFilterCategory('all');
+                        setFilterLocationType('all');
+                        setFilterVisibility('all');
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Reset Filter Tambahan
+                    </button>
+                  </div>
                 </div>
+              )}
 
-                {/* Status Filter */}
-                <div>
-                  <InputLabel htmlFor="filterStatus" value="Status" />
-                  <select
-                    id="filterStatus"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
-                  >
-                    <option value="all">Semua Status</option>
-                    <option value="pending">Menunggu</option>
-                    <option value="in_progress">Sedang Diproses</option>
-                    <option value="closed">Selesai</option>
-                  </select>
-                </div>
+              {/* Status Bar / Results Info */}
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Menampilkan <span className="font-bold text-gray-900">{filteredItems.length}</span> dari <span className="font-semibold">{allItems.length}</span> pesan
+                </p>
+
+                {/* Mobile View Toggle or Sort could go here if needed */}
               </div>
 
-              {/* Second row: Visibilitas, Kategori, Lokasi - aligned in same row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {/* Visibility Filter - Only show for My Posts page */}
-                {isMyPosts && (
-                  <div>
-                    <InputLabel htmlFor="filterVisibility" value="Visibilitas" />
-                    <select
-                      id="filterVisibility"
-                      value={filterVisibility}
-                      onChange={(e) => setFilterVisibility(e.target.value as 'all' | 'public' | 'private')}
-                      className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm text-sm"
+              {/* Content Area */}
+              <div className="p-0">
+                {/* No results message */}
+                {filteredItems.length === 0 && (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Tidak ada pesan ditemukan</h3>
+                    <p className="text-gray-500 max-w-sm mx-auto mb-6">
+                      Coba ubah kata kunci pencarian atau sesuaikan filter Anda.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterType('all');
+                        setFilterStatus('all');
+                        setFilterCategory('all');
+                        setFilterLocationType('all');
+                        setFilterVisibility('all');
+                        setSearchQuery('');
+                      }}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                     >
-                      <option value="all">Semua (Publik & Privat)</option>
-                      <option value="public">Publik</option>
-                      <option value="private">Privat</option>
-                    </select>
+                      Reset Semua Filter
+                    </button>
                   </div>
                 )}
 
-                {/* Category Filter */}
-                <div className={isMyPosts ? '' : 'sm:col-span-2 lg:col-span-1'}>
-                  <InputLabel htmlFor="filterCategory" value="Kategori" />
-                  <select
-                    id="filterCategory"
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
-                  >
-                    <option value="all">Semua Kategori</option>
-                    {uniqueCategories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                {/* Desktop Table View */}
+                {filteredItems.length > 0 && (
+                  <MessageTable
+                    items={paginatedItems}
+                    getStatusColor={getStatusColor}
+                    formatDate={formatDate}
+                    onOpen={openDetail}
+                    hideEmail={!isMyPosts}
+                  />
+                )}
+
+                {/* Mobile/Tablet Card View - Visible only on smaller screens if you strictly follow responsive patterns, 
+                    but MessageTable usually hides on mobile. 
+                    Let's ensure these two don't double render if MessageTable handles hidden-lg logic internally
+                    MessageTable has `hidden lg:block`
+                    So we need the cards to be `lg:hidden`
+                */}
+                {filteredItems.length > 0 && (
+                  <div className="lg:hidden divide-y divide-gray-100 bg-gray-50 p-4 space-y-4">
+                    {paginatedItems.map((item) => (
+                      <MessageCard
+                        key={item.id}
+                        item={item}
+                        getStatusColor={getStatusColor}
+                        formatDate={formatDate}
+                        onOpen={openDetail}
+                        hideEmail={!isMyPosts}
+                      />
                     ))}
-                  </select>
-                </div>
-
-                {/* Location Type Filter */}
-                <div className={isMyPosts ? '' : 'sm:col-span-2 lg:col-span-1'}>
-                  <InputLabel htmlFor="filterLocationType" value="Lokasi" />
-                  <select
-                    id="filterLocationType"
-                    value={filterLocationType}
-                    onChange={(e) => setFilterLocationType(e.target.value as 'all' | 'Tower' | 'Fiber Optik')}
-                    className="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm"
-                  >
-                    <option value="all">Semua Lokasi</option>
-                    <option value="Tower">Tower</option>
-                    <option value="Fiber Optik">Fiber Optik</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Results count and active filters */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {(filterType !== 'all' || filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all') || searchQuery) && (
-                    <>
-                      <span className="text-sm text-gray-600">Filter aktif:</span>
-                      {filterType !== 'all' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Tipe: {filterType}
-                          <button
-                            onClick={() => setFilterType('all')}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-yellow-200"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      )}
-                      {filterStatus !== 'all' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Status: {getStatusColor(filterStatus).label}
-                          <button
-                            onClick={() => setFilterStatus('all')}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-blue-200"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      )}
-                      {filterCategory !== 'all' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                          Kategori: {filterCategory}
-                          <button
-                            onClick={() => setFilterCategory('all')}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-purple-200"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      )}
-                      {filterLocationType !== 'all' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          Lokasi: {filterLocationType}
-                          <button
-                            onClick={() => setFilterLocationType('all')}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-indigo-200"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      )}
-                      {isMyPosts && filterVisibility !== 'all' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Visibilitas: {filterVisibility === 'public' ? 'Publik' : 'Privat'}
-                          <button
-                            onClick={() => setFilterVisibility('all')}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-green-200"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      )}
-                      {searchQuery && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Pencarian: "{searchQuery}"
-                          <button
-                            onClick={() => setSearchQuery('')}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-green-200"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600">
-                  Menampilkan <span className="font-medium">{filteredItems.length}</span> dari <span className="font-medium">{allItems.length}</span> pesan
-                </p>
-              </div>
-              </div>
-            </StaggeredContainer>
-
-            {/* No results message */}
-            {filteredItems.length === 0 && (
-              <StaggeredContainer delay={250} animationType="scaleIn" duration={500}>
-                <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow-lg border border-gray-200 p-10 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
-                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Tidak Ada Hasil</h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Tidak ada pesan yang sesuai dengan filter yang Anda pilih. Coba ubah kriteria pencarian.
-                  </p>
-                  <AnimatedButton
-                    variant="primary"
-                    size="md"
-                    animation="glow"
-                    onClick={() => {
-                      setFilterType('all');
-                      setFilterStatus('all');
-                      setFilterCategory('all');
-                      setFilterLocationType('all');
-                      setFilterVisibility('all');
-                      setSearchQuery('');
-                    }}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    }
-                  >
-                    Reset Semua Filter
-                  </AnimatedButton>
-                </div>
-              </StaggeredContainer>
-            )}
-
-            {/* Desktop Table View */}
-            {filteredItems.length > 0 && (
-              <StaggeredContainer delay={300} animationType="fadeInUp" duration={500}>
-                <MessageTable 
-                  items={paginatedItems}
-                  getStatusColor={getStatusColor}
-                  formatDate={formatDate}
-                  onOpen={openDetail}
-                  hideEmail={!isMyPosts} // Hide email on public pages (not my posts)
-                />
-              </StaggeredContainer>
-            )}
-
-            {/* Mobile/Tablet Card View */}
-            {filteredItems.length > 0 && (
-              <div className="lg:hidden space-y-3">
-                {paginatedItems.map((item, index) => (
-                  <StaggeredContainer 
-                    key={item.id} 
-                    delay={300 + (index * 50)} 
-                    animationType="scaleIn" 
-                    duration={400}
-                  >
-                    <MessageCard
-                      item={item}
-                      getStatusColor={getStatusColor}
-                      formatDate={formatDate}
-                      onOpen={openDetail}
-                      hideEmail={!isMyPosts} // Hide email on public pages (not my posts)
-                    />
-                  </StaggeredContainer>
-                ))}
+                )}
               </div>
-            )}
+            </div>
 
             {/* Pagination Controls */}
             {filteredItems.length > 0 && (
-              <StaggeredContainer delay={350} animationType="fadeInUp" duration={400}>
-                <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-5 mt-4 sm:mt-6">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                  {/* Items per page */}
+              <div className="mt-4 sm:mt-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-700">Tampilkan:</span>
+                    <span className="text-sm text-gray-600">Baris per halaman:</span>
                     <select
                       value={itemsPerPage}
                       onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                      className="border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm text-sm"
+                      className="border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg text-sm"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
-                      <option value={25}>25</option>
+                      <option value={20}>20</option>
                       <option value={50}>50</option>
                     </select>
-                    <span className="text-sm text-gray-700">per halaman</span>
-                  </div>
-
-                  {/* Page navigation */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter(page => {
-                          // Show first page, last page, current page, and pages around current
-                          if (page === 1 || page === totalPages) return true;
-                          if (Math.abs(page - currentPage) <= 1) return true;
-                          return false;
-                        })
-                        .map((page, idx, arr) => {
-                          // Add ellipsis when there's a gap
-                          const showEllipsisBefore = idx > 0 && page - arr[idx - 1] > 1;
-                          
-                          return (
-                            <React.Fragment key={page}>
-                              {showEllipsisBefore && (
-                                <span className="px-2 text-gray-500">...</span>
-                              )}
-                              <button
-                                onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-2 text-sm font-medium rounded-md ${
-                                  currentPage === page
-                                    ? 'text-white'
-                                    : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                                }`}
-                                style={currentPage === page ? { backgroundColor: '#FFD700', color: '#212121' } : {}}
-                              >
-                                {page}
-                              </button>
-                            </React.Fragment>
-                          );
-                        })}
-                    </div>
-
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Page info */}
-                  <div className="text-sm text-gray-700">
-                    Halaman <span className="font-medium">{currentPage}</span> dari <span className="font-medium">{totalPages}</span>
-                  </div>
                   </div>
                 </div>
-              </StaggeredContainer>
+
+                {/* Page navigation */}
+                <div className="flex items-center gap-2 mt-4">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        // Show first page, last page, current page, and pages around current
+                        if (page === 1 || page === totalPages) return true;
+                        if (Math.abs(page - currentPage) <= 1) return true;
+                        return false;
+                      })
+                      .map((page, idx, arr) => {
+                        // Add ellipsis when there's a gap
+                        const showEllipsisBefore = idx > 0 && page - arr[idx - 1] > 1;
+
+                        return (
+                          <React.Fragment key={page}>
+                            {showEllipsisBefore && (
+                              <span className="px-2 text-gray-500">...</span>
+                            )}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === page
+                                ? 'text-white bg-red-600'
+                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Page info */}
+                <div className="text-sm text-gray-700">
+                  Halaman <span className="font-medium">{currentPage}</span> dari <span className="font-medium">{totalPages}</span>
+                </div>
+              </div>
             )}
           </>
         )}
 
         {/* Show empty state if no items */}
         {allItems.length === 0 && <EmptyState />}
-      
-      {/* Asset Preview Modal */}
-      {previewAsset && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
-          <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
-            {previewAsset.file_type === 'video' ? (
-              <video
-                src={`/storage/${previewAsset.file_path}`}
-                controls
-                autoPlay
-                className="max-w-full max-h-[90vh] object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <img 
-                src={`/storage/${previewAsset.file_path}`} 
-                className="max-w-full max-h-[90vh] object-contain" 
-                onClick={(e) => e.stopPropagation()}
-              />
-            )}
-            <button 
-              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
-              onClick={() => setPreviewAsset(null)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+
+        {/* Asset Preview Modal */}
+        {previewAsset && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
+            <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
+              {previewAsset.file_type === 'video' ? (
+                <video
+                  src={`/storage/${previewAsset.file_path}`}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[90vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <img
+                  src={`/storage/${previewAsset.file_path}`}
+                  className="max-w-full max-h-[90vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+              <button
+                className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+                onClick={() => setPreviewAsset(null)}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </MainLayout>
   );

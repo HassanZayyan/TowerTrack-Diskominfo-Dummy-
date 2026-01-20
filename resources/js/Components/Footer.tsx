@@ -7,9 +7,9 @@ const Footer: React.FC = () => {
       <div className="px-4 sm:px-6 lg:px-8 py-6 border-b border-red-700">
         <div className="flex items-center justify-center gap-3">
           <div className="p-2 sm:p-3 rounded-lg shadow-sm border border-white/20" style={{ backgroundColor: '#FFD700' }}>
-            <img 
-              src="/images/kab-smg-logo.png" 
-              alt="Logo Kabupaten Semarang" 
+            <img
+              src="/images/kab-smg-logo.png"
+              alt="Logo Kabupaten Semarang"
               className="w-12 h-12 sm:w-16 sm:h-16"
             />
           </div>
