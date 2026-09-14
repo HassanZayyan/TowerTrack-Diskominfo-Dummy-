@@ -51,11 +51,11 @@ export default function UpdatePasswordForm({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-foreground">
                     Perbarui Kata Sandi
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                     Pastikan akun Anda menggunakan kata sandi yang panjang dan acak
                     agar tetap aman.
                 </p>
@@ -128,8 +128,8 @@ export default function UpdatePasswordForm({
                 <div className="flex items-center gap-4">
                     <PrimaryButton 
                         disabled={processing}
-                        className="inline-flex items-center px-6 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-sm text-black uppercase tracking-widest hover:bg-yellow-600 focus:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                        style={{ backgroundColor: '#FFD700', color: '#212121' }}
+                        className="inline-flex items-center rounded-md border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-140 ease-state hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                        
                     >
                         Simpan Perubahan
                     </PrimaryButton>
@@ -141,7 +141,7 @@ export default function UpdatePasswordForm({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                             Tersimpan.
                         </p>
                     </Transition>

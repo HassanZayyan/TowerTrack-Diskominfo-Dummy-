@@ -6,10 +6,19 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { type ShowcaseData } from '@/Components/Auth/AuthShowcase';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
-export default function Register() {
+/**
+ * Four fields plus a CAPTCHA is the tallest screen in the auth shell, and it is
+ * the one that decides the vertical budget described in GuestLayout. The
+ * rhythm here matches Login exactly — same field class, same `space-y-4` — so
+ * the two screens do not drift apart the next time either is touched.
+ */
+const FIELD = 'block w-full rounded-lg px-3.5 py-2.5 text-sm';
+
+export default function Register({ showcase }: { showcase?: ShowcaseData }) {
     const { turnstileSiteKey } = usePage().props as any;
     const captchaRef = useRef<TurnstileCaptchaRef>(null);
     const [captchaToken, setCaptchaToken] = useState<string>('');
@@ -56,123 +65,110 @@ export default function Register() {
     };
 
     return (
-        <GuestLayout title="Daftar" subtitle="Silakan daftar untuk melanjutkan">
+        <GuestLayout
+            title="Daftar"
+            subtitle="Silakan daftar untuk melanjutkan"
+            showcase={showcase}
+        >
             <Head title="Daftar" />
 
-            <form onSubmit={submit} className="space-y-6">
-                <div className="space-y-2">
-                    <InputLabel htmlFor="name" value="Nama Lengkap" className="text-sm font-medium" />
+            <form onSubmit={submit} className="space-y-4">
+                <div className="space-y-1.5">
+                    <InputLabel htmlFor="name" value="Nama Lengkap" />
                     <TextInput
                         id="name"
                         name="name"
                         value={data.name}
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+                        className={FIELD}
                         autoComplete="name"
                         isFocused={true}
                         onChange={(e) => setData('name', e.target.value)}
                         placeholder="Masukkan nama lengkap Anda"
                         required
                     />
-                    <InputError message={errors.name} className="mt-1" />
+                    <InputError message={errors.name} />
                 </div>
 
-                <div className="space-y-2">
-                    <InputLabel htmlFor="email" value="Email" className="text-sm font-medium" />
+                <div className="space-y-1.5">
+                    <InputLabel htmlFor="email" value="Email" />
                     <TextInput
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+                        className={FIELD}
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
                         placeholder="Masukkan email Anda"
                         required
                     />
-                    <InputError message={errors.email} className="mt-1" />
+                    <InputError message={errors.email} />
                 </div>
 
-                <div className="space-y-2">
-                    <InputLabel htmlFor="password" value="Password" className="text-sm font-medium" />
+                <div className="space-y-1.5">
+                    <InputLabel htmlFor="password" value="Password" />
                     <PasswordInput
                         id="password"
                         name="password"
                         value={data.password}
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+                        className={FIELD}
                         autoComplete="new-password"
                         onChange={(e) => setData('password', e.target.value)}
                         placeholder="Masukkan password Anda"
                         required
                     />
-                    <InputError message={errors.password} className="mt-1" />
+                    <InputError message={errors.password} />
                 </div>
 
-                <div className="space-y-2">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Konfirmasi Password"
-                        className="text-sm font-medium"
-                    />
+                <div className="space-y-1.5">
+                    <InputLabel htmlFor="password_confirmation" value="Konfirmasi Password" />
                     <PasswordInput
                         id="password_confirmation"
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+                        className={FIELD}
                         autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
+                        onChange={(e) => setData('password_confirmation', e.target.value)}
                         placeholder="Konfirmasi password Anda"
                         required
                     />
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-1"
-                    />
+                    <InputError message={errors.password_confirmation} />
                 </div>
 
-                {/* CAPTCHA */}
-                <div className="mb-6">
-                    <TurnstileCaptcha
-                        ref={captchaRef}
-                        siteKey={turnstileSiteKey || ''}
-                        onTokenChange={setCaptchaToken}
-                        error={errors['cf-turnstile-response'] || (errors as any).captcha}
-                        size="normal"
-                        theme="light"
-                    />
-                </div>
+                <TurnstileCaptcha
+                    ref={captchaRef}
+                    siteKey={turnstileSiteKey || ''}
+                    onTokenChange={setCaptchaToken}
+                    error={errors['cf-turnstile-response'] || (errors as any).captcha}
+                    size="normal"
+                    theme="light"
+                />
 
-                {/* Main Action Button */}
-                <div className="pt-2">
-                    <PrimaryButton 
-                        className="w-full px-6 py-3 font-medium rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 justify-center" 
-                        disabled={processing || !captchaToken} 
-                        style={{ backgroundColor: '#212121' }}
+                <PrimaryButton
+                    className="w-full justify-center px-6 py-2.5"
+                    disabled={processing || !captchaToken}
+                >
+                    {processing ? 'Memproses...' : 'Daftar'}
+                </PrimaryButton>
+
+                <div className="flex flex-col items-center justify-center gap-2 border-t border-border pt-4 sm:flex-row sm:gap-4">
+                    <Link
+                        href={route('login')}
+                        className="rounded text-sm text-muted-foreground underline transition-colors duration-200 hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
                     >
-                        {processing ? 'Memproses...' : 'Daftar'}
-                    </PrimaryButton>
-                </div>
+                        Sudah punya akun? Masuk di sini
+                    </Link>
 
-                {/* Navigation Links */}
-                <div className="pt-6 border-t border-gray-200">
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-center">
-                        <Link
-                            href={route('login')}
-                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
-                        >
-                            Sudah punya akun? Masuk di sini
-                        </Link>
-                        
-                        <span className="hidden sm:inline text-gray-300">|</span>
-                        
-                        <Link
-                            href={route('data.tower')}
-                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
-                        >
-                            Kembali ke Beranda
-                        </Link>
-                    </div>
+                    <span aria-hidden="true" className="hidden text-border-strong sm:inline">
+                        |
+                    </span>
+
+                    <Link
+                        href={route('data.tower')}
+                        className="rounded text-sm text-muted-foreground underline transition-colors duration-200 hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
+                    >
+                        Kembali ke Beranda
+                    </Link>
                 </div>
             </form>
         </GuestLayout>

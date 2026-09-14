@@ -5,6 +5,7 @@ namespace App\Helpers;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Crypt;
 use Carbon\Carbon;
+use App\Helpers\PhoneHelper;
 
 /**
  * Guest Cookie Helper
@@ -148,9 +149,15 @@ class GuestCookieHelper
                 }
             }
 
+            // Normalize phone number for backward compatibility with old cookies
+            // This ensures that even if old cookies have unnormalized phone numbers,
+            // they will be normalized when retrieved
+            $phone = $decrypted['phone'] ?? '';
+            $normalizedPhone = !empty($phone) ? PhoneHelper::normalize($phone) : '';
+
             return [
                 'email' => $decrypted['email'],
-                'phone' => $decrypted['phone'],
+                'phone' => $normalizedPhone,
                 'name' => $decrypted['name'] ?? '',
             ];
         } catch (\Exception $e) {

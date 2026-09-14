@@ -30,7 +30,7 @@ export default function FormCard({
   padding = 'md',
 }: FormCardProps) {
   return (
-    <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${paddingClasses[padding]} ${className}`}>
+    <div className={`bg-white rounded-xl shadow-lg border border-border ${paddingClasses[padding]} ${className}`}>
       {children}
     </div>
   );

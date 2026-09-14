@@ -22,10 +22,10 @@ class ReportFeedbackSeeder extends Seeder
     {
         // Get or create users with different roles
         $adminUser = User::firstOrCreate(
-            ['email' => 'admin@kominfo.go.id'],
+            ['email' => 'admin@dummy.local'],
             [
-                'name' => 'Admin Kominfo',
-                'password' => bcrypt('password'),
+                'name' => 'Admin User',
+                'password' => bcrypt('password123'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
             ]
@@ -41,25 +41,16 @@ class ReportFeedbackSeeder extends Seeder
             ]
         );
 
-        // Get existing tower owner user from TowerOwnerUserSeeder
-        $towerOwnerUser = User::where('email', 'ptdayamitratelekomun@towerowner.local')
-            ->where('role', 'tower_owner')
-            ->first();
+        // Get existing tower owner user (any tower owner user)
+        $towerOwnerUser = User::where('role', 'tower_owner')->first();
         
         if (!$towerOwnerUser) {
-            // Fallback: get first tower_owner user if the specific one doesn't exist
-            $towerOwnerUser = User::where('role', 'tower_owner')->first();
-            
-            if (!$towerOwnerUser) {
-                $this->command->error('❌ Tower owner user tidak ditemukan!');
-                $this->command->error('   Jalankan TowerOwnerUserSeeder terlebih dahulu: php artisan db:seed --class=TowerOwnerUserSeeder');
-                return;
-            }
-            
-            $this->command->warn("⚠ User tower owner spesifik tidak ditemukan, menggunakan: {$towerOwnerUser->email}");
-        } else {
-            $this->command->info("✓ Menggunakan tower owner user: {$towerOwnerUser->email}");
+            $this->command->error('❌ Tower owner user tidak ditemukan!');
+            $this->command->error('   Jalankan TowerOwnerUserSeeder terlebih dahulu: php artisan db:seed --class=TowerOwnerUserSeeder');
+            return;
         }
+        
+        $this->command->info("✓ Menggunakan tower owner user: {$towerOwnerUser->email}");
 
         // Get statuses
         $pendingStatus = Status::where('slug', 'pending')->first();
@@ -100,9 +91,8 @@ class ReportFeedbackSeeder extends Seeder
         $this->command->info("✓ Menggunakan {$towers->count()} tower dari database");
         $this->command->info("✓ Menggunakan {$foPoints->count()} FoPoint dari database");
 
-        // Check if seeder has already been run
-        if (Report::where('email', 'siti.nurhaliza@gmail.com')->exists() || 
-            Feedback::where('email', 'dewi.lestari98@gmail.com')->exists()) {
+        // Check if seeder has already been run (using a more generic check)
+        if (Report::count() > 0 || Feedback::count() > 0) {
             $this->command->warn('⚠ Seeder sudah pernah dijalankan sebelumnya.');
             $this->command->info('  Untuk menjalankan ulang, hapus data reports dan feedbacks terlebih dahulu.');
             return;
@@ -192,10 +182,10 @@ class ReportFeedbackSeeder extends Seeder
             'sender_phone' => '082345678901',
             'category' => 'Kritik Konstruktif',
             'message' => 'Saya tinggal di sekitar tiang fiber optik ini dan ingin memberikan saran. Tolong pasang penanda yang lebih jelas dan terlihat pada tiang, karena banyak pengguna jalan yang tidak menyadari keberadaannya. Selain itu, sebaiknya ditambahkan pelindung atau casing yang lebih kuat untuk kabel-kabel yang terpasang agar lebih aman dari gangguan cuaca atau hewan. Lampu penerangan di sekitar area tiang juga perlu ditambahkan untuk keselamatan pengguna jalan di malam hari.',
-            'status' => 'in_progress',
-            'reporter_latitude' => (float)$foPoints[1]->latitude + 0.0008,
-            'reporter_longitude' => (float)$foPoints[1]->longitude + 0.0012,
-            'reporter_accuracy' => 4.3,
+            'status_id' => $inProgressStatus->id,
+            'sender_latitude' => (float)$foPoints[1]->latitude + 0.0008,
+            'sender_longitude' => (float)$foPoints[1]->longitude + 0.0012,
+            'sender_accuracy' => 4.3,
             'location_captured_at' => now()->subDays(5),
             'is_public' => true, // Guest selalu public
             'email_verified_at' => now()->subDays(5),
@@ -235,10 +225,10 @@ class ReportFeedbackSeeder extends Seeder
             'sender_phone' => '083456789012',
             'category' => 'Apresiasi',
             'message' => 'Saya sangat berterima kasih dengan adanya tower ini di lingkungan kami. Sinyal internet menjadi lebih stabil dan cepat, sangat membantu untuk bekerja dari rumah dan anak-anak belajar online. Semoga tower ini tetap terjaga dengan baik.',
-            'status' => 'pending',
-            'reporter_latitude' => (float)$towers[2]->latitude + 0.0011,
-            'reporter_longitude' => (float)$towers[2]->longitude - 0.0006,
-            'reporter_accuracy' => 7.2,
+            'status_id' => $pendingStatus->id,
+            'sender_latitude' => (float)$towers[2]->latitude + 0.0011,
+            'sender_longitude' => (float)$towers[2]->longitude - 0.0006,
+            'sender_accuracy' => 7.2,
             'location_captured_at' => now()->subHours(12),
             'is_public' => true, // Guest selalu public
             'email_verified_at' => now()->subHours(12),
@@ -350,10 +340,10 @@ class ReportFeedbackSeeder extends Seeder
             'sender_phone' => '082345678903',
             'category' => 'Kritik Konstruktif',
             'message' => 'Saya ingin memberikan masukan mengenai pemasangan dan pemeliharaan tiang fiber optik di area ini. Menurut saya, proses pemasangan kurang melakukan koordinasi dengan warga sekitar dan dinas terkait. Banyak warga yang baru tahu setelah pemasangan sudah dimulai, sehingga menimbulkan keresahan. Untuk ke depannya, sebaiknya dilakukan sosialisasi terlebih dahulu sebelum pemasangan dimulai agar warga bisa memahami manfaat dan tidak merasa dikagetkan. Selain itu, perlu juga dilakukan pemeliharaan rutin terhadap tiang dan kabel-kabel yang terpasang agar tidak mengganggu aktivitas warga.',
-            'status' => 'closed',
-            'reporter_latitude' => (float)$foPoints[3]->latitude - 0.0012,
-            'reporter_longitude' => (float)$foPoints[3]->longitude + 0.0008,
-            'reporter_accuracy' => 2.8,
+            'status_id' => $closedStatus->id,
+            'sender_latitude' => (float)$foPoints[3]->latitude - 0.0012,
+            'sender_longitude' => (float)$foPoints[3]->longitude + 0.0008,
+            'sender_accuracy' => 2.8,
             'location_captured_at' => now()->subDays(15),
             'is_public' => true,
         ]);
@@ -414,10 +404,10 @@ class ReportFeedbackSeeder extends Seeder
             'sender_phone' => '082345678904',
             'category' => 'Usulan Fitur',
             'message' => 'Bagaimana kalau tower ini dilengkapi dengan speaker untuk sistem peringatan dini bencana? Akan sangat bermanfaat untuk masyarakat.',
-            'status' => 'in_progress',
-            'reporter_latitude' => (float)$towers[4]->latitude + 0.0006,
-            'reporter_longitude' => (float)$towers[4]->longitude + 0.0014,
-            'reporter_accuracy' => 5.9,
+            'status_id' => $inProgressStatus->id,
+            'sender_latitude' => (float)$towers[4]->latitude + 0.0006,
+            'sender_longitude' => (float)$towers[4]->longitude + 0.0014,
+            'sender_accuracy' => 5.9,
             'location_captured_at' => now()->subDays(6),
             'is_public' => false,
         ]);
@@ -540,10 +530,10 @@ class ReportFeedbackSeeder extends Seeder
             'sender_phone' => '082345678905',
             'category' => 'Apresiasi',
             'message' => 'Saya ingin mengucapkan terima kasih yang sebesar-besarnya kepada pihak yang membangun dan mengelola tower ini. Sejak tower ini beroperasi, sinyal internet di kampung kami menjadi jauh lebih stabil dan cepat. Ini sangat membantu sekali, terutama untuk anak-anak yang harus belajar online dan untuk orang tua yang bekerja dari rumah. Semoga tower ini tetap terpelihara dengan baik dan terus memberikan manfaat untuk masyarakat.',
-            'status' => 'pending',
-            'reporter_latitude' => (float)$towers[0]->latitude + 0.0013,
-            'reporter_longitude' => (float)$towers[0]->longitude - 0.0019,
-            'reporter_accuracy' => 5.3,
+            'status_id' => $pendingStatus->id,
+            'sender_latitude' => (float)$towers[0]->latitude + 0.0013,
+            'sender_longitude' => (float)$towers[0]->longitude - 0.0019,
+            'sender_accuracy' => 5.3,
             'location_captured_at' => now()->subDays(3),
             'is_public' => true,
         ]);
@@ -559,10 +549,10 @@ class ReportFeedbackSeeder extends Seeder
             'sender_phone' => '082345678906',
             'category' => 'Lainnya',
             'message' => 'Saya ingin bertanya apakah ada rencana untuk meningkatkan kapasitas atau upgrade tower ini? Akhir-akhir ini, terutama pada jam sibuk (pagi dan sore hari), sinyal sering terasa lambat dan kadang tidak stabil. Sepertinya jumlah pengguna yang menggunakan tower ini sudah semakin banyak. Jika memungkinkan, mohon dipertimbangkan untuk upgrade kapasitas agar layanan tetap optimal untuk semua pengguna.',
-            'status' => 'closed',
-            'reporter_latitude' => (float)$towers[5]->latitude - 0.0016,
-            'reporter_longitude' => (float)$towers[5]->longitude + 0.0007,
-            'reporter_accuracy' => 4.7,
+            'status_id' => $closedStatus->id,
+            'sender_latitude' => (float)$towers[5]->latitude - 0.0016,
+            'sender_longitude' => (float)$towers[5]->longitude + 0.0007,
+            'sender_accuracy' => 4.7,
             'location_captured_at' => now()->subDays(9),
             'is_public' => false,
         ]);

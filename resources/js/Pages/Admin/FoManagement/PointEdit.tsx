@@ -5,8 +5,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AdminLayout from '@/Layouts/AdminLayout';
 import ProviderSelection from '@/Components/Admin/ProviderSelection';
+import PageHeader from '@/Components/PageHeader';
+import { Button } from '@/Components/ui/button';
+import { Card } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
 import { getIconByImagesAndSide } from '@/utils/foIconUtils';
-import { STATUS_LABELS, TYPE_LABELS, getStatusLabel, getTypeLabel } from '@/utils/foConstants';
+import { getStatusLabel, getTypeLabel } from '@/utils/foConstants';
 import { createImageFieldTransform } from '@/utils/foFormUtils';
 import { useCoordinateUpdate } from '@/Hooks/useCoordinateUpdate';
 
@@ -17,6 +21,133 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+/* ------------------------------------------------------------------ *
+ * Local form primitives — identical register to PointCreate.
+ *
+ * Replaced: an icon inside every label, a decorative glyph floating in
+ * every input, thirteen hand-copied error rows, three coloured icon
+ * tiles and a maroon hero band that repeated AdminLayout's top bar.
+ * ------------------------------------------------------------------ */
+
+/** 44px control, hairline border, single focus-visible ring. */
+const controlBase = cn(
+  'block w-full rounded-md border bg-background text-sm text-foreground',
+  'placeholder:text-placeholder transition-colors duration-140 ease-state',
+  'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+  'disabled:cursor-not-allowed disabled:opacity-60',
+);
+
+const fieldClass = (hasError?: unknown, extra?: string) =>
+  cn(
+    controlBase,
+    'h-11 px-3',
+    hasError ? 'border-destructive' : 'border-input hover:border-border-strong',
+    extra,
+  );
+
+const textareaClass = (hasError?: unknown, extra?: string) =>
+  cn(
+    controlBase,
+    'min-h-[132px] resize-none px-3 py-2.5 leading-relaxed',
+    hasError ? 'border-destructive' : 'border-input hover:border-border-strong',
+    extra,
+  );
+
+/** Validation is the one place red is not the brand: it stays destructive. */
+function FieldError({ id, message }: { id?: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-destructive">
+      <svg className="mt-px h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{message}</span>
+    </p>
+  );
+}
+
+interface FieldRenderProps {
+  id: string;
+  'aria-invalid': boolean;
+  'aria-describedby'?: string;
+}
+
+interface FieldProps {
+  id: string;
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+  hint?: string;
+  error?: string;
+  className?: string;
+  children: (props: FieldRenderProps) => React.ReactNode;
+}
+
+function Field({ id, label, required, optional, hint, error, className, children }: FieldProps) {
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className={className}>
+      <label
+        htmlFor={id}
+        className="mb-1.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-sm font-medium text-foreground"
+      >
+        <span>{label}</span>
+        {required && (
+          <span className="text-destructive" title="Wajib diisi" aria-hidden="true">
+            *
+          </span>
+        )}
+        {optional && <span className="text-xs font-normal text-muted-foreground">(Opsional)</span>}
+      </label>
+      {children({ id, 'aria-invalid': Boolean(error), 'aria-describedby': describedBy })}
+      {hint && !error && (
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      <FieldError id={`${id}-error`} message={error} />
+    </div>
+  );
+}
+
+/** A chevron is an affordance; it is the only icon left on a control. */
+function SelectShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+        <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  className,
+  contentClassName,
+  children,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  contentClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className={className}>
+      <div className="rounded-t-lg border-b border-border bg-well px-5 py-3">
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+      </div>
+      <div className={cn('p-5', contentClassName)}>{children}</div>
+    </Card>
+  );
+}
 
 interface FoPoint {
   id: number;
@@ -59,11 +190,18 @@ interface PageProps {
   csrfToken: string;
 }
 
-export default function PointEdit({ 
-  foPoint, 
-  availableAreas, 
-  availableTypes, 
-  availableStatuses, 
+/** Side-of-road choices. The glyph carries the meaning; the fill only marks what is chosen. */
+const SIDE_OPTIONS: { value: 'left' | 'right' | 'unknown'; glyph: string; label: string }[] = [
+  { value: 'left', glyph: 'L', label: 'Kiri' },
+  { value: 'right', glyph: 'R', label: 'Kanan' },
+  { value: 'unknown', glyph: '?', label: 'Belum Diketahui' },
+];
+
+export default function PointEdit({
+  foPoint,
+  availableAreas,
+  availableTypes,
+  availableStatuses,
   availableRoutes,
   availableProviders = [],
   currentProviders = [],
@@ -76,7 +214,7 @@ export default function PointEdit({
     if (!providers || providers.length === 0) {
       return [];
     }
-    
+
     return providers
       .map(p => {
         // Handle both object format {id, name} and direct number format
@@ -117,7 +255,7 @@ export default function PointEdit({
     foPoint.longitude
   ]);
   const [isDragging, setIsDragging] = useState(false);
-  
+
   // Use custom hook for coordinate updates
   const { isUpdating: isUpdatingCoordinates, message: coordinateUpdateMessage, messageType, updateCoordinates } = useCoordinateUpdate({
     routeUrl: route('admin.fo-management.points.update-coordinates', { foPoint: foPoint.id }),
@@ -151,7 +289,7 @@ export default function PointEdit({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       put(route('admin.fo-management.points.update', { foPoint: foPoint.id }), {
         onSuccess: () => {
@@ -173,827 +311,433 @@ export default function PointEdit({
   return (
     <AdminLayout title={`Edit Titik FO: ${foPoint.name}`}>
       <Head title={`Edit Titik FO: ${foPoint.name}`} />
-      
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-gray-100 relative overflow-hidden">
-        
-        <div className="py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-3xl p-4 sm:p-8 shadow-2xl border border-white/20 backdrop-blur-sm">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-2xl p-3 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 leading-tight">Edit Titik Fiber Optic</h1>
-                    <p className="text-white/90 text-sm sm:text-lg break-words">
-                      Edit informasi titik: {foPoint.name}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <Link
-                    href={route('admin.fo-management.routes.detail', parentRouteId || 15)}
-                    className="group inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-red-600 transition-all duration-200 shadow-sm hover:shadow-md w-full sm:w-auto"
-                    title="Kembali ke detail jalur"
-                  >
-                    <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Kembali
-                  </Link>
-                  
-                  <div className="hidden lg:flex items-center space-x-6">
-                    <div className="text-right">
-                      <div className="text-white/80 text-sm font-medium">Langkah</div>
-                      <div className="text-white text-2xl font-bold">2/2</div>
-                    </div>
-                    <div className="w-px h-12 bg-white/20"></div>
-                    <div className="text-right">
-                      <div className="text-white/80 text-sm font-medium">Status</div>
-                      <div className="text-yellow-300 text-sm font-semibold">Edit Mode</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse flex-shrink-0"></div>
-                    <span className="text-white/90 text-sm font-medium">Siap untuk diperbarui</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-        {/* Form */}
-        <div>
-          <div className="bg-white/80 backdrop-blur-sm shadow-2xl rounded-3xl border border-gray-100 overflow-hidden">
-            <form onSubmit={handleSubmit} className="p-4 sm:p-8">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
-                {/* Basic Information */}
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 border border-gray-200 mb-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2 flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">Informasi Dasar</h3>
-                    </div>
-                    <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-                      Perbarui informasi dasar titik fiber optic seperti nama, area, dan status
-                    </p>
-                  </div>
-                
-                <div>
-                  <label htmlFor="name" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    Nama Titik
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      id="name"
-                      value={data.name}
-                      onChange={(e) => setData('name', e.target.value)}
-                      className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                        errors.name 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                      placeholder="Contoh: Tower FO-001"
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                    </div>
-                  </div>
-                  {errors.name && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.name}</p>
-                    </div>
-                  )}
-                </div>
+      <PageHeader
+        title="Edit Titik Fiber Optic"
+        description={`Edit informasi titik: ${foPoint.name}`}
+        showLogo={false}
+        className="mb-5"
+        actions={
+          <Button asChild variant="outline" className="h-11">
+            <Link
+              href={route('admin.fo-management.routes.detail', parentRouteId || 15)}
+              title="Kembali ke detail jalur"
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Kembali
+            </Link>
+          </Button>
+        }
+      />
 
-                <div>
-                  <label htmlFor="area" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Area
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="area"
-                      value={data.area}
-                      onChange={(e) => setData('area', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
-                        errors.area 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                    >
-                      {availableAreas.map((area) => (
-                        <option key={area} value={area}>
-                          📍 {area.charAt(0).toUpperCase() + area.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  {errors.area && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.area}</p>
-                    </div>
-                  )}
-                </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+          {/* Column 1 — the record */}
+          <div className="space-y-5">
+            <Section
+              title="Informasi Dasar"
+              description="Perbarui informasi dasar titik fiber optic seperti nama, area, dan status"
+              contentClassName="space-y-5"
+            >
+              <Field id="name" label="Nama Titik" required error={errors.name}>
+                {(f) => (
+                  <input
+                    type="text"
+                    {...f}
+                    value={data.name}
+                    onChange={(e) => setData('name', e.target.value)}
+                    className={fieldClass(errors.name)}
+                    placeholder="Contoh: Menara FO-001"
+                  />
+                )}
+              </Field>
 
-                <div>
-                  <label htmlFor="type" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    Tipe
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="type"
-                      value={data.type}
-                      onChange={(e) => setData('type', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
-                        errors.type 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                    >
-                      {availableTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {getTypeLabel(type, true)}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  {errors.type && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.type}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="status" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Status
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="status"
-                      value={data.status}
-                      onChange={(e) => setData('status', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
-                        errors.status 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                    >
-                      {availableStatuses.map((status) => (
-                        <option key={status} value={status}>
-                          {getStatusLabel(status, true)}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  {errors.status && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.status}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Side of Road Picker */}
-                <div>
-                  <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    Sisi Jalan
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setData('side_of_road', 'left')}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                        data.side_of_road === 'left'
-                          ? 'border-blue-500 bg-blue-50 shadow-md'
-                          : 'border-gray-200 hover:border-blue-300 bg-white/50 backdrop-blur-sm'
-                      } focus:outline-none focus:ring-4 focus:ring-blue-100`}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className={`w-8 h-8 rounded-full border-3 flex items-center justify-center ${
-                          data.side_of_road === 'left'
-                            ? 'border-blue-500 bg-blue-100'
-                            : 'border-gray-300 bg-gray-100'
-                        }`}>
-                          <span className="text-xs font-bold text-blue-600">L</span>
-                        </div>
-                        <span className={`text-sm font-medium ${
-                          data.side_of_road === 'left' ? 'text-blue-700' : 'text-gray-600'
-                        }`}>
-                          Kiri
-                        </span>
-                      </div>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setData('side_of_road', 'right')}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                        data.side_of_road === 'right'
-                          ? 'border-red-500 bg-red-50 shadow-md'
-                          : 'border-gray-200 hover:border-red-300 bg-white/50 backdrop-blur-sm'
-                      } focus:outline-none focus:ring-4 focus:ring-red-100`}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className={`w-8 h-8 rounded-full border-3 flex items-center justify-center ${
-                          data.side_of_road === 'right'
-                            ? 'border-red-500 bg-red-100'
-                            : 'border-gray-300 bg-gray-100'
-                        }`}>
-                          <span className="text-xs font-bold text-red-600">R</span>
-                        </div>
-                        <span className={`text-sm font-medium ${
-                          data.side_of_road === 'right' ? 'text-red-700' : 'text-gray-600'
-                        }`}>
-                          Kanan
-                        </span>
-                      </div>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setData('side_of_road', 'unknown')}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                        data.side_of_road === 'unknown'
-                          ? 'border-gray-500 bg-gray-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-400 bg-white/50 backdrop-blur-sm'
-                      } focus:outline-none focus:ring-4 focus:ring-gray-100`}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className={`w-8 h-8 rounded-full border-3 flex items-center justify-center ${
-                          data.side_of_road === 'unknown'
-                            ? 'border-gray-500 bg-gray-100'
-                            : 'border-gray-300 bg-gray-100'
-                        }`}>
-                          <span className="text-xs font-bold text-gray-600">?</span>
-                        </div>
-                        <span className={`text-sm font-medium ${
-                          data.side_of_road === 'unknown' ? 'text-gray-700' : 'text-gray-600'
-                        }`}>
-                          Belum Diketahui
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                  {errors.side_of_road && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.side_of_road}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Provider Selection - DRY: Using reusable component */}
-                <ProviderSelection
-                  providers={data.providers || []}
-                  availableProviders={availableProviders}
-                  onChange={(selectedProviders) => setData('providers', selectedProviders)}
-                  errors={errors.providers}
-                  colorScheme="red"
-                  label="Provider"
-                  useBackdropBlur={true}
-                />
-              </div>
-
-                {/* Location and Route Information */}
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 border border-gray-200 mb-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2 flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">Lokasi & Jalur</h3>
-                    </div>
-                    <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-                      Tentukan koordinat lokasi dan jalur yang akan dilalui titik ini. Drag marker di map untuk mengubah posisi.
-                    </p>
-                  </div>
-
-                {/* Interactive Map with Draggable Marker */}
-                <div className="mb-6">
-                  <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    Posisi Titik (Drag marker untuk mengubah posisi)
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  
-                  {/* Status Message */}
-                  {coordinateUpdateMessage && (
-                    <div className={`mb-3 p-3 rounded-lg ${
-                      messageType === 'success'
-                        ? 'bg-green-50 text-green-800 border border-green-200' 
-                        : 'bg-red-50 text-red-800 border border-red-200'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        {messageType === 'success' ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )}
-                        <p className="text-sm font-medium">{coordinateUpdateMessage}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Map Container */}
-                  <div className="relative rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg" style={{ height: '400px' }}>
-                    {isUpdatingCoordinates && (
-                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1000] flex items-center justify-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                          <p className="text-sm font-medium text-gray-700">Memperbarui koordinat...</p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <MapContainer
-                      center={mapCenter}
-                      zoom={15}
-                      style={{ height: '100%', width: '100%', zIndex: 1 }}
-                      scrollWheelZoom={true}
-                      doubleClickZoom={true}
-                      dragging={true}
-                      zoomControl={true}
-                      key={`map-${foPoint.id}-${mapCenter[0]}-${mapCenter[1]}`}
-                    >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        maxZoom={19}
-                      />
-                      
-                      {/* Draggable Marker */}
-                      <Marker
-                        key={`marker-${foPoint.id}-${data.side_of_road}-${data.isp_image}-${data.pole_image}-${data.junction_box_image}`}
-                        position={mapCenter}
-                        draggable={true}
-                        icon={getIconByImagesAndSide(
-                          {
-                            isp: data.isp_image || null,
-                            pole: data.pole_image || null,
-                            junction_box: data.junction_box_image || null,
-                          },
-                          data.side_of_road || 'unknown'
-                        )}
-                        eventHandlers={{
-                          dragstart: (e) => {
-                            // Close popup before dragging to prevent interference
-                            if (e.target && typeof e.target.closePopup === 'function') {
-                              e.target.closePopup();
-                            }
-                            setIsDragging(true);
-                          },
-                          dragend: handleMarkerDragEnd,
-                        }}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <Field id="area" label="Area" required error={errors.area}>
+                  {(f) => (
+                    <SelectShell>
+                      <select
+                        {...f}
+                        value={data.area}
+                        onChange={(e) => setData('area', e.target.value)}
+                        className={fieldClass(errors.area, 'appearance-none pr-9')}
                       >
-                        <Popup closeOnClick={false} autoClose={false}>
-                          <div className="text-center">
-                            <p className="font-semibold text-sm">{foPoint.name}</p>
-                            <p className="text-xs text-gray-600 mt-1">
-                              {mapCenter[0].toFixed(6)}, {mapCenter[1].toFixed(6)}
-                            </p>
-                            <p className="text-xs text-blue-600 mt-2">
-                              {isUpdatingCoordinates 
-                                ? 'Memperbarui...' 
-                                : 'Lepaskan untuk menyimpan posisi'}
-                            </p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    </MapContainer>
-                  </div>
-                  
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 Drag marker di map untuk mengubah posisi. Koordinat akan otomatis ter-update. GeoJSON akan di-regenerate saat route di-load.
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div>
-                     <label htmlFor="latitude" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                       <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                       </svg>
-                       Latitude
-                       <span className="text-red-500 ml-1">*</span>
-                     </label>
-                     <div className="relative">
-                       <input
-                         type="number"
-                         id="latitude"
-                         step="any"
-                         value={data.latitude}
-                         onChange={(e) => setData('latitude', e.target.value)}
-                         className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                           errors.latitude 
-                             ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                             : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                         } focus:outline-none`}
-                         placeholder="-7.123456"
-                       />
-                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                         </svg>
-                       </div>
-                     </div>
-                     {errors.latitude && (
-                       <div className="flex items-center mt-2 text-red-600">
-                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                         </svg>
-                         <p className="text-sm font-medium">{errors.latitude}</p>
-                       </div>
-                     )}
-                   </div>
-                   
-                   <div>
-                     <label htmlFor="longitude" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                       <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
-                       </svg>
-                       Longitude
-                       <span className="text-red-500 ml-1">*</span>
-                     </label>
-                     <div className="relative">
-                       <input
-                         type="number"
-                         id="longitude"
-                         step="any"
-                         value={data.longitude}
-                         onChange={(e) => setData('longitude', e.target.value)}
-                         className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                           errors.longitude 
-                             ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                             : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                         } focus:outline-none`}
-                         placeholder="110.123456"
-                       />
-                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
-                         </svg>
-                       </div>
-                     </div>
-                     {errors.longitude && (
-                       <div className="flex items-center mt-2 text-red-600">
-                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                         </svg>
-                         <p className="text-sm font-medium">{errors.longitude}</p>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-
-                <div>
-                  <label htmlFor="route_name" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    Nama Jalur
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="route_name"
-                      value={data.route_name}
-                      onChange={(e) => setData('route_name', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm appearance-none ${
-                        errors.route_name 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                    >
-                      <option value="">🗺️ Pilih Jalur...</option>
-                      {availableRoutes.map((route) => (
-                        <option key={route.id} value={route.name}>
-                          🛤️ {route.name} ({route.area})
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  {errors.route_name && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.route_name}</p>
-                    </div>
+                        {availableAreas.map((area) => (
+                          <option key={area} value={area}>
+                            {area.charAt(0).toUpperCase() + area.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </SelectShell>
                   )}
-                </div>
+                </Field>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label htmlFor="isp_image" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v10.764a1 1 0 01-1.447.894L15 18M4 6h16M4 12h8m-8 6h8" />
-                      </svg>
-                      Link Foto ISP (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="isp_image"
-                      value={data.isp_image}
-                      onChange={(e) => setData('isp_image', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                        errors.isp_image 
-                          ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
-                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                      placeholder="https://drive.google.com/..."
-                    />
-                    {errors.isp_image && (
-                      <div className="flex items-center mt-2 text-red-600">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-sm font-medium">{errors.isp_image}</p>
-                      </div>
-                    )}
-                  </div>
+                <Field id="type" label="Tipe" required error={errors.type}>
+                  {(f) => (
+                    <SelectShell>
+                      <select
+                        {...f}
+                        value={data.type}
+                        onChange={(e) => setData('type', e.target.value)}
+                        className={fieldClass(errors.type, 'appearance-none pr-9')}
+                      >
+                        {availableTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {getTypeLabel(type, true)}
+                          </option>
+                        ))}
+                      </select>
+                    </SelectShell>
+                  )}
+                </Field>
 
-                  <div>
-                    <label htmlFor="pole_image" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 2v20m12-12v12" />
-                      </svg>
-                      Link Foto Tiang (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="pole_image"
-                      value={data.pole_image}
-                      onChange={(e) => setData('pole_image', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                        errors.pole_image 
-                          ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
-                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                      placeholder="https://drive.google.com/..."
-                    />
-                    {errors.pole_image && (
-                      <div className="flex items-center mt-2 text-red-600">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-sm font-medium">{errors.pole_image}</p>
-                      </div>
-                    )}
-                  </div>
+                <Field id="status" label="Status" required error={errors.status}>
+                  {(f) => (
+                    <SelectShell>
+                      <select
+                        {...f}
+                        value={data.status}
+                        onChange={(e) => setData('status', e.target.value)}
+                        className={fieldClass(errors.status, 'appearance-none pr-9')}
+                      >
+                        {availableStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {getStatusLabel(status, true)}
+                          </option>
+                        ))}
+                      </select>
+                    </SelectShell>
+                  )}
+                </Field>
 
-                  <div>
-                    <label htmlFor="junction_box_image" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                      <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                      </svg>
-                      Link Foto Joint Box (Google Drive) <span className="text-gray-500 text-xs">(Opsional)</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="junction_box_image"
-                      value={data.junction_box_image}
-                      onChange={(e) => setData('junction_box_image', e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                        errors.junction_box_image 
-                          ? 'border-red-300 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100' 
-                          : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
-                      } focus:outline-none`}
-                      placeholder="https://drive.google.com/..."
-                    />
-                    {errors.junction_box_image && (
-                      <div className="flex items-center mt-2 text-red-600">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-sm font-medium">{errors.junction_box_image}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="sequence_number" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                    <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                    </svg>
-                    Nomor Urut
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
+                <Field id="sequence_number" label="Nomor Urut" required error={errors.sequence_number}>
+                  {(f) => (
                     <input
                       type="number"
-                      id="sequence_number"
                       min="1"
+                      {...f}
                       value={data.sequence_number}
                       onChange={(e) => setData('sequence_number', e.target.value)}
-                      className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                        errors.sequence_number 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                      } focus:outline-none`}
+                      className={fieldClass(errors.sequence_number, 'tabular-nums')}
                       placeholder="1"
                     />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                      </svg>
+                  )}
+                </Field>
+              </div>
+
+              {/* Side of Road Picker — a segmented control, not three 96px tiles. */}
+              <div>
+                <span id="side_of_road-label" className="mb-1.5 block text-sm font-medium text-foreground">
+                  Sisi Jalan
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="side_of_road-label"
+                  className="grid grid-cols-3 gap-2"
+                >
+                  {SIDE_OPTIONS.map((option) => {
+                    const selected = data.side_of_road === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        title={option.label}
+                        onClick={() => setData('side_of_road', option.value)}
+                        className={cn(
+                          'flex h-11 items-center justify-center gap-2 rounded-md border px-2 text-sm font-medium',
+                          'transition-colors duration-140 ease-state',
+                          'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+                          selected
+                            ? 'border-primary-border bg-primary-soft text-primary-strong'
+                            : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        )}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
+                            selected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border-strong bg-well text-muted-foreground',
+                          )}
+                        >
+                          {option.glyph}
+                        </span>
+                        <span className="min-w-0 truncate">{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <FieldError message={errors.side_of_road} />
+              </div>
+            </Section>
+
+            {/* Provider Selection - DRY: Using reusable component */}
+            <ProviderSelection
+              providers={data.providers || []}
+              availableProviders={availableProviders}
+              onChange={(selectedProviders) => setData('providers', selectedProviders)}
+              errors={errors.providers}
+              colorScheme="red"
+              label="Provider"
+              useBackdropBlur={true}
+            />
+          </div>
+
+          {/* Column 2 — the map is the subject of this screen */}
+          <Section
+            title="Lokasi & Jalur"
+            description="Tentukan koordinat lokasi dan jalur yang akan dilalui titik ini. Drag marker di map untuk mengubah posisi."
+            contentClassName="space-y-5"
+          >
+            <div>
+              <span className="mb-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium text-foreground">
+                <span>Posisi Titik (Drag marker untuk mengubah posisi)</span>
+                <span className="text-destructive" title="Wajib diisi" aria-hidden="true">*</span>
+              </span>
+
+              {/* Status Message */}
+              {coordinateUpdateMessage && (
+                <div
+                  role={messageType === 'success' ? 'status' : 'alert'}
+                  className={cn(
+                    'mb-2 flex items-start gap-2 rounded-md border px-3 py-2 text-sm font-medium',
+                    messageType === 'success'
+                      ? 'border-success-border bg-success-soft text-success-strong'
+                      : 'border-destructive-border bg-destructive-soft text-destructive-strong',
+                  )}
+                >
+                  {messageType === 'success' ? (
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                  <span>{coordinateUpdateMessage}</span>
+                </div>
+              )}
+
+              {/* Map Container */}
+              <div className="relative overflow-hidden rounded-md border border-border" style={{ height: '340px' }}>
+                {isUpdatingCoordinates && (
+                  <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-background/80">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+                      <p className="text-sm font-medium text-muted-foreground">Memperbarui koordinat...</p>
                     </div>
                   </div>
-                  {errors.sequence_number && (
-                    <div className="flex items-center mt-2 text-red-600">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-sm font-medium">{errors.sequence_number}</p>
-                    </div>
-                  )}
-                </div>
+                )}
+
+                <MapContainer
+                  center={mapCenter}
+                  zoom={15}
+                  style={{ height: '100%', width: '100%', zIndex: 1 }}
+                  scrollWheelZoom={true}
+                  doubleClickZoom={true}
+                  dragging={true}
+                  zoomControl={true}
+                  key={`map-${foPoint.id}-${mapCenter[0]}-${mapCenter[1]}`}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    maxZoom={19}
+                  />
+
+                  {/* Draggable Marker */}
+                  <Marker
+                    key={`marker-${foPoint.id}-${data.side_of_road}-${data.isp_image}-${data.pole_image}-${data.junction_box_image}`}
+                    position={mapCenter}
+                    draggable={true}
+                    icon={getIconByImagesAndSide(
+                      {
+                        isp: data.isp_image || null,
+                        pole: data.pole_image || null,
+                        junction_box: data.junction_box_image || null,
+                      },
+                      data.side_of_road || 'unknown'
+                    )}
+                    eventHandlers={{
+                      dragstart: (e) => {
+                        // Close popup before dragging to prevent interference
+                        if (e.target && typeof e.target.closePopup === 'function') {
+                          e.target.closePopup();
+                        }
+                        setIsDragging(true);
+                      },
+                      dragend: handleMarkerDragEnd,
+                    }}
+                  >
+                    <Popup closeOnClick={false} autoClose={false}>
+                      <div className="text-center">
+                        <p className="text-sm font-semibold">{foPoint.name}</p>
+                        <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                          {mapCenter[0].toFixed(6)}, {mapCenter[1].toFixed(6)}
+                        </p>
+                        <p className="mt-2 text-xs text-primary">
+                          {isUpdatingCoordinates
+                            ? 'Memperbarui...'
+                            : 'Lepaskan untuk menyimpan posisi'}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </MapContainer>
               </div>
+
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Drag marker di map untuk mengubah posisi. Koordinat akan otomatis ter-update. GeoJSON akan di-regenerate saat route di-load.
+              </p>
             </div>
 
-              {/* Description */}
-              <div className="xl:col-span-2 mt-6">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 border border-gray-200 mb-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-2 flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Deskripsi Tambahan</h3>
-                  </div>
-                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-4">
-                    Tambahkan informasi detail atau catatan khusus untuk titik ini
-                  </p>
-                  
-                  <div>
-                    <label htmlFor="description" className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                      <svg className="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Deskripsi
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        id="description"
-                        rows={4}
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
-                        className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none ${
-                          errors.description 
-                            ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                            : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                        } focus:outline-none`}
-                        placeholder="Contoh: Titik ini berada di dekat tower seluler, akses jalan mudah, perlu koordinasi dengan pihak ketiga..."
-                      />
-                      <div className="absolute top-3 right-3 pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </div>
-                    </div>
-                    {errors.description && (
-                      <div className="flex items-center mt-2 text-red-600">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-sm font-medium">{errors.description}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field id="latitude" label="Latitude" required error={errors.latitude}>
+                {(f) => (
+                  <input
+                    type="number"
+                    step="any"
+                    {...f}
+                    value={data.latitude}
+                    onChange={(e) => setData('latitude', e.target.value)}
+                    className={fieldClass(errors.latitude, 'tabular-nums')}
+                    placeholder="-7.123456"
+                  />
+                )}
+              </Field>
 
-              {/* Submit Buttons */}
-              <div className="xl:col-span-2">
-                <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl p-4 sm:p-6 border border-gray-200 mt-8">
-                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-gradient-to-r from-gray-500 to-slate-500 rounded-xl p-2 flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="text-base sm:text-lg font-bold text-gray-900">Konfirmasi Perubahan</h4>
-                        <p className="text-xs sm:text-sm text-gray-600">Pastikan semua data sudah benar sebelum menyimpan</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
-                      <button
-                        type="submit"
-                        disabled={processing}
-                        className="group relative px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white font-bold rounded-xl shadow-lg transition-all duration-300 hover:from-red-700 hover:to-red-800 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-red-200 active:transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                      >
-                        <div className="flex items-center justify-center">
-                          {processing ? (
-                            <>
-                              <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Memperbarui...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                              </svg>
-                              Perbarui Titik
-                            </>
-                          )}
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </form>
+              <Field id="longitude" label="Longitude" required error={errors.longitude}>
+                {(f) => (
+                  <input
+                    type="number"
+                    step="any"
+                    {...f}
+                    value={data.longitude}
+                    onChange={(e) => setData('longitude', e.target.value)}
+                    className={fieldClass(errors.longitude, 'tabular-nums')}
+                    placeholder="110.123456"
+                  />
+                )}
+              </Field>
+            </div>
+
+            <Field id="route_name" label="Nama Jalur" required error={errors.route_name}>
+              {(f) => (
+                <SelectShell>
+                  <select
+                    {...f}
+                    value={data.route_name}
+                    onChange={(e) => setData('route_name', e.target.value)}
+                    className={fieldClass(errors.route_name, 'appearance-none pr-9')}
+                  >
+                    <option value="">Pilih Jalur...</option>
+                    {availableRoutes.map((route) => (
+                      <option key={route.id} value={route.name}>
+                        {route.name} ({route.area})
+                      </option>
+                    ))}
+                  </select>
+                </SelectShell>
+              )}
+            </Field>
+          </Section>
+
+          {/* Full width — the long text sits beside the three link fields */}
+          <Section
+            title="Deskripsi Tambahan"
+            description="Tambahkan informasi detail atau catatan khusus untuk titik ini"
+            className="xl:col-span-2"
+            contentClassName="grid grid-cols-1 gap-5 lg:grid-cols-2"
+          >
+            <Field id="description" label="Deskripsi" error={errors.description}>
+              {(f) => (
+                <textarea
+                  rows={4}
+                  {...f}
+                  value={data.description}
+                  onChange={(e) => setData('description', e.target.value)}
+                  className={textareaClass(errors.description)}
+                  placeholder="Contoh: Titik ini berada di dekat menara seluler, akses jalan mudah, perlu koordinasi dengan pihak ketiga..."
+                />
+              )}
+            </Field>
+
+            <div className="space-y-5">
+              <Field id="isp_image" label="Link Foto ISP (Google Drive)" optional error={errors.isp_image}>
+                {(f) => (
+                  <input
+                    type="url"
+                    {...f}
+                    value={data.isp_image}
+                    onChange={(e) => setData('isp_image', e.target.value)}
+                    className={fieldClass(errors.isp_image)}
+                    placeholder="https://drive.google.com/..."
+                  />
+                )}
+              </Field>
+
+              <Field id="pole_image" label="Link Foto Tiang (Google Drive)" optional error={errors.pole_image}>
+                {(f) => (
+                  <input
+                    type="url"
+                    {...f}
+                    value={data.pole_image}
+                    onChange={(e) => setData('pole_image', e.target.value)}
+                    className={fieldClass(errors.pole_image)}
+                    placeholder="https://drive.google.com/..."
+                  />
+                )}
+              </Field>
+
+              <Field id="junction_box_image" label="Link Foto Joint Box (Google Drive)" optional error={errors.junction_box_image}>
+                {(f) => (
+                  <input
+                    type="url"
+                    {...f}
+                    value={data.junction_box_image}
+                    onChange={(e) => setData('junction_box_image', e.target.value)}
+                    className={fieldClass(errors.junction_box_image)}
+                    placeholder="https://drive.google.com/..."
+                  />
+                )}
+              </Field>
+            </div>
+          </Section>
+        </div>
+
+        {/* Sticky action footer — replaces a 140px "Konfirmasi Perubahan" panel
+            whose payload was one sentence and one button.
+            "Perbarui Titik" saves — it is a primary action, not a destructive one. */}
+        <div className="sticky bottom-0 z-20 -mx-3 border-t border-border bg-card px-3 py-3 sm:-mx-4 sm:px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">Pastikan semua data sudah benar sebelum menyimpan</p>
+            <Button type="submit" disabled={processing} className="h-11 w-full sm:w-auto">
+              {processing ? (
+                <>
+                  <svg className="animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Memperbarui...
+                </>
+              ) : (
+                <>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Perbarui Titik
+                </>
+              )}
+            </Button>
           </div>
         </div>
-      </div>
-      </div>
+      </form>
     </AdminLayout>
   );
 }

@@ -8,6 +8,9 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * 
+     * Note: Structure is identical to feedback_responses table for consistency.
+     * Assets are stored in report_response_assets table (one-to-many relationship).
      */
     public function up(): void
     {
@@ -20,8 +23,6 @@ return new class extends Migration
             $table->string('sender_email')->nullable();
             $table->string('sender_phone')->nullable();
             $table->text('message');
-            $table->string('image_path')->nullable();
-            $table->string('file_type')->default('image')->nullable();
             $table->timestamps();
         });
     }

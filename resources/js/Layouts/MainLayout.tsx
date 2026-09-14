@@ -7,27 +7,32 @@ interface MainLayoutProps {
   children: ReactNode;
   title?: string;
   currentPage?: string;
+  headerSlot?: ReactNode;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ 
-  children, 
+const MainLayout: React.FC<MainLayoutProps> = ({
+  children,
   title = 'TowerTrack',
-  currentPage = '' 
+  currentPage = '',
+  headerSlot
 }) => {
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-canvas flex flex-col">
       <Head title={title} />
-      
+
       {/* App Bar */}
       <AppBar currentPage={currentPage} />
-      
+
+      {/* Optional Full Width Header Slot */}
+      {headerSlot}
+
       {/* Main Content */}
-      <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 flex-1 w-full">
-        <main className="py-6">{children}</main>
+      <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8 flex-1 w-full">
+        <main className="py-6 sm:py-8">{children}</main>
       </div>
-      
+
       {/* Footer - Full Width */}
-       <Footer />
+      <Footer />
     </div>
   );
 }

@@ -4,9 +4,14 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AdminLayout from '@/Layouts/AdminLayout';
+import PageHeader from '@/Components/PageHeader';
 import { getIconByImagesAndSide } from '@/utils/foIconUtils';
 import { STATUS_LABELS, getStatusLabel } from '@/utils/foConstants';
 import { useCoordinateUpdate } from '@/Hooks/useCoordinateUpdate';
+import { Button } from '@/Components/ui/button';
+import { Card } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
+import { FO_ROUTE_FALLBACK } from '@/lib/map-palette';
 
 interface FoRoute {
   id: number;
@@ -51,10 +56,56 @@ interface PageProps {
   csrfToken: string;
 }
 
+/**
+ * ONE control recipe, matching RouteCreate field-for-field so the create and
+ * edit forms are the same screen with different verbs.
+ *
+ * Removed from this page:
+ * - the maroon hero band (AdminLayout already owns the brand bar) and its
+ *   two dot-prefixed stat lines.
+ * - the "Statistik Jalur" panel AND the "Titik Terdaftar / Jarak Total" box in
+ *   the Kelola-Titik panel AND the "Total Titik" box under the map. Four
+ *   containers, two facts. One strip now carries both, above the form.
+ * - the five PANEL wrappers: a form section does not need a tinted box around
+ *   it when a rule and a heading already separate it.
+ * - the duplicated "Drag marker untuk mengubah posisi titik." sentence, which
+ *   was printed above and below the same map.
+ */
+const CONTROL_BASE =
+  'block w-full rounded-md border bg-background px-3 text-sm text-foreground transition-colors duration-140 ease-state placeholder:text-placeholder focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2';
+const CONTROL_H = 'h-11 sm:h-10';
+const CONTROL_IDLE = 'border-input hover:border-border-strong';
+const CONTROL_INVALID = 'border-destructive bg-destructive-soft';
+const LABEL = 'mb-1.5 block text-sm font-medium text-foreground';
+
+const FieldError = ({ message }: { message: string }) => (
+  <p className="mt-1.5 flex items-start gap-1.5 text-sm text-destructive-strong">
+    <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    {message}
+  </p>
+);
+
+const SectionHead = ({ title, description }: { title: string; description: string }) => (
+  <div className="mb-4 border-b border-border/70 pb-2">
+    <h2 className="text-base font-semibold leading-tight tracking-tight text-foreground">{title}</h2>
+    <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+  </div>
+);
+
+const SelectChevron = () => (
+  <span className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-3">
+    <svg className="h-4 w-4 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </span>
+);
+
 // Component untuk auto-fit bounds
 function FitBounds({ bounds }: { bounds: MapBounds }) {
   const map = useMap();
-  
+
   useEffect(() => {
     if (bounds) {
       map.fitBounds(
@@ -63,16 +114,16 @@ function FitBounds({ bounds }: { bounds: MapBounds }) {
       );
     }
   }, [bounds, map]);
-  
+
   return null;
 }
 
-export default function RouteEdit({ 
-  foRoute, 
+export default function RouteEdit({
+  foRoute,
   points = [],
   mapBounds,
-  availableAreas, 
-  availableStatuses 
+  availableAreas,
+  availableStatuses
 }: PageProps) {
   const { data, setData, put, processing, errors } = useForm({
     name: foRoute.name,
@@ -113,13 +164,13 @@ export default function RouteEdit({
 
     try {
       const routeUrl = route('admin.fo-management.points.update-coordinates', { foPoint: pointId });
-      
+
       // Ensure CSRF token is set
       const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
       if (csrfToken) {
         window.axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
       }
-      
+
       const response = await window.axios.patch(routeUrl, {
         latitude: lat,
         longitude: lng,
@@ -155,7 +206,7 @@ export default function RouteEdit({
   };
 
   // Calculate center for map (use first point or default)
-  const mapCenter: [number, number] = points.length > 0 
+  const mapCenter: [number, number] = points.length > 0
     ? [points[0].latitude, points[0].longitude]
     : [-7.1368, 110.4044]; // Default to Ungaran
 
@@ -170,7 +221,7 @@ export default function RouteEdit({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     put(route('admin.fo-management.routes.update', foRoute.id), {
       onSuccess: () => {
         console.log('Route updated successfully');
@@ -187,138 +238,100 @@ export default function RouteEdit({
   return (
     <AdminLayout title={`Edit Jalur FO: ${foRoute.name}`}>
       <Head title={`Edit Jalur FO: ${foRoute.name}`} />
-      
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-3xl shadow-2xl overflow-hidden">
-          <div className="px-4 sm:px-8 py-8 sm:py-12 relative">
-            <div className="absolute inset-0 bg-black/10"></div>
-            <div className="relative z-10">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
-                        Edit Jalur Fiber Optic
-                      </h1>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
-                        <span className="text-white/80 text-sm sm:text-lg">Jalur:</span>
-                        <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white font-semibold text-sm sm:text-base break-words">
-                          {foRoute.name}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 text-white/90">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
-                      <span className="text-sm">Total {foRoute.total_points} Titik FO</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
-                      <span className="text-sm">Jarak {foRoute.total_distance.toFixed(2)} km</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <Link
-                    href={route('admin.fo-management.routes.list')}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors w-full sm:w-auto"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Kembali
-                  </Link>
-                  <Link
-                    href={route('admin.fo-management.routes.detail', foRoute.id)}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors w-full sm:w-auto"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Lihat Detail
-                  </Link>
-                </div>
-              </div>
+
+      <div className="space-y-4 sm:space-y-5">
+        <PageHeader
+          showLogo={false}
+          className="mb-0"
+          title="Edit Jalur Fiber Optic"
+          description={`Jalur: ${foRoute.name}`}
+          actions={
+            <>
+              <Button asChild variant="outline">
+                <Link href={route('admin.fo-management.routes.list')} title="Kembali ke daftar jalur FO">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Kembali
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={route('admin.fo-management.routes.detail', foRoute.id)} title="Lihat detail jalur FO">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Lihat Detail
+                </Link>
+              </Button>
+            </>
+          }
+        />
+
+        {/* The two real figures on this page, once. Both come from stored
+            geometry, so neither is an invented denominator or a trend. */}
+        <Card variant="well" padding="none">
+          <dl className="grid grid-cols-2 divide-x divide-border/70">
+            <div className="px-4 py-3">
+              <dt className="text-sm text-muted-foreground">Total Jarak</dt>
+              <dd className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                {foRoute.total_distance.toFixed(2)} <span className="text-base font-medium text-muted-foreground">km</span>
+              </dd>
             </div>
-          </div>
-        </div>
+            <div className="px-4 py-3">
+              <dt className="text-sm text-muted-foreground">Total Titik</dt>
+              <dd className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                {foRoute.total_points} <span className="text-base font-medium text-muted-foreground">titik</span>
+              </dd>
+            </div>
+          </dl>
+        </Card>
 
-        {/* Form */}
-        <div className="bg-white shadow-2xl rounded-3xl border border-gray-100 overflow-hidden">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="p-8">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Basic Information */}
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-red-900">Informasi Dasar</h3>
-                        <p className="text-sm text-red-700">Edit data utama jalur fiber optik</p>
-                      </div>
-                    </div>
-                
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="name" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Nama Jalur
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          id="name"
-                          value={data.name}
-                          onChange={(e) => setData('name', e.target.value)}
-                          className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
-                            errors.name 
-                              ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                          } focus:outline-none`}
-                          placeholder="Contoh: Jalur Utama Ungaran"
-                        />
-                        {errors.name && (
-                          <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {errors.name}
-                          </div>
-                        )}
-                      </div>
+        <Card padding="none" className="overflow-hidden">
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 gap-5 p-4 sm:p-5 xl:grid-cols-2">
+              {/* Basic Information */}
+              <section>
+                <SectionHead title="Informasi Dasar" description="Edit data utama jalur fiber optik" />
 
-                      <div>
-                        <label htmlFor="area" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          </svg>
-                          Area
-                          <span className="text-red-500">*</span>
-                        </label>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className={LABEL}>
+                      Nama Jalur <span className="text-destructive-strong">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      value={data.name}
+                      onChange={(e) => setData('name', e.target.value)}
+                      className={cn(CONTROL_BASE, CONTROL_H, errors.name ? CONTROL_INVALID : CONTROL_IDLE)}
+                      placeholder="Contoh: Jalur Utama Ungaran"
+                    />
+                    {errors.name && <FieldError message={errors.name} />}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="area" className={LABEL}>
+                        Area <span className="text-destructive-strong">*</span>
+                      </label>
+                      <div className="relative">
                         <select
                           id="area"
                           value={data.area}
                           onChange={(e) => setData('area', e.target.value)}
-                          className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 appearance-none bg-white ${
-                            errors.area 
-                              ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                          } focus:outline-none`}
+                          className={cn(
+                            CONTROL_BASE,
+                            CONTROL_H,
+                            'appearance-none pr-10',
+                            errors.area ? CONTROL_INVALID : CONTROL_IDLE,
+                          )}
+                          style={{
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none',
+                            backgroundImage: 'none',
+                          }}
                         >
                           {availableAreas.map((area) => (
                             <option key={area} value={area}>
@@ -326,33 +339,32 @@ export default function RouteEdit({
                             </option>
                           ))}
                         </select>
-                        {errors.area && (
-                          <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {errors.area}
-                          </div>
-                        )}
+                        <SelectChevron />
                       </div>
+                      {errors.area && <FieldError message={errors.area} />}
+                    </div>
 
-                      <div>
-                        <label htmlFor="status" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Status
-                          <span className="text-red-500">*</span>
-                        </label>
+                    <div>
+                      <label htmlFor="status" className={LABEL}>
+                        Status <span className="text-destructive-strong">*</span>
+                      </label>
+                      <div className="relative">
                         <select
                           id="status"
                           value={data.status}
                           onChange={(e) => setData('status', e.target.value)}
-                          className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 appearance-none bg-white ${
-                            errors.status 
-                              ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                              : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-                          } focus:outline-none`}
+                          className={cn(
+                            CONTROL_BASE,
+                            CONTROL_H,
+                            'appearance-none pr-10',
+                            errors.status ? CONTROL_INVALID : CONTROL_IDLE,
+                          )}
+                          style={{
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none',
+                            backgroundImage: 'none',
+                          }}
                         >
                           {availableStatuses.map((status) => (
                             <option key={status} value={status}>
@@ -360,350 +372,231 @@ export default function RouteEdit({
                             </option>
                           ))}
                         </select>
-                        {errors.status && (
-                          <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {errors.status}
-                          </div>
-                        )}
+                        <SelectChevron />
                       </div>
-
-                      <div>
-                        <label htmlFor="color" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4z" />
-                          </svg>
-                          Warna Jalur
-                        </label>
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
-                            <input
-                              type="color"
-                              id="color"
-                              value={data.color}
-                              onChange={(e) => setData('color', e.target.value)}
-                              className="h-12 w-20 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-red-300 transition-colors"
-                            />
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
-                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              value={data.color}
-                              onChange={(e) => setData('color', e.target.value)}
-                              className="block w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all duration-200 hover:border-gray-300 font-mono text-sm"
-                              placeholder="#3B82F6"
-                            />
-                          </div>
-                        </div>
-                        {errors.color && (
-                          <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {errors.color}
-                          </div>
-                        )}
-                      </div>
+                      {errors.status && <FieldError message={errors.status} />}
                     </div>
                   </div>
 
-                  {/* Route Stats */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <h4 className="text-lg font-bold text-blue-900">Statistik Jalur</h4>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                          </svg>
-                          <span className="text-sm text-blue-700 font-medium">Total Jarak</span>
-                        </div>
-                        <div className="text-2xl font-bold text-blue-900">{foRoute.total_distance.toFixed(2)} km</div>
-                      </div>
-                      <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          </svg>
-                          <span className="text-sm text-blue-700 font-medium">Total Titik</span>
-                        </div>
-                        <div className="text-2xl font-bold text-blue-900">{foRoute.total_points}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Description and Point Management */}
-                <div className="space-y-6">
-                  {/* Description */}
-                  <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-yellow-900">Deskripsi Jalur</h3>
-                        <p className="text-sm text-yellow-700">Informasi tambahan tentang jalur</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="description" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                        <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Deskripsi
-                      </label>
-                      <textarea
-                        id="description"
-                        rows={6}
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
-                        className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 resize-none ${
-                          errors.description 
-                            ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100' 
-                            : 'border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 hover:border-gray-300'
-                        } focus:outline-none`}
-                        placeholder="Deskripsi tambahan untuk jalur ini..."
+                  <div>
+                    <label htmlFor="color" className={LABEL}>
+                      Warna Jalur
+                    </label>
+                    <div className="flex items-center gap-3">
+                      {/* Bordered so a pale route colour is still a visible control. */}
+                      <input
+                        type="color"
+                        id="color"
+                        value={data.color}
+                        onChange={(e) => setData('color', e.target.value)}
+                        className="h-11 w-16 flex-shrink-0 cursor-pointer rounded-md border border-border-strong bg-background p-1 transition-colors duration-140 ease-state focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 sm:h-10"
                       />
-                      {errors.description && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          {errors.description}
-                        </div>
-                      )}
+                      <input
+                        type="text"
+                        value={data.color}
+                        onChange={(e) => setData('color', e.target.value)}
+                        className={cn(CONTROL_BASE, CONTROL_H, CONTROL_IDLE, 'font-mono uppercase')}
+                        placeholder={FO_ROUTE_FALLBACK}
+                        aria-label="Warna Jalur"
+                      />
                     </div>
-                  </div>
-
-                  {/* Point Management */}
-                  <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-green-900">Kelola Titik FO</h3>
-                        <p className="text-sm text-green-700">Titik-titik FO membentuk jalur ini</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-6">
-                      Jalur FO akan otomatis terbentuk berdasarkan urutan titik-titik yang telah ditambahkan.
-                      Anda dapat mengelola titik FO melalui halaman detail jalur.
-                    </p>
-                    <div className="space-y-3">
-                      <Link
-                        href={route('admin.fo-management.routes.detail', foRoute.id)}
-                        className="inline-flex items-center px-5 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors w-full justify-center"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        Kelola Titik FO
-                      </Link>
-                      <div className="bg-white/60 rounded-lg p-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Titik Terdaftar</span>
-                          <span className="font-semibold text-green-800">{foRoute.total_points} titik</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm mt-2">
-                          <span className="text-gray-600">Jarak Total</span>
-                          <span className="font-semibold text-green-800">{foRoute.total_distance.toFixed(2)} km</span>
-                        </div>
-                      </div>
-                    </div>
+                    {errors.color && <FieldError message={errors.color} />}
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* Map Section for Point Editing */}
-              {points.length > 0 && (
-                <div className="mt-8 col-span-1 xl:col-span-2">
-                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-purple-900">Edit Posisi Titik FO</h3>
-                        <p className="text-sm text-purple-700">
-                          Drag marker untuk mengubah posisi titik. {points.length} titik tersedia.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Status Messages */}
-                    {updateMessage && (
-                      <div className={`mb-4 p-3 rounded-lg ${
-                        updateMessage.type === 'success'
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        <div className="flex items-center gap-2">
-                          {updateMessage.type === 'success' ? (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          )}
-                          <span className="text-sm font-medium">{updateMessage.message}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Map Container */}
-                    <div className="relative rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg" style={{ height: '600px' }}>
-                      {updatingPointId && (
-                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1000] flex items-center justify-center">
-                          <div className="text-center">
-                            <svg className="animate-spin w-8 h-8 text-purple-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <p className="text-sm font-medium text-purple-700">Memperbarui koordinat...</p>
-                          </div>
-                        </div>
+              {/* Description and Point Management */}
+              <section className="space-y-5">
+                <div>
+                  <SectionHead title="Deskripsi Jalur" description="Informasi tambahan tentang jalur" />
+                  <div>
+                    <label htmlFor="description" className={LABEL}>
+                      Deskripsi
+                    </label>
+                    <textarea
+                      id="description"
+                      rows={5}
+                      value={data.description}
+                      onChange={(e) => setData('description', e.target.value)}
+                      className={cn(
+                        CONTROL_BASE,
+                        'resize-none py-2.5',
+                        errors.description ? CONTROL_INVALID : CONTROL_IDLE,
                       )}
-
-                      <MapContainer
-                        center={mapCenter}
-                        zoom={13}
-                        style={{ height: '100%', width: '100%', zIndex: 1 }}
-                        scrollWheelZoom={true}
-                        doubleClickZoom={true}
-                        dragging={true}
-                        zoomControl={true}
-                      >
-                        <TileLayer
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                          maxZoom={19}
-                        />
-
-                        {/* Auto-fit bounds */}
-                        {mapBounds && <FitBounds bounds={mapBounds} />}
-
-                        {/* Route Polyline */}
-                        {polylineCoordinates.length > 1 && (
-                          <Polyline
-                            positions={polylineCoordinates}
-                            pathOptions={{
-                              color: foRoute.color || '#EF4444',
-                              weight: 4,
-                              opacity: 0.7,
-                            }}
-                          />
-                        )}
-
-                        {/* Draggable Point Markers */}
-                        {points.map((point) => {
-                          const position = pointPositions.get(point.id) || [point.latitude, point.longitude];
-                          const isUpdating = updatingPointId === point.id;
-                          const isDragging = draggingPointId === point.id;
-
-                          return (
-                            <Marker
-                              key={point.id}
-                              position={position as [number, number]}
-                              draggable={!isUpdating}
-                              icon={getIconByImagesAndSide(
-                                point.images || { isp: null, pole: null, junction_box: null },
-                                point.side_of_road
-                              )}
-                              eventHandlers={{
-                                dragstart: (e) => {
-                                  // Close popup before dragging to prevent interference
-                                  if (e.target && typeof e.target.closePopup === 'function') {
-                                    e.target.closePopup();
-                                  }
-                                  setDraggingPointId(point.id);
-                                },
-                                dragend: (e) => handleMarkerDragEnd(point.id, e),
-                              }}
-                              opacity={isUpdating ? 0.6 : 1}
-                              >
-                              <Popup closeOnClick={false} autoClose={false}>
-                                <div className="text-center min-w-[150px]">
-                                  <p className="font-semibold text-sm">{point.name}</p>
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    Urutan: {point.sequence_number}
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {position[0].toFixed(6)}, {position[1].toFixed(6)}
-                                  </p>
-                                  <p className="text-xs text-blue-600 mt-2">
-                                    {isUpdating
-                                      ? 'Memperbarui...'
-                                      : 'Lepaskan untuk menyimpan'}
-                                  </p>
-                                </div>
-                              </Popup>
-                            </Marker>
-                          );
-                        })}
-                      </MapContainer>
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-3">
-                      💡 Drag marker untuk mengubah posisi titik. Koordinat akan otomatis ter-update. 
-                      GeoJSON route akan di-regenerate saat route di-load.
-                    </p>
-
-                    {/* Points Summary */}
-                    <div className="mt-4 bg-white/60 rounded-lg p-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Total Titik</span>
-                        <span className="font-semibold text-purple-800">{points.length} titik</span>
-                      </div>
-                    </div>
+                      placeholder="Deskripsi tambahan untuk jalur ini..."
+                    />
+                    {errors.description && <FieldError message={errors.description} />}
                   </div>
                 </div>
-              )}
+
+                <div>
+                  <SectionHead title="Kelola Titik FO" description="Titik-titik FO membentuk jalur ini" />
+                  <p className="text-sm text-muted-foreground">
+                    Jalur FO akan otomatis terbentuk berdasarkan urutan titik-titik yang telah ditambahkan.
+                    Anda dapat mengelola titik FO melalui halaman detail jalur.
+                  </p>
+                  <Button asChild variant="outline" className="mt-3 w-full sm:w-auto">
+                    <Link href={route('admin.fo-management.routes.detail', foRoute.id)}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      Kelola Titik FO
+                    </Link>
+                  </Button>
+                </div>
+              </section>
             </div>
 
+            {/* Map Section for Point Editing */}
+            {points.length > 0 && (
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <SectionHead
+                  title="Edit Posisi Titik FO"
+                  description={`Drag marker untuk mengubah posisi titik. ${points.length} titik tersedia.`}
+                />
+
+                {/* Status Messages */}
+                {updateMessage && (
+                  <div
+                    role="status"
+                    className={cn(
+                      'mb-3 flex items-start gap-2 rounded-md border px-3 py-2.5 text-sm font-medium',
+                      updateMessage.type === 'success'
+                        ? 'border-success-border bg-success-soft text-success-strong'
+                        : 'border-destructive-border bg-destructive-soft text-destructive-strong'
+                    )}
+                  >
+                    {updateMessage.type === 'success' ? (
+                      <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    <span>{updateMessage.message}</span>
+                  </div>
+                )}
+
+                {/* Map Container — the subject of this section, so it is the one
+                    raised surface on the page. */}
+                <Card variant="primary" padding="none" className="relative overflow-hidden" style={{ height: '520px' }}>
+                  {updatingPointId && (
+                    <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-background/80">
+                      <div className="text-center">
+                        <svg className="mx-auto mb-2 h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p className="text-sm font-medium text-muted-foreground">Memperbarui koordinat...</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <MapContainer
+                    center={mapCenter}
+                    zoom={13}
+                    style={{ height: '100%', width: '100%', zIndex: 1 }}
+                    scrollWheelZoom={true}
+                    doubleClickZoom={true}
+                    dragging={true}
+                    zoomControl={true}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      maxZoom={19}
+                    />
+
+                    {/* Auto-fit bounds */}
+                    {mapBounds && <FitBounds bounds={mapBounds} />}
+
+                    {/* Route Polyline */}
+                    {polylineCoordinates.length > 1 && (
+                      <Polyline
+                        positions={polylineCoordinates}
+                        pathOptions={{
+                          // Leaflet options cannot read CSS custom properties, so this
+                          // stays a literal. The fallback is the first categorical
+                          // route colour from the map ramp, not a chrome hue.
+                          color: foRoute.color || '#982700',
+                          weight: 4,
+                          opacity: 0.7,
+                        }}
+                      />
+                    )}
+
+                    {/* Draggable Point Markers */}
+                    {points.map((point) => {
+                      const position = pointPositions.get(point.id) || [point.latitude, point.longitude];
+                      const isUpdating = updatingPointId === point.id;
+                      const isDragging = draggingPointId === point.id;
+
+                      return (
+                        <Marker
+                          key={point.id}
+                          position={position as [number, number]}
+                          draggable={!isUpdating}
+                          icon={getIconByImagesAndSide(
+                            point.images || { isp: null, pole: null, junction_box: null },
+                            point.side_of_road
+                          )}
+                          eventHandlers={{
+                            dragstart: (e) => {
+                              // Close popup before dragging to prevent interference
+                              if (e.target && typeof e.target.closePopup === 'function') {
+                                e.target.closePopup();
+                              }
+                              setDraggingPointId(point.id);
+                            },
+                            dragend: (e) => handleMarkerDragEnd(point.id, e),
+                          }}
+                          opacity={isUpdating ? 0.6 : 1}
+                        >
+                          <Popup closeOnClick={false} autoClose={false}>
+                            <div className="min-w-[150px] text-center">
+                              <p className="text-sm font-semibold text-foreground">{point.name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Urutan: {point.sequence_number}
+                              </p>
+                              <p className="mt-1 font-mono text-xs tabular-nums text-placeholder">
+                                {position[0].toFixed(6)}, {position[1].toFixed(6)}
+                              </p>
+                              <p className="mt-2 text-xs text-primary">
+                                {isUpdating
+                                  ? 'Memperbarui...'
+                                  : 'Lepaskan untuk menyimpan'}
+                              </p>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      );
+                    })}
+                  </MapContainer>
+                </Card>
+
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Koordinat akan otomatis ter-update. GeoJSON route akan di-regenerate saat route di-load.
+                </p>
+              </div>
+            )}
+
             {/* Submit Buttons */}
-            <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-t border-gray-200 px-8 py-6">
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-4">
-                <Link
-                  href={route('admin.fo-management.routes.detail', foRoute.id)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Batal
-                </Link>
-                <button
-                  type="submit"
-                  disabled={processing}
-                  className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200"
-                >
+            <div className="border-t border-border bg-well px-4 py-3 sm:px-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                  <Link href={route('admin.fo-management.routes.detail', foRoute.id)}>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Batal
+                  </Link>
+                </Button>
+                <Button type="submit" size="lg" disabled={processing} className="w-full sm:w-auto">
                   {processing ? (
                     <>
-                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -711,18 +604,17 @@ export default function RouteEdit({
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
                       <span>Perbarui Jalur</span>
                     </>
                   )}
-                  <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                </button>
+                </Button>
               </div>
             </div>
           </form>
-        </div>
+        </Card>
       </div>
     </AdminLayout>
   );

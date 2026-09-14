@@ -17,13 +17,13 @@ interface CommentFormProps {
   onCancel?: () => void;
 }
 
-export default function CommentForm({ 
-  type, 
-  id, 
+export default function CommentForm({
+  type,
+  id,
   parentId = null,
   replyingTo = null,
   onSuccess,
-  onCancel 
+  onCancel
 }: CommentFormProps) {
   const { auth } = usePage().props as any;
   const isAuthenticated = !!auth?.user;
@@ -40,7 +40,7 @@ export default function CommentForm({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Update parent_id when it changes
   // Include setData in dependencies and handle null properly
   React.useEffect(() => {
@@ -51,8 +51,8 @@ export default function CommentForm({
     e.preventDefault();
     setIsSubmitting(true);
 
-    const routeName = type === 'report' 
-      ? 'public.reports.comments.store' 
+    const routeName = type === 'report'
+      ? 'public.reports.comments.store'
       : 'public.feedbacks.comments.store';
 
     // Ensure parent_id is explicitly set before submit
@@ -73,12 +73,12 @@ export default function CommentForm({
           setData('guest_phone', '');
         }
         setIsSubmitting(false);
-        
+
         // Reset reply mode after successful submission
         if (onCancel) {
           onCancel();
         }
-        
+
         if (onSuccess) {
           onSuccess();
         }
@@ -98,28 +98,28 @@ export default function CommentForm({
           </svg>
         }
         title="Tulis Komentar"
-        iconBgColor="blue"
+        iconBgColor="orange"
       />
 
       <form onSubmit={submit} className="space-y-4">
         {/* Reply indicator */}
         {replyingTo && (
-          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-blue-700">
+          <div className="mb-3 p-3 bg-warning-soft border border-warning-border rounded-lg flex items-center justify-between">
+            <span className="text-sm text-warning-strong">
               Membalas ke <strong>{replyingTo}</strong>
             </span>
             {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                className="text-sm text-warning-strong hover:text-warning-strong font-medium transition-colors"
               >
                 Batal
               </button>
             )}
           </div>
         )}
-        
+
         {/* Guest fields - only show if not authenticated */}
         {!isAuthenticated && (
           <ContactFields

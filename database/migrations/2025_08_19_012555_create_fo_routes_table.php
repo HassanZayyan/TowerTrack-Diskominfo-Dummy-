@@ -35,7 +35,20 @@ return new class extends Migration
             $table->integer('estimated_duration')->nullable(); // Durasi estimasi dalam detik
             
             $table->string('status')->default('active'); // Status: active, inactive, maintenance
-            $table->string('color')->default('#3B82F6'); // Warna jalur untuk display di peta
+            /*
+             * Warna jalur untuk display di peta.
+             *
+             * The default was `#3B82F6`, stock Tailwind blue — the one hue
+             * resources/js/lib/map-palette.ts rules out for the map, because a
+             * blue line over an OSM basemap competes with the water it is drawn
+             * on and with the application's own chrome. Any route created
+             * without an explicit colour was guaranteed to come out in it.
+             *
+             * `#982700` is FO_ROUTE_COLORS[0], the first entry of the
+             * categorical series actually calibrated for route identity and
+             * verified for distinctness across deuteranopia and protanopia.
+             */
+            $table->string('color')->default('#982700');
             $table->decimal('total_distance', 8, 2)->nullable(); // Total jarak dalam kilometer
             $table->integer('total_points')->default(0); // Total titik FO dalam jalur
             $table->json('point_ids')->nullable(); // Array ID points yang terhubung dalam jalur

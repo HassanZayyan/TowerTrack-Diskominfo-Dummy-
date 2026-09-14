@@ -41,7 +41,7 @@ return new class extends Migration
                 $table->index(['email', 'sender_phone', 'is_public'], 'feedbacks_guest_tracking_idx');
                 
                 // Index for status filtering
-                $table->index(['status', 'created_at'], 'feedbacks_status_created_idx');
+                $table->index(['status_id', 'created_at'], 'feedbacks_status_created_idx');
             });
         }
 

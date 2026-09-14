@@ -24,25 +24,31 @@ export type FOStatusConfig = {
 /**
  * Get status color configuration for message statuses (reports/feedbacks).
  * 
- * @param status Status value (pending, in_progress, responded, resolved, closed)
+ * @param status Status value (pending, in_progress, closed)
  * @returns Status configuration with background color, text color, and label
  */
 export function getStatusColor(status: string | undefined | null): StatusConfig {
   const statusConfig: Record<string, StatusConfig> = {
-    pending: { bg: '#FEF3C7', text: '#92400E', label: 'Menunggu' },
-    in_progress: { bg: '#DBEAFE', text: '#1E40AF', label: 'Sedang Diproses' },
-    responded: { bg: '#E0E7FF', text: '#3730A3', label: 'Sudah Dibalas' },
-    resolved: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
-    closed: { bg: '#D1FAE5', text: '#065F46', label: 'Selesai' },
+    // Literals only because callers feed them to inline style. They MUST stay
+    // in lockstep with getStatusBadgeClass below and with the tokens in
+    // app.css — these two maps disagreed for a long time (pending was amber
+    // here and red there), which is why the same status rendered two different
+    // colours depending on which helper a component happened to call.
+    pending: { bg: '#FFFBEB', text: '#92400E', label: 'Menunggu' },
+    in_progress: { bg: '#F5F5F4', text: '#44403C', label: 'Sedang Diproses' },
+    closed: { bg: '#ECFDF5', text: '#065F46', label: 'Selesai' },
+    // Backward compatibility for old status values
+    responded: { bg: '#F5F5F4', text: '#44403C', label: 'Sedang Diproses' },
+    resolved: { bg: '#ECFDF5', text: '#065F46', label: 'Selesai' },
   };
 
   if (!status) {
-    return { bg: '#F3F4F6', text: '#374151', label: 'Tidak diketahui' };
+    return { bg: '#F5F5F4', text: '#44403C', label: 'Tidak diketahui' };
   }
 
   return statusConfig[status] || {
-    bg: '#F3F4F6',
-    text: '#374151',
+    bg: '#F5F5F4',
+    text: '#44403C',
     label: status.replace(/_/g, ' ') || 'Tidak diketahui',
   };
 }
@@ -56,48 +62,48 @@ export function getStatusColor(status: string | undefined | null): StatusConfig 
 export function getFOStatusColor(status: string | undefined | null): FOStatusConfig {
   const foStatusConfig: Record<string, FOStatusConfig> = {
     active: { 
-      bg: 'bg-green-100', 
-      text: 'text-green-800', 
-      light: 'bg-green-50',
-      border: 'border-green-200',
-      dot: 'bg-green-500',
+      bg: 'bg-success-soft',
+      text: 'text-success-strong',
+      light: 'bg-success-soft',
+      border: 'border-success-border',
+      dot: 'bg-success',
       label: 'Aktif' 
     },
     inactive: { 
-      bg: 'bg-red-100', 
-      text: 'text-red-800', 
-      light: 'bg-red-50',
-      border: 'border-red-200',
-      dot: 'bg-red-500',
+      bg: 'bg-destructive-soft',
+      text: 'text-destructive-strong',
+      light: 'bg-destructive-soft',
+      border: 'border-destructive-border',
+      dot: 'bg-destructive',
       label: 'Non-aktif' 
     },
     maintenance: { 
-      bg: 'bg-yellow-100', 
-      text: 'text-yellow-800', 
-      light: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      dot: 'bg-yellow-500',
+      bg: 'bg-warning-soft',
+      text: 'text-warning-strong',
+      light: 'bg-warning-soft',
+      border: 'border-warning-border',
+      dot: 'bg-warning',
       label: 'Maintenance' 
     },
   };
 
   if (!status) {
     return { 
-      bg: 'bg-gray-100', 
-      text: 'text-gray-800', 
-      light: 'bg-gray-50',
-      border: 'border-gray-200',
-      dot: 'bg-gray-500',
+      bg: 'bg-neutral-soft',
+      text: 'text-neutral-strong',
+      light: 'bg-neutral-soft',
+      border: 'border-neutral-border',
+      dot: 'bg-neutral',
       label: 'Tidak diketahui' 
     };
   }
 
   return foStatusConfig[status] || {
-    bg: 'bg-gray-100',
-    text: 'text-gray-800',
-    light: 'bg-gray-50',
-    border: 'border-gray-200',
-    dot: 'bg-gray-500',
+    bg: 'bg-neutral-soft',
+    text: 'text-neutral-strong',
+    light: 'bg-neutral-soft',
+    border: 'border-neutral-border',
+    dot: 'bg-neutral',
     label: status.replace(/_/g, ' ') || 'Tidak diketahui',
   };
 }
@@ -110,12 +116,12 @@ export function getFOStatusColor(status: string | undefined | null): FOStatusCon
  */
 export function getFOStatusBadgeClass(status: string | undefined | null): string {
   const configs: Record<string, string> = {
-    active: 'bg-green-100 text-green-800',
-    inactive: 'bg-red-100 text-red-800',
-    maintenance: 'bg-yellow-100 text-yellow-800',
+    active: 'bg-success-soft text-success-strong',
+    inactive: 'bg-destructive-soft text-destructive-strong',
+    maintenance: 'bg-warning-soft text-warning-strong border border-warning-border',
   };
 
-  return configs[status || ''] || 'bg-gray-100 text-gray-800';
+  return configs[status || ''] || 'bg-neutral-soft text-neutral-strong';
 }
 
 /**
@@ -126,14 +132,15 @@ export function getFOStatusBadgeClass(status: string | undefined | null): string
  */
 export function getStatusBadgeClass(status: string | undefined | null): string {
   const configs: Record<string, string> = {
-    pending: 'bg-red-100 text-red-800 border-red-300',
-    in_progress: 'bg-orange-100 text-orange-800 border-orange-300',
-    closed: 'bg-green-100 text-green-800 border-green-300',
-    responded: 'bg-green-100 text-green-800 border-green-300',
-    resolved: 'bg-green-100 text-green-800 border-green-300',
+    pending: 'bg-warning-soft text-warning-strong border-warning-border',
+    in_progress: 'bg-info-soft text-info-strong border-info-border',
+    closed: 'bg-success-soft text-success-strong border-success-border',
+    // Backward compatibility for old status values
+    responded: 'bg-info-soft text-info-strong border-info-border',
+    resolved: 'bg-success-soft text-success-strong border-success-border',
   };
 
-  return configs[status || ''] || 'bg-gray-100 text-gray-800 border-gray-300';
+  return configs[status || ''] || 'bg-neutral-soft text-neutral-strong border-neutral-border';
 }
 
 /**
@@ -147,7 +154,8 @@ export function getStatusLabel(status: string | undefined | null): string {
     pending: 'BARU',
     in_progress: 'PROGRESS',
     closed: 'SELESAI',
-    responded: 'DIBALAS',
+    // Backward compatibility for old status values
+    responded: 'PROGRESS',
     resolved: 'SELESAI',
   };
 

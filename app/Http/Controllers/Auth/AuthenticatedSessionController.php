@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\TowerShowcase;
 use App\Traits\HandlesUserRedirects;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,10 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            // Positions for the model in the right-hand panel. See the note on
+            // TowerShowcase for why the login page is allowed to run a query
+            // for a drawing, and what it deliberately does not ask for.
+            'showcase' => TowerShowcase::panel(),
         ]);
     }
 

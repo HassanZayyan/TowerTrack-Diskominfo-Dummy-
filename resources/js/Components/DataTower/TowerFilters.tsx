@@ -26,21 +26,19 @@ export default function TowerFilters({
 }: TowerFiltersProps) {
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-lg sm:text-xl font-medium">Data Tower</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 justify-end md:justify-self-end w-full md:w-auto">
       <form onSubmit={onSearch} className="w-full">
-        <div className="flex items-stretch rounded-full overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-[#B71C1C]">
+        <div className="flex items-stretch rounded-md overflow-hidden border border-input focus-within:border-ring focus-within:ring focus-within:ring-offset-0">
           <input 
             type="text"
-            placeholder="Cari tower"
+            placeholder="Cari menara"
             className="w-full px-4 py-2 outline-none border-0 focus:ring-0"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <button 
             type="submit" 
-            className="bg-red-800 text-white px-3 sm:px-4 flex items-center justify-center shrink-0" 
-            style={{ backgroundColor: '#B71C1C' }}
+            className="bg-primary text-primary-foreground px-3 sm:px-4 flex items-center justify-center shrink-0 transition-colors hover:bg-primary-hover"
             aria-label="Cari"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -61,7 +59,7 @@ export default function TowerFilters({
             const params = buildFilterParams({ coord: v, page: 1 });
             router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
           }}
-          className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
+          className="w-full rounded-md border-input bg-background shadow-xs focus:border-ring focus:ring focus:ring-offset-0 text-base sm:text-sm"
         >
           <option value="all">Semua</option>
           <option value="with">Ada koordinat</option>
@@ -79,8 +77,8 @@ export default function TowerFilters({
             const params = buildFilterParams({ owner: v, page: 1 });
             router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
           }}
-          className="w-full rounded border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-base sm:text-sm"
-          title="Filter berdasarkan pemilik tower"
+          className="w-full rounded-md border-input bg-background shadow-xs focus:border-ring focus:ring focus:ring-offset-0 text-base sm:text-sm"
+          title="Filter berdasarkan pemilik menara"
         >
           <option value="all">Semua Pemilik</option>
           {uniqueOwners.map(owner => (

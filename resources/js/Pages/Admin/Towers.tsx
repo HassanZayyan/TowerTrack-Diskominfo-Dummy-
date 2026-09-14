@@ -1,11 +1,46 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import HeroSection from '@/Components/HeroSection';
+import PageHeader from '@/Components/PageHeader';
 import FilterPanel from '@/Components/Admin/FilterPanel';
 import { formatDateForInput as formatDateForInputHelper } from '@/utils/dateHelpers';
 import { useDebounce } from '@/Hooks/useDebounce';
 import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
+import { Button } from '@/Components/ui/button';
+import { Card } from '@/Components/ui/card';
+import { Badge } from '@/Components/ui/badge';
+import { cn } from '@/lib/utils';
+
+/**
+ * TOWER REGISTER — rebuilt as a register, not a feed of cards.
+ *
+ * What changed, and why. Presentation only: every handler, prop, route name and
+ * piece of Indonesian copy below is the one that was already there.
+ *
+ * 1. ONE action zone. "Tambah Tower" and "Import Excel" were rendered twice,
+ *    ~130px apart (hero actions, then a toolbar), and "Tambah Tower" a third time
+ *    in the empty state. They now sit once in the page header. The hero band went
+ *    with them: a CRUD register does not need a 150px marketing band to carry two
+ *    strings.
+ * 2. ONE search control. The field is already debounced (the useEffect below) and
+ *    still submits on Enter, so the separate "Cari" button was a third way to run
+ *    the same query. Removed; handleSearch is unchanged and still fires on Enter.
+ * 3. ONE results line. "Menampilkan N-M dari T" had a Card of its own AND a second
+ *    Card at the foot of the page. It is now the table's own toolbar, stated once.
+ * 4. ONE pagination block instead of two stacked Cards ("Menampilkan…" then
+ *    "Halaman X dari Y").
+ * 5. The per-tower Card feed became a table: 40px header row on bg-well with a
+ *    border-border-strong rule, 44px body rows, divide-border/70, header sticky
+ *    under the 64px app bar. The inline editor expands directly beneath the record
+ *    it edits. Below lg the same records render as a dense list and share the exact
+ *    same editor markup — it is defined once, not forked per breakpoint.
+ * 6. The "Dengan Ijin" KPI tile is GONE. towers.status_ijin is filled by
+ *    TowerSeeder with array_rand(['Aktif','Non-Aktif','Dalam Proses']), so any
+ *    aggregate over it is a histogram of rand(). Permit status is still shown and
+ *    edited per record — that is a field on a row, not a statistic. Its slot went
+ *    to statistics.average_height, which comes from imported tinggi_menara values
+ *    and was already in props but never displayed.
+ */
 
 interface Owner {
   id: number;
@@ -13,14 +48,14 @@ interface Owner {
   alamat: string;
 }
 
-interface Tower { 
-  id: number; 
-  site_name: string; 
-  latitude?: number | string | null; 
-  longitude?: number | string | null; 
-  tinggi_menara?: number | null; 
-  alamat_menara?: string | null; 
-  site_type?: string | null; 
+interface Tower {
+  id: number;
+  site_name: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  tinggi_menara?: number | null;
+  alamat_menara?: string | null;
+  site_type?: string | null;
   status_ijin?: string | null;
   owner?: string | null;
   owner_id?: string | null;
@@ -42,10 +77,10 @@ interface Tower {
   id_no_urut?: number | null;
 }
 
-interface Pagination<T> { 
-  data: T[]; 
-  current_page: number; 
-  last_page: number; 
+interface Pagination<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
   total?: number;
   per_page?: number;
   from?: number;
@@ -77,6 +112,78 @@ interface Props {
   }>;
 }
 
+/* ------------------------------------------------------------------ *
+ * Shared recipes. This screen used to re-type five spellings of the
+ * field label and four of the 16px muted icon. These are the only two.
+ * ------------------------------------------------------------------ */
+
+const LABEL = 'block text-sm font-medium text-foreground mb-1.5';
+const TH =
+  'h-10 border-b border-border-strong bg-well px-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground';
+const TD = 'px-3 py-1.5 align-middle text-sm text-foreground';
+/* 36px control + 4px of invisible hit area above and below = a 44px touch target
+   without pushing the row past its 44px height. */
+const TOUCH = "relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']";
+
+const ICON = {
+  search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+  close: 'M6 18L18 6M6 6l12 12',
+  filter:
+    'M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z',
+  plus: 'M12 6v6m0 0v6m0-6h6m-6 0H6',
+  upload:
+    'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12',
+  edit:
+    'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+  check: 'M5 13l4 4L19 7',
+  reset:
+    'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+  tower:
+    'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+  prev: 'M15 19l-7-7 7-7',
+  next: 'M9 5l7 7-7 7',
+  info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  pin: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z',
+  gear:
+    'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+  doc:
+    'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+} as const;
+
+const Ico: React.FC<{ d: string; className?: string }> = ({ d, className }) => (
+  <svg
+    className={cn('h-4 w-4 shrink-0', className)}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+  </svg>
+);
+
+/** Active-filter chip. Was nine copies of a hand-rolled <Badge variant="secondary">. */
+const FilterChip: React.FC<{ label: string; onRemove: () => void }> = ({ label, onRemove }) => (
+  <Badge variant="secondary" className="max-w-full gap-1 py-1 pr-1">
+    <span className="min-w-0 truncate" title={label}>
+      {label}
+    </span>
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Hapus filter ${label}`}
+      className={cn(
+        'rounded-sm p-0.5 transition-colors duration-140 ease-state hover:bg-foreground/10',
+        'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-1',
+        TOUCH,
+      )}
+    >
+      <Ico d={ICON.close} className="h-3 w-3" />
+    </button>
+  </Badge>
+);
+
 // FormInput component moved outside to prevent re-creation
 const FormInput: React.FC<{
   value: string | number | null | undefined;
@@ -89,9 +196,23 @@ const FormInput: React.FC<{
   className?: string;
   rows?: number;
 }> = ({ value, onChange, error, type = 'text', placeholder, disabled = false, options, className = '', rows }) => {
-  const baseClass = `w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-colors ${
-    error ? 'border-red-500 bg-red-50' : 'border-gray-300'
-  } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`;
+  // Invalid state stays red: it is the "this value is wrong" signal, not brand chrome.
+  const baseClass = cn(
+    'w-full rounded-md border bg-background px-3 text-sm text-foreground placeholder:text-placeholder',
+    'transition-colors duration-140 ease-state',
+    'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+    rows ? 'py-2' : 'h-9',
+    error ? 'border-destructive bg-destructive-soft' : 'border-input',
+    disabled && 'cursor-not-allowed bg-muted',
+    className,
+  );
+
+  const message = error ? (
+    <p className="mt-1 flex items-start gap-1 text-xs font-medium text-destructive-strong">
+      <Ico d={ICON.info} className="mt-px h-3.5 w-3.5" />
+      {error}
+    </p>
+  ) : null;
 
   if (options) {
     return (
@@ -107,7 +228,7 @@ const FormInput: React.FC<{
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {message}
       </div>
     );
   }
@@ -116,14 +237,14 @@ const FormInput: React.FC<{
     return (
       <div>
         <textarea
-          className={`${baseClass} resize-none`}
+          className={cn(baseClass, 'resize-none')}
           rows={rows}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
         />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {message}
       </div>
     );
   }
@@ -138,7 +259,7 @@ const FormInput: React.FC<{
         placeholder={placeholder}
         disabled={disabled}
       />
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {message}
     </div>
   );
 };
@@ -162,6 +283,22 @@ const PERMIT_STATUS_OPTIONS: OptionType[] = [
   { value: 'Expired', label: 'Expired' }
 ];
 
+const EDIT_TABS = [
+  { id: 'basic', label: 'Info Dasar', icon: ICON.info },
+  { id: 'location', label: 'Lokasi', icon: ICON.pin },
+  { id: 'technical', label: 'Teknis', icon: ICON.gear },
+  { id: 'permits', label: 'Perijinan', icon: ICON.doc },
+];
+
+/* Permit status is genuinely semantic per record: "Tidak Aktif" and "Expired"
+   stay red because they mean the permit does not cover this tower right now. */
+const permitVariant = (status?: string | null) =>
+  status === 'Aktif' ? 'success'
+  : status === 'Tidak Aktif' ? 'destructive'
+  : status === 'Pending' ? 'warning'
+  : status === 'Expired' ? 'destructive'
+  : 'secondary';
+
 const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) => {
   const [editing, setEditing] = useState<Record<number, Partial<Tower>>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -171,10 +308,10 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
   const [selectedOwners, setSelectedOwners] = useState<Record<number, { id: string; name: string; alamat: string }>>({});
-  
+
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  
+
   // Advanced Filter State
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -194,7 +331,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
 
   const updateField = useCallback((id: number, key: keyof Tower, value: any) => {
     setEditing(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
-    
+
     // Handle owner selection
     if (key === 'owner_id') {
       if (value === '') {
@@ -204,14 +341,14 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
           delete newState[id];
           return newState;
         });
-        setEditing(prev => ({ 
-          ...prev, 
-          [id]: { 
-            ...prev[id], 
+        setEditing(prev => ({
+          ...prev,
+          [id]: {
+            ...prev[id],
             owner_id: '',
             owner_name: '',
             owner_alamat: ''
-          } 
+          }
         }));
       } else {
         // Select existing owner
@@ -221,19 +358,19 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
             ...prev,
             [id]: { id: selectedOwner.id.toString(), name: selectedOwner.name, alamat: selectedOwner.alamat }
           }));
-          setEditing(prev => ({ 
-            ...prev, 
-            [id]: { 
-              ...prev[id], 
+          setEditing(prev => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
               owner_id: selectedOwner.id.toString(),
               owner_name: selectedOwner.name,
               owner_alamat: selectedOwner.alamat
-            } 
+            }
           }));
         }
       }
     }
-    
+
     // Clear validation error when user starts typing
     if (validationErrors[id]?.[key]) {
       setValidationErrors(prev => ({
@@ -303,7 +440,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
     // Validate alamat_menara (only required if tower doesn't already have one)
     const currentAlamatMenara = editData.alamat_menara !== undefined ? editData.alamat_menara : tower.alamat_menara;
     const hasExistingAddress = tower.alamat_menara && tower.alamat_menara.trim() !== '';
-    
+
     if (!hasExistingAddress && (!currentAlamatMenara || currentAlamatMenara.trim() === '')) {
       errors.alamat_menara = 'Alamat menara wajib diisi';
       hasErrors = true;
@@ -336,7 +473,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   const save = (id: number) => {
     if (validateRow(id)) {
       const editData = { ...editing[id] };
-      
+
       // Ensure owner data is properly included
       const selectedOwner = selectedOwners[id];
       if (selectedOwner) {
@@ -344,7 +481,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
         editData.owner_name = selectedOwner.name;
         editData.owner_alamat = selectedOwner.alamat;
       }
-      
+
       router.put(route('admin.towers.update', { tower: id }), editData, {
         onSuccess: () => {
           setEditing(prev => ({ ...prev, [id]: {} }));
@@ -378,7 +515,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   const startEditing = (id: number) => {
     setEditingRow(id);
     setActiveTab(prev => ({ ...prev, [id]: 'basic' }));
-    
+
     // Initialize owner data if tower has an owner
     const tower = towers.data.find(t => t.id === id);
     if (tower && tower.owner_id) {
@@ -393,7 +530,7 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   };
 
   const getActiveTab = (id: number) => activeTab[id] || 'basic';
-  
+
   const setTowerTab = (id: number, tab: string) => {
     setActiveTab(prev => ({ ...prev, [id]: tab }));
   };
@@ -404,15 +541,15 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   };
 
   const getEditValue = (tower: Tower, field: keyof Tower) => {
-    const value = editing[tower.id]?.[field] !== undefined 
-      ? editing[tower.id][field] 
+    const value = editing[tower.id]?.[field] !== undefined
+      ? editing[tower.id][field]
       : tower[field];
-    
+
     // Special handling for date fields
     if (field === 'tanggal_ijin' || field === 'berlaku_hingga') {
       return formatDateForInput(value as string);
     }
-    
+
     return value;
   };
 
@@ -522,10 +659,10 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
     });
     setSearchTerm('');
     setAppliedSearch('');
-    
-    router.get(route('admin.towers.index'), { 
-      page: 1, 
-      per_page: currentPerPage 
+
+    router.get(route('admin.towers.index'), {
+      page: 1,
+      per_page: currentPerPage
     }, { preserveState: true, preserveScroll: true, replace: true });
   };
 
@@ -581,195 +718,509 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
   // Use towers.data directly for display since filtering is handled server-side
   const displayedTowers = towers.data;
 
+  const isFiltered = Boolean(searchTerm) || hasActiveFilters();
+  const share = (n: number) => (statistics.total > 0 ? Math.round((n / statistics.total) * 100) : 0);
+  const averageHeight = Number(statistics.average_height ?? 0);
+
+  /* Only real, imported fields get a figure here. statistics.with_permits is
+     derived from status_ijin, which the seeder fills with array_rand() — it is a
+     per-record field further down, never a headline number. */
+  const statTiles = [
+    {
+      label: 'Total Menara',
+      value: statistics.total.toLocaleString('id-ID'),
+      unit: '',
+      hint: 'seluruh data terdaftar',
+      hintClass: 'text-muted-foreground',
+    },
+    {
+      label: 'Dengan Koordinat',
+      value: statistics.with_coordinates.toLocaleString('id-ID'),
+      unit: '',
+      hint: `${share(statistics.with_coordinates)}% dapat dipetakan`,
+      hintClass: 'text-muted-foreground',
+    },
+    {
+      label: 'Tanpa Koordinat',
+      value: statistics.without_coordinates.toLocaleString('id-ID'),
+      unit: '',
+      hint: `${share(statistics.without_coordinates)}% perlu dilengkapi`,
+      hintClass: 'text-warning-strong',
+    },
+    {
+      label: 'Rata-rata Tinggi',
+      value: averageHeight > 0 ? averageHeight.toFixed(1) : '-',
+      unit: averageHeight > 0 ? 'm' : '',
+      hint: 'dari data tinggi menara',
+      hintClass: 'text-muted-foreground',
+    },
+  ];
+
+  /* ---------------------------------------------------------------- *
+   * The inline editor. ONE definition, rendered inside the expanded
+   * table row on desktop and inside the list item below lg — the old
+   * layout would have needed two copies of 300 lines of form.
+   * ---------------------------------------------------------------- */
+  const renderEditor = (tower: Tower) => (
+    <div className="animate-rise-in">
+      {/* Tab rail */}
+      <div className="flex gap-1 overflow-x-auto border-b border-border/70 bg-well px-3 py-2">
+        {EDIT_TABS.map((tab) => {
+          const active = getActiveTab(tower.id) === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTowerTab(tower.id, tab.id)}
+              aria-pressed={active}
+              className={cn(
+                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-xs font-medium',
+                'transition-colors duration-140 ease-state',
+                'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+                TOUCH,
+                active
+                  ? 'border-primary-border bg-primary-soft text-primary-strong'
+                  : 'border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              )}
+            >
+              <Ico d={tab.icon} className="h-3.5 w-3.5" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Panel */}
+      <div className="bg-card px-3 py-4 sm:px-5">
+        {getActiveTab(tower.id) === 'basic' && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <label className={LABEL}>
+                Nama Site
+              </label>
+              <FormInput
+                value={getEditValue(tower, 'site_name')}
+                onChange={(value) => updateField(tower.id, 'site_name', value)}
+                error={getFieldError(tower.id, 'site_name')}
+                placeholder="Masukkan nama site"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>No Urut</label>
+              <FormInput
+                value={getEditValue(tower, 'id_no_urut')}
+                onChange={(value) => updateField(tower.id, 'id_no_urut', value)}
+                error={getFieldError(tower.id, 'id_no_urut')}
+                type="number"
+                placeholder="No urut"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Site ID</label>
+              <FormInput
+                value={getEditValue(tower, 'site_id')}
+                onChange={(value) => updateField(tower.id, 'site_id', value)}
+                error={getFieldError(tower.id, 'site_id')}
+                placeholder="Site ID"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Site SAP</label>
+              <FormInput
+                value={getEditValue(tower, 'site_sap')}
+                onChange={(value) => updateField(tower.id, 'site_sap', value)}
+                error={getFieldError(tower.id, 'site_sap')}
+                placeholder="Site SAP"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Owner</label>
+              <FormInput
+                value={selectedOwners[tower.id]?.id?.toString() || getEditValue(tower, 'owner_id')?.toString() || ''}
+                onChange={(value) => updateField(tower.id, 'owner_id', value)}
+                error={getFieldError(tower.id, 'owner_id')}
+                options={owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))}
+                placeholder="Pilih owner"
+              />
+            </div>
+            {selectedOwners[tower.id] && (
+              <div>
+                <label className={LABEL}>Alamat Owner</label>
+                <div className="rounded-md border border-border bg-well px-3 py-2 text-sm text-foreground">
+                  {selectedOwners[tower.id].alamat || 'Alamat tidak tersedia'}
+                </div>
+              </div>
+            )}
+            <div>
+              <label className={LABEL}>
+                Site Type <span className="font-normal text-muted-foreground">(Opsional)</span>
+              </label>
+              <FormInput
+                value={getEditValue(tower, 'site_type')}
+                onChange={(value) => updateField(tower.id, 'site_type', value)}
+                error={getFieldError(tower.id, 'site_type')}
+                options={SITE_TYPE_OPTIONS}
+                placeholder="Pilih site type"
+              />
+              <dl className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                <div className="flex gap-1.5">
+                  <dt className="font-medium text-foreground">GF:</dt>
+                  <dd>Ground Floor - Menara di lantai dasar</dd>
+                </div>
+                <div className="flex gap-1.5">
+                  <dt className="font-medium text-foreground">IBS:</dt>
+                  <dd>Integrated Building System - Sistem bangunan terintegrasi</dd>
+                </div>
+                <div className="flex gap-1.5">
+                  <dt className="font-medium text-foreground">RT:</dt>
+                  <dd>Rooftop - Menara di atas bangunan</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        )}
+
+        {getActiveTab(tower.id) === 'location' && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={LABEL}>Longitude</label>
+              <FormInput
+                value={getEditValue(tower, 'longitude')}
+                onChange={(value) => updateField(tower.id, 'longitude', value)}
+                error={getFieldError(tower.id, 'longitude')}
+                type="number"
+                placeholder="Contoh: 110.4203"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Latitude</label>
+              <FormInput
+                value={getEditValue(tower, 'latitude')}
+                onChange={(value) => updateField(tower.id, 'latitude', value)}
+                error={getFieldError(tower.id, 'latitude')}
+                type="number"
+                placeholder="Contoh: -7.7956"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={LABEL}>
+                Alamat Menara <span className="text-destructive-strong">*</span>
+              </label>
+              <FormInput
+                value={getEditValue(tower, 'alamat_menara')}
+                onChange={(value) => updateField(tower.id, 'alamat_menara', value)}
+                error={getFieldError(tower.id, 'alamat_menara')}
+                rows={3}
+                placeholder="Alamat lengkap lokasi menara"
+              />
+            </div>
+          </div>
+        )}
+
+        {getActiveTab(tower.id) === 'technical' && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className={LABEL}>Tinggi Menara (m)</label>
+              <FormInput
+                value={getEditValue(tower, 'tinggi_menara')}
+                onChange={(value) => updateField(tower.id, 'tinggi_menara', value)}
+                error={getFieldError(tower.id, 'tinggi_menara')}
+                type="number"
+                placeholder="Contoh: 42"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Tinggi Bangunan (m)</label>
+              <FormInput
+                value={getEditValue(tower, 'tinggi_bangunan')}
+                onChange={(value) => updateField(tower.id, 'tinggi_bangunan', value)}
+                error={getFieldError(tower.id, 'tinggi_bangunan')}
+                type="number"
+                placeholder="Contoh: 15"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Jumlah Pengguna</label>
+              <FormInput
+                value={getEditValue(tower, 'jumlah_pengguna')}
+                onChange={(value) => updateField(tower.id, 'jumlah_pengguna', value)}
+                error={getFieldError(tower.id, 'jumlah_pengguna')}
+                type="number"
+                placeholder="Jumlah operator"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Jumlah Kaki</label>
+              <FormInput
+                value={getEditValue(tower, 'jumlah_kaki')}
+                onChange={(value) => updateField(tower.id, 'jumlah_kaki', value)}
+                error={getFieldError(tower.id, 'jumlah_kaki')}
+                type="number"
+                placeholder="Contoh: 4"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Jenis Menara</label>
+              <FormInput
+                value={getEditValue(tower, 'tower_type')}
+                onChange={(value) => updateField(tower.id, 'tower_type', value)}
+                error={getFieldError(tower.id, 'tower_type')}
+                placeholder="Contoh: Lattice, Monopole"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>PRS</label>
+              <FormInput
+                value={getEditValue(tower, 'prs')}
+                onChange={(value) => updateField(tower.id, 'prs', value)}
+                error={getFieldError(tower.id, 'prs')}
+                placeholder="PRS"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>PRS ID</label>
+              <FormInput
+                value={getEditValue(tower, 'prs_id')}
+                onChange={(value) => updateField(tower.id, 'prs_id', value)}
+                error={getFieldError(tower.id, 'prs_id')}
+                placeholder="PRS ID"
+              />
+            </div>
+          </div>
+        )}
+
+        {getActiveTab(tower.id) === 'permits' && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <label className={LABEL}>Nomor Ijin</label>
+              <FormInput
+                value={getEditValue(tower, 'no_ijin')}
+                onChange={(value) => updateField(tower.id, 'no_ijin', value)}
+                error={getFieldError(tower.id, 'no_ijin')}
+                placeholder="Nomor ijin"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Jenis Ijin</label>
+              <FormInput
+                value={getEditValue(tower, 'jenis_ijin')}
+                onChange={(value) => updateField(tower.id, 'jenis_ijin', value)}
+                error={getFieldError(tower.id, 'jenis_ijin')}
+                options={PERMIT_TYPE_OPTIONS}
+                placeholder="Pilih jenis ijin"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Status Ijin</label>
+              <FormInput
+                value={getEditValue(tower, 'status_ijin')}
+                onChange={(value) => updateField(tower.id, 'status_ijin', value)}
+                error={getFieldError(tower.id, 'status_ijin')}
+                options={PERMIT_STATUS_OPTIONS}
+                placeholder="Pilih status ijin"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Tanggal Ijin</label>
+              <FormInput
+                value={getEditValue(tower, 'tanggal_ijin')}
+                onChange={(value) => updateField(tower.id, 'tanggal_ijin', value)}
+                error={getFieldError(tower.id, 'tanggal_ijin')}
+                type="date"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Berlaku Hingga</label>
+              <FormInput
+                value={getEditValue(tower, 'berlaku_hingga')}
+                onChange={(value) => updateField(tower.id, 'berlaku_hingga', value)}
+                error={getFieldError(tower.id, 'berlaku_hingga')}
+                type="date"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Commit bar. "Batal" sits on the record row; "Simpan" sits here. Once each. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 bg-well px-3 py-2 sm:px-5">
+        <p className="text-xs text-muted-foreground">
+          {hasChanges(tower.id)
+            ? 'Ada perubahan yang belum disimpan.'
+            : 'Ubah salah satu kolom untuk mengaktifkan Simpan.'}
+        </p>
+        <Button
+          onClick={() => save(tower.id)}
+          disabled={!hasChanges(tower.id)}
+          variant="success"
+          className="h-11 min-w-[112px] sm:h-10"
+        >
+          <Ico d={ICON.check} />
+          Simpan
+        </Button>
+      </div>
+    </div>
+  );
+
+  /* Page-number buttons. Same windowing maths as before, same 3-on-mobile /
+     5-on-desktop behaviour; only the chrome changed. */
+  const renderPageButtons = () => {
+    const maxPages = typeof window !== 'undefined' && window.innerWidth < 640 ? 3 : 5;
+
+    return Array.from({ length: Math.min(maxPages, last) }, (_, i) => {
+      let startPage = Math.max(1, page - Math.floor(maxPages / 2));
+      if (page > last - Math.floor(maxPages / 2)) {
+        startPage = Math.max(1, last - maxPages + 1);
+      }
+      if (startPage + maxPages - 1 > last) {
+        startPage = Math.max(1, last - maxPages + 1);
+      }
+      const pageNum = startPage + i;
+
+      if (pageNum > 0 && pageNum <= last) {
+        return (
+          <button
+            key={pageNum}
+            type="button"
+            onClick={() => changePage(pageNum)}
+            aria-current={pageNum === page ? 'page' : undefined}
+            className={cn(
+              'h-9 min-w-[36px] rounded-md border px-2 text-sm tabular-nums',
+              'transition-colors duration-140 ease-state',
+              'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+              TOUCH,
+              pageNum === page
+                ? 'border-primary-border bg-primary-soft font-medium text-primary-strong'
+                : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+            )}
+          >
+            {pageNum}
+          </button>
+        );
+      }
+      return null;
+    });
+  };
+
+  const pagerStepClass = cn(
+    'inline-flex h-9 items-center gap-1 rounded-md border border-input bg-background px-2.5 text-sm text-foreground',
+    'transition-colors duration-140 ease-state hover:bg-accent hover:text-accent-foreground',
+    'disabled:cursor-not-allowed disabled:opacity-50',
+    'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+    TOUCH,
+  );
+
+  const pagerEdgeClass = cn(
+    'h-9 min-w-[36px] rounded-md border border-input bg-background px-2 text-sm tabular-nums text-foreground',
+    'transition-colors duration-140 ease-state hover:bg-accent hover:text-accent-foreground',
+    'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+    TOUCH,
+  );
+
   return (
-    <AdminLayout title="Towers">
-      <Head title="Towers" />
-      
-      {/* Hero Section */}
-      <div className="mb-8">
-        <HeroSection
-          title="Kelola Data Tower"
-          subtitle="Kelola informasi lengkap tower telekomunikasi dan perbarui data sesuai kebutuhan"
-          variant="brand"
-          align="left"
-          actions={
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => router.get(route('admin.towers.create'))}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors shadow-sm w-full sm:w-auto"
-                style={{ 
-                  backgroundColor: '#FFD700', 
-                  color: '#B71C1C'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFC107';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFD700';
-                }}
-              >
-                + Tambah Tower
-              </button>
-              <Link
-                href={route('admin.towers.import')}
-                className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md font-medium w-full sm:w-auto"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
+    <AdminLayout title="Menara">
+      <Head title="Menara" />
+
+      {/* One action zone for the whole screen. */}
+      <PageHeader
+        title="Kelola Data Menara"
+        description="Kelola informasi lengkap menara telekomunikasi dan perbarui data sesuai kebutuhan"
+        showLogo={false}
+        className="mb-5"
+        actions={
+          <>
+            <Button onClick={() => router.get(route('admin.towers.create'))} className="h-11 flex-1 sm:h-10 sm:flex-none">
+              <Ico d={ICON.plus} />
+              Tambah Tower
+            </Button>
+            <Button asChild variant="outline" className="h-11 flex-1 sm:h-10 sm:flex-none">
+              <Link href={route('admin.towers.import')}>
+                <Ico d={ICON.upload} />
                 Import Excel
               </Link>
-            </div>
-          }
-        />
+            </Button>
+          </>
+        }
+      />
+
+      {/* Register figures. Hairline-separated, no icon tiles, no invented deltas. */}
+      <div className="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border/70 lg:grid-cols-4">
+        {statTiles.map((tile) => (
+          <div key={tile.label} className="bg-card px-4 py-3">
+            <p className="truncate text-sm text-muted-foreground" title={tile.label}>
+              {tile.label}
+            </p>
+            <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+              {tile.value}
+              {tile.unit && (
+                <span className="ml-1 text-sm font-normal text-muted-foreground">{tile.unit}</span>
+              )}
+            </p>
+            <p className={cn('mt-0.5 truncate text-xs', tile.hintClass)}>{tile.hint}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Statistics and Search */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Total Towers</h3>
-              <p className="text-3xl font-bold text-red-600">{statistics.total}</p>
-            </div>
-            <div className="bg-red-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
+      {/* Toolbar: one wrapping row on the inset ground, not a grid of equal columns. */}
+      <Card variant="well" padding="dense" className="mb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
+            <Ico
+              d={ICON.search}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-placeholder"
+            />
+            <input
+              type="text"
+              placeholder="Cari nama site, site ID, atau owner..."
+              aria-label="Cari nama site, site ID, atau owner"
+              className={cn(
+                'h-10 w-full rounded-md border border-input bg-background pl-9 pr-10 text-sm',
+                'text-foreground placeholder:text-placeholder transition-colors duration-140 ease-state',
+                'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+              )}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                }}
+                aria-label="Hapus kata kunci pencarian"
+                className={cn(
+                  'absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md',
+                  'text-placeholder transition-colors duration-140 ease-state hover:bg-accent hover:text-foreground',
+                  'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-1',
+                  TOUCH,
+                )}
+              >
+                <Ico d={ICON.close} />
+              </button>
+            )}
           </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Dengan Ijin</h3>
-              <p className="text-3xl font-bold text-green-600">{statistics.with_permits}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Dengan Koordinat</h3>
-              <p className="text-3xl font-bold text-yellow-600">{statistics.with_coordinates}</p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Tanpa Koordinat</h3>
-              <p className="text-3xl font-bold text-red-600">{statistics.without_coordinates}</p>
-            </div>
-            <div className="bg-red-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Search and Filter */}
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
-        <div className="space-y-4">
-          {/* Search Input */}
-          <div className="w-full">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari nama site, site ID, atau owner..."
-                className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm sm:text-base"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {searchTerm && (
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                  }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 hover:text-gray-600"
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex flex-col xs:flex-row gap-2 sm:gap-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${
-                showFilters || hasActiveFilters()
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              <span>Filter</span>
-              {hasActiveFilters() && (
-                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-1">
-                  {getActiveFilterCount()}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={handleSearch}
-              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span>Cari</span>
-            </button>
-            <button
-              onClick={() => router.get(route('admin.towers.create'))}
-              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="hidden xs:inline">Tambah Tower</span>
-              <span className="xs:hidden">Tambah</span>
-            </button>
-            <Link
-              href={route('admin.towers.import')}
-              className="flex-1 xs:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2 text-sm sm:text-base font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              <span className="hidden xs:inline">Import Excel</span>
-              <span className="xs:hidden">Import</span>
-            </Link>
-          </div>
+          <Button
+            onClick={() => setShowFilters(!showFilters)}
+            variant={showFilters || hasActiveFilters() ? 'default' : 'outline'}
+            aria-expanded={showFilters}
+            className="h-11 sm:h-10"
+          >
+            <Ico d={ICON.filter} />
+            <span>Filter</span>
+            {hasActiveFilters() && (
+              <span className="rounded-full bg-white/25 px-1.5 text-xs tabular-nums">
+                {getActiveFilterCount()}
+              </span>
+            )}
+          </Button>
         </div>
-        
-        {/* Filter Panel */}
-        {showFilters && (
+      </Card>
+
+      {/* Filter Panel — on the page, not nested inside another card. */}
+      {showFilters && (
+        <div className="mb-3">
           <FilterPanel
             filters={filters}
             owners={owners}
@@ -782,821 +1233,445 @@ const TowersPage: React.FC<Props> = ({ towers, owners, statistics, allTowers }) 
             onClearAllFilters={clearAllFilters}
             hasActiveFilters={hasActiveFilters()}
           />
-        )}
-      </div>
-
-      {/* Results Summary and Active Filters */}
-      {(searchTerm || hasActiveFilters() || displayedTowers.length > 0) && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            {/* Results Count */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span>
-                Menampilkan <strong>{towers.from || 0}-{towers.to || 0}</strong> dari <strong>{towers.total || 0}</strong> tower
-                {(searchTerm || hasActiveFilters()) && (
-                  <span className="text-red-600 ml-1">(hasil pencarian/filter)</span>
-                )}
-              </span>
-            </div>
-            
-            {/* Active Filters Tags */}
-            {hasActiveFilters() && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">Filter aktif:</span>
-                
-                {searchTerm && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    Pencarian: "{searchTerm}"
-                    <button
-                      onClick={() => {
-                        setSearchTerm('');
-                      }}
-                      className="ml-1 hover:bg-red-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.owner !== 'all' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                    Owner: {filters.owner}
-                    <button
-                      onClick={() => {
-                        updateFilter('owner', 'all');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-green-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.tower_type !== 'all' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                    Jenis: {filters.tower_type}
-                    <button
-                      onClick={() => {
-                        updateFilter('tower_type', 'all');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-purple-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.site_type !== 'all' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                    Site: {filters.site_type}
-                    <button
-                      onClick={() => {
-                        updateFilter('site_type', 'all');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-yellow-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.status_ijin !== 'all' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                    Ijin: {filters.status_ijin}
-                    <button
-                      onClick={() => {
-                        updateFilter('status_ijin', 'all');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-red-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.has_coordinates !== 'all' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
-                    Koordinat: {filters.has_coordinates === 'yes' ? 'Ada' : 'Tidak Ada'}
-                    <button
-                      onClick={() => {
-                        updateFilter('has_coordinates', 'all');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.has_permits !== 'all' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-pink-100 text-pink-800 text-xs rounded-full">
-                    Ijin: {filters.has_permits === 'yes' ? 'Ada' : 'Tidak Ada'}
-                    <button
-                      onClick={() => {
-                        updateFilter('has_permits', 'all');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-pink-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {(filters.height_range.min || filters.height_range.max) && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-                    Tinggi: {filters.height_range.min || '0'}m - {filters.height_range.max || '∞'}m
-                    <button
-                      onClick={() => {
-                        updateHeightRange('min', '');
-                        updateHeightRange('max', '');
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-orange-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                {filters.selected_tower_id && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full">
-                    Tower: {filters.location_search}
-                    <button
-                      onClick={() => {
-                        clearTowerSelection();
-                        applyFilters();
-                      }}
-                      className="ml-1 hover:bg-teal-200 rounded-full p-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                
-                <button
-                  onClick={clearAllFilters}
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full hover:bg-gray-200 transition-colors"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Reset Semua
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Main Content - Card-based Layout */}
-      <div className="space-y-4 sm:space-y-6">
-        {displayedTowers.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-6 sm:p-12 text-center">
-            <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
-              {searchTerm || hasActiveFilters() 
-                ? 'Tidak ada data tower yang sesuai dengan kriteria pencarian'
-                : 'Belum ada data tower'
-              }
-            </h3>
-            <p className="text-sm sm:text-base text-gray-600 mb-4">
-              {searchTerm || hasActiveFilters() 
-                ? 'Coba ubah filter atau kata kunci pencarian'
-                : 'Data tower akan muncul di sini setelah ditambahkan'
-              }
+      {/* Active filters: one row of chips, one reset. */}
+      {hasActiveFilters() && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Filter aktif:</span>
+
+          {searchTerm && (
+            <FilterChip
+              label={`Pencarian: "${searchTerm}"`}
+              onRemove={() => {
+                setSearchTerm('');
+              }}
+            />
+          )}
+
+          {filters.owner !== 'all' && (
+            <FilterChip
+              label={`Owner: ${filters.owner}`}
+              onRemove={() => {
+                updateFilter('owner', 'all');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {filters.tower_type !== 'all' && (
+            <FilterChip
+              label={`Jenis: ${filters.tower_type}`}
+              onRemove={() => {
+                updateFilter('tower_type', 'all');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {filters.site_type !== 'all' && (
+            <FilterChip
+              label={`Site: ${filters.site_type}`}
+              onRemove={() => {
+                updateFilter('site_type', 'all');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {filters.status_ijin !== 'all' && (
+            <FilterChip
+              label={`Ijin: ${filters.status_ijin}`}
+              onRemove={() => {
+                updateFilter('status_ijin', 'all');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {filters.has_coordinates !== 'all' && (
+            <FilterChip
+              label={`Koordinat: ${filters.has_coordinates === 'yes' ? 'Ada' : 'Tidak Ada'}`}
+              onRemove={() => {
+                updateFilter('has_coordinates', 'all');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {filters.has_permits !== 'all' && (
+            <FilterChip
+              label={`Ijin: ${filters.has_permits === 'yes' ? 'Ada' : 'Tidak Ada'}`}
+              onRemove={() => {
+                updateFilter('has_permits', 'all');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {(filters.height_range.min || filters.height_range.max) && (
+            <FilterChip
+              label={`Tinggi: ${filters.height_range.min || '0'}m - ${filters.height_range.max || '∞'}m`}
+              onRemove={() => {
+                updateHeightRange('min', '');
+                updateHeightRange('max', '');
+                applyFilters();
+              }}
+            />
+          )}
+
+          {filters.selected_tower_id && (
+            <FilterChip
+              label={`Tower: ${filters.location_search}`}
+              onRemove={() => {
+                clearTowerSelection();
+                applyFilters();
+              }}
+            />
+          )}
+
+          <Button onClick={clearAllFilters} variant="ghost" size="sm" className={cn('h-8', TOUCH)}>
+            <Ico d={ICON.reset} className="h-3.5 w-3.5" />
+            Reset Semua
+          </Button>
+        </div>
+      )}
+
+      {/* ------------------------------ Register ------------------------------ */}
+      <Card padding="none" className="overflow-hidden">
+        {/* Table toolbar — the one place the result count is stated. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Daftar Menara</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Menampilkan{' '}
+              <span className="font-medium tabular-nums text-foreground">
+                {towers.from || 0}-{towers.to || 0}
+              </span>{' '}
+              dari <span className="font-medium tabular-nums text-foreground">{towers.total || 0}</span> tower
+              {isFiltered && <span className="text-primary-strong"> (hasil pencarian/filter)</span>}
             </p>
-            {searchTerm || hasActiveFilters() ? (
-              <button 
-                onClick={() => {
-                  setSearchTerm('');
-                  clearAllFilters();
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
-              >
-                Reset Pencarian
-              </button>
-            ) : (
-              <button 
-                onClick={() => router.get(route('admin.towers.create'))}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
-              >
-                Tambah Tower Pertama
-              </button>
-            )}
+          </div>
+          {editingRow !== null && (
+            <Badge variant="warning" className="shrink-0">
+              <Ico d={ICON.edit} className="h-3 w-3" />
+              Sedang diedit
+            </Badge>
+          )}
+        </div>
+
+        {displayedTowers.length === 0 ? (
+          <div className="p-3">
+            <Card variant="well" padding="spacious" className="text-center">
+              <Ico d={ICON.tower} className="mx-auto h-8 w-8 text-placeholder" />
+              <h3 className="mt-3 text-base font-semibold tracking-tight text-foreground">
+                {searchTerm || hasActiveFilters()
+                  ? 'Tidak ada data menara yang sesuai dengan kriteria pencarian'
+                  : 'Belum ada data menara'
+                }
+              </h3>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                {searchTerm || hasActiveFilters()
+                  ? 'Coba ubah filter atau kata kunci pencarian'
+                  : 'Data tower akan muncul di sini setelah ditambahkan'
+                }
+              </p>
+              <div className="mt-4 flex justify-center">
+                {searchTerm || hasActiveFilters() ? (
+                  <Button
+                    onClick={() => {
+                      setSearchTerm('');
+                      clearAllFilters();
+                    }}
+                    variant="outline"
+                    className="h-11"
+                  >
+                    <Ico d={ICON.reset} />
+                    Reset Pencarian
+                  </Button>
+                ) : (
+                  <Button onClick={() => router.get(route('admin.towers.create'))} className="h-11">
+                    <Ico d={ICON.plus} />
+                    Tambah Tower Pertama
+                  </Button>
+                )}
+              </div>
+            </Card>
           </div>
         ) : (
-          displayedTowers.map((tower) => (
-            <div key={tower.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
-              {/* Card Header */}
-              <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                <div className="flex items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
-                    <div className="bg-red-100 p-2 rounded-lg flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{tower.site_name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">
-                        {tower.owner && `Owner: ${tower.owner}`}
-                        {tower.site_id && ` • ID: ${tower.site_id}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                    {isEditing(tower.id) ? (
-                      <>
-                        <button
-                          onClick={() => save(tower.id)}
-                          disabled={!hasChanges(tower.id)}
-                          className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                            hasChanges(tower.id)
-                              ? 'bg-green-600 text-white hover:bg-green-700'
-                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          }`}
-                        >
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="hidden sm:inline">Simpan</span>
-                          <span className="sm:hidden">Save</span>
-                        </button>
-                        <button
-                          onClick={() => resetEditing(tower.id)}
-                          className="px-3 sm:px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-xs sm:text-sm"
-                        >
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          <span className="hidden sm:inline">Batal</span>
-                          <span className="sm:hidden">×</span>
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => startEditing(tower.id)}
-                        className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
-                      >
-                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Tab Navigation - only show when editing */}
-                {isEditing(tower.id) && (
-                  <div className="mt-4 border-t pt-4">
-                    <div className="overflow-x-auto">
-                      <nav className="flex space-x-2 min-w-max pb-2">
-                        {[
-                          { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                          { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
-                          { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-                          { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
-                        ].map((tab) => (
-                          <button
-                            key={tab.id}
-                            onClick={() => setTowerTab(tower.id, tab.id)}
-                            className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                              getActiveTab(tower.id) === tab.id
-                                ? 'bg-red-100 text-red-700 border border-red-300'
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
-                            }`}
-                          >
-                            <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                            </svg>
-                            <span className="inline">{tab.label}</span>
-                          </button>
-                        ))}
-                      </nav>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Card Content */}
-              <div className="p-4 sm:p-6">
-                {isEditing(tower.id) ? (
-                  // Edit Mode with Tabs
-                  <div>
-                    {getActiveTab(tower.id) === 'basic' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Nama Site
-                          </label>
-                          <FormInput 
-                            value={getEditValue(tower, 'site_name')}
-                            onChange={(value) => updateField(tower.id, 'site_name', value)}
-                            error={getFieldError(tower.id, 'site_name')}
-                            placeholder="Masukkan nama site"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">No Urut</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'id_no_urut')}
-                            onChange={(value) => updateField(tower.id, 'id_no_urut', value)}
-                            error={getFieldError(tower.id, 'id_no_urut')}
-                            type="number"
-                            placeholder="No urut"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Site ID</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'site_id')}
-                            onChange={(value) => updateField(tower.id, 'site_id', value)}
-                            error={getFieldError(tower.id, 'site_id')}
-                            placeholder="Site ID"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Site SAP</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'site_sap')}
-                            onChange={(value) => updateField(tower.id, 'site_sap', value)}
-                            error={getFieldError(tower.id, 'site_sap')}
-                            placeholder="Site SAP"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
-                          <FormInput 
-                            value={selectedOwners[tower.id]?.id?.toString() || getEditValue(tower, 'owner_id')?.toString() || ''}
-                            onChange={(value) => updateField(tower.id, 'owner_id', value)}
-                            error={getFieldError(tower.id, 'owner_id')}
-                            options={owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))}
-                            placeholder="Pilih owner"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        {selectedOwners[tower.id] && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Owner</label>
-                            <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
-                              {selectedOwners[tower.id].alamat || 'Alamat tidak tersedia'}
-                            </div>
-                          </div>
+          <>
+            {/* Desktop: a real table. table-fixed + truncate, so the register never
+                scrolls sideways and the sticky header can track page scroll under
+                the 64px app bar. Long Indonesian values truncate with a title. */}
+            <div className="hidden lg:block">
+              <table className="w-full table-fixed border-collapse">
+                <thead className="sticky top-16 z-10">
+                  <tr className="border-b border-border-strong bg-well">
+                    <th scope="col" className={cn(TH, 'w-[24%]')}>Site</th>
+                    <th scope="col" className={cn(TH, 'w-[15%]')}>Owner</th>
+                    <th scope="col" className={cn(TH, 'w-[21%]')}>Lokasi</th>
+                    <th scope="col" className={cn(TH, 'w-[10%] text-right')}>Tinggi</th>
+                    <th scope="col" className={cn(TH, 'w-[11%]')}>Tipe</th>
+                    <th scope="col" className={cn(TH, 'w-[12%]')}>Status Ijin</th>
+                    <th scope="col" className={cn(TH, 'w-[7%] text-right')}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {displayedTowers.map((tower) => (
+                    <React.Fragment key={tower.id}>
+                      <tr
+                        className={cn(
+                          'h-11 transition-colors duration-140 ease-state',
+                          isEditing(tower.id) ? 'bg-primary-soft/40' : 'hover:bg-accent/60',
                         )}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Site Type <span className="text-gray-500">(Opsional)</span>
-                          </label>
-                          <FormInput 
-                            value={getEditValue(tower, 'site_type')}
-                            onChange={(value) => updateField(tower.id, 'site_type', value)}
-                            error={getFieldError(tower.id, 'site_type')}
-                            options={SITE_TYPE_OPTIONS}
-                            placeholder="Pilih site type"
-                            disabled={!isEditing(tower.id)}
-                          />
-                          <div className="text-xs text-gray-500 mt-1 space-y-1">
-                            <p><span className="font-medium">GF:</span> Ground Floor - Menara di lantai dasar</p>
-                            <p><span className="font-medium">IBS:</span> Integrated Building System - Sistem bangunan terintegrasi</p>
-                            <p><span className="font-medium">RT:</span> Rooftop - Menara di atas bangunan</p>
+                      >
+                        <td className={TD}>
+                          <div className="truncate font-medium leading-tight" title={tower.site_name}>
+                            {tower.site_name}
                           </div>
-                        </div>
-                      </div>
-                    )}
+                          <div className="truncate text-xs leading-tight text-muted-foreground">
+                            {tower.site_id ? `ID ${tower.site_id}` : 'Tanpa Site ID'}
+                            {tower.site_sap ? ` • SAP ${tower.site_sap}` : ''}
+                          </div>
+                        </td>
 
-                    {getActiveTab(tower.id) === 'location' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'longitude')}
-                            onChange={(value) => updateField(tower.id, 'longitude', value)}
-                            error={getFieldError(tower.id, 'longitude')}
-                            type="number"
-                            placeholder="Contoh: 110.4203"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'latitude')}
-                            onChange={(value) => updateField(tower.id, 'latitude', value)}
-                            error={getFieldError(tower.id, 'latitude')}
-                            type="number"
-                            placeholder="Contoh: -7.7956"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Alamat Menara <span className="text-red-500">*</span>
-                          </label>
-                          <FormInput 
-                            value={getEditValue(tower, 'alamat_menara')}
-                            onChange={(value) => updateField(tower.id, 'alamat_menara', value)}
-                            error={getFieldError(tower.id, 'alamat_menara')}
-                            rows={3}
-                            placeholder="Alamat lengkap lokasi menara"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                      </div>
-                    )}
+                        <td className={TD}>
+                          <span className="block truncate" title={tower.owner || undefined}>
+                            {tower.owner || <span className="text-placeholder">-</span>}
+                          </span>
+                        </td>
 
-                    {getActiveTab(tower.id) === 'technical' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'tinggi_menara')}
-                            onChange={(value) => updateField(tower.id, 'tinggi_menara', value)}
-                            error={getFieldError(tower.id, 'tinggi_menara')}
-                            type="number"
-                            placeholder="Contoh: 42"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Bangunan (m)</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'tinggi_bangunan')}
-                            onChange={(value) => updateField(tower.id, 'tinggi_bangunan', value)}
-                            error={getFieldError(tower.id, 'tinggi_bangunan')}
-                            type="number"
-                            placeholder="Contoh: 15"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pengguna</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'jumlah_pengguna')}
-                            onChange={(value) => updateField(tower.id, 'jumlah_pengguna', value)}
-                            error={getFieldError(tower.id, 'jumlah_pengguna')}
-                            type="number"
-                            placeholder="Jumlah operator"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Kaki</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'jumlah_kaki')}
-                            onChange={(value) => updateField(tower.id, 'jumlah_kaki', value)}
-                            error={getFieldError(tower.id, 'jumlah_kaki')}
-                            type="number"
-                            placeholder="Contoh: 4"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Tower Type</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'tower_type')}
-                            onChange={(value) => updateField(tower.id, 'tower_type', value)}
-                            error={getFieldError(tower.id, 'tower_type')}
-                            placeholder="Contoh: Lattice, Monopole"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">PRS</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'prs')}
-                            onChange={(value) => updateField(tower.id, 'prs', value)}
-                            error={getFieldError(tower.id, 'prs')}
-                            placeholder="PRS"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">PRS ID</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'prs_id')}
-                            onChange={(value) => updateField(tower.id, 'prs_id', value)}
-                            error={getFieldError(tower.id, 'prs_id')}
-                            placeholder="PRS ID"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                      </div>
-                    )}
+                        <td className={TD}>
+                          <div className="truncate leading-tight" title={tower.alamat_menara || undefined}>
+                            {tower.alamat_menara || <span className="text-placeholder">-</span>}
+                          </div>
+                          <div className="truncate text-xs leading-tight tabular-nums text-muted-foreground">
+                            {tower.latitude && tower.longitude
+                              ? `${tower.latitude}, ${tower.longitude}`
+                              : <span className="text-warning-strong">Tanpa koordinat</span>}
+                          </div>
+                        </td>
 
-                    {getActiveTab(tower.id) === 'permits' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'no_ijin')}
-                            onChange={(value) => updateField(tower.id, 'no_ijin', value)}
-                            error={getFieldError(tower.id, 'no_ijin')}
-                            placeholder="Nomor ijin"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Ijin</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'jenis_ijin')}
-                            onChange={(value) => updateField(tower.id, 'jenis_ijin', value)}
-                            error={getFieldError(tower.id, 'jenis_ijin')}
-                            options={PERMIT_TYPE_OPTIONS}
-                            placeholder="Pilih jenis ijin"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Ijin</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'tanggal_ijin')}
-                            onChange={(value) => updateField(tower.id, 'tanggal_ijin', value)}
-                            error={getFieldError(tower.id, 'tanggal_ijin')}
-                            type="date"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Berlaku Hingga</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'berlaku_hingga')}
-                            onChange={(value) => updateField(tower.id, 'berlaku_hingga', value)}
-                            error={getFieldError(tower.id, 'berlaku_hingga')}
-                            type="date"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
-                          <FormInput 
-                            value={getEditValue(tower, 'status_ijin')}
-                            onChange={(value) => updateField(tower.id, 'status_ijin', value)}
-                            error={getFieldError(tower.id, 'status_ijin')}
-                            options={PERMIT_STATUS_OPTIONS}
-                            placeholder="Pilih status ijin"
-                            disabled={!isEditing(tower.id)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  // View Mode
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Informasi Dasar</h4>
-                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600 font-medium">ID:</span> <span className="ml-1">{tower.site_id || '-'}</span></p>
-                        <p><span className="text-gray-600 font-medium">SAP:</span> <span className="ml-1">{tower.site_sap || '-'}</span></p>
-                        <p><span className="text-gray-600 font-medium">Owner:</span> <span className="ml-1 break-words">{tower.owner || '-'}</span></p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Lokasi</h4>
-                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600 font-medium">Koordinat:</span> <span className="ml-1 break-all">{tower.latitude && tower.longitude ? `${tower.latitude}, ${tower.longitude}` : '-'}</span></p>
-                        <p><span className="text-gray-600 font-medium">Alamat:</span> <span className="ml-1 break-words">{tower.alamat_menara || '-'}</span></p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Teknis</h4>
-                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-                        <p><span className="text-gray-600 font-medium">Tinggi Menara:</span> <span className="ml-1">{tower.tinggi_menara ? `${tower.tinggi_menara}m` : '-'}</span></p>
-                        <p><span className="text-gray-600 font-medium">Tinggi Bangunan:</span> <span className="ml-1">{tower.tinggi_bangunan ? `${tower.tinggi_bangunan}m` : '-'}</span></p>
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-gray-600 font-medium">Tower Type:</span>
-                          {hasValidValue(tower.tower_type) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 w-fit">
+                        <td className={cn(TD, 'text-right tabular-nums')}>
+                          <div className="leading-tight">
+                            {tower.tinggi_menara
+                              ? `${tower.tinggi_menara} m`
+                              : <span className="text-placeholder">-</span>}
+                          </div>
+                          {tower.tinggi_bangunan ? (
+                            <div className="truncate text-xs leading-tight text-muted-foreground">
+                              Bangunan {tower.tinggi_bangunan} m
+                            </div>
+                          ) : null}
+                        </td>
+
+                        <td className={TD}>
+                          {hasValidValue(tower.site_type) ? (
+                            <Badge className="max-w-full">
+                              <span className="min-w-0 truncate" title={getDisplayValue(tower.site_type, SITE_TYPE_OPTIONS)}>
+                                {tower.site_type}
+                              </span>
+                            </Badge>
+                          ) : (
+                            <span className="text-placeholder">-</span>
+                          )}
+                          <div
+                            className="truncate text-xs leading-tight text-muted-foreground"
+                            title={tower.tower_type || undefined}
+                          >
+                            {tower.tower_type || ''}
+                          </div>
+                        </td>
+
+                        <td className={TD}>
+                          {hasValidValue(tower.status_ijin) ? (
+                            <Badge variant={permitVariant(tower.status_ijin)} className="max-w-full">
+                              <span
+                                className="min-w-0 truncate"
+                                title={getDisplayValue(tower.status_ijin, PERMIT_STATUS_OPTIONS)}
+                              >
+                                {getDisplayValue(tower.status_ijin, PERMIT_STATUS_OPTIONS)}
+                              </span>
+                            </Badge>
+                          ) : (
+                            <span className="text-placeholder">-</span>
+                          )}
+                          <div
+                            className="truncate text-xs leading-tight text-muted-foreground"
+                            title={tower.no_ijin || undefined}
+                          >
+                            {tower.no_ijin || ''}
+                          </div>
+                        </td>
+
+                        <td className={cn(TD, 'text-right')}>
+                          {isEditing(tower.id) ? (
+                            <Button
+                              onClick={() => resetEditing(tower.id)}
+                              variant="outline"
+                              size="sm"
+                              className={cn('h-9', TOUCH)}
+                            >
+                              <Ico d={ICON.close} />
+                              Batal
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => startEditing(tower.id)}
+                              variant="outline"
+                              size="sm"
+                              className={cn('h-9', TOUCH)}
+                              aria-label={`Edit ${tower.site_name}`}
+                            >
+                              <Ico d={ICON.edit} />
+                              Edit
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+
+                      {isEditing(tower.id) && (
+                        <tr>
+                          <td colSpan={7} className="border-t border-border-strong p-0">
+                            {renderEditor(tower)}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Below lg: the same register as a dense list, sharing one editor. */}
+            <ul className="divide-y divide-border/70 lg:hidden">
+              {displayedTowers.map((tower) => (
+                <li key={tower.id} className={cn(isEditing(tower.id) && 'bg-primary-soft/30')}>
+                  <div className="flex items-start gap-3 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-sm font-medium leading-tight text-foreground"
+                        title={tower.site_name}
+                      >
+                        {tower.site_name}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {tower.site_id ? `ID ${tower.site_id}` : 'Tanpa Site ID'}
+                        {tower.owner ? ` • ${tower.owner}` : ''}
+                      </p>
+                      <p
+                        className="mt-0.5 truncate text-xs text-muted-foreground"
+                        title={tower.alamat_menara || undefined}
+                      >
+                        {tower.alamat_menara || '-'}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {hasValidValue(tower.site_type) && <Badge>{tower.site_type}</Badge>}
+                        {hasValidValue(tower.tower_type) && (
+                          <Badge variant="neutral" className="max-w-[140px]">
+                            <span className="min-w-0 truncate" title={tower.tower_type || undefined}>
                               {tower.tower_type}
                             </span>
-                          ) : (
-                            <span className="ml-1">-</span>
-                          )}
-                        </div>
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-gray-600 font-medium">Site Type:</span>
-                          {hasValidValue(tower.site_type) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
-                              {getDisplayValue(tower.site_type, SITE_TYPE_OPTIONS)}
-                            </span>
-                          ) : (
-                            <span className="ml-1">-</span>
-                          )}
-                        </div>
+                          </Badge>
+                        )}
+                        {hasValidValue(tower.status_ijin) && (
+                          <Badge variant={permitVariant(tower.status_ijin)}>
+                            {getDisplayValue(tower.status_ijin, PERMIT_STATUS_OPTIONS)}
+                          </Badge>
+                        )}
+                        {tower.tinggi_menara ? (
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {tower.tinggi_menara} m
+                          </span>
+                        ) : null}
+                        {!(tower.latitude && tower.longitude) && (
+                          <span className="text-xs text-warning-strong">Tanpa koordinat</span>
+                        )}
                       </div>
                     </div>
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Perijinan & PRS</h4>
-                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-gray-600 font-medium">Status Ijin:</span>
-                          {hasValidValue(tower.status_ijin) ? (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium w-fit ${
-                              tower.status_ijin === 'Aktif' ? 'bg-green-100 text-green-800' :
-                              tower.status_ijin === 'Tidak Aktif' ? 'bg-red-100 text-red-800' :
-                              tower.status_ijin === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                              tower.status_ijin === 'Expired' ? 'bg-orange-100 text-orange-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {getDisplayValue(tower.status_ijin, PERMIT_STATUS_OPTIONS)}
-                            </span>
-                          ) : (
-                            <span className="ml-1">-</span>
-                          )}
-                        </div>
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-gray-600 font-medium">PRS:</span>
-                          {hasValidValue(tower.prs) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 w-fit">
-                              {tower.prs}
-                            </span>
-                          ) : (
-                            <span className="ml-1">-</span>
-                          )}
-                        </div>
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-gray-600 font-medium">PRS ID:</span>
-                          {hasValidValue(tower.prs_id) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
-                              {tower.prs_id}
-                            </span>
-                          ) : (
-                            <span className="ml-1">-</span>
-                          )}
-                        </div>
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-gray-600 font-medium">No Ijin:</span>
-                          {hasValidValue(tower.no_ijin) ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 w-fit">
-                              {tower.no_ijin}
-                            </span>
-                          ) : (
-                            <span className="ml-1">-</span>
-                          )}
-                        </div>
-                      </div>
+
+                    <div className="shrink-0">
+                      {isEditing(tower.id) ? (
+                        <Button onClick={() => resetEditing(tower.id)} variant="outline" className="h-11">
+                          <Ico d={ICON.close} />
+                          Batal
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => startEditing(tower.id)}
+                          variant="outline"
+                          className="h-11"
+                          aria-label={`Edit ${tower.site_name}`}
+                        >
+                          <Ico d={ICON.edit} />
+                          Edit
+                        </Button>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          ))
+
+                  {isEditing(tower.id) && (
+                    <div className="border-t border-border-strong">{renderEditor(tower)}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-      </div>
 
-      {/* Data Display Controls */}
-      <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-lg p-3 sm:p-4">
-        <div className="flex justify-center sm:justify-end">
-          <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span className="text-center sm:text-left">
-                <span className="hidden sm:inline">Menampilkan </span><span className="font-semibold text-gray-800">{towers.from || 1}</span> - <span className="font-semibold text-gray-800">{towers.to || towers.data.length}</span> dari{' '}
-                <span className="font-semibold text-gray-800">{total}</span> data
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* One pagination block: position in the set, then the pager. */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-well px-3 py-2">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium tabular-nums text-foreground">Halaman {page} dari {last}</span>
+            <span className="ml-2 tabular-nums">{total} total tower</span>
+          </p>
 
-      {/* Simplified Navigation */}
-      <div className="mt-4 bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-            <span className="font-medium">Halaman {page} dari {last}</span>
-            <span className="text-gray-500 ml-1 sm:ml-2">• {total} total tower</span>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1">
             <button
+              type="button"
               disabled={page <= 1}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-xs sm:text-sm"
               onClick={() => changePage(page - 1)}
+              className={pagerStepClass}
             >
-              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <Ico d={ICON.prev} />
               <span className="hidden xs:inline">Sebelum</span>
-              <span className="xs:hidden">‹</span>
             </button>
-            
-            {/* Page numbers - Simplified to show sequential numbers */}
-            <div className="flex items-center gap-0.5 sm:gap-1">
-              {/* First page button if not on first few pages */}
-              {page > 2 && (
-                <>
-                  <button
-                    onClick={() => changePage(1)}
-                    className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                  >
-                    1
-                  </button>
-                  {page > 3 && <span className="text-gray-500 text-xs sm:text-sm">...</span>}
-                </>
-              )}
-              
-              {/* Show at most 3 sequential page numbers on mobile, 5 on desktop */}
-              {Array.from({ length: Math.min(window.innerWidth < 640 ? 3 : 5, last) }, (_, i) => {
-                // Calculate start page to ensure we have at most 3/5 pages centered on current page
-                const maxPages = window.innerWidth < 640 ? 3 : 5;
-                let startPage = Math.max(1, page - Math.floor(maxPages / 2));
-                if (page > last - Math.floor(maxPages / 2)) {
-                  startPage = Math.max(1, last - maxPages + 1);
-                }
-                if (startPage + maxPages - 1 > last) {
-                  startPage = Math.max(1, last - maxPages + 1);
-                }
-                const pageNum = startPage + i;
-                
-                // Only render if pageNum is valid
-                if (pageNum > 0 && pageNum <= last) {
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => changePage(pageNum)}
-                      className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
-                        pageNum === page
-                          ? 'bg-red-50 border border-red-200 text-red-700 font-medium'
-                          : 'border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                }
-                return null;
-              })}
-              
-              {/* Last page button if not on last few pages */}
-              {page < last - 1 && (
-                <>
-                  {page < last - 2 && <span className="text-gray-500 text-xs sm:text-sm">...</span>}
-                  <button
-                    onClick={() => changePage(last)}
-                    className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                  >
-                    {last}
-                  </button>
-                </>
-              )}
-            </div>
-            
+
+            {page > 2 && (
+              <>
+                <button type="button" onClick={() => changePage(1)} className={pagerEdgeClass}>
+                  1
+                </button>
+                {page > 3 && <span className="px-0.5 text-xs text-muted-foreground">...</span>}
+              </>
+            )}
+
+            {renderPageButtons()}
+
+            {page < last - 1 && (
+              <>
+                {page < last - 2 && <span className="px-0.5 text-xs text-muted-foreground">...</span>}
+                <button type="button" onClick={() => changePage(last)} className={pagerEdgeClass}>
+                  {last}
+                </button>
+              </>
+            )}
+
             <button
+              type="button"
               disabled={page >= last}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center gap-1 text-xs sm:text-sm"
               onClick={() => changePage(page + 1)}
+              className={pagerStepClass}
             >
               <span className="hidden xs:inline">Berikut</span>
-              <span className="xs:hidden">›</span>
-              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <Ico d={ICON.next} />
             </button>
           </div>
         </div>
-      </div>
+      </Card>
     </AdminLayout>
   );
 };
 
 export default TowersPage;
-
-

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
 import ModalBackdrop from '@/Components/ModalBackdrop';
 import ModalContainer from '@/Components/ModalContainer';
@@ -95,15 +96,25 @@ const DetailModal: React.FC<DetailModalProps> = ({
   // Prevent body scroll saat modal terbuka
   useBodyScrollLock(isOpen);
   
-  if (!isOpen || !data) return null;
+  // Only `data` short-circuits the render now. `isOpen` has moved into the
+  // AnimatePresence below, because a component that returns null the instant it
+  // closes gives AnimatePresence nothing to animate out — the modal would still
+  // vanish between two paints, which is the bug being fixed.
+  //
+  // Safe because the call sites keep the selected record when they close: on
+  // /data-tower the handler is `onClose={() => setDetailModalOpen(false)}` and
+  // `selectedTower` is left alone, so `data` is still there to render during
+  // the leave. It also has to stay a guard rather than move into the JSX,
+  // because buildActionButtons() dereferences `data.id` at render time.
+  if (!data) return null;
 
   // Default theme colors
   const defaultTheme: Required<DetailModalTheme> = {
-    headerBgColor: '#B71C1C',
-    headerTextColor: '#FFD700',
-    headerIconColor: '#FFD700',
-    primaryColor: '#B71C1C',
-    secondaryColor: '#1B5E20',
+    headerBgColor: 'hsl(var(--primary))',
+    headerTextColor: 'hsl(var(--primary-foreground))',
+    headerIconColor: 'hsl(var(--primary-foreground))',
+    primaryColor: 'hsl(var(--primary))',
+    secondaryColor: 'hsl(var(--success))',
     ...theme
   };
 
@@ -223,7 +234,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
       icon: 'close',
       onClick: onClose,
       variant: 'default',
-      style: { backgroundColor: '#212121' }
+      style: { backgroundColor: 'hsl(var(--foreground))' }
     });
 
     // Download Report button
@@ -250,8 +261,9 @@ const DetailModal: React.FC<DetailModalProps> = ({
   );
 
   return (
-    <>
-      <ModalBackdrop onClick={onClose} opacity={60} blur zIndex={50}>
+    <AnimatePresence>
+      {isOpen && (
+      <ModalBackdrop key="detail-modal" onClick={onClose} opacity={60} blur zIndex={50}>
         <div 
           className="h-full flex items-center justify-center p-3 sm:p-4"
           onClick={(e) => e.stopPropagation()}
@@ -296,11 +308,11 @@ const DetailModal: React.FC<DetailModalProps> = ({
             >
               {showDetailSelector && (
                 <div className="mb-4 sm:mb-6">
-                  <label className="block text-gray-700 mb-2 text-sm">Pilih Informasi yang Ingin Dilihat:</label>
+                  <label className="block text-foreground mb-2 text-sm">Pilih Informasi yang Ingin Dilihat:</label>
                   <select 
                     value={selectedDetail}
                     onChange={handleDetailChange}
-                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent focus:outline-none"
+                    className="w-full p-2 text-sm border border-input rounded-lg focus:ring-2 focus:border-transparent focus:outline-none"
                     style={{ '--tw-ring-color': defaultTheme.primaryColor } as React.CSSProperties}
                   >
                     <option>-- Pilih Detail --</option>
@@ -312,7 +324,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
               )}
               
               {showDetailSelector && selectedDetail !== '-- Pilih Detail --' && (
-                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border mb-4 sm:mb-6">
+                <div className="bg-muted p-3 sm:p-4 rounded-lg border mb-4 sm:mb-6">
                   <h4 className="font-medium mb-2 text-sm sm:text-base">
                     {allFieldsWithOption.find(f => f.id === selectedDetail)?.label}:
                   </h4>
@@ -320,7 +332,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
                     <div className="space-y-2">
                       {fields.map(field => (
                         <div key={field.id} className="border-b pb-2 last:border-b-0">
-                          <h5 className="text-xs sm:text-sm font-medium text-gray-600">{field.label}:</h5>
+                          <h5 className="text-xs sm:text-sm font-medium text-muted-foreground">{field.label}:</h5>
                           <p className="text-sm sm:text-base break-words">
                             {formatDetailValue(field.id, data[field.id], field)}
                           </p>
@@ -345,7 +357,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
                     
                     return (
                       <div key={key} className="min-w-0">
-                        <h4 className="font-medium text-sm text-gray-700">{label}</h4>
+                        <h4 className="font-medium text-sm text-foreground">{label}</h4>
                         <p className="text-sm break-words">{value}</p>
                       </div>
                     );
@@ -357,25 +369,32 @@ const DetailModal: React.FC<DetailModalProps> = ({
               {imageGallery.length > 0 && imageGallery.some(img => img.url && img.url.trim() !== '') && (
                 <div className="mt-6 sm:mt-8">
                   <div className="flex items-center mb-4">
-                    <div className="mr-3 p-2 bg-gray-100 rounded-lg">
-                      <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="mr-3 p-2 bg-muted rounded-lg">
+                      <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <h4 className="text-lg font-bold text-gray-900">Dokumentasi Gambar</h4>
+                    <h4 className="text-lg font-bold text-foreground">Dokumentasi Gambar</h4>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {imageGallery.map((image) => {
                       const hasValidUrl = image.url && image.url !== '-' && image.url.trim() !== '';
-                      const color = image.color || 'blue';
-                      const bgColorClass = color === 'red' ? 'bg-red-100' : color === 'green' ? 'bg-green-100' : 'bg-blue-100';
-                      const textColorClass = color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : 'text-blue-600';
-                      const buttonBgClass = color === 'red' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 
-                                           color === 'green' ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 
-                                           'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
+                      // `image.color` is ignored on purpose.
+                      //
+                      // It painted one photo tile red and the next green for
+                      // what is only "which kind of photograph this is". On a
+                      // palette where red means irreversible and green means
+                      // healthy, that told the reader something untrue about
+                      // documentation. Every tile is neutral now and the label
+                      // underneath does the identifying, which is what it was
+                      // already there for.
+                      const bgColorClass = 'bg-muted';
+                      const textColorClass = 'text-muted-foreground';
+                      const buttonBgClass =
+                        'bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:ring';
                       
                       return (
-                        <div key={image.id} className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={image.id} className="bg-card rounded-lg p-4 border border-border shadow-sm hover:shadow-md transition-shadow">
                           <div className="text-center">
                             <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${bgColorClass}`}>
                               {image.id === 'isp' && (
@@ -399,13 +418,13 @@ const DetailModal: React.FC<DetailModalProps> = ({
                                 </svg>
                               )}
                             </div>
-                            <label className="block text-sm font-bold text-gray-700 mb-3">
+                            <label className="block text-sm font-bold text-foreground mb-3">
                               {image.label}
                             </label>
                             {hasValidUrl ? (
                               <button
                                 onClick={() => window.open(image.url!, '_blank', 'noopener,noreferrer')}
-                                className={`w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonBgClass}`}
+                                className={`w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors duration-200 transform  focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonBgClass}`}
                                 title={`Lihat gambar ${image.label}`}
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,7 +434,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
                                 Lihat Gambar
                               </button>
                             ) : (
-                              <div className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-lg cursor-not-allowed border-2 border-dashed border-gray-300">
+                              <div className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-muted-foreground bg-muted rounded-lg cursor-not-allowed border-2 border-dashed border-input">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
                                 </svg>
@@ -517,7 +536,8 @@ const DetailModal: React.FC<DetailModalProps> = ({
           </ModalContainer>
         </div>
       </ModalBackdrop>
-    </>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -543,8 +563,8 @@ const TowerDetailModal: React.FC<TowerDetailModalProps> = ({
 
   // Tower-specific field definitions
   const towerFields: DetailField[] = [
-    { id: 'id', label: 'ID Tower' },
-    { id: 'site_name', label: 'Nama Tower' },
+    { id: 'id', label: 'ID Menara' },
+    { id: 'site_name', label: 'Nama Menara' },
     { id: 'owner', label: 'Pemilik/Owner' },
     { id: 'site_id', label: 'Site ID' },
     { id: 'site_sap', label: 'Site SAP' },
@@ -582,8 +602,8 @@ const TowerDetailModal: React.FC<TowerDetailModalProps> = ({
     },
     { id: 'jumlah_pengguna', label: 'Jumlah Pengguna' },
     { id: 'jumlah_kaki', label: 'Jumlah Kaki/Legs' },
-    { id: 'alamat_menara', label: 'Alamat Tower' },
-    { id: 'tower_type', label: 'Tower Type' },
+    { id: 'alamat_menara', label: 'Alamat Menara' },
+    { id: 'tower_type', label: 'Jenis Menara' },
     { id: 'site_type', label: 'Tipe Site' },
     { id: 'no_ijin', label: 'Nomor Ijin' },
     { id: 'tanggal_ijin', label: 'Tanggal Ijin' },
@@ -597,7 +617,7 @@ const TowerDetailModal: React.FC<TowerDetailModalProps> = ({
   // Summary fields for quick view
   const summaryFields = [
     { key: 'id', label: 'ID' },
-    { key: 'site_name', label: 'Nama Tower' },
+    { key: 'site_name', label: 'Nama Menara' },
     { key: 'owner', label: 'Owner' },
     { 
       key: 'coordinates', 
@@ -622,7 +642,7 @@ const TowerDetailModal: React.FC<TowerDetailModalProps> = ({
   // Custom download report handler
   const handleDownloadReport = (data: Record<string, any>, fields: DetailField[]) => {
     const reportContent = [];
-    reportContent.push(`Detail Tower - ${data.site_name}`);
+    reportContent.push(`Detail Menara - ${data.site_name}`);
     
     fields.forEach(field => {
       let value = data[field.id] || 'N/A';
@@ -647,7 +667,7 @@ const TowerDetailModal: React.FC<TowerDetailModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       data={tower}
-      title="Detail Tower"
+      title="Detail Menara"
       fields={towerFields}
       summaryFields={summaryFields}
       onViewMap={onViewMap}
@@ -881,13 +901,11 @@ export const FoPointDetailModal: React.FC<FoPointDetailModalProps> = ({
         location_type: 'fo_point'
       })}
       imageGallery={imageGallery}
-      theme={{
-        headerBgColor: '#DC2626',
-        headerTextColor: '#FFFFFF',
-        headerIconColor: '#FFD700',
-        primaryColor: '#DC2626',
-        secondaryColor: '#1B5E20'
-      }}
+      // No theme override. It used to force #DC2626 — --destructive, the
+      // colour this palette reserves for irreversible actions — onto the header
+      // and the primary buttons of a read-only detail view, plus #1B5E20, a
+      // green belonging to no ramp here. The component's own defaults are the
+      // brand and success tokens, which is what every other dialog wears.
     />
   );
 };

@@ -29,8 +29,11 @@ export default function ResetPassword({
     };
 
     return (
-        <GuestLayout>
-            <Head title="Reset Password" />
+        <GuestLayout
+            title="Atur Ulang Password"
+            subtitle="Buat password baru untuk akun Anda"
+        >
+            <Head title="Atur Ulang Password" />
 
             <form onSubmit={submit}>
                 <div>

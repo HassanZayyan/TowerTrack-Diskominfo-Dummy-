@@ -22,7 +22,7 @@ class MessagesController extends Controller
             ->get();
 
         $feedbacks = Feedback::with($this->getFeedbackRelationships())
-            ->select('id', 'user_id', 'feedbackable_type', 'feedbackable_id', 'email', 'sender_name', 'sender_phone', 'category', 'message', 'status', 'reporter_latitude', 'reporter_longitude', 'reporter_accuracy', 'location_captured_at', 'is_public', 'created_at', 'updated_at')
+            ->select('id', 'user_id', 'feedbackable_type', 'feedbackable_id', 'email', 'sender_name', 'sender_phone', 'category', 'message', 'status_id', 'sender_latitude', 'sender_longitude', 'sender_accuracy', 'location_captured_at', 'is_public', 'created_at', 'updated_at')
             ->orderByDesc('created_at')
             ->get();
 

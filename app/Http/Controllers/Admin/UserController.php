@@ -14,7 +14,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         // Get pagination parameters
-        $perPage = max(1, min(100, (int) $request->get('per_page', 15)));
+        $perPage = max(1, min(100, (int) $request->get('per_page', 5)));
         $page = max(1, (int) $request->get('page', 1));
 
         // Include soft deleted users with pagination
@@ -80,7 +80,7 @@ class UserController extends Controller
             // Gunakan "sometimes" agar field hanya divalidasi ketika ada di request,
             // memungkinkan pembaruan parsial seperti hanya mengganti status banned.
             'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,'.$user->id,
+            'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'role' => 'sometimes|required|in:admin,operator,complainant,tower_owner,provider_owner',
             'provider_name' => 'required_if:role,provider_owner|string|max:255',
             'password' => 'nullable|string|min:8',
@@ -95,11 +95,11 @@ class UserController extends Controller
             // If provider_name is provided, update/create provider
             if (isset($validated['provider_name']) && !empty($validated['provider_name'])) {
                 $providerName = $validated['provider_name'];
-                
+
                 try {
                     // Find or create provider, exclude current user from duplicate check
                     $provider = FoProvider::findOrCreateForOwner($providerName, $user);
-                    
+
                     // Update provider assignment
                     if ($user->fo_provider_id && $user->fo_provider_id !== $provider->id) {
                         // User had a different provider, update to new one
@@ -160,23 +160,23 @@ class UserController extends Controller
         if ($user->id === auth()->id()) {
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
         }
-        
+
         $user->delete(); // Soft delete
-        
+
         return back()->with('success', "User '{$user->name}' berhasil dinonaktifkan. User dapat diaktifkan kembali jika diperlukan.");
     }
 
     public function restore($id)
     {
         $user = User::withTrashed()->findOrFail($id);
-        
+
         // Prevent self-restore if user is trying to restore themselves (edge case)
         if ($user->id === auth()->id() && $user->trashed()) {
             return back()->with('error', 'Anda tidak dapat mengaktifkan kembali akun Anda sendiri.');
         }
-        
+
         $user->restore();
-        
+
         return back()->with('success', "User '{$user->name}' berhasil diaktifkan kembali.");
     }
 }

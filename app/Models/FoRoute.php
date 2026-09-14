@@ -353,10 +353,20 @@ class FoRoute extends Model
 
     /**
      * Get random color untuk jalur.
+     *
+     * The pool is the categorical series from resources/js/lib/map-palette.ts,
+     * which is the same five colours the map draws routes with. It used to be
+     * six stock Tailwind hues led by #3B82F6, none of which belonged to this
+     * palette and one of which is the blue the map rules out entirely.
+     *
+     * Nothing calls this today — it is kept because route creation is the
+     * obvious place for it to come back, and a wrong palette waiting to be
+     * picked up is worse than no palette.
      */
     private static function getRandomColor()
     {
-        $colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+        $colors = ['#982700', '#00888E', '#6B005C', '#5F9D00', '#C06DFF'];
+
         return $colors[array_rand($colors)];
     }
 

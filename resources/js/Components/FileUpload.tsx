@@ -119,8 +119,8 @@ export default function FileUpload({
       );
     } else {
       return (
-        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-          <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+        <div className="w-full h-full bg-muted flex items-center justify-center">
+          <svg className="w-8 h-8 text-placeholder" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
           </svg>
         </div>
@@ -131,13 +131,13 @@ export default function FileUpload({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-gray-700 font-medium mb-2">
-          {label} {required && <span className="text-red-600">*</span>}
+        <label className="block text-foreground font-medium mb-2">
+          {label} {required && <span className="text-destructive-strong">*</span>}
         </label>
       )}
       
       <div className="flex items-center flex-wrap gap-3">
-        <label className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-300 transition-colors">
+        <label className="flex items-center justify-center px-4 py-2 bg-muted text-foreground rounded-lg cursor-pointer hover:bg-border-strong transition-colors">
           <span>Pilih File</span>
           <input 
             type="file" 
@@ -148,12 +148,12 @@ export default function FileUpload({
             multiple
           />
         </label>
-        <span className="text-gray-600">
+        <span className="text-muted-foreground">
           {files.length > 0 ? `${files.length} file dipilih` : 'Belum ada file dipilih'}
         </span>
       </div>
       
-      <p className="text-gray-500 text-sm mt-2">
+      <p className="text-muted-foreground text-sm mt-2">
         Format yang didukung: {acceptedExtensions.join(', ').toUpperCase()}. 
         Maksimal {Math.round(maxSizeBytes / (1024 * 1024))}MB per file. 
         Maksimal {maxFiles} file.
@@ -163,18 +163,18 @@ export default function FileUpload({
         <div className="mt-4 flex flex-wrap gap-3">
           {files.map((file, index) => (
             <div key={index} className="relative group">
-              <div className="w-20 h-20 rounded overflow-hidden border border-gray-300">
+              <div className="w-20 h-20 rounded overflow-hidden border border-input">
                 {getFileIcon(file)}
               </div>
               
               <div className="absolute -top-2 -right-2 flex gap-1">
-                <span className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded shadow">
+                <span className="bg-neutral text-white text-xs px-1 py-0.5 rounded shadow">
                   {file.type.startsWith('image/') ? 'IMG' : 'VID'}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
-                  className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow"
+                  className="bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive transition-colors shadow"
                   title="Hapus file"
                 >
                   ×
@@ -184,7 +184,7 @@ export default function FileUpload({
               {/* File info tooltip on hover */}
               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-1 rounded-b opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div className="truncate">{file.name}</div>
-                <div className="text-gray-300">{formatFileSize(file.size)}</div>
+                <div className="text-muted-foreground">{formatFileSize(file.size)}</div>
               </div>
             </div>
           ))}

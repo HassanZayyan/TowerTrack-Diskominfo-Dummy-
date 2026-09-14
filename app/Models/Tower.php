@@ -24,6 +24,7 @@ class Tower extends Model
         'jumlah_pengguna',
         'jumlah_kaki',
         'alamat_menara',
+        'kecamatan',
         'tower_type',
         'site_type',
         'no_ijin',

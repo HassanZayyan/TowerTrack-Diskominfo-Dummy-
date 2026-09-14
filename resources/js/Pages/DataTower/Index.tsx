@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import AppBar from '@/Components/AppBar';
 import Footer from '@/Components/Footer';
 import HeroSection from '@/Components/HeroSection';
+import HeroIsoArt from '@/Components/HeroIsoArt';
 import AnimatedButton from '@/Components/AnimatedButton';
 import TowerDetailModal from '@/Components/DetailModal';
 import AlertToast from '@/Components/AlertToast';
@@ -236,74 +237,55 @@ export default function DataTowerIndex({
         show: true,
         type: 'warning',
         title: 'Koordinat Belum Terdata',
-        message: 'Tower ini belum memiliki titik koordinat yang valid, sehingga tidak dapat ditampilkan di peta.',
+        message: 'Menara ini belum memiliki titik koordinat yang valid, sehingga tidak dapat ditampilkan di peta.',
       });
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <Head title="Data Tower" />
+    <div className="min-h-screen bg-canvas flex flex-col">
+      <Head title="Data Menara" />
       
       {/* App Bar */}
       <AppBar currentPage="/data-tower" />
       
-      {/* Full Screen Hero Section - Outside MainLayout */}
+      {/* Hero. Identical configuration to /data-fo — same variant, same
+          align, same (absent) fullScreen — so the two public pages share one
+          band height instead of the 474px/425px they used to render. */}
       <HeroSection
-        title={<>
-          Selamat datang di TowerTrack
-          <span className="block sm:inline sm:ml-2">Monitoring Infrastruktur Kabupaten Semarang</span>
-        </>}
-        subtitle="Pantau persebaran infrastruktur, jangkauan, dan data penting lainnya dalam satu tempat."
+        eyebrow="Kabupaten Semarang"
+        title="Data Menara Telekomunikasi"
+        subtitle="Pantau sebaran menara, jangkauan, dan perizinan infrastruktur telekomunikasi dalam satu tempat."
         variant="brand"
-        align="center"
-        backgroundImage="/images/hero-section.png"
-        fullScreen={true}
+        align="left"
+        art={<HeroIsoArt variant="tower" />}
+        fullScreen
         actions={
           <>
             <AnimatedButton
-              variant="glass"
+              variant="primary"
               size="lg"
-              animation="scale"
-              onClick={() => {
-                const mapElement = document.getElementById('map-section');
-                if (mapElement) mapElement.scrollIntoView({ behavior: 'smooth' });
-              }}
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-              }
+              onClick={() => document.getElementById('map-section')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Lihat Peta
             </AnimatedButton>
             <AnimatedButton
-              variant="primary"
+              variant="outline"
               size="lg"
-              animation="glow"
-              onClick={() => {
-                const tableTop = document.querySelector('#data-table-top');
-                if (tableTop) (tableTop as HTMLElement).scrollIntoView({ behavior: 'smooth' });
-              }}
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              }
+              onClick={() => document.querySelector('#data-table-top')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Lihat Tabel
             </AnimatedButton>
           </>
         }
       />
-      
+
       {/* Content Section */}
       <div className="flex-1">
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-          <main className="py-6">
-            <div className="p-4 sm:p-6">
-              {/* Statistics Header */}
-              <TowerStats 
+        <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-10">
+          <main className="py-5 space-y-5">
+              {/* Statistik + layanan, rapat di satu baris. */}
+              <TowerStats
                 total={total}
                 towers={towers}
                 mapMarkersCount={markers.length}
@@ -311,8 +293,10 @@ export default function DataTowerIndex({
                 totalActiveTowers={totalActiveTowers}
               />
 
-              {/* Map Section */}
-              <StaggeredContainer delay={200} animationType="fadeInUp" duration={300}>
+
+              {/* Map Section — the subject of this page, so it comes first and
+                  carries the only elevated surface on the screen. */}
+              <StaggeredContainer delay={0} animationType="fadeInUp" duration={260}>
                 <TowerMap
                   markers={markers}
                   measureEnabled={measureEnabled}
@@ -332,9 +316,9 @@ export default function DataTowerIndex({
               </StaggeredContainer>
 
               {/* Table Section */}
-              <StaggeredContainer delay={250} animationType="fadeInUp" duration={300}>
-                <div className="bg-white rounded-lg shadow" id="data-table-top">
-                <div className="p-4 border-b">
+              <StaggeredContainer delay={80} animationType="fadeInUp" duration={260}>
+                <div className="rounded-lg border border-border bg-card shadow-xs" id="data-table-top">
+                <div className="border-b border-border bg-well p-4 rounded-t-lg">
                   <TowerFilters
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
@@ -361,7 +345,6 @@ export default function DataTowerIndex({
                 </div>
                 </div>
               </StaggeredContainer>
-            </div>
           </main>
         </div>
       </div>

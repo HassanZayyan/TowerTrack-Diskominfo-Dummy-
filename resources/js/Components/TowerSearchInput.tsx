@@ -19,7 +19,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     
     // Add highlighted match
     result.push(
-      <mark key={`highlight-${index}`} className="bg-yellow-200 font-medium">
+      <mark key={`highlight-${index}`} className="bg-selected text-selected-foreground font-medium">
         {text.slice(match.start, match.end)}
       </mark>
     );
@@ -60,7 +60,7 @@ export default function TowerSearchInput({
   onTowerSelect,
   onClear,
   placeholder = "Ketik minimal 1 karakter untuk mencari...",
-  label = "Lokasi Tower",
+  label = "Lokasi Menara",
   required = false,
   error = false,
   errorMessage,
@@ -203,8 +203,8 @@ export default function TowerSearchInput({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-gray-700 font-medium mb-2">
-          {label} {required && <span className="text-red-600">*</span>}
+        <label className="block text-foreground font-medium mb-2">
+          {label} {required && <span className="text-destructive-strong">*</span>}
         </label>
       )}
       
@@ -231,8 +231,8 @@ export default function TowerSearchInput({
           aria-controls="tower-listbox"
           aria-autocomplete="list"
           readOnly={!!hasSelection}
-          className={`w-full rounded-lg border ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-[#B71C1C] p-3 pr-10 ${hasSelection ? 'bg-gray-50 cursor-default' : ''}`}
-          style={{ '--tw-ring-color': '#B71C1C', outline: 'none' } as React.CSSProperties}
+          className={`w-full rounded-lg border ${error ? 'border-destructive-strong' : 'border-input'} focus:outline-none focus-visible:outline-none focus:ring-2 focus:border-primary p-3 pr-10 ${hasSelection ? 'bg-muted cursor-default' : ''}`}
+          
         />
         
         {/* Clear/Edit button */}
@@ -240,7 +240,7 @@ export default function TowerSearchInput({
           <button
             type="button"
             onClick={clearSelection}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-placeholder hover:text-muted-foreground transition-colors"
             title={hasSelection ? "Ubah pilihan" : "Hapus"}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,18 +254,18 @@ export default function TowerSearchInput({
           <div 
             id="tower-listbox" 
             role="listbox" 
-            className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-lg max-h-60 overflow-auto border border-gray-300"
+            className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-lg max-h-60 overflow-auto border border-input"
           >
             {filteredTowers.length === 0 ? (
-              <div className="p-4 text-gray-500 text-center">
+              <div className="p-4 text-muted-foreground text-center">
                 {searchTerm.trim().length === 0 
-                  ? 'Mulai mengetik nama atau alamat tower...' 
+                  ? 'Mulai mengetik nama atau alamat menara...' 
                   : (
                     <div>
-                        <div className="mb-2">Tidak ditemukan tower dengan kata kunci:</div>
-                      <div className="font-medium text-gray-700">"{searchTerm}"</div>
-                      <div className="text-xs mt-2 text-gray-400">
-                        💡 Coba gunakan kata kunci yang lebih umum atau periksa ejaan
+                        <div className="mb-2">Tidak ditemukan menara dengan kata kunci:</div>
+                        <div className="font-medium text-foreground">"{searchTerm}"</div>
+                      <div className="text-xs mt-2 text-placeholder">
+                        Coba gunakan kata kunci yang lebih umum atau periksa ejaan
                       </div>
                     </div>
                   )
@@ -273,8 +273,8 @@ export default function TowerSearchInput({
               </div>
             ) : (
               <>
-                <div className="px-4 py-2 bg-blue-50 border-b text-xs text-blue-700 font-medium">
-                  ✓ {filteredTowers.length} tower ditemukan untuk "{searchTerm}"
+                <div className="px-4 py-2 bg-muted border-b text-xs text-neutral-strong font-medium">
+                  {filteredTowers.length} tower ditemukan untuk "{searchTerm}"
                 </div>
                 {filteredTowers.map((tower, index) => (
                   <div
@@ -284,22 +284,22 @@ export default function TowerSearchInput({
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => selectTower(tower)}
-                    className={`p-4 cursor-pointer border-b last:border-b-0 transition-all duration-150 ${
+                    className={`p-4 cursor-pointer border-b last:border-b-0 transition-colors duration-150 ${
                       index === activeIndex 
-                        ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                        : 'hover:bg-gray-50'
+                        ? 'bg-muted border-border shadow-sm' 
+                        : 'hover:bg-accent hover:text-accent-foreground'
                     }`}
                   >
-                    <div className="font-medium text-gray-900 mb-1">
-                      🏢 {highlightMatch(tower.site_name, searchTerm)}
+                    <div className="font-medium text-foreground mb-1">
+                      {highlightMatch(tower.site_name, searchTerm)}
                     </div>
                     {tower.alamat_menara && (
-                      <div className="text-sm text-gray-600">
-                        📍 {highlightMatch(tower.alamat_menara, searchTerm)}
+                      <div className="text-sm text-muted-foreground">
+                        {highlightMatch(tower.alamat_menara, searchTerm)}
                       </div>
                     )}
                     {index === activeIndex && (
-                      <div className="text-xs text-blue-600 mt-2 font-medium">
+                      <div className="text-xs text-neutral-strong mt-2 font-medium">
                         ⏎ Tekan Enter untuk memilih
                       </div>
                     )}
@@ -312,11 +312,11 @@ export default function TowerSearchInput({
       </div>
       
       {error && errorMessage && (
-        <p className="text-red-500 text-sm mt-1">{errorMessage}</p>
+        <p className="text-destructive-strong text-sm mt-1">{errorMessage}</p>
       )}
       
       {searchTerm && !showDropdown && !hasSelection && (
-        <p className="text-yellow-600 text-sm mt-1">Klik pada field untuk melihat hasil pencarian</p>
+        <p className="text-muted-foreground text-sm mt-1">Klik pada field untuk melihat hasil pencarian</p>
       )}
     </div>
   );

@@ -365,7 +365,7 @@ class TowerManagementController extends Controller
             $tower->owners()->attach($ownerId);
         }
 
-        return redirect()->route('admin.towers.index')->with('success', 'Tower berhasil ditambahkan!');
+        return redirect()->route('admin.towers.index')->with('success', 'Menara berhasil ditambahkan!');
     }
 
     public function update(Request $request, Tower $tower)

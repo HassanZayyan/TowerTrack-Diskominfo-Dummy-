@@ -1,4 +1,5 @@
 import React from 'react';
+import { Badge } from '@/Components/ui/badge';
 import { router } from '@inertiajs/react';
 
 interface Tower {
@@ -51,8 +52,8 @@ export default function TowerTable({
         {/* Table for md+ */}
         <table className="w-full text-left hidden md:table">
           <thead>
-            <tr className="bg-gray-50">
-              <th className="px-4 py-3 border-b">Site Tower</th>
+            <tr className="bg-muted">
+              <th className="px-4 py-3 border-b">Site Menara</th>
               <th className="px-4 py-3 border-b">Koordinat</th>
               <th className="px-4 py-3 border-b">Tinggi</th>
               <th className="px-4 py-3 border-b">Owner</th>
@@ -64,7 +65,7 @@ export default function TowerTable({
             {towers.map((tower) => (
               <tr 
                 key={tower.id} 
-                className="hover:bg-gray-50 cursor-pointer"
+                className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
                 onClick={() => onTowerClick(tower)}
               >
                 <td className="px-4 py-3 border-b">{tower.site_name || 'Belum Terdata'}</td>
@@ -76,18 +77,20 @@ export default function TowerTable({
                 <td className="px-4 py-3 border-b">{tower.owner || 'Belum Terdata'}</td>
                 <td className="px-4 py-3 border-b">{tower.alamat_menara || 'Belum Terdata'}</td>
                 <td className="px-4 py-3 border-b text-center">
-                  <span 
-                    className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
-                    style={{ 
-                      backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' 
-                        ? '#1B5E20' 
-                        : !tower.status 
-                          ? '#6B7280' 
-                          : '#212121'
-                    }}
+                  {/* Soft fill + -strong text rather than a saturated pill with
+                      white 12px type on it. "Aktif" is the only status that
+                      earns a hue; unknown and everything else stay neutral. */}
+                  <Badge
+                    variant={
+                      tower.status === 'Aktif' || tower.status === 'AKTIF'
+                        ? 'success'
+                        : !tower.status
+                          ? 'secondary'
+                          : 'neutral'
+                    }
                   >
                     {tower.status || 'Belum Terdata'}
-                  </span>
+                  </Badge>
                 </td>
               </tr>
             ))}
@@ -99,38 +102,38 @@ export default function TowerTable({
           {towers.map((tower) => (
             <button
               key={tower.id}
-              className="w-full text-left rounded-lg border border-gray-200 p-4 bg-white shadow-sm active:opacity-90"
+              className="w-full text-left rounded-lg border border-border p-4 bg-white shadow-sm active:opacity-90"
               onClick={() => onTowerClick(tower)}
               aria-label={`Detail ${tower.site_name || 'Belum Terdata'}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-900 mb-0.5 truncate">{tower.site_name || 'Belum Terdata'}</p>
-                  <p className="text-xs text-gray-600">
+                  <p className="font-medium text-foreground mb-0.5 truncate">{tower.site_name || 'Belum Terdata'}</p>
+                  <p className="text-xs text-muted-foreground">
                     Lat: {formatCoordinate(tower.latitude, 'lat')} · Lng: {formatCoordinate(tower.longitude, 'lng')}
                   </p>
-                  <p className="text-xs text-gray-600 mt-1">Tinggi: {tower.tinggi_menara ? `${tower.tinggi_menara}m` : 'Belum Terdata'} · Owner: {tower.owner || 'Belum Terdata'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Tinggi: {tower.tinggi_menara ? `${tower.tinggi_menara}m` : 'Belum Terdata'} · Owner: {tower.owner || 'Belum Terdata'}</p>
                   <p
-                    className="text-xs text-gray-600 mt-1"
+                    className="text-xs text-muted-foreground mt-1"
                     style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
                   >
                     {tower.alamat_menara || 'Belum Terdata'}
                   </p>
                 </div>
                 <div className="flex items-start gap-2 shrink-0">
-                  <span 
-                    className="inline-block px-2.5 py-1 rounded-full text-[10px] font-medium text-white whitespace-nowrap"
-                    style={{ 
-                      backgroundColor: tower.status === 'Aktif' || tower.status === 'AKTIF' 
-                        ? '#1B5E20' 
-                        : !tower.status 
-                          ? '#6B7280' 
-                          : '#212121'
-                    }}
+                  <Badge
+                    variant={
+                      tower.status === 'Aktif' || tower.status === 'AKTIF'
+                        ? 'success'
+                        : !tower.status
+                          ? 'secondary'
+                          : 'neutral'
+                    }
+                    className="whitespace-nowrap"
                   >
                     {tower.status || 'Belum Terdata'}
-                  </span>
-                  <span className="material-icons-outlined text-gray-400 text-base">chevron_right</span>
+                  </Badge>
+                  <span className="material-icons-outlined text-placeholder text-base">chevron_right</span>
                 </div>
               </div>
             </button>
@@ -140,7 +143,7 @@ export default function TowerTable({
 
       {/* Pagination */}
       <div className="px-4 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="text-xs sm:text-sm text-gray-600">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Menampilkan {(currentPage - 1) * perPage + 1} - {Math.min(currentPage * perPage, total)} dari {total} data
         </p>
         <div className="flex self-end sm:self-auto">
@@ -149,8 +152,8 @@ export default function TowerTable({
             disabled={currentPage === 1}
             className={`px-3 py-1 rounded-l border ${
               currentPage === 1 
-              ? 'bg-gray-100 text-gray-400' 
-              : 'bg-white text-gray-700 hover:bg-gray-50'
+              ? 'bg-muted text-placeholder' 
+              : 'bg-white text-foreground hover:bg-accent hover:text-accent-foreground'
             }`}
           >
             Prev
@@ -184,9 +187,9 @@ export default function TowerTable({
                   className={`px-3 py-1 border-t border-b ${
                     pageNum === currentPage
                       ? 'font-medium text-white'
-                      : 'bg-white hover:bg-gray-50'
+                      : 'bg-white hover:bg-accent hover:text-accent-foreground'
                   }`}
-                  style={pageNum === currentPage ? { backgroundColor: '#B71C1C' } : { color: '#212121' }}
+                  
                 >
                   {pageNum}
                 </button>
@@ -200,8 +203,8 @@ export default function TowerTable({
             disabled={currentPage * perPage >= total}
             className={`px-3 py-1 rounded-r border ${
               currentPage * perPage >= total 
-              ? 'bg-gray-100 text-gray-400' 
-              : 'bg-white text-gray-700 hover:bg-gray-50'
+              ? 'bg-muted text-placeholder' 
+              : 'bg-white text-foreground hover:bg-accent hover:text-accent-foreground'
             }`}
           >
             Next

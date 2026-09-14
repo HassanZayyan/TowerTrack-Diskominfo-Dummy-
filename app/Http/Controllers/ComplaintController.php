@@ -9,6 +9,8 @@ use App\Models\FoPoint;
 use App\Services\LocationSecurityService;
 use App\Services\CaptchaService;
 use App\Http\Requests\StoreMessageResponseRequest;
+use App\Rules\PhoneNumber;
+use App\Helpers\PhoneHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -106,7 +108,7 @@ class ComplaintController extends MessageableController
         try {
             $rules = [
                 'nama' => 'nullable|string|max:255',
-                'telepon' => 'required|string|max:20', // Phone number is required for all users
+                'telepon' => ['required', 'string', 'max:20', new PhoneNumber()], // Phone number is required for all users
                 'kategori' => 'required|string|max:100',
                 'lokasi_tower' => 'nullable|string|max:255', // Made nullable, can be tower or FO point name
                 'reportable_type' => 'required|in:App\\Models\\Tower,App\\Models\\FoPoint',
@@ -116,7 +118,7 @@ class ComplaintController extends MessageableController
                         $type = $request->input('reportable_type');
                         if ($type === 'App\\Models\\Tower') {
                             if (!Tower::find($value)) {
-                                $fail('Tower tidak ditemukan.');
+                                $fail('Menara tidak ditemukan.');
                             }
                         } elseif ($type === 'App\\Models\\FoPoint') {
                             if (!FoPoint::find($value)) {
@@ -184,7 +186,7 @@ class ComplaintController extends MessageableController
             'user_id' => $userId,
             'email' => $email,
             'reporter_name' => $validated['nama'] ?? (isAuthenticated() ? $request->user()->name : null),
-            'reporter_phone' => $validated['telepon'],
+            'reporter_phone' => PhoneHelper::normalize($validated['telepon']),
             'category' => $validated['kategori'],
             'message' => $validated['pesan'],
             'is_public' => $validated['is_public'] ?? false,
@@ -209,10 +211,11 @@ class ComplaintController extends MessageableController
         }
 
         // Store guest contact data in cookie for auto-fill (only for guest users)
+        // Normalize phone number before storing to ensure consistency with database format
         if (isGuest()) {
             \App\Helpers\GuestCookieHelper::store([
                 'email' => $email,
-                'phone' => $validated['telepon'],
+                'phone' => PhoneHelper::normalize($validated['telepon']),
                 'name' => $validated['nama'] ?? null,
             ]);
         }

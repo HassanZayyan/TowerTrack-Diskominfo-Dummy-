@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import BanUserConfirmDialog from '@/Components/BanUserConfirmDialog';
 import DeleteUserConfirmDialog from '@/Components/DeleteUserConfirmDialog';
-import HeroSection from '@/Components/HeroSection';
+import PageHeader from '@/Components/PageHeader';
 import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
 import ModalBackdrop from '@/Components/ModalBackdrop';
 import ModalContainer from '@/Components/ModalContainer';
 import { Pagination } from '@/Components/Pagination';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
+import { Card } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface User { id: number; name: string; email: string; role: 'admin' | 'operator' | 'complainant' | 'tower_owner' | 'provider_owner'; created_at?: string; banned?: boolean; deleted_at?: string | null; fo_provider_id?: number | null; provider?: { id: number; name: string } | null }
 
@@ -20,9 +25,101 @@ interface PaginationData {
   links?: { url: string | null; label: string; active: boolean }[];
 }
 
-interface Props { 
+interface Props {
   users: PaginationData;
 }
+
+/* ---------------------------------------------------------------------------
+ * Presentation constants.
+ *
+ * Every one of these existed before as a class string re-typed at each call
+ * site (five label recipes, four icon recipes, eight input recipes across the
+ * admin surface). One name per recipe is the whole point: the next person
+ * cannot drift it by approximating.
+ * ------------------------------------------------------------------------- */
+
+/** Column head: 40px on the inset ground, closed by the strong rule. */
+const TH = 'h-10 px-3 text-left align-middle text-[11px] font-semibold uppercase tracking-wide text-muted-foreground';
+/** Body cell: 12px horizontal, rows land at 44px+ from the padding. */
+const TD = 'px-3 py-2.5 align-middle';
+const FIELD_LABEL = 'text-sm font-medium text-foreground';
+const FIELD_HINT = 'text-xs text-muted-foreground';
+const INPUT =
+  'h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-placeholder ' +
+  'transition-colors duration-140 ease-state focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 ' +
+  'disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground';
+
+/**
+ * Role is a stored English enum. These are the labels the create/edit <select>
+ * has always shown, reused here so the table and the form say the same word
+ * instead of the table printing the raw `provider_owner` with an underscore
+ * swapped for a space.
+ */
+const ROLE_LABEL: Record<User['role'], string> = {
+  admin: 'Admin',
+  operator: 'Operator',
+  complainant: 'Complainant',
+  tower_owner: 'Pemilik Menara',
+  provider_owner: 'Provider Owner',
+};
+
+const ROLE_VARIANT: Record<User['role'], 'default' | 'info' | 'neutral'> = {
+  admin: 'default',
+  operator: 'info',
+  complainant: 'neutral',
+  tower_owner: 'neutral',
+  provider_owner: 'neutral',
+};
+
+const formatJoined = (value?: string): string | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+/* Icons. 16px, stroke 2, currentColor — one definition each. */
+const IconPlus = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+  </svg>
+);
+
+const IconPencil = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
+const IconBan = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+  </svg>
+);
+
+const IconRestore = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);
+
+const IconUsers = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+  </svg>
+);
+
+const IconClose = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const IconAlert = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+  </svg>
+);
 
 const UsersPage: React.FC<Props> = ({ users }) => {
   const usersList = users?.data || [];
@@ -68,7 +165,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
   const validateEmail = () => {
     // Jika sedang edit, kita perlu mengecualikan email user yang sedang diedit
     const existingEmails = usersList.filter(user => !form.id || user.id !== form.id).map(user => user.email.toLowerCase());
-    
+
     if (existingEmails.includes(form.email.toLowerCase())) {
       setEmailError('Email ini sudah digunakan oleh pengguna lain');
       return false;
@@ -80,7 +177,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validasi email sebelum submit
     if (!validateEmail()) {
       return; // Berhenti jika email tidak valid
@@ -91,7 +188,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
       alert('Anda tidak dapat membanned akun Anda sendiri!');
       return;
     }
-    
+
     // Konfirmasi jika user akan dibanned atau diunban
     if (form.id && form.banned !== usersList.find((u: User) => u.id === form.id)?.banned) {
       const isBanning = form.banned || false;
@@ -104,7 +201,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
       setShowBanDialog(true);
       return;
     }
-    
+
     if (form.id) {
       // Untuk semua user, admin dapat mengubah semua field termasuk status banned
       // Namun untuk complainant, tower_owner, dan provider_owner, hanya kirim data yang relevan
@@ -169,7 +266,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
       alert('Anda tidak dapat menghapus akun Anda sendiri!');
       return;
     }
-    
+
     setDeleteDialogData({
       userId: user.id,
       userName: user.name,
@@ -180,7 +277,7 @@ const UsersPage: React.FC<Props> = ({ users }) => {
 
   const handleDeleteConfirm = () => {
     if (!deleteDialogData) return;
-    
+
     setIsDeleting(true);
     router.delete(route('admin.users.destroy', { user: deleteDialogData.userId }), {
       onSuccess: () => {
@@ -210,9 +307,9 @@ const UsersPage: React.FC<Props> = ({ users }) => {
 
   const handleBanConfirm = () => {
     if (!banDialogData) return;
-    
+
     setIsProcessing(true);
-    
+
     if (banDialogData.userId) {
       // Admin dapat membanned semua role termasuk complainant, tower_owner, dan provider_owner
       const originalUser = usersList.find(u => u.id === banDialogData.userId);
@@ -262,423 +359,301 @@ const UsersPage: React.FC<Props> = ({ users }) => {
     setIsProcessing(false);
   };
 
+  /** One handler shape for both the desktop row and the mobile row. */
+  const openEdit = (u: User) => {
+    if (u.role === 'complainant' || u.role === 'tower_owner' || u.role === 'provider_owner') {
+      setForm({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        banned: u.banned || false,
+        provider_name: u.provider?.name || '',
+        password: undefined
+      });
+    } else {
+      setForm({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        banned: u.banned || false,
+        provider_name: ''
+      });
+    }
+    setShowModal(true);
+  };
+
+  const openCreate = () => {
+    setForm({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
+    setShowPassword(false);
+    setShowModal(true);
+  };
+
+  const isRestrictedRole = !!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'));
+  const restrictedRoleLabel = form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner';
+
+  /** Status cell, identical on desktop and mobile so one account reads one way. */
+  const StatusBadge = ({ u }: { u: User }) =>
+    u.deleted_at ? (
+      <Badge variant="neutral">Nonaktif</Badge>
+    ) : u.banned ? (
+      <Badge variant="destructive">
+        <IconBan />
+        Banned
+      </Badge>
+    ) : (
+      <Badge variant="success">Aktif</Badge>
+    );
+
+  const avatarClasses = (self: boolean) =>
+    cn(
+      'flex shrink-0 items-center justify-center rounded-full text-sm font-semibold',
+      self ? 'bg-primary text-primary-foreground' : 'border border-border bg-well text-foreground',
+    );
+
   return (
     <AdminLayout title="Kelola Pengguna">
       <Head title="Kelola Pengguna" />
-      
-      {/* Hero Section */}
-      <div className="mb-8">
-        <HeroSection
-          title="Kelola Pengguna"
-          subtitle="Kelola informasi pengguna sistem dan atur hak akses sesuai kebutuhan"
-          variant="brand"
-          align="left"
-          actions={
-            <>
-              <button
-                onClick={() => {
-                  setForm({ name: '', email: '', role: 'operator', banned: false, provider_name: '' });
-                  setShowPassword(false);
-                  setShowModal(true);
-                }}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
-                style={{ 
-                  backgroundColor: '#FFD700', 
-                  color: '#B71C1C'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFC107';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFD700';
-                }}
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Tambah User
-              </button>
-            </>
-          }
-        />
-      </div>
 
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-            </svg>
-            Daftar Pengguna ({pagination?.total || 0})
-          </h3>
+      {/* Single action zone. The old hero band carried this button and the page
+          then repeated it below; there is now exactly one "Tambah User Baru". */}
+      <PageHeader
+        title="Kelola Pengguna"
+        description="Kelola informasi pengguna sistem dan atur hak akses sesuai kebutuhan"
+        showLogo={false}
+        actions={
+          <Button type="button" onClick={openCreate} className="h-11">
+            <IconPlus />
+            Tambah User Baru
+          </Button>
+        }
+      />
+
+      <Card variant="flat" className="tt-enter-up overflow-hidden">
+        {/* Caption bar. Two facts, one line, no icon tile, no card of its own. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border px-3 py-2.5">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">Daftar Pengguna</h2>
+          <p className="text-xs tabular-nums text-muted-foreground">
+            Menampilkan {usersList.length} dari {pagination?.total || 0} akun terdaftar
+          </p>
         </div>
-        
-        {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
+
+        {/* Desktop table */}
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-yellow-50 border-b border-yellow-200">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Nama
-                  </div>
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 3.26a2 2 0 001.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Email
-                  </div>
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    Role
-                  </div>
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                    </svg>
-                    Aksi
-                  </div>
-                </th>
+              <tr className="border-b border-border-strong bg-well">
+                <th scope="col" className={TH}>Pengguna</th>
+                <th scope="col" className={TH}>Role</th>
+                <th scope="col" className={TH}>Status</th>
+                <th scope="col" className={TH}>Bergabung</th>
+                <th scope="col" className={cn(TH, 'text-right')}>Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border/70">
               {usersList.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                    </svg>
-                    <p className="text-sm">Belum ada pengguna terdaftar</p>
-                    <p className="text-xs text-gray-400 mt-1">Tambahkan pengguna pertama dengan form di atas</p>
+                  <td colSpan={5} className="bg-well px-3 py-10 text-center">
+                    <IconUsers className="mx-auto mb-3 h-8 w-8 text-placeholder" />
+                    <p className="text-sm font-medium text-foreground">Belum ada pengguna terdaftar</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Tambahkan pengguna pertama dengan form di atas</p>
                   </td>
                 </tr>
               ) : (
-                usersList.map((u, index) => (
-                  <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${
-                    u.id === auth.user.id 
-                      ? 'bg-red-50 border-l-4 border-red-500' 
-                      : index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
-                  }`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                            u.id === auth.user.id 
-                              ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                              : 'bg-gradient-to-r from-red-500 to-red-600'
-                          }`}>
-                            <span className="text-white font-semibold text-sm">
-                              {u.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                            {u.id === auth.user.id && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                Anda
-                              </span>
-                            )}
-                            {u.deleted_at && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-300">
-                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                </svg>
-                                Dinonaktifkan
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{u.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col space-y-2">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          u.role === 'admin' 
-                            ? 'bg-red-100 text-red-800 border border-red-200' 
-                            : 'bg-red-100 text-red-800 border border-red-200'
-                        }`}>
-                          {u.role === 'admin' ? (
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                          ) : (
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          )}
-                          {u.role}
-                        </span>
-                        
-                        {/* Status banned indicator */}
-                        {u.banned && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                            </svg>
-                            Banned
+                usersList.map((u) => {
+                  const self = u.id === auth.user.id;
+                  const joined = formatJoined(u.created_at);
+                  return (
+                    <tr
+                      key={u.id}
+                      className={cn(
+                        'transition-colors duration-140 ease-state hover:bg-accent',
+                        self && 'bg-primary-soft/40',
+                      )}
+                    >
+                      <td className={TD}>
+                        <div className="flex items-center gap-3">
+                          <span className={cn(avatarClasses(self), 'h-9 w-9')} aria-hidden="true">
+                            {u.name.charAt(0).toUpperCase()}
                           </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate text-sm font-medium text-foreground" title={u.name}>
+                                {u.name}
+                              </span>
+                              {self && (
+                                <Badge className="px-1.5 py-0 text-[10px] uppercase tracking-wide">You</Badge>
+                              )}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground" title={u.email}>
+                              {u.email}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={TD}>
+                        <Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+                        {u.provider?.name && (
+                          <div className="mt-1 max-w-[14rem] truncate text-xs text-muted-foreground" title={u.provider.name}>
+                            {u.provider.name}
+                          </div>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        {!u.deleted_at && (
-                          <button 
-                            className="inline-flex items-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-xs font-medium"
-                            onClick={() => {
-                              // Untuk complainant users, tower_owner, atau provider_owner, preserve original name dan email
-                              if (u.role === 'complainant' || u.role === 'tower_owner' || u.role === 'provider_owner') {
-                                setForm({ 
-                                  id: u.id, 
-                                  name: u.name, 
-                                  email: u.email, 
-                                  role: u.role, 
-                                  banned: u.banned || false,
-                                  provider_name: u.provider?.name || '',
-                                  password: undefined // Reset password field
-                                });
-                              } else {
-                                setForm({ 
-                                  id: u.id, 
-                                  name: u.name, 
-                                  email: u.email, 
-                                  role: u.role, 
-                                  banned: u.banned || false,
-                                  provider_name: ''
-                                });
-                              }
-                              setShowModal(true);
-                            }}
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit
-                          </button>
-                        )}
-                        {u.deleted_at ? (
-                          <button 
-                            className="inline-flex items-center px-3 py-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors text-xs font-medium"
-                            onClick={() => handleRestore(u)}
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Aktifkan Kembali
-                          </button>
-                        ) : (
-                          <button 
-                            className={`inline-flex items-center px-3 py-2 border rounded-lg text-xs font-medium transition-colors ${
-                              u.id === auth.user.id
-                                ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
-                                : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
-                            }`}
-                            onClick={() => handleDelete(u)}
-                            disabled={u.id === auth.user.id}
-                            title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Nonaktifkan user'}
-                          >
-                            <svg className={`w-4 h-4 mr-1 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Nonaktifkan'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className={TD}>
+                        <StatusBadge u={u} />
+                      </td>
+                      <td className={cn(TD, 'whitespace-nowrap text-sm tabular-nums text-muted-foreground')}>
+                        {joined ?? '—'}
+                      </td>
+                      <td className={cn(TD, 'whitespace-nowrap text-right')}>
+                        <div className="flex items-center justify-end gap-2">
+                          {!u.deleted_at ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-9"
+                                onClick={() => openEdit(u)}
+                                title="Edit user"
+                              >
+                                <IconPencil />
+                                Edit
+                              </Button>
+
+                              {/* Kept rendered-but-disabled for your own account:
+                                  a control that vanishes teaches nothing, a
+                                  disabled one with a title says why. */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(u)}
+                                disabled={self}
+                                className="h-9 border-destructive-border text-destructive-strong hover:bg-destructive-soft hover:text-destructive-strong"
+                                title={self ? 'Tidak dapat menghapus akun sendiri' : 'Nonaktifkan user'}
+                              >
+                                <IconBan />
+                                {self ? 'Hapus (Diri Sendiri)' : 'Nonaktifkan'}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-9 border-success-border text-success-strong hover:bg-success-soft hover:text-success-strong"
+                              onClick={() => handleRestore(u)}
+                              title="Aktifkan kembali akun ini"
+                            >
+                              <IconRestore />
+                              Aktifkan Kembali
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Mobile Card View */}
-        <div className="md:hidden">
-          {usersList.length === 0 ? (
-            <div className="px-4 py-12 text-center text-gray-500">
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-              </svg>
-              <p className="text-sm">Belum ada pengguna terdaftar</p>
-              <p className="text-xs text-gray-400 mt-1">Tambahkan pengguna pertama dengan tombol di atas</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {usersList.map((u, index) => (
-                <div key={u.id} className={`p-4 ${
-                  u.id === auth.user.id 
-                    ? 'bg-red-50 border-l-4 border-red-500' 
-                    : index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
-                }`}>
-                  {/* User Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                          u.id === auth.user.id 
-                            ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                            : 'bg-gradient-to-r from-red-500 to-red-600'
-                        }`}>
-                          <span className="text-white font-semibold text-sm">
-                            {u.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="ml-3">
-                        <div className="flex items-center space-x-2 flex-wrap">
-                          <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                          {u.id === auth.user.id && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                              Anda
-                            </span>
-                          )}
-                          {u.deleted_at && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-300">
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                              </svg>
-                              Dinonaktifkan
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* User Details */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 3.26a2 2 0 001.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      <span className="break-all">{u.email}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        u.role === 'admin' 
-                          ? 'bg-red-100 text-red-800 border border-red-200' 
-                          : 'bg-red-100 text-red-800 border border-red-200'
-                      }`}>
-                        {u.role === 'admin' ? (
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        )}
-                        {u.role}
-                      </span>
-                      
-                      {/* Status banned indicator */}
-                      {u.banned && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                          Banned
+        {/* Mobile list. Rows in a shared frame, not a card per user — a card
+            around every row is 42 borders doing the work of one divider. */}
+        {usersList.length === 0 ? (
+          <div className="bg-well px-4 py-10 text-center md:hidden">
+            <IconUsers className="mx-auto mb-3 h-8 w-8 text-placeholder" />
+            <p className="text-sm font-medium text-foreground">Belum ada pengguna terdaftar</p>
+            <p className="mt-1 text-xs text-muted-foreground">Tambahkan pengguna pertama dengan tombol di atas</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/70 md:hidden">
+            {usersList.map((u) => {
+              const self = u.id === auth.user.id;
+              const joined = formatJoined(u.created_at);
+              return (
+                <li key={u.id} className={cn('p-3', self && 'bg-primary-soft/40')}>
+                  <div className="flex items-start gap-3">
+                    <span className={cn(avatarClasses(self), 'h-9 w-9')} aria-hidden="true">
+                      {u.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-medium text-foreground" title={u.name}>
+                          {u.name}
                         </span>
+                        {self && (
+                          <Badge className="px-1.5 py-0 text-[10px] uppercase tracking-wide">You</Badge>
+                        )}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground" title={u.email}>
+                        {u.email}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+                        <StatusBadge u={u} />
+                        {joined && (
+                          <span className="text-xs tabular-nums text-muted-foreground">Bergabung {joined}</span>
+                        )}
+                      </div>
+                      {u.provider?.name && (
+                        <div className="mt-1 truncate text-xs text-muted-foreground" title={u.provider.name}>
+                          {u.provider.name}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col space-y-2">
-                    {!u.deleted_at && (
-                      <button 
-                        className="w-full inline-flex items-center justify-center px-3 py-2 border border-yellow-300 rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors text-sm font-medium"
-                        onClick={() => {
-                          // Untuk complainant users, tower_owner, atau provider_owner, preserve original name dan email
-                          if (u.role === 'complainant' || u.role === 'tower_owner' || u.role === 'provider_owner') {
-                            setForm({ 
-                              id: u.id, 
-                              name: u.name, 
-                              email: u.email, 
-                              role: u.role, 
-                              banned: u.banned || false,
-                              provider_name: u.provider?.name || '',
-                              password: undefined // Reset password field
-                            });
-                          } else {
-                            setForm({ 
-                              id: u.id, 
-                              name: u.name, 
-                              email: u.email, 
-                              role: u.role, 
-                              banned: u.banned || false,
-                              provider_name: ''
-                            });
-                          }
-                          setShowModal(true);
-                        }}
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit User
-                      </button>
-                    )}
-                    {u.deleted_at ? (
-                      <button 
-                        className="w-full inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors text-sm font-medium"
-                        onClick={() => handleRestore(u)}
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Aktifkan Kembali
-                      </button>
+                  <div className="mt-3 flex gap-2">
+                    {!u.deleted_at ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 flex-1"
+                          onClick={() => openEdit(u)}
+                          title="Edit user"
+                        >
+                          <IconPencil />
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 flex-1 border-destructive-border text-destructive-strong hover:bg-destructive-soft hover:text-destructive-strong"
+                          onClick={() => handleDelete(u)}
+                          disabled={self}
+                          title={self ? 'Tidak dapat menghapus akun sendiri' : 'Nonaktifkan user'}
+                        >
+                          <IconBan />
+                          {self ? 'Hapus (Diri Sendiri)' : 'Nonaktifkan'}
+                        </Button>
+                      </>
                     ) : (
-                      <button 
-                        className={`w-full inline-flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                          u.id === auth.user.id
-                            ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
-                            : 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
-                        }`}
-                        onClick={() => handleDelete(u)}
-                        disabled={u.id === auth.user.id}
-                        title={u.id === auth.user.id ? 'Tidak dapat menghapus akun sendiri' : 'Nonaktifkan user'}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 w-full border-success-border text-success-strong hover:bg-success-soft hover:text-success-strong"
+                        onClick={() => handleRestore(u)}
+                        title="Aktifkan kembali akun ini"
                       >
-                        <svg className={`w-4 h-4 mr-2 ${u.id === auth.user.id ? 'text-gray-400' : 'text-red-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        {u.id === auth.user.id ? 'Hapus (Diri Sendiri)' : 'Nonaktifkan User'}
-                      </button>
+                        <IconRestore />
+                        Aktifkan Kembali
+                      </Button>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         {/* Pagination - Shared for Desktop and Mobile */}
         {pagination && pagination.last_page > 1 && (
-          <div className="px-4 sm:px-6 py-4 border-t border-gray-200">
+          <div className="border-t border-border bg-well px-3 py-2">
             <Pagination
               currentPage={pagination.current_page}
               lastPage={pagination.last_page}
@@ -688,41 +663,39 @@ const UsersPage: React.FC<Props> = ({ users }) => {
             />
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Modal untuk tambah/edit user */}
+      {/* AnimatePresence keeps the tree alive for the leave animation; without it React unmounts on the same paint and the dialog cuts out. */}
+      <AnimatePresence>
       {showModal && (
         <ModalBackdrop onClick={() => setShowModal(false)} opacity={50} zIndex={50}>
-          <ModalContainer maxWidth="4xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {form.id ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  )}
-                </svg>
-                <div>
-                  {form.id ? 'Edit User' : 'Tambah User Baru'}
-                  {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
-                    <p className="text-xs text-gray-500 font-normal mt-1">
-                      Hanya role dan status akun yang dapat diubah
-                    </p>
-                  )}
-                </div>
-              </h3>
-              <button 
+          <ModalContainer maxWidth="4xl" maxHeight="90vh" className="my-4 border border-border overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold tracking-tight text-foreground">
+                  {form.id ? 'Edit Data Pengguna' : 'Tambah Pengguna Baru'}
+                </h3>
+                {isRestrictedRole && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Role khusus: hanya status akun yang dapat diubah
+                  </p>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
+                className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground"
+                title="Tutup"
+                aria-label="Tutup"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+                <IconClose />
+              </Button>
             </div>
-            <div 
-              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+            <div
+              className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5"
               style={{
                 minHeight: 0,
                 maxHeight: 'calc(100vh - 12rem)',
@@ -730,63 +703,63 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                 overscrollBehavior: 'contain'
               }}
             >
-              <form onSubmit={submit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
-                    <input 
-                      className={`w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
-                        form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
-                      }`}
-                      placeholder="Masukkan nama lengkap" 
-                      value={form.name} 
+              <form onSubmit={submit} className="space-y-5">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label htmlFor="user-name" className={FIELD_LABEL}>Nama Lengkap</label>
+                    <input
+                      id="user-name"
+                      className={INPUT}
+                      placeholder="Masukkan nama lengkap"
+                      value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
-                      required 
+                      disabled={isRestrictedRole}
+                      required
                     />
-                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Nama user dengan role {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'} tidak dapat diubah
+                    {isRestrictedRole && (
+                      <p className={FIELD_HINT}>
+                        Nama user dengan role {restrictedRoleLabel} tidak dapat diubah
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Email</label>
-                    <input 
-                      className={`w-full border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 focus:ring-2 ${emailError ? 'focus:ring-red-400' : 'focus:ring-yellow-400'} focus:border-transparent transition-all ${
-                        form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
-                      }`} 
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="user-email" className={FIELD_LABEL}>Email</label>
+                    <input
+                      id="user-email"
+                      className={cn(INPUT, emailError && 'border-destructive focus-visible:ring-destructive')}
                       type="email"
-                      placeholder="Masukkan email" 
-                      value={form.email} 
+                      placeholder="Masukkan email"
+                      value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
-                      required 
+                      disabled={isRestrictedRole}
+                      aria-invalid={!!emailError}
+                      required
                     />
-                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Email user dengan role {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'} tidak dapat diubah
+                    {isRestrictedRole && (
+                      <p className={FIELD_HINT}>
+                        Email user dengan role {restrictedRoleLabel} tidak dapat diubah
                       </p>
                     )}
                     {emailError && (
-                      <div className="mt-1 text-sm text-red-600 flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+                      <p className="flex items-center gap-1.5 text-sm text-destructive-strong">
+                        <IconAlert className="h-4 w-4 shrink-0" />
                         {emailError}
-                      </div>
+                      </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Role</label>
-                    <select 
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                      value={form.role} 
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="user-role" className={FIELD_LABEL}>Role</label>
+                    <select
+                      id="user-role"
+                      className={INPUT}
+                      value={form.role}
                       onChange={(e) => {
                         const newRole = e.target.value as any;
                         // Clear provider_name if changing away from provider_owner
-                        setForm({ 
-                          ...form, 
+                        setForm({
+                          ...form,
                           role: newRole,
                           provider_name: newRole === 'provider_owner' ? form.provider_name : ''
                         });
@@ -795,135 +768,140 @@ const UsersPage: React.FC<Props> = ({ users }) => {
                       <option value="operator">Operator</option>
                       <option value="admin">Admin</option>
                       <option value="complainant">Complainant</option>
-                      <option value="tower_owner">Tower Owner</option>
+                      <option value="tower_owner">Pemilik Menara</option>
                       <option value="provider_owner">Provider Owner</option>
                     </select>
-                    {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Role dapat diubah untuk user {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'}
+                    {isRestrictedRole && (
+                      <p className={FIELD_HINT}>
+                        Role dapat diubah untuk user {restrictedRoleLabel}
                       </p>
                     )}
                   </div>
-                  
-                  {/* Provider Name Input - Only show for provider_owner role */}
-                  {form.role === 'provider_owner' && (
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        Nama Provider <span className="text-red-500">*</span>
-                      </label>
-                      <input 
-                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all" 
-                        type="text"
-                        placeholder="Masukkan nama provider (contoh: Telkom Indonesia, MyRepublic, dll)" 
-                        value={form.provider_name || ''} 
-                        onChange={(e) => setForm({ ...form, provider_name: e.target.value })}
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        {form.id 
-                          ? 'Ubah nama provider. Jika provider dengan nama ini sudah ada, akan digunakan provider yang ada. Jika belum ada, akan dibuat provider baru.'
-                          : 'Masukkan nama provider. Sistem akan otomatis membuat provider baru jika belum ada, atau menggunakan provider yang sudah ada jika nama sudah terdaftar.'}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Banned status checkbox - muncul saat edit user dan tambah user baru */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Status Akun</label>
-                    <div className="flex items-center mt-3">
-                      <input
-                        type="checkbox"
-                        id="banned"
-                        checked={form.banned || false}
-                        onChange={(e) => setForm({ ...form, banned: e.target.checked })}
-                        className="h-5 w-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                        disabled={form.id === auth.user.id} // Disable jika user mencoba banned dirinya sendiri
-                      />
-                      <label htmlFor="banned" className="ml-2 block text-sm text-gray-900">
-                        <span className={`font-medium ${form.banned ? 'text-red-600' : 'text-gray-700'}`}>
-                          {form.banned ? 'Akun Dibanned' : 'Akun Aktif'}
-                        </span>
-                        {form.id === auth.user.id && (
-                          <span className="ml-2 text-xs text-gray-500">(Tidak dapat membanned akun sendiri)</span>
-                        )}
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {form.banned 
-                        ? 'User tidak akan dapat login ke sistem jika dibanned' 
-                        : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
-                      {form.id ? (
-                        <span className="block mt-1 text-red-600">
-                          Admin dapat mengubah status banned untuk semua role termasuk {form.role}
-                        </span>
-                      ) : (
-                        <span className="block mt-1 text-green-600">
-                          Tentukan status awal akun (aktif/banned) untuk user baru
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="user-password" className={FIELD_LABEL}>
                       Password {form.id && '(kosongkan jika tidak diubah)'}
                     </label>
                     <div className="relative">
-                      <input 
-                        className={`w-full border border-gray-300 rounded-lg p-3 pr-12 focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
-                          form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') ? 'bg-gray-100 cursor-not-allowed' : ''
-                        }`} 
+                      <input
+                        id="user-password"
+                        className={cn(INPUT, 'pr-12')}
                         type={showPassword ? 'text' : 'password'}
-                        placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
-                        value={form.password ?? ''} 
+                        placeholder={form.id ? "Biarkan kosong jika tidak diubah" : "Masukkan password"}
+                        value={form.password ?? ''}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
+                        disabled={isRestrictedRole}
                         required={!form.id}
                       />
-                      {form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner') && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Password user dengan role {form.role === 'complainant' ? 'complainant' : form.role === 'tower_owner' ? 'tower owner' : 'provider owner'} tidak dapat diubah
-                        </p>
-                      )}
                       <button
                         type="button"
-                        className="absolute right-0 top-1/2 -translate-y-1/2 pr-3 flex items-center justify-center"
+                        className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-140 ease-state hover:text-foreground focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => setShowPassword(!showPassword)}
-                        disabled={!!(form.id && (form.role === 'complainant' || form.role === 'tower_owner' || form.role === 'provider_owner'))}
+                        disabled={isRestrictedRole}
+                        title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                        aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                       >
                         {showPassword ? (
-                          <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L7.05 7.05M9.878 9.878a3 3 0 105.656 5.656m0 0L12 12m0 0l3.5-3.5M12 12l-3.5 3.5" />
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         )}
                       </button>
                     </div>
+                    {isRestrictedRole && (
+                      <p className={FIELD_HINT}>
+                        Password user dengan role {restrictedRoleLabel} tidak dapat diubah
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Provider Name Input - Only show for provider_owner role */}
+                  {form.role === 'provider_owner' && (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label htmlFor="user-provider" className={FIELD_LABEL}>
+                        Nama Provider <span className="text-destructive-strong">*</span>
+                      </label>
+                      <input
+                        id="user-provider"
+                        className={INPUT}
+                        type="text"
+                        placeholder="Masukkan nama provider (contoh: Telkom Indonesia, MyRepublic, dll)"
+                        value={form.provider_name || ''}
+                        onChange={(e) => setForm({ ...form, provider_name: e.target.value })}
+                        required
+                      />
+                      <p className={FIELD_HINT}>
+                        {form.id
+                          ? 'Ubah nama provider. Jika provider dengan nama ini sudah ada, akan digunakan provider yang ada. Jika belum ada, akan dibuat provider baru.'
+                          : 'Masukkan nama provider. Sistem akan otomatis membuat provider baru jika belum ada, atau menggunakan provider yang sudah ada jika nama sudah terdaftar.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Banned status checkbox - muncul saat edit user dan tambah user baru */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <span className={FIELD_LABEL}>Status Akun</span>
+                    <Card variant="well" padding="dense">
+                      <label htmlFor="banned" className="flex min-h-[44px] cursor-pointer items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="banned"
+                          checked={form.banned || false}
+                          onChange={(e) => setForm({ ...form, banned: e.target.checked })}
+                          className="h-5 w-5 shrink-0 rounded border-input text-primary focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 disabled:cursor-not-allowed"
+                          disabled={form.id === auth.user.id} // Disable jika user mencoba banned dirinya sendiri
+                        />
+                        <span className="text-sm text-foreground">
+                          <span className={cn('font-medium', form.banned ? 'text-destructive-strong' : 'text-foreground')}>
+                            {form.banned ? 'Akun Dibanned' : 'Akun Aktif'}
+                          </span>
+                          {form.id === auth.user.id && (
+                            <span className="ml-2 text-xs text-muted-foreground">(Tidak dapat membanned akun sendiri)</span>
+                          )}
+                        </span>
+                      </label>
+                      <p className={cn(FIELD_HINT, 'mt-2 border-t border-border/70 pt-2')}>
+                        {form.banned
+                          ? 'User tidak akan dapat login ke sistem jika dibanned'
+                          : 'User dapat mengakses sistem sesuai dengan role yang diberikan'}
+                        {form.id ? (
+                          <span className="mt-1 block text-info-strong">
+                            Admin dapat mengubah status banned untuk semua role termasuk {form.role}
+                          </span>
+                        ) : (
+                          <span className="mt-1 block text-success-strong">
+                            Tentukan status awal akun (aktif/banned) untuk user baru
+                          </span>
+                        )}
+                      </p>
+                    </Card>
                   </div>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-end pt-4 space-y-2 sm:space-y-0 sm:space-x-3">
-                  <button 
+
+                <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+                  <Button
                     type="button"
-                    className="w-full sm:w-auto px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    variant="outline"
+                    className="h-11 w-full sm:w-auto"
                     onClick={() => setShowModal(false)}
                   >
                     Batal
-                  </button>
-                  <button 
-                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium" 
-                    type="submit"
-                  >
-                    {form.id ? 'Update User' : 'Tambah User'}
-                  </button>
+                  </Button>
+                  <Button className="h-11 w-full sm:w-auto" type="submit">
+                    {form.id ? 'Simpan Perubahan' : 'Tambah User'}
+                  </Button>
                 </div>
               </form>
             </div>
           </ModalContainer>
         </ModalBackdrop>
       )}
+      </AnimatePresence>
 
       {/* Ban User Confirmation Dialog */}
       {banDialogData && (
@@ -954,5 +932,3 @@ const UsersPage: React.FC<Props> = ({ users }) => {
 };
 
 export default UsersPage;
-
-

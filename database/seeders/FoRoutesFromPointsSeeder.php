@@ -28,25 +28,26 @@ class FoRoutesFromPointsSeeder extends Seeder
         $totalRoutes = 0;
         $totalPoints = 0;
 
-        // Define the expected route order based on the line mapping
+        // Define the expected route order (using dummy route names from FoPointsFromCsvSeeder)
+        // These match the dummy route names generated in FoPointsFromCsvSeeder
         $expectedRoutes = [
-            'Assalamah masuk Asmara',
-            'Terminal - Assalamah',
-            'Terminal - DPU',
-            'Dinkes - Diskominfo',
-            'Wujil - RSUD',
-            'Assalamah - Taman Unyil',
-            'Dishub - Bergas',
-            'Pasar Karangjati - Kelurahan Karangjati',
-            'Setelah Terowongan TOL - Pertigaan Kajangan',
-            'Polsek Bergas - Ngempon',
-            'Polsek Bergas - Wujil',
-            'Terowongan - Bangjo Asmara',
-            'Kelurahan Genuk',
-            'SMADA',
-            'Alun-Alun Lama - Ungaran Barat',
-            'RSUD - Terminal',
-            'Kalongan - Jembatan Longsor',
+            'Jalur FO Utama 1',
+            'Jalur FO Utama 2',
+            'Jalur FO Sekunder 1',
+            'Jalur FO Sekunder 2',
+            'Jalur FO Utama 3',
+            'Jalur FO Sekunder 3',
+            'Jalur FO Sekunder 4',
+            'Jalur FO Lokal 1',
+            'Jalur FO Utama 4',
+            'Jalur FO Sekunder 5',
+            'Jalur FO Sekunder 6',
+            'Jalur FO Utama 5',
+            'Jalur FO Lokal 2',
+            'Jalur FO Lokal 3',
+            'Jalur FO Utama 6',
+            'Jalur FO Utama 7',
+            'Jalur FO Lokal 4',
         ];
 
         // Process routes in the expected order
@@ -210,30 +211,39 @@ class FoRoutesFromPointsSeeder extends Seeder
 
     /**
      * Get a color for the route based on its name.
+     * Updated to support dummy route names.
      */
     private function getRouteColor(string $routeName): string
     {
         $colors = [
-            'Assalamah masuk Asmara' => '#3B82F6',
-            'Terminal - Assalamah' => '#10B981',
-            'Terminal - DPU' => '#F59E0B',
-            'Dinkes - Diskominfo' => '#EF4444',
-            'Wujil - RSUD' => '#8B5CF6',
-            'Assalamah - Taman Unyil' => '#06B6D4',
-            'Dishub - Bergas' => '#84CC16',
-            'Pasar Karangjati - Kelurahan Karangjati' => '#F97316',
-            'Setelah Terowongan TOL - Pertigaan Kajangan' => '#EC4899',
-            'Polsek Bergas - Ngempon' => '#14B8A6',
-            'Polsek Bergas - Wujil' => '#F472B6',
-            'Terowongan - Bangjo Asmara' => '#A855F7',
-            'Kelurahan Genuk' => '#22D3EE',
-            'SMADA' => '#65A30D',
-            'Alun-Alun Lama - Ungaran Barat' => '#DC2626',
-            'RSUD - Terminal' => '#7C3AED',
-            'Kalongan - Jembatan Longsor' => '#059669',
+            // Dummy route names (from FoPointsFromCsvSeeder)
+            'Jalur FO Utama 1' => '#3B82F6',
+            'Jalur FO Utama 2' => '#10B981',
+            'Jalur FO Sekunder 1' => '#F59E0B',
+            'Jalur FO Sekunder 2' => '#EF4444',
+            'Jalur FO Utama 3' => '#8B5CF6',
+            'Jalur FO Sekunder 3' => '#06B6D4',
+            'Jalur FO Sekunder 4' => '#84CC16',
+            'Jalur FO Lokal 1' => '#F97316',
+            'Jalur FO Utama 4' => '#EC4899',
+            'Jalur FO Sekunder 5' => '#14B8A6',
+            'Jalur FO Sekunder 6' => '#F472B6',
+            'Jalur FO Utama 5' => '#A855F7',
+            'Jalur FO Lokal 2' => '#22D3EE',
+            'Jalur FO Lokal 3' => '#65A30D',
+            'Jalur FO Utama 6' => '#DC2626',
+            'Jalur FO Utama 7' => '#7C3AED',
+            'Jalur FO Lokal 4' => '#059669',
         ];
 
-        return $colors[$routeName] ?? '#6B7280'; // Default gray color
+        // If route name not found, generate color based on route name hash for consistency
+        if (!isset($colors[$routeName])) {
+            $hash = crc32($routeName);
+            $colorPalette = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F472B6'];
+            return $colorPalette[abs($hash) % count($colorPalette)];
+        }
+
+        return $colors[$routeName];
     }
 
     private function distanceBetweenPoints($lat1, $lon1, $lat2, $lon2): float

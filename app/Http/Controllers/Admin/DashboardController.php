@@ -27,16 +27,10 @@ class DashboardController extends Controller
         $inProgressCount = Report::where('status_id', 2)->count();
         $closedCount = Report::where('status_id', 3)->count();
         
-        // Get counts by feedback status (string slugs)
-        try {
-            $feedbackPendingCount = Feedback::where('status', 'pending')->count();
-            $feedbackInProgressCount = Feedback::where('status', 'in_progress')->count();
-            $feedbackClosedCount = Feedback::where('status', 'closed')->count();
-        } catch (\Throwable $e) {
-            $feedbackPendingCount = 0;
-            $feedbackInProgressCount = 0;
-            $feedbackClosedCount = 0;
-        }
+        // Get counts by feedback status (using status_id like reports)
+        $feedbackPendingCount = Feedback::where('status_id', 1)->count();
+        $feedbackInProgressCount = Feedback::where('status_id', 2)->count();
+        $feedbackClosedCount = Feedback::where('status_id', 3)->count();
         
         // Get recent reports with tower information
         $recentReports = Report::with(['reportable', 'statusRelation'])

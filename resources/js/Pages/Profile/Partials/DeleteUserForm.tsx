@@ -52,11 +52,11 @@ export default function DeleteUserForm({
     return (
         <section className={`space-y-6 ${className}`}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-foreground">
                     Hapus Akun
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                     Setelah akun Anda dihapus, semua sumber daya dan data
                     akan dihapus secara permanen. Sebelum menghapus akun Anda,
                     silakan unduh data atau informasi yang ingin Anda simpan.
@@ -69,11 +69,11 @@ export default function DeleteUserForm({
 
             <Modal show={confirmingUserDeletion} onClose={closeModal}>
                 <form onSubmit={deleteUser} className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900">
+                    <h2 className="text-lg font-medium text-foreground">
                         Apakah Anda yakin ingin menghapus akun Anda?
                     </h2>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Setelah akun Anda dihapus, semua sumber daya dan
                         data akan dihapus secara permanen. Silakan masukkan
                         kata sandi Anda untuk mengkonfirmasi bahwa Anda ingin

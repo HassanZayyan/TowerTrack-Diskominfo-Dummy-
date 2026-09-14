@@ -15,12 +15,12 @@ class DatabaseSeeder extends Seeder
     {
         // Clean up user-uploaded files from storage before seeding
         $this->cleanupStorageFiles();
-        
+
         // Add banned column to users table if it doesn't exist
         $this->call([
             AddBannedColumnSeeder::class,
         ]);
-        
+
         // Seed users first
         $this->call([
             UserSeeder::class,
@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
             OwnerSeeder::class,
             TowerSeeder::class,
             TowerOwnerSeeder::class,
-            // Seed tower owner user accounts (must be after OwnerSeeder, before ReportFeedbackSeeder)
+                // Seed tower owner user accounts (must be after OwnerSeeder, before ReportFeedbackSeeder)
             TowerOwnerUserSeeder::class,
             StatusSeeder::class,
         ]);
@@ -39,6 +39,7 @@ class DatabaseSeeder extends Seeder
         // Seed FO points first (required by ReportFeedbackSeeder)
         $this->call([
             FoPointsFromCsvSeeder::class,
+            SeminarDummySeeder::class,
         ]);
 
         // Sample reports and feedbacks (requires TowerOwnerUserSeeder and FoPointsFromCsvSeeder)
@@ -52,7 +53,7 @@ class DatabaseSeeder extends Seeder
             ProviderOwnerUserSeeder::class, // Create provider owner users (must be after ProviderSeeder)
             FoRoutesFromPointsSeeder::class,
         ]);
-        
+
         // Note: GeoJSON routes are NOT pre-generated during seeding
         // They will be generated ON-DEMAND when users select routes in the UI
         // This saves OpenRouteService API tokens (70-80% savings)
@@ -68,7 +69,7 @@ class DatabaseSeeder extends Seeder
     private function cleanupStorageFiles(): void
     {
         $this->command->info('🧹 Cleaning up storage files...');
-        
+
         $directories = [
             'report-photos',
             'report-videos',
@@ -83,12 +84,12 @@ class DatabaseSeeder extends Seeder
         ];
 
         $totalDeleted = 0;
-        
+
         foreach ($directories as $directory) {
             if (Storage::disk('public')->exists($directory)) {
                 $files = Storage::disk('public')->allFiles($directory);
                 $count = count($files);
-                
+
                 if ($count > 0) {
                     Storage::disk('public')->deleteDirectory($directory);
                     Storage::disk('public')->makeDirectory($directory);
@@ -97,7 +98,7 @@ class DatabaseSeeder extends Seeder
                 }
             }
         }
-        
+
         if ($totalDeleted > 0) {
             $this->command->info("✓ Total: {$totalDeleted} files deleted");
         } else {
