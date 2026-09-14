@@ -7,15 +7,26 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { type ShowcaseData } from '@/Components/Auth/AuthShowcase';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+
+/**
+ * The field rhythm — `space-y-4`, `py-2.5` inputs, one hairline above the
+ * links — is set so the whole form clears a short laptop window without
+ * scrolling. See the one-screen note in GuestLayout. It is a budget, not a
+ * style: adding a field here costs about 66px of it.
+ */
+const FIELD = 'block w-full rounded-lg px-3.5 py-2.5 text-sm';
 
 export default function Login({
     status,
     canResetPassword,
+    showcase,
 }: {
     status?: string;
     canResetPassword: boolean;
+    showcase?: ShowcaseData;
 }) {
     const { turnstileSiteKey } = usePage().props as any;
     const captchaRef = useRef<TurnstileCaptchaRef>(null);
@@ -62,49 +73,48 @@ export default function Login({
     };
 
     return (
-        <GuestLayout>
-            <Head title="Log in" />
+        <GuestLayout showcase={showcase}>
+            <Head title="Masuk" />
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="mb-4 rounded-lg border border-success-border bg-success-soft px-3 py-2 text-sm font-medium text-success-strong">
                     {status}
                 </div>
             )}
 
-
-            <form onSubmit={submit} className="space-y-6">
-                <div className="space-y-2">
-                    <InputLabel htmlFor="email" value="Email" className="text-sm font-medium" />
+            <form onSubmit={submit} className="space-y-4">
+                <div className="space-y-1.5">
+                    <InputLabel htmlFor="email" value="Email" />
                     <TextInput
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+                        className={FIELD}
                         autoComplete="username"
                         isFocused={true}
                         onChange={(e) => setData('email', e.target.value)}
                         placeholder="Masukkan email Anda"
                     />
-                    <InputError message={errors.email} className="mt-1" />
+                    <InputError message={errors.email} />
                 </div>
 
-                <div className="space-y-2">
-                    <InputLabel htmlFor="password" value="Password" className="text-sm font-medium" />
+                <div className="space-y-1.5">
+                    <InputLabel htmlFor="password" value="Password" />
                     <PasswordInput
                         id="password"
                         name="password"
                         value={data.password}
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+                        className={FIELD}
                         autoComplete="current-password"
                         onChange={(e) => setData('password', e.target.value)}
                         placeholder="Masukkan password Anda"
                     />
-                    <InputError message={errors.password} className="mt-1" />
+                    <InputError message={errors.password} />
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <label className="flex items-center cursor-pointer">
+                    <label className="flex cursor-pointer items-center">
                         <Checkbox
                             name="remember"
                             checked={data.remember}
@@ -114,65 +124,57 @@ export default function Login({
                                     (e.target.checked || false) as false,
                                 )
                             }
-                            className="rounded focus:ring-2 focus:ring-gray-500"
+                            className="rounded focus:ring-2 focus:ring-ring"
                         />
-                        <span className="ml-2 text-sm text-gray-600 select-none">
+                        <span className="ml-2 select-none text-sm text-muted-foreground">
                             Ingat saya
                         </span>
                     </label>
-                    
+
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
+                            className="rounded text-sm text-muted-foreground underline transition-colors duration-200 hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
                         >
                             Lupa password?
                         </Link>
                     )}
                 </div>
 
-                {/* CAPTCHA */}
-                <div className="mb-6">
-                    <TurnstileCaptcha
-                        ref={captchaRef}
-                        siteKey={turnstileSiteKey || ''}
-                        onTokenChange={setCaptchaToken}
-                        error={errors['cf-turnstile-response'] || (errors as any).captcha}
-                        size="normal"
-                        theme="light"
-                    />
-                </div>
+                <TurnstileCaptcha
+                    ref={captchaRef}
+                    siteKey={turnstileSiteKey || ''}
+                    onTokenChange={setCaptchaToken}
+                    error={errors['cf-turnstile-response'] || (errors as any).captcha}
+                    size="normal"
+                    theme="light"
+                />
 
-                {/* Main Action Button */}
-                <div className="pt-2">
-                    <PrimaryButton 
-                        className="w-full px-6 py-3 font-medium rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 justify-center" 
-                        disabled={processing || !captchaToken} 
-                        style={{ backgroundColor: '#212121' }}
+                <PrimaryButton
+                    className="w-full justify-center px-6 py-2.5"
+                    disabled={processing || !captchaToken}
+                >
+                    {processing ? 'Memproses...' : 'Masuk'}
+                </PrimaryButton>
+
+                <div className="flex flex-col items-center justify-center gap-2 border-t border-border pt-4 sm:flex-row sm:gap-4">
+                    <Link
+                        href={route('register')}
+                        className="rounded text-sm text-muted-foreground underline transition-colors duration-200 hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
                     >
-                        {processing ? 'Memproses...' : 'Masuk'}
-                    </PrimaryButton>
-                </div>
+                        Belum punya akun? Daftar di sini
+                    </Link>
 
-                {/* Navigation Links */}
-                <div className="pt-6 border-t border-gray-200">
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-center">
-                        <Link
-                            href={route('register')}
-                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
-                        >
-                            Belum punya akun? Daftar di sini
-                        </Link>
-                        
-                        <span className="hidden sm:inline text-gray-300">|</span>
-                        
-                        <Link
-                            href={route('data.tower')}
-                            className="text-sm text-gray-600 hover:text-gray-800 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 rounded transition-colors duration-200"
-                        >
-                            Kembali ke Beranda
-                        </Link>
-                    </div>
+                    <span aria-hidden="true" className="hidden text-border-strong sm:inline">
+                        |
+                    </span>
+
+                    <Link
+                        href={route('data.tower')}
+                        className="rounded text-sm text-muted-foreground underline transition-colors duration-200 hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
+                    >
+                        Kembali ke Beranda
+                    </Link>
                 </div>
             </form>
         </GuestLayout>

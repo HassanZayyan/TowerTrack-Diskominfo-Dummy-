@@ -124,13 +124,13 @@ export default function MessageResponseForm({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Display custom error message for 403 errors */}
         {customError && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+          <div className="rounded-lg bg-destructive-soft border border-destructive-border p-4">
             <div className="flex items-start">
-              <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-destructive-strong mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-800">{customError}</p>
+                <p className="text-sm font-medium text-destructive-strong">{customError}</p>
               </div>
             </div>
           </div>

@@ -131,11 +131,11 @@ export default function UpdateProfileInformation({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-foreground">
                     Informasi Profil
                 </h2>
 
-                <p className="mt-2 text-sm text-gray-600">
+                <p className="mt-2 text-sm text-muted-foreground">
                     Perbarui informasi profil Anda. Alamat email tidak dapat diubah untuk keamanan akun.
                 </p>
             </header>
@@ -146,7 +146,7 @@ export default function UpdateProfileInformation({
                     <InputLabel value="Foto Profil" />
                     <div className="mt-2 flex items-center space-x-6">
                         <div className="relative">
-                            <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-2 border-gray-300">
+                            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-input">
                                 {previewUrl ? (
                                     <img
                                         src={previewUrl}
@@ -168,7 +168,7 @@ export default function UpdateProfileInformation({
                                         }}
                                     />
                                 ) : (
-                                    <span className="material-icons-outlined text-gray-400 text-3xl" aria-label="Tidak ada foto profil">
+                                    <span className="material-icons-outlined text-muted-foreground text-3xl" aria-label="Tidak ada foto profil">
                                         person
                                     </span>
                                 )}
@@ -179,7 +179,7 @@ export default function UpdateProfileInformation({
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={processing}
-                                className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
+                                className="inline-flex items-center px-4 py-2 bg-white border border-input rounded-md font-semibold text-xs text-foreground uppercase tracking-widest shadow-sm hover:bg-muted focus:outline-none focus:ring-2 focus-visible:ring focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
                                 aria-label="Pilih foto profil"
                             >
                                 <span className="material-icons-outlined mr-2 text-sm" aria-hidden="true">upload</span>
@@ -190,7 +190,7 @@ export default function UpdateProfileInformation({
                                     type="button"
                                     onClick={removeAvatar}
                                     disabled={processing}
-                                    className="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
+                                    className="inline-flex items-center px-4 py-2 bg-destructive border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-destructive focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
                                     aria-label="Hapus foto profil"
                                 >
                                     <span className="material-icons-outlined mr-2 text-sm" aria-hidden="true">delete</span>
@@ -207,11 +207,11 @@ export default function UpdateProfileInformation({
                         className="hidden"
                         aria-label="Upload foto profil"
                     />
-                    <p className="mt-2 text-xs text-gray-500">
+                    <p className="mt-2 text-xs text-muted-foreground">
                         JPG, PNG atau GIF. Maksimal 2MB.
                     </p>
                     {fileError && (
-                        <div className="mt-2 text-sm text-red-600 flex items-center">
+                        <div className="mt-2 text-sm text-destructive-strong flex items-center">
                             <span className="material-icons-outlined mr-1 text-sm" aria-hidden="true">error</span>
                             {fileError}
                         </div>
@@ -240,7 +240,7 @@ export default function UpdateProfileInformation({
                     <TextInput
                         id="email"
                         type="email"
-                        className="mt-1 block w-full bg-gray-100 cursor-not-allowed"
+                        className="mt-1 block w-full bg-muted cursor-not-allowed"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         required
@@ -249,7 +249,7 @@ export default function UpdateProfileInformation({
                         readOnly={true}
                     />
 
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="mt-2 text-sm text-muted-foreground">
                         Email tidak dapat diubah untuk keamanan akun.
                     </p>
 
@@ -257,24 +257,24 @@ export default function UpdateProfileInformation({
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                    <div className="rounded-md border border-warning-border bg-warning-soft p-4">
                         <div className="flex">
-                            <span className="material-icons-outlined text-yellow-400 mr-3">warning</span>
+                            <span className="material-icons-outlined text-warning-strong mr-3">warning</span>
                             <div>
-                                <p className="text-sm text-yellow-800">
+                                <p className="text-sm text-warning-strong">
                                     Alamat email Anda belum diverifikasi.
                                     <Link
                                         href={route('verification.send')}
                                         method="post"
                                         as="button"
-                                        className="ml-1 font-medium text-yellow-800 underline hover:text-yellow-900 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                                        className="ml-1 font-medium text-warning-strong underline hover:text-foreground focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
                                     >
                                         Klik di sini untuk mengirim ulang email verifikasi.
                                     </Link>
                                 </p>
 
                                 {status === 'verification-link-sent' && (
-                                    <div className="mt-2 text-sm font-medium text-green-600">
+                                    <div className="mt-2 text-sm font-medium text-success-strong">
                                         Link verifikasi baru telah dikirim ke alamat email Anda.
                                     </div>
                                 )}
@@ -283,7 +283,7 @@ export default function UpdateProfileInformation({
                     </div>
                 )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between pt-4 border-t border-border">
                     <Transition
                         show={recentlySuccessful}
                         enter="transition ease-in-out"
@@ -291,7 +291,7 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <div className="flex items-center text-sm text-green-600">
+                        <div className="flex items-center text-sm text-success-strong">
                             <span className="material-icons-outlined mr-2 text-sm">check_circle</span>
                             Profil berhasil diperbarui.
                         </div>
@@ -299,8 +299,8 @@ export default function UpdateProfileInformation({
                     
                     <PrimaryButton 
                         disabled={processing}
-                        className="inline-flex items-center px-6 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-sm text-black uppercase tracking-widest hover:bg-yellow-600 focus:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                        style={{ backgroundColor: '#FFD700', color: '#212121' }}
+                        className="inline-flex items-center rounded-md border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-140 ease-state hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                        
                     >
                         {processing && (
                             <span className="material-icons-outlined animate-spin mr-2 text-sm">refresh</span>

@@ -1,10 +1,15 @@
-import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import PageHeader from '@/Components/PageHeader';
 import FoTable from '@/Components/DataFo/FoTable';
-import { getFOStatusColor, getFOStatusBadgeClass } from '@/utils/statusHelpers';
+import { getFOStatusColor } from '@/utils/statusHelpers';
 import { formatDateOnly } from '@/utils/dateHelpers';
 import { useDebounce } from '@/Hooks/useDebounce';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
+import { Card } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface FoPoint {
   id: number;
@@ -115,75 +120,116 @@ interface PageProps {
   [key: string]: any; // Index signature to satisfy constraint
 }
 
+/**
+ * Shared control recipe. h-11 = 44px touch target, hairline input border,
+ * the single 3px token ring — never `focus:ring-2`, never a bare outline-none.
+ */
+const CONTROL_CLASSES =
+  'block h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-placeholder transition-colors duration-140 ease-state focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2';
+
+/** One label recipe for the whole page — there used to be four. */
+const LABEL_CLASSES = 'mb-1 block text-xs font-medium text-muted-foreground';
+
+/** Section head: 16px down to its content, semibold, tracking-tight from text-xl up. */
+const SectionHead = ({
+  title,
+  description,
+  actions,
+  children,
+}: {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children?: React.ReactNode;
+}) => (
+  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-w-0">
+      <h2 className="text-xl font-semibold tracking-tight text-foreground">{title}</h2>
+      {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+      {children}
+    </div>
+    {actions && <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">{actions}</div>}
+  </div>
+);
+
+/** Card head rule: 40px band on the inset ground with a strong bottom rule. */
+const TableHead = ({ title, meta }: { title: string; meta: string }) => (
+  <div className="flex min-h-[40px] flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border-strong bg-well px-3 py-2">
+    <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+    <span className="text-xs tabular-nums text-muted-foreground">{meta}</span>
+  </div>
+);
+
+/** Consistent empty state across every FO screen: well ground, 24px padding. */
+const EmptyState = ({ icon, title, description }: { icon: string; title: string; description?: string }) => (
+  <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-border bg-well p-6 text-center">
+    <svg className="h-8 w-8 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
+    </svg>
+    <p className="text-sm font-medium text-foreground">{title}</p>
+    {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
+  </div>
+);
+
 // Tab Navigation Component
-const TabNavigation = memo(({ activeTab, onTabChange }: { 
-  activeTab: string; 
-  onTabChange: (tab: string) => void; 
+const TabNavigation = memo(({ activeTab, onTabChange }: {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
 }) => {
   const tabs = [
-    { 
-      key: 'overview', 
-      label: 'Dashboard', 
+    {
+      key: 'overview',
+      label: 'Dashboard',
       icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z',
       description: 'Ringkasan & Statistik'
     },
-    { 
-      key: 'points', 
-      label: 'Titik FO', 
+    {
+      key: 'points',
+      label: 'Titik FO',
       icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z',
       description: 'Kelola Titik Fiber Optic'
     },
-    { 
-      key: 'routes', 
-      label: 'Jalur FO', 
+    {
+      key: 'routes',
+      label: 'Jalur FO',
       icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
       description: 'Kelola Jalur Fiber Optic'
     }
   ];
 
+  // Was three 88px card-buttons in a stacked grid — a second copy of the page's
+  // own navigation. An underline tab strip is 44px total and reads as one control.
   return (
-    <div className="px-6 pt-6">
-      <nav className="flex flex-col sm:flex-row gap-2" aria-label="Tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => onTabChange(tab.key)}
-            className={`group relative flex flex-col sm:flex-row items-start sm:items-center p-4 rounded-xl transition-all duration-300 text-left ${
-              activeTab === tab.key
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg transform scale-105'
-                : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 hover:shadow-md'
-            }`}
-          >
-            <div className={`flex items-center gap-3 ${
-              activeTab === tab.key ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
-            }`}>
-              <div className={`p-2 rounded-lg transition-all duration-200 ${
-                activeTab === tab.key 
-                  ? 'bg-white/20' 
-                  : 'bg-gray-100 group-hover:bg-blue-100'
-              }`}>
-                <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                </svg>
-              </div>
-              <div>
-                <div className={`font-semibold text-sm ${
-                  activeTab === tab.key ? 'text-white' : 'text-gray-900'
-                }`}>
-                  {tab.label}
-                </div>
-                <div className={`text-xs mt-0.5 ${
-                  activeTab === tab.key ? 'text-blue-100' : 'text-gray-500'
-                }`}>
-                  {tab.description}
-                </div>
-              </div>
-            </div>
-            {activeTab === tab.key && (
-              <div className="absolute inset-0 rounded-xl ring-2 ring-blue-300 ring-opacity-50"></div>
-            )}
-          </button>
-        ))}
+    <div className="border-b border-border">
+      <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Tabs">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              title={tab.description}
+              onClick={() => onTabChange(tab.key)}
+              className={cn(
+                'inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-medium',
+                'transition-colors duration-140 ease-state focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+                isActive
+                  ? 'border-primary text-primary-strong'
+                  : 'border-transparent text-muted-foreground hover:border-border-strong hover:text-foreground',
+              )}
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+              </svg>
+              {tab.label}
+              <span className="hidden text-xs font-normal text-muted-foreground lg:inline">
+                {tab.description}
+              </span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
@@ -206,97 +252,89 @@ const safeNumber = (value: number | null | undefined): number => {
   return Number(value);
 };
 
+/** A stat tile: figure first, label above it, one caption line. No icon discs. */
+const StatTile = ({
+  label,
+  value,
+  unit,
+  caption,
+  toneClass,
+  index,
+  children,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  caption?: string;
+  toneClass?: string;
+  index: number;
+  children?: React.ReactNode;
+}) => (
+  <Card
+    padding="dense"
+    className="tt-enter-up"
+    style={{ '--tt-delay': `${index * 40}ms` } as React.CSSProperties}
+  >
+    <p className="text-sm text-muted-foreground">{label}</p>
+    <p className={cn('mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground', toneClass)}>
+      {value}
+      {unit && <span className="ml-1 text-sm font-medium text-muted-foreground">{unit}</span>}
+    </p>
+    {caption && <p className="mt-1 truncate text-xs text-muted-foreground" title={caption}>{caption}</p>}
+    {children}
+  </Card>
+);
+
 // Enhanced Stats Cards Component
 const StatsCards = memo(({ stats }: { stats: Stats }) => {
-  const getHealthColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 bg-green-100';
-    if (score >= 60) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+  // A measurement, not brand chrome: a poor health score genuinely means
+  // "something is wrong", so it keeps red via the destructive token. The tone
+  // now lives on the figure only — a fully tinted tile made every KPI shout.
+  const healthTone = (score: number) => {
+    if (score >= 80) return 'text-success-strong';
+    if (score >= 60) return 'text-warning-strong';
+    return 'text-destructive-strong';
   };
 
+  const coverage = Math.min(Math.max(safeNumber(stats.coverage_percentage), 0), 100);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Total Infrastructure Card */}
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-blue-700 mb-2">Total Infrastruktur</h3>
-            <div className="space-y-1">
-              <div className="text-2xl font-bold text-blue-900">{stats.total_points.toLocaleString()}</div>
-              <div className="text-xs text-blue-600">Titik FO</div>
-              <div className="text-lg font-semibold text-blue-800 mt-1">{stats.total_routes}</div>
-              <div className="text-xs text-blue-600">Jalur FO</div>
-            </div>
-          </div>
-          <div className="p-3 bg-blue-200 rounded-full">
-            <svg className="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            </svg>
-          </div>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <StatTile
+        index={0}
+        label="Titik FO"
+        value={stats.total_points.toLocaleString()}
+        caption={`${stats.active_points} Aktif · ${stats.maintenance_points} Maintenance`}
+      />
+      <StatTile
+        index={1}
+        label="Jalur FO"
+        value={stats.total_routes.toLocaleString()}
+        caption={`${stats.active_routes} Aktif · ${stats.maintenance_routes} Maintenance`}
+      />
+      <StatTile
+        index={2}
+        label="Jarak Total"
+        value={safeToFixed(stats.total_distance, 1)}
+        unit="km"
+        caption={`Avg: ${safeToFixed(stats.avg_points_per_route, 1)} titik/jalur`}
+      />
+      <StatTile index={3} label="Coverage Jaringan" value={`${coverage}`} unit="%" caption="Cakupan Aktif">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-well">
+          <div
+            className="h-full origin-left animate-bar-grow rounded-full bg-success"
+            style={{ width: `${coverage}%` }}
+          />
         </div>
-      </div>
-
-      {/* Network Health Card */}
-      <div className={`rounded-xl p-6 shadow-sm border ${getHealthColor(stats.health_score)}`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Kesehatan Jaringan</h3>
-            <div className="text-2xl font-bold mb-1">{stats.health_score}%</div>
-            <div className="text-xs opacity-80">Health Score</div>
-            <div className="mt-2 text-sm">
-              <div>Aktif: {stats.active_points + stats.active_routes}</div>
-              <div>Maintenance: {stats.maintenance_points + stats.maintenance_routes}</div>
-            </div>
-          </div>
-          <div className="p-3 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}>
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* Coverage Card */}
-      <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-green-700 mb-2">Coverage Jaringan</h3>
-            <div className="text-2xl font-bold text-green-900">{stats.coverage_percentage}%</div>
-            <div className="text-xs text-green-600 mb-2">Cakupan Aktif</div>
-            <div className="w-full bg-green-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${stats.coverage_percentage}%` }}
-              />
-            </div>
-          </div>
-          <div className="p-3 bg-green-200 rounded-full">
-            <svg className="w-8 h-8 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* Distance Card */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-purple-700 mb-2">Jarak Total</h3>
-            <div className="text-2xl font-bold text-purple-900">{safeToFixed(stats.total_distance, 1)}</div>
-            <div className="text-xs text-purple-600 mb-1">Kilometer</div>
-            <div className="text-sm text-purple-700">
-              Avg: {safeToFixed(stats.avg_points_per_route, 1)} titik/jalur
-            </div>
-          </div>
-          <div className="p-3 bg-purple-200 rounded-full">
-            <svg className="w-8 h-8 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-          </div>
-        </div>
-      </div>
+      </StatTile>
+      <StatTile
+        index={4}
+        label="Kesehatan Jaringan"
+        value={`${safeNumber(stats.health_score)}`}
+        unit="%"
+        caption="Health Score"
+        toneClass={healthTone(stats.health_score)}
+      />
     </div>
   );
 });
@@ -305,50 +343,50 @@ StatsCards.displayName = 'StatsCards';
 
 // Enhanced Point Types Chart Component
 const PointTypesChart = memo(({ pointTypes }: { pointTypes: PointType[] }) => {
-  const colors = [
-    { bg: 'bg-blue-500', text: 'text-blue-600' },
-    { bg: 'bg-green-500', text: 'text-green-600' },
-    { bg: 'bg-yellow-500', text: 'text-yellow-600' },
-    { bg: 'bg-purple-500', text: 'text-purple-600' }
-  ];
-  
+  const total = (pointTypes || []).reduce((sum, t) => sum + (t.count || 0), 0);
+
+  // Type is a CATEGORY, not a status: it gets no hue. The old data-1..4 ramp
+  // implied four different meanings where there is only "how many of each".
   return (
-    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Distribusi Tipe Titik</h3>
-        <div className="text-sm text-gray-500">{(pointTypes || []).reduce((sum, t) => sum + (t.count || 0), 0)} Total</div>
-      </div>
-      <div className="space-y-4">
-        {(pointTypes || []).map((type, index) => (
-          <div key={type.type || `type-${index}`} className="group">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]?.bg || 'bg-gray-400'}`} />
-                <span className="font-medium text-gray-700">{type.label || 'Unknown Type'}</span>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold text-gray-900">{type.count || 0}</div>
-                <div className="text-xs text-gray-500">{safeToFixed(type.percentage, 1)}%</div>
-              </div>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div 
-                className={`h-full ${colors[index % colors.length]?.bg || 'bg-gray-400'} transition-all duration-500 ease-out`}
-                style={{ width: `${Math.min(Math.max(type.percentage || 0, 0), 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
-        {(!pointTypes || pointTypes.length === 0) && (
-          <div className="text-center py-8 text-gray-500">
-            <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-sm">Belum ada data tipe titik</p>
-          </div>
+    <Card padding="none">
+      <TableHead title="Distribusi Tipe Titik" meta={`${total} Total`} />
+      <div className="p-3">
+        {(pointTypes || []).length > 0 ? (
+          <ul className="divide-y divide-border/70">
+            {(pointTypes || []).map((type, index) => {
+              const pct = Math.min(Math.max(type.percentage || 0, 0), 100);
+              return (
+                <li key={type.type || `type-${index}`} className="flex items-center gap-3 py-2">
+                  <span
+                    className="w-24 shrink-0 truncate text-sm text-foreground sm:w-28"
+                    title={type.label || 'Unknown Type'}
+                  >
+                    {type.label || 'Unknown Type'}
+                  </span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-well">
+                    <span
+                      className="block h-full origin-left animate-bar-grow rounded-full bg-neutral-strong"
+                      style={{ width: `${pct}%`, animationDelay: `${index * 40}ms` }}
+                    />
+                  </span>
+                  <span className="w-10 shrink-0 text-right text-sm font-medium tabular-nums text-foreground">
+                    {type.count || 0}
+                  </span>
+                  <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                    {safeToFixed(type.percentage, 1)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState
+            icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            title="Belum ada data tipe titik"
+          />
         )}
       </div>
-    </div>
+    </Card>
   );
 });
 
@@ -356,54 +394,62 @@ PointTypesChart.displayName = 'PointTypesChart';
 
 // Route Status Chart Component
 const RouteStatusChart = memo(({ routeStatus }: { routeStatus: RouteStatus[] }) => {
-  
   const total = (routeStatus || []).reduce((sum, status) => sum + (status.count || 0), 0);
-  
+
   return (
-    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Status Jalur</h3>
-        <div className="text-sm text-gray-500">{total} Jalur</div>
-      </div>
-      <div className="space-y-4">
-        {(routeStatus || []).map((status, index) => {
-          const percentage = total > 0 ? ((status.count || 0) / total) * 100 : 0;
-          const colorConfig = getFOStatusColor(status.status);
-          
-          return (
-            <div key={status.status || `status-${index}`} className={`p-4 rounded-lg ${colorConfig.light}`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${colorConfig.bg}`} />
-                  <span className="font-medium text-gray-700">{status.label || colorConfig.label}</span>
-                </div>
-                <div className="text-right">
-                  <div className={`text-lg font-bold ${colorConfig.text}`}>{status.count || 0}</div>
-                  <div className="text-xs text-gray-500">{safeToFixed(percentage, 1)}%</div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {(!routeStatus || routeStatus.length === 0) && (
-          <div className="text-center py-8 text-gray-500">
-            <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-sm">Belum ada data status jalur</p>
-          </div>
+    <Card padding="none">
+      <TableHead title="Status Jalur" meta={`${total} Jalur`} />
+      <div className="p-3">
+        {(routeStatus || []).length > 0 ? (
+          <ul className="divide-y divide-border/70">
+            {(routeStatus || []).map((status, index) => {
+              const percentage = total > 0 ? ((status.count || 0) / total) * 100 : 0;
+              const colorConfig = getFOStatusColor(status.status);
+
+              // Status DOES carry a hue — this is the one place colour is allowed.
+              return (
+                <li key={status.status || `status-${index}`} className="flex items-center gap-3 py-2">
+                  <span className={cn('h-2 w-2 shrink-0 rounded-full', colorConfig.dot)} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    {status.label || colorConfig.label}
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{status.count || 0}</span>
+                  <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                    {safeToFixed(percentage, 1)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState
+            icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            title="Belum ada data status jalur"
+          />
         )}
       </div>
-    </div>
+    </Card>
   );
 });
 
 RouteStatusChart.displayName = 'RouteStatusChart';
 
+/** FO status → badge tone. inactive stays destructive: it means "link is down". */
+type StatusTone = 'success' | 'warning' | 'destructive' | 'neutral';
+const FO_STATUS_TONE: Record<string, StatusTone> = {
+  active: 'success',
+  inactive: 'destructive',
+  maintenance: 'warning',
+};
+const statusTone = (status: string | undefined | null): StatusTone =>
+  FO_STATUS_TONE[status ?? ''] ?? 'neutral';
+const statusLabel = (status: string | undefined | null): string =>
+  status === 'active' ? 'Aktif' : status === 'inactive' ? 'Non-aktif' : 'Maintenance';
+
 // Recent Activity Component
-const RecentActivity = memo(({ recentPoints, recentRoutes }: { 
-  recentPoints: RecentPoint[]; 
-  recentRoutes: RecentRoute[]; 
+const RecentActivity = memo(({ recentPoints, recentRoutes }: {
+  recentPoints: RecentPoint[];
+  recentRoutes: RecentRoute[];
 }) => {
   const getTypeIcon = (type: string) => {
     const icons = {
@@ -416,75 +462,73 @@ const RecentActivity = memo(({ recentPoints, recentRoutes }: {
   };
 
   return (
-    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Aktivitas Terbaru</h3>
-      
-      <div className="space-y-6">
-        {/* Recent Points */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            </svg>
-            Titik Terbaru
-          </h4>
-          <div className="space-y-2">
-            {(recentPoints || []).slice(0, 3).map((point) => (
-              <div key={point.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getTypeIcon(point.type || 'pole')} />
-                  </svg>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{point.name || 'Unnamed Point'}</div>
-                    <div className="text-xs text-gray-500">{point.created_at ? formatDateOnly(point.created_at) : 'N/A'}</div>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getFOStatusBadgeClass(point.status || 'inactive')}`}>
-                  {point.status === 'active' ? 'Aktif' : point.status === 'inactive' ? 'Non-aktif' : 'Maintenance'}
-                </span>
-              </div>
-            ))}
-            {(!recentPoints || recentPoints.length === 0) && (
-              <div className="text-sm text-gray-500 text-center py-4">Belum ada titik baru</div>
-            )}
-          </div>
-        </div>
+    <Card padding="none">
+      <TableHead title="Aktivitas Terbaru" meta={`${(recentPoints || []).length + (recentRoutes || []).length} entri`} />
 
-        {/* Recent Routes */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-            Jalur Terbaru
-          </h4>
-          <div className="space-y-2">
-            {(recentRoutes || []).slice(0, 3).map((route) => (
-              <div key={route.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{route.name || 'Unnamed Route'}</div>
-                    <div className="text-xs text-gray-500">
-                      {safeToFixed(route.total_distance, 1)} km • {route.created_at ? formatDateOnly(route.created_at) : 'N/A'}
-                    </div>
+      <div className="px-3 py-2">
+        <h4 className="flex h-7 items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          </svg>
+          Titik Terbaru
+        </h4>
+        <ul className="divide-y divide-border/70">
+          {(recentPoints || []).slice(0, 3).map((point) => (
+            <li key={point.id} className="flex min-h-[44px] items-center justify-between gap-2 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <svg className="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getTypeIcon(point.type || 'pole')} />
+                </svg>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-foreground" title={point.name || 'Unnamed Point'}>
+                    {point.name || 'Unnamed Point'}
+                  </div>
+                  <div className="text-xs tabular-nums text-muted-foreground">
+                    {point.created_at ? formatDateOnly(point.created_at) : 'N/A'}
                   </div>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getFOStatusBadgeClass(route.status || 'inactive')}`}>
-                  {route.status === 'active' ? 'Aktif' : route.status === 'inactive' ? 'Non-aktif' : 'Maintenance'}
-                </span>
               </div>
-            ))}
-            {(!recentRoutes || recentRoutes.length === 0) && (
-              <div className="text-sm text-gray-500 text-center py-4">Belum ada jalur baru</div>
-            )}
-          </div>
-        </div>
+              <Badge variant={statusTone(point.status)}>{statusLabel(point.status)}</Badge>
+            </li>
+          ))}
+          {(!recentPoints || recentPoints.length === 0) && (
+            <li className="py-3 text-sm text-muted-foreground">Belum ada titik baru</li>
+          )}
+        </ul>
       </div>
-    </div>
+
+      <div className="border-t border-border/70 px-3 py-2">
+        <h4 className="flex h-7 items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          Jalur Terbaru
+        </h4>
+        <ul className="divide-y divide-border/70">
+          {(recentRoutes || []).slice(0, 3).map((foRoute) => (
+            <li key={foRoute.id} className="flex min-h-[44px] items-center justify-between gap-2 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <svg className="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-foreground" title={foRoute.name || 'Unnamed Route'}>
+                    {foRoute.name || 'Unnamed Route'}
+                  </div>
+                  <div className="text-xs tabular-nums text-muted-foreground">
+                    {safeToFixed(foRoute.total_distance, 1)} km • {foRoute.created_at ? formatDateOnly(foRoute.created_at) : 'N/A'}
+                  </div>
+                </div>
+              </div>
+              <Badge variant={statusTone(foRoute.status)}>{statusLabel(foRoute.status)}</Badge>
+            </li>
+          ))}
+          {(!recentRoutes || recentRoutes.length === 0) && (
+            <li className="py-3 text-sm text-muted-foreground">Belum ada jalur baru</li>
+          )}
+        </ul>
+      </div>
+    </Card>
   );
 });
 
@@ -495,10 +539,10 @@ function GenerateRoutesButton({ currentArea }: { currentArea: string }) {
   const { post, processing: isGenerating } = useForm({
     area: currentArea,
   });
-  
+
   const handleGenerateRoutes = useCallback(() => {
     if (isGenerating) return;
-    
+
     post(route('api.fo.routes.generate-all'), {
       preserveState: true,
       preserveScroll: true,
@@ -518,33 +562,56 @@ function GenerateRoutesButton({ currentArea }: { currentArea: string }) {
       },
     });
   }, [isGenerating, currentArea, post]);
-  
+
   return (
-    <button
+    <Button
+      type="button"
+      variant="success"
       onClick={handleGenerateRoutes}
       disabled={isGenerating}
-      className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200 ${
-        isGenerating
-          ? 'bg-gray-400 cursor-not-allowed'
-          : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transform hover:-translate-y-0.5'
-      }`}
+      className="h-11 shrink-0"
     >
       {isGenerating ? (
         <>
-          <div className="animate-spin -ml-1 mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
           Generating...
         </>
       ) : (
         <>
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           Generate Semua Jalur
         </>
       )}
-    </button>
+    </Button>
   );
 }
+
+/** Status tally line — three real counts, dots carry the meaning. */
+const StatusTally = ({ active, inactive, maintenance, extra }: {
+  active: number;
+  inactive: number;
+  maintenance: number;
+  extra?: React.ReactNode;
+}) => (
+  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+    <span className="flex items-center gap-1.5">
+      <span className="h-2 w-2 rounded-full bg-success" />
+      <span className="tabular-nums">{active}</span> Aktif
+    </span>
+    <span className="flex items-center gap-1.5">
+      {/* Non-aktif is a fault state, so the dot stays red. */}
+      <span className="h-2 w-2 rounded-full bg-destructive" />
+      <span className="tabular-nums">{inactive}</span> Non-aktif
+    </span>
+    <span className="flex items-center gap-1.5">
+      <span className="h-2 w-2 rounded-full bg-warning" />
+      <span className="tabular-nums">{maintenance}</span> Maintenance
+    </span>
+    {extra}
+  </div>
+);
 
 export default function FoManagementIndex() {
   const { props } = usePage<PageProps>();
@@ -557,7 +624,7 @@ export default function FoManagementIndex() {
     type: 'all',
     search: ''
   });
-  
+
   // Debounced search state
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearchValue = useDebounce(searchValue, 500);
@@ -565,8 +632,8 @@ export default function FoManagementIndex() {
   // Handle tab change with URL update
   const handleTabChange = useCallback((tab: string) => {
     setSelectedTab(tab);
-    router.get(route('admin.fo-management.routes.list'), 
-      { tab, area: filters.area } as any, 
+    router.get(route('admin.fo-management.routes.list'),
+      { tab, area: filters.area } as any,
       { preserveState: true, preserveScroll: true, replace: true }
     );
   }, [filters.area]);
@@ -574,8 +641,8 @@ export default function FoManagementIndex() {
   // Handle filter changes
   const handleFilterChange = useCallback((newFilters: typeof filters) => {
     setFilters(newFilters);
-    router.get(route('admin.fo-management.routes.list'), 
-      { ...newFilters, tab: selectedTab } as any, 
+    router.get(route('admin.fo-management.routes.list'),
+      { ...newFilters, tab: selectedTab } as any,
       { preserveState: true, preserveScroll: true, replace: true }
     );
   }, [selectedTab]);
@@ -587,7 +654,7 @@ export default function FoManagementIndex() {
     }
   }, [debouncedSearchValue, filters, handleFilterChange]);
 
-  // Filter data based on current filters  
+  // Filter data based on current filters
   const filteredPoints = foPoints.data.map(point => ({
     ...point,
     properties: {},
@@ -611,237 +678,93 @@ export default function FoManagementIndex() {
   const renderTabContent = () => {
     switch (selectedTab) {
       case 'overview':
+        // The centred "Dashboard Fiber Optic" welcome block was removed: it
+        // restated the page <h1> two rows above it.
         return (
-          <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="text-center py-4">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Fiber Optic</h2>
-              <p className="text-gray-600">Monitoring dan kontrol infrastruktur fiber optic secara real-time</p>
-            </div>
-            
+          <div className="space-y-5">
             <StatsCards stats={stats} />
-            
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-              <div className="xl:col-span-3 space-y-8">
-                {/* Charts Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+              <div className="space-y-5 xl:col-span-2">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                   <PointTypesChart pointTypes={pointTypes} />
                   <RouteStatusChart routeStatus={routeStatus} />
                 </div>
-                
-                {/* Enhanced Quick Actions */}
-                <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl border border-gray-100 rounded-2xl p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
+
+                {/*
+                  The "Aksi Cepat" grid is gone. Two of its four cards pointed at
+                  routes.create — already the page header's action — and the other
+                  two duplicated the tab strip directly above them. Only the route
+                  generator was a real, otherwise-unreachable action, so it stays.
+                */}
+                <Card padding="none">
+                  <TableHead title="Optimisasi Jalur" meta="Routing service" />
+                  <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-semibold text-foreground">Generate Jalur GeoJSON</h4>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        Buat jalur yang mengikuti jalan nyata menggunakan routing service. Jalur akan lebih akurat dan realistis.
+                      </p>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-success-strong">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Otomatis mengikuti jalan
+                      </p>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">Aksi Cepat</h3>
-                      <p className="text-gray-600 text-sm">Tambah infrastruktur baru dengan mudah</p>
-                    </div>
+                    <GenerateRoutesButton currentArea={currentArea} />
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Link
-                      href={route('admin.fo-management.routes.create')}
-                      className="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl p-6 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="p-2 bg-white/20 rounded-lg">
-                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            </svg>
-                          </div>
-                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                        <h4 className="font-semibold text-lg mb-1">Jalur/Titik FO</h4>
-                        <p className="text-blue-100 text-sm">Buat jalur lalu tambah titik</p>
-                      </div>
-                    </Link>
-                    
-                    <Link
-                      href={route('admin.fo-management.routes.create')}
-                      className="group relative overflow-hidden bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl p-6 hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="p-2 bg-white/20 rounded-lg">
-                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                          </div>
-                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                        <h4 className="font-semibold text-lg mb-1">Jalur FO</h4>
-                        <p className="text-green-100 text-sm">Tambah jalur baru</p>
-                      </div>
-                    </Link>
-                    
-                    <Link
-                      href={route('admin.fo-management.routes.list', { tab: 'points', area: currentArea })}
-                      className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-2xl p-6 hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="p-2 bg-white/20 rounded-lg">
-                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                          </div>
-                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                        <h4 className="font-semibold text-lg mb-1">Kelola Titik</h4>
-                        <p className="text-purple-100 text-sm">Lihat semua titik</p>
-                      </div>
-                    </Link>
-                    
-                    <Link
-                      href={route('admin.fo-management.routes.list', { tab: 'routes', area: currentArea })}
-                      className="group relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-2xl p-6 hover:from-orange-700 hover:to-orange-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="p-2 bg-white/20 rounded-lg">
-                            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                            </svg>
-                          </div>
-                          <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                        <h4 className="font-semibold text-lg mb-1">Kelola Jalur</h4>
-                        <p className="text-orange-100 text-sm">Lihat semua jalur</p>
-                      </div>
-                    </Link>
-                  </div>
-                  
-                  {/* Route Generation Action */}
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Optimisasi Jalur</h4>
-                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-emerald-100 rounded-lg">
-                            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-gray-900 mb-1">Generate Jalur GeoJSON</h5>
-                            <p className="text-sm text-gray-600 mb-3">
-                              Buat jalur yang mengikuti jalan nyata menggunakan routing service. Jalur akan lebih akurat dan realistis.
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-emerald-700">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>Otomatis mengikuti jalan</span>
-                            </div>
-                          </div>
-                        </div>
-                        <GenerateRoutesButton currentArea={currentArea} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                </Card>
               </div>
-              
+
               <div className="xl:col-span-1">
                 <RecentActivity recentPoints={recentPoints} recentRoutes={recentRoutes} />
               </div>
             </div>
           </div>
         );
-      
+
       case 'points':
         return (
-          <div className="space-y-8">
-            {/* Points Header */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-600 rounded-xl">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">Manajemen Titik FO</h3>
-                    <p className="text-gray-600 mt-1">Kelola dan monitor semua titik fiber optic</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        {stats.active_points} Aktif
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        {stats.inactive_points} Non-aktif
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                        {stats.maintenance_points} Maintenance
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href={route('admin.fo-management.routes.create')}
-                    className="group inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Buat Jalur Baru
-                  </Link>
-                  <a
-                    href={route('admin.fo-management.points.export', { ...filters, tab: 'points' })}
-                    className="group inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Export Data
-                  </a>
-                </div>
-              </div>
-            </div>
-            
-            {/* Points Table */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          <div>
+            <SectionHead
+              title="Manajemen Titik FO"
+              description="Kelola dan monitor semua titik fiber optic"
+              actions={
+                <>
+                  <Button asChild className="h-11">
+                    <Link href={route('admin.fo-management.routes.create')}>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Daftar Titik FO</h4>
-                      <p className="text-sm text-gray-600">Total {stats.total_points} titik terdaftar</p>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Menampilkan {filteredPoints.length} dari {stats.total_points} titik
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
+                      Buat Jalur Baru
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="h-11">
+                    <a href={route('admin.fo-management.points.export', { ...filters, tab: 'points' })}>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export Data
+                    </a>
+                  </Button>
+                </>
+              }
+            >
+              <StatusTally
+                active={stats.active_points}
+                inactive={stats.inactive_points}
+                maintenance={stats.maintenance_points}
+              />
+            </SectionHead>
+
+            <Card padding="none">
+              {/* "Total N titik terdaftar" was dropped — the line below contains it. */}
+              <TableHead
+                title="Daftar Titik FO"
+                meta={`Menampilkan ${filteredPoints.length} dari ${stats.total_points} titik`}
+              />
+              <div className="p-3">
                 <FoTable
                   filteredPoints={filteredPoints}
                   filteredRoutes={[]}
@@ -849,91 +772,58 @@ export default function FoManagementIndex() {
                   activeTab="points"
                 />
               </div>
-            </div>
+            </Card>
           </div>
         );
-      
+
       case 'routes':
         return (
-          <div className="space-y-8">
-            {/* Routes Header */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-green-600 rounded-xl">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">Manajemen Jalur FO</h3>
-                    <p className="text-gray-600 mt-1">Kelola dan monitor semua jalur fiber optic</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        {stats.active_routes} Aktif
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        {stats.inactive_routes} Non-aktif
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                        {stats.maintenance_routes} Maintenance
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                        {safeToFixed(stats.total_distance)} km Total
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href={route('admin.fo-management.routes.create')}
-                    className="group inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 w-full sm:w-auto text-center"
-                  >
-                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span className="text-center">Tambah Jalur Baru</span>
-                  </Link>
-                  <a
-                    href={route('admin.fo-management.routes.export', { ...filters, tab: 'routes' })}
-                    className="group inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    Laporan Jalur
-                  </a>
-                </div>
-              </div>
-            </div>
-            
-            {/* Routes Table */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+          <div>
+            <SectionHead
+              title="Manajemen Jalur FO"
+              description="Kelola dan monitor semua jalur fiber optic"
+              actions={
+                <>
+                  <Button asChild className="h-11">
+                    <Link href={route('admin.fo-management.routes.create')}>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Daftar Jalur FO</h4>
-                      <p className="text-sm text-gray-600">Total {stats.total_routes} jalur terdaftar</p>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Menampilkan {filteredRoutes.length} dari {stats.total_routes} jalur
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
+                      Tambah Jalur Baru
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="h-11">
+                    <a href={route('admin.fo-management.routes.export', { ...filters, tab: 'routes' })}>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Laporan Jalur
+                    </a>
+                  </Button>
+                </>
+              }
+            >
+              <StatusTally
+                active={stats.active_routes}
+                inactive={stats.inactive_routes}
+                maintenance={stats.maintenance_routes}
+                extra={
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span className="tabular-nums">{safeToFixed(stats.total_distance)}</span> km Total
+                  </span>
+                }
+              />
+            </SectionHead>
+
+            <Card padding="none">
+              <TableHead
+                title="Daftar Jalur FO"
+                meta={`Menampilkan ${filteredRoutes.length} dari ${stats.total_routes} jalur`}
+              />
+              <div className="p-3">
                 <FoTable
                   filteredPoints={[]}
                   filteredRoutes={filteredRoutes}
@@ -941,10 +831,10 @@ export default function FoManagementIndex() {
                   activeTab="routes"
                 />
               </div>
-            </div>
+            </Card>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -953,74 +843,44 @@ export default function FoManagementIndex() {
   return (
     <AdminLayout title="Manajemen Fiber Optic">
       <Head title="Manajemen Fiber Optic" />
-      
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 text-white shadow-xl">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-2">
-              <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
-                Manajemen Fiber Optic
-              </h1>
-              <p className="text-blue-100 text-lg">
-                Kelola titik dan jalur fiber optic untuk area <span className="font-semibold text-white">{currentArea}</span>
-              </p>
-              <div className="flex items-center gap-2 text-blue-100">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                </svg>
-                <span className="text-sm">Dashboard Monitoring & Kontrol</span>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                href={route('admin.fo-management.routes.create')}
-                className="group inline-flex items-center justify-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 w-full sm:w-auto text-center"
-              >
-                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-center">Buat Jalur FO</span>
-              </Link>
-              <Link
-                href={route('admin.fo-management.routes.create')}
-                className="group inline-flex items-center justify-center px-6 py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 w-full sm:w-auto text-center"
-              >
-                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-center">Tambah Jalur FO</span>
-              </Link>
-            </div>
-          </div>
-        </div>
 
-        {/* Enhanced Filters */}
-        <div className="bg-white shadow-lg rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+      <div className="space-y-4 sm:space-y-5">
+        {/*
+          The maroon page band is gone — AdminLayout already renders a maroon top
+          bar, and two brand bands stacked read as a broken layout. The duplicate
+          "Buat Jalur FO" / "Tambah Jalur FO" pair (same route, two variants) is
+          now a single action.
+        */}
+        <PageHeader
+          title="Manajemen Fiber Optic"
+          description={`Kelola titik dan jalur fiber optic untuk area ${currentArea} — Dashboard Monitoring & Kontrol`}
+          showLogo={false}
+          className="mb-0 pb-4"
+          actions={
+            <Button asChild className="h-11">
+              <Link href={route('admin.fo-management.routes.create')}>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Filter & Pencarian</h3>
-                <p className="text-sm text-gray-600">Gunakan filter untuk mempersempit hasil pencarian</p>
-              </div>
-            </div>
-          </div>
-          
+                Tambah Jalur FO
+              </Link>
+            </Button>
+          }
+        />
+
+        <TabNavigation activeTab={selectedTab} onTabChange={handleTabChange} />
+
+        {/* Filter rail: one inset row, four controls, no icon tiles, no card-in-card. */}
+        <Card variant="well" padding="dense">
           <form onSubmit={(e) => e.preventDefault()}>
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-2">
-                <label htmlFor="search" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Pencarian
-                </label>
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <h3 className="text-sm font-semibold text-foreground">Filter &amp; Pencarian</h3>
+              <p className="text-xs text-muted-foreground">Gunakan filter untuk mempersempit hasil pencarian</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label htmlFor="search" className={LABEL_CLASSES}>Pencarian</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -1033,94 +893,69 @@ export default function FoManagementIndex() {
                         handleFilterChange({ ...filters, search: searchValue });
                       }
                     }}
-                    className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm"
+                    className={cn(CONTROL_CLASSES, 'pl-9')}
                     placeholder="Cari nama titik atau jalur..."
                   />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
+                  <svg
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-placeholder"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
               </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="status-filter" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Status
-                </label>
+
+              <div>
+                <label htmlFor="status-filter" className={LABEL_CLASSES}>Status</label>
                 <select
                   id="status-filter"
                   value={filters.status}
                   onChange={(e) => handleFilterChange({ ...filters, status: e.target.value })}
-                  className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm bg-white"
+                  className={CONTROL_CLASSES}
                 >
-                  <option value="all">🔄 Semua Status</option>
-                  <option value="active">✅ Aktif</option>
-                  <option value="inactive">❌ Non-aktif</option>
-                  <option value="maintenance">🔧 Maintenance</option>
+                  <option value="all">Semua Status</option>
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Non-aktif</option>
+                  <option value="maintenance">Maintenance</option>
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="type-filter" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  Tipe
-                </label>
+              <div>
+                <label htmlFor="type-filter" className={LABEL_CLASSES}>Tipe</label>
                 <select
                   id="type-filter"
                   value={filters.type}
                   onChange={(e) => handleFilterChange({ ...filters, type: e.target.value })}
-                  className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm bg-white"
+                  className={CONTROL_CLASSES}
                 >
-                  <option value="all">📋 Semua Tipe</option>
-                  <option value="pole">🏗️ Pole</option>
-                  <option value="junction">🔗 Junction</option>
-                  <option value="hub">🌐 Hub</option>
-                  <option value="endpoint">📍 Endpoint</option>
+                  <option value="all">Semua Tipe</option>
+                  <option value="pole">Pole</option>
+                  <option value="junction">Junction</option>
+                  <option value="hub">Hub</option>
+                  <option value="endpoint">Endpoint</option>
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="area-filter" className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
-                  Area
-                </label>
+              <div>
+                <label htmlFor="area-filter" className={LABEL_CLASSES}>Area</label>
                 <select
                   id="area-filter"
                   value={filters.area}
                   onChange={(e) => handleFilterChange({ ...filters, area: e.target.value })}
-                  className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm bg-white"
+                  className={CONTROL_CLASSES}
                 >
                   {availableAreas.map((area: string) => (
                     <option key={area} value={area}>
-                      📍 {area.charAt(0).toUpperCase() + area.slice(1)}
+                      {area.charAt(0).toUpperCase() + area.slice(1)}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
-            </div>
           </form>
-        </div>
+        </Card>
 
-        {/* Enhanced Tab Navigation */}
-        <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-            <TabNavigation activeTab={selectedTab} onTabChange={handleTabChange} />
-          </div>
-          
-          {/* Tab Content */}
-          <div className="p-8">
-            {renderTabContent()}
-          </div>
-        </div>
+        {renderTabContent()}
       </div>
     </AdminLayout>
   );

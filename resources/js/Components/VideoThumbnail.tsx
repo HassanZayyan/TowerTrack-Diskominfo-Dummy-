@@ -14,11 +14,11 @@ interface VideoThumbnailProps {
 export default function VideoThumbnail({
   src,
   fileType,
-  className = "w-full h-full object-cover",
+  className ="w-full h-full object-cover",
   onClick,
   showPlayButton = true,
-  alt = "Video thumbnail",
-  loading = "lazy",
+  alt ="Video thumbnail",
+  loading ="lazy",
   onError
 }: VideoThumbnailProps) {
   const [thumbnailSrc, setThumbnailSrc] = useState<string | null>(null);
@@ -119,9 +119,9 @@ export default function VideoThumbnail({
   // Show loading state
   if (isLoading) {
     return (
-      <div className={`relative bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse ${className} flex items-center justify-center`}>
-        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-300 rounded-full flex items-center justify-center">
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className={`relative bg-muted animate-pulse ${className} flex items-center justify-center`}>
+        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-border-strong rounded-full flex items-center justify-center">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </div>
@@ -132,19 +132,19 @@ export default function VideoThumbnail({
   // Show error state
   if (hasError || !thumbnailSrc) {
     return (
-      <div className={`relative bg-gradient-to-br from-gray-100 to-gray-200 ${className} flex items-center justify-center`} onClick={handleClick}>
+      <div className={`relative bg-muted ${className} flex items-center justify-center`} onClick={handleClick}>
         <div className="text-center">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-2">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-border-strong rounded-full flex items-center justify-center mx-auto mb-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </div>
-          <p className="text-xs text-gray-500 hidden sm:block">Video tidak dapat dimuat</p>
+          <p className="text-xs text-muted-foreground hidden sm:block">Video tidak dapat dimuat</p>
         </div>
         {showPlayButton && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-5">
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white bg-opacity-85 rounded-full flex items-center justify-center shadow-md">
-              <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4 text-foreground ml-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M8 5v10l8-5-8-5z"/>
               </svg>
             </div>
@@ -155,21 +155,21 @@ export default function VideoThumbnail({
   }
 
   return (
-    <div className="relative cursor-pointer group bg-gray-100" onClick={handleClick}>
+    <div className="relative cursor-pointer group bg-muted" onClick={handleClick}>
       {/* Thumbnail Image */}
       <img
         src={thumbnailSrc}
         alt={alt}
-        className={`${className} object-contain transition-all duration-200 group-hover:scale-105`}
+        className={`${className} object-contain transition-colors duration-200 group-`}
         loading={loading}
         onError={() => setHasError(true)}
       />
       
       {/* Play Button Overlay */}
       {showPlayButton && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-10 group-hover:bg-opacity-20 transition-all duration-200">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg transition-transform duration-200 border border-gray-300">
-            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-10 group-hover:bg-opacity-20 transition-colors duration-200">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg transition-transform duration-200 border border-input">
+            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-foreground ml-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M8 5v10l8-5-8-5z"/>
             </svg>
           </div>

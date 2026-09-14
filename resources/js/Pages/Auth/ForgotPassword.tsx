@@ -1,4 +1,5 @@
 import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -17,39 +18,48 @@ export default function ForgotPassword({ status }: { status?: string }) {
     };
 
     return (
-        <GuestLayout>
-            <Head title="Forgot Password" />
+        <GuestLayout
+            title="Lupa Password"
+            subtitle="Kami akan mengirim tautan untuk mengatur ulang password Anda"
+        >
+            <Head title="Lupa Password" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                Forgot your password? No problem. Just let us know your email
-                address and we will email you a password reset link that will
-                allow you to choose a new one.
+            {/* Was the stock Breeze paragraph, in English, on a screen where
+                every other word is Indonesian — and three sentences long, which
+                restated the subtitle the layout now prints directly above it. */}
+            <div className="mb-4 text-sm text-muted-foreground">
+                Masukkan alamat email yang terdaftar pada akun Anda.
             </div>
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="mb-4 text-sm font-medium text-success-strong">
                     {status}
                 </div>
             )}
 
-            <form onSubmit={submit}>
-                <TextInput
-                    id="email"
-                    type="email"
-                    name="email"
-                    value={data.email}
-                    className="mt-1 block w-full"
-                    isFocused={true}
-                    onChange={(e) => setData('email', e.target.value)}
-                />
-
-                <InputError message={errors.email} className="mt-2" />
-
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Email Password Reset Link
-                    </PrimaryButton>
+            <form onSubmit={submit} className="space-y-4">
+                <div className="space-y-1.5">
+                    {/* The field had no label at all — stock Breeze relies on
+                        the paragraph above to say what it wants, which leaves a
+                        screen reader announcing an unnamed text box. */}
+                    <InputLabel htmlFor="email" value="Email" />
+                    <TextInput
+                        id="email"
+                        type="email"
+                        name="email"
+                        value={data.email}
+                        className="block w-full rounded-lg px-3.5 py-2.5 text-sm"
+                        autoComplete="username"
+                        isFocused={true}
+                        onChange={(e) => setData('email', e.target.value)}
+                        placeholder="Masukkan email Anda"
+                    />
+                    <InputError message={errors.email} />
                 </div>
+
+                <PrimaryButton className="w-full justify-center px-6 py-2.5" disabled={processing}>
+                    {processing ? 'Mengirim...' : 'Kirim Tautan Reset'}
+                </PrimaryButton>
             </form>
         </GuestLayout>
     );

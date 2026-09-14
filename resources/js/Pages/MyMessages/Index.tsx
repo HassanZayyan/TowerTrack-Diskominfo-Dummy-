@@ -6,7 +6,8 @@ import MessageCard from '@/Components/MyMessages/MessageCard';
 import MessageStats from '@/Components/MyMessages/MessageStats';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
-import PrimaryButton from '@/Components/PrimaryButton';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
 import type { ReportItem, FeedbackItem, MessageItem } from '@/types/messages';
 import { getStatusColor } from '@/utils/statusHelpers';
 import { formatDate } from '@/utils/dateHelpers';
@@ -238,14 +239,14 @@ export default function MyMessagesIndex({
     };
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center max-w-2xl mx-auto mt-8">
-        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mx-auto mt-8 max-w-2xl rounded-lg border border-border bg-card p-8 text-center shadow-xs">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft">
+          <svg className="h-8 w-8 text-primary-strong" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Lihat Pesan Anda</h3>
-        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+        <h3 className="mb-2 text-xl font-semibold tracking-tight text-foreground">Lihat Pesan Anda</h3>
+        <p className="mx-auto mb-6 max-w-md text-muted-foreground">
           Masukkan email yang Anda gunakan saat mengirim keluhan atau masukan untuk melihat status dan respons dari admin.
         </p>
 
@@ -253,8 +254,8 @@ export default function MyMessagesIndex({
           <div className="mb-6">
             <InputLabel htmlFor="email" value="Alamat Email" className="text-left mb-2" />
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg className="h-5 w-5 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                 </svg>
               </div>
@@ -273,17 +274,12 @@ export default function MyMessagesIndex({
             </div>
           </div>
 
-          <PrimaryButton
-            type="submit"
-            className="w-full justify-center py-3 text-base"
-          >
-            <span className="flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Lihat Pesan Saya
-            </span>
-          </PrimaryButton>
+          <Button type="submit" size="lg" className="w-full">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Lihat Pesan Saya
+          </Button>
         </form>
       </div>
     );
@@ -291,14 +287,14 @@ export default function MyMessagesIndex({
 
   // Memoize EmptyState to prevent unnecessary re-renders
   const EmptyState = React.memo(() => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center mt-6">
-      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-        <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="mt-6 rounded-lg border border-border bg-card p-12 text-center shadow-xs">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+        <svg className="h-10 w-10 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">Belum Ada Pesan</h3>
-      <p className="text-gray-600 max-w-md mx-auto">
+      <h3 className="mb-2 text-xl font-semibold tracking-tight text-foreground">Belum Ada Pesan</h3>
+      <p className="mx-auto max-w-md text-muted-foreground">
         {isAnonymous
           ? 'Belum ada pesan publik yang tersedia saat ini. Pesan akan muncul ketika ada laporan dari masyarakat.'
           : 'Anda belum mengirimkan laporan apapun. Mulai laporkan keluhan atau berikan masukan Anda.'
@@ -310,14 +306,21 @@ export default function MyMessagesIndex({
   // Determine the title based on the view
   const pageTitle = isMyPosts ? "Pesan Saya" : (isAnonymous ? "Pesan Publik" : "Pesan Publik");
 
+  /**
+   * Page band. Was a saturated #B71C1C bar with gold buttons — brand chrome from
+   * the old identity, not a status. It is typographic now, in the same register
+   * as HeroSection: a hairline rule instead of a coloured block, and the two
+   * navigation buttons carried by the Button primitive rather than a gold pill
+   * that lifted on hover.
+   */
   const headerContent = (
-    <div className="bg-red-700 border-b border-red-800 w-full shadow-md relative z-10 overflow-hidden">
-      <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+    <div className="relative z-10 w-full border-b border-border bg-card">
+      <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-6 px-3 py-8 sm:px-4 sm:py-10 md:flex-row md:items-start md:px-6 lg:px-8">
         <div className="flex-1 text-center md:text-left">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-3 drop-shadow-sm">
+          <h1 className="mb-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             {pageTitle}
           </h1>
-          <p className="text-lg text-red-100 max-w-2xl leading-relaxed mx-auto md:mx-0">
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground md:mx-0">
             {isMyPosts
               ? 'Kelola semua pesan yang telah Anda kirim, baik yang bersifat publik maupun pribadi.'
               : isAnonymous
@@ -330,39 +333,38 @@ export default function MyMessagesIndex({
           {!isAnonymous && auth?.user && (
             <div className="mt-6 flex justify-center md:justify-start">
               {isMyPosts ? (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => router.visit('/my-messages')}
-                  className="inline-flex items-center px-5 py-2.5 bg-yellow-400 text-red-900 font-bold rounded-lg shadow-lg hover:bg-yellow-300 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
                   Kembali ke Pesan Publik
-                </button>
+                </Button>
               ) : (
                 !['admin', 'operator'].includes(auth.user.role) && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => router.visit('/my-messages/my-posts')}
-                    className="inline-flex items-center px-5 py-2.5 bg-yellow-400 text-red-900 font-bold rounded-lg shadow-lg hover:bg-yellow-300 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
                   >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     Pesan Saya
-                  </button>
+                  </Button>
                 )
               )}
             </div>
           )}
         </div>
-        <div className="hidden md:block flex-shrink-0">
-          <div className="bg-yellow-400 p-3 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-300">
+        <div className="hidden flex-shrink-0 md:block">
+          <div className="rounded-lg border border-border bg-muted p-3">
             <img
-              src="/images/kab-smg-logo.png"
+              src="/images/kab-smg-logo.webp"
               alt="Logo Kabupaten Semarang"
-              className="h-20 w-auto object-contain drop-shadow-sm"
+              className="h-20 w-auto object-contain"
             />
           </div>
         </div>
@@ -389,19 +391,19 @@ export default function MyMessagesIndex({
             </div>
 
             {/* Main Content Area */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
               {/* Top Bar: Tabs & Search */}
-              <div className="border-b border-gray-100">
-                <div className="flex flex-col md:flex-row md:items-center justify-between p-4 md:px-6 gap-4">
+              <div className="border-b border-border">
+                <div className="flex flex-col justify-between gap-4 p-4 md:flex-row md:items-center md:px-6">
                   {/* Type Tabs */}
-                  <div className="flex p-1 bg-gray-100 rounded-lg self-start md:self-auto">
+                  <div className="flex self-start rounded-lg bg-muted p-1 md:self-auto">
                     {(['all', 'Keluhan', 'Masukan'] as const).map((type) => (
                       <button
                         key={type}
                         onClick={() => setFilterType(type)}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${filterType === type
-                          ? 'bg-red-600 text-white shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                        className={`rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 ${filterType === type
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                           }`}
                       >
                         {type === 'all' ? 'Semua' : type}
@@ -412,8 +414,8 @@ export default function MyMessagesIndex({
                   {/* Search & Filter Toggle */}
                   <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <svg className="h-5 w-5 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                       </div>
@@ -422,27 +424,27 @@ export default function MyMessagesIndex({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                        className="block w-full pl-10 sm:text-sm"
                         placeholder="Cari pesan..."
                       />
                     </div>
 
                     <button
                       onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                      className={`relative inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showAdvancedFilters || (filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all'))
-                        ? 'bg-red-50 border-red-200 text-red-700'
-                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      className={`relative inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 ${showAdvancedFilters || (filterStatus !== 'all' || filterCategory !== 'all' || filterLocationType !== 'all' || (isMyPosts && filterVisibility !== 'all'))
+                        ? 'border-primary-border bg-primary-soft text-primary-strong'
+                        : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
                         }`}
                     >
-                      <svg className="h-5 w-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                       </svg>
                       Filter
                       {/* Active Filter Count Badge */}
                       {((filterStatus !== 'all' ? 1 : 0) + (filterCategory !== 'all' ? 1 : 0) + (filterLocationType !== 'all' ? 1 : 0) + ((isMyPosts && filterVisibility !== 'all') ? 1 : 0)) > 0 && (
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                        <Badge className="ml-2 tabular-nums">
                           {(filterStatus !== 'all' ? 1 : 0) + (filterCategory !== 'all' ? 1 : 0) + (filterLocationType !== 'all' ? 1 : 0) + ((isMyPosts && filterVisibility !== 'all') ? 1 : 0)}
-                        </span>
+                        </Badge>
                       )}
                     </button>
                   </div>
@@ -451,16 +453,16 @@ export default function MyMessagesIndex({
 
               {/* Advanced Filters Panel */}
               {showAdvancedFilters && (
-                <div className="p-4 md:px-6 md:py-5 border-b border-gray-100 bg-gray-50/50">
+                <div className="border-b border-border bg-muted/50 p-4 md:px-6 md:py-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Status Filter */}
                     <div>
-                      <InputLabel htmlFor="filterStatus" value="Status" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                      <InputLabel htmlFor="filterStatus" value="Status" className="mb-1 text-xs font-medium text-muted-foreground" />
                       <select
                         id="filterStatus"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                        className="block w-full rounded-md border-input bg-background text-foreground shadow-xs transition-colors focus:border-ring focus:ring focus:ring-offset-0 sm:text-sm"
                       >
                         <option value="all">Semua Status</option>
                         <option value="pending">Menunggu</option>
@@ -471,12 +473,12 @@ export default function MyMessagesIndex({
 
                     {/* Category Filter */}
                     <div>
-                      <InputLabel htmlFor="filterCategory" value="Kategori" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                      <InputLabel htmlFor="filterCategory" value="Kategori" className="mb-1 text-xs font-medium text-muted-foreground" />
                       <select
                         id="filterCategory"
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value)}
-                        className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                        className="block w-full rounded-md border-input bg-background text-foreground shadow-xs transition-colors focus:border-ring focus:ring focus:ring-offset-0 sm:text-sm"
                       >
                         <option value="all">Semua Kategori</option>
                         {uniqueCategories.map((cat) => (
@@ -487,15 +489,15 @@ export default function MyMessagesIndex({
 
                     {/* Location Type Filter */}
                     <div>
-                      <InputLabel htmlFor="filterLocationType" value="Lokasi" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                      <InputLabel htmlFor="filterLocationType" value="Lokasi" className="mb-1 text-xs font-medium text-muted-foreground" />
                       <select
                         id="filterLocationType"
                         value={filterLocationType}
                         onChange={(e) => setFilterLocationType(e.target.value as 'all' | 'Tower' | 'Fiber Optik')}
-                        className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                        className="block w-full rounded-md border-input bg-background text-foreground shadow-xs transition-colors focus:border-ring focus:ring focus:ring-offset-0 sm:text-sm"
                       >
                         <option value="all">Semua Lokasi</option>
-                        <option value="Tower">Tower</option>
+                        <option value="Tower">Menara</option>
                         <option value="Fiber Optik">Fiber Optik</option>
                       </select>
                     </div>
@@ -503,12 +505,12 @@ export default function MyMessagesIndex({
                     {/* Visibility Filter (Only My Posts) */}
                     {isMyPosts && (
                       <div>
-                        <InputLabel htmlFor="filterVisibility" value="Visibilitas" className="text-xs uppercase tracking-wider text-gray-500 mb-1" />
+                        <InputLabel htmlFor="filterVisibility" value="Visibilitas" className="mb-1 text-xs font-medium text-muted-foreground" />
                         <select
                           id="filterVisibility"
                           value={filterVisibility}
                           onChange={(e) => setFilterVisibility(e.target.value as 'all' | 'public' | 'private')}
-                          className="block w-full border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg sm:text-sm"
+                          className="block w-full rounded-md border-input bg-background text-foreground shadow-xs transition-colors focus:border-ring focus:ring focus:ring-offset-0 sm:text-sm"
                         >
                           <option value="all">Semua Visibilitas</option>
                           <option value="public">Publik</option>
@@ -527,7 +529,7 @@ export default function MyMessagesIndex({
                         setFilterLocationType('all');
                         setFilterVisibility('all');
                       }}
-                      className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center"
+                      className="flex items-center text-xs font-medium text-primary transition-colors hover:text-primary-hover hover:underline"
                     >
                       <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -539,9 +541,9 @@ export default function MyMessagesIndex({
               )}
 
               {/* Status Bar / Results Info */}
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  Menampilkan <span className="font-bold text-gray-900">{filteredItems.length}</span> dari <span className="font-semibold">{allItems.length}</span> pesan
+              <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  Menampilkan <span className="font-semibold text-foreground">{filteredItems.length}</span> dari <span className="font-semibold">{allItems.length}</span> pesan
                 </p>
 
                 {/* Mobile View Toggle or Sort could go here if needed */}
@@ -552,13 +554,13 @@ export default function MyMessagesIndex({
                 {/* No results message */}
                 {filteredItems.length === 0 && (
                   <div className="p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                      <svg className="h-8 w-8 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">Tidak ada pesan ditemukan</h3>
-                    <p className="text-gray-500 max-w-sm mx-auto mb-6">
+                    <h3 className="mb-2 text-lg font-semibold text-foreground">Tidak ada pesan ditemukan</h3>
+                    <p className="mx-auto mb-6 max-w-sm text-muted-foreground">
                       Coba ubah kata kunci pencarian atau sesuaikan filter Anda.
                     </p>
                     <button
@@ -571,7 +573,7 @@ export default function MyMessagesIndex({
                         setFilterVisibility('all');
                         setSearchQuery('');
                       }}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                      className="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
                     >
                       Reset Semua Filter
                     </button>
@@ -596,7 +598,7 @@ export default function MyMessagesIndex({
                     So we need the cards to be `lg:hidden`
                 */}
                 {filteredItems.length > 0 && (
-                  <div className="lg:hidden divide-y divide-gray-100 bg-gray-50 p-4 space-y-4">
+                  <div className="space-y-4 divide-y divide-border bg-muted p-4 lg:hidden">
                     {paginatedItems.map((item) => (
                       <MessageCard
                         key={item.id}
@@ -615,13 +617,13 @@ export default function MyMessagesIndex({
             {/* Pagination Controls */}
             {filteredItems.length > 0 && (
               <div className="mt-4 sm:mt-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex flex-col items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-xs sm:flex-row">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Baris per halaman:</span>
+                    <span className="text-sm text-muted-foreground">Baris per halaman:</span>
                     <select
                       value={itemsPerPage}
                       onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                      className="border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-lg text-sm"
+                      className="rounded-md border-input bg-background text-sm text-foreground shadow-xs transition-colors focus:border-ring focus:ring focus:ring-offset-0"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
@@ -636,7 +638,7 @@ export default function MyMessagesIndex({
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -658,13 +660,13 @@ export default function MyMessagesIndex({
                         return (
                           <React.Fragment key={page}>
                             {showEllipsisBefore && (
-                              <span className="px-2 text-gray-500">...</span>
+                              <span className="px-2 text-muted-foreground">...</span>
                             )}
                             <button
                               onClick={() => setCurrentPage(page)}
-                              className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === page
-                                ? 'text-white bg-red-600'
-                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 ${currentPage === page
+                                ? 'bg-primary text-primary-foreground'
+                                : 'border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground'
                                 }`}
                             >
                               {page}
@@ -677,7 +679,7 @@ export default function MyMessagesIndex({
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -686,8 +688,8 @@ export default function MyMessagesIndex({
                 </div>
 
                 {/* Page info */}
-                <div className="text-sm text-gray-700">
-                  Halaman <span className="font-medium">{currentPage}</span> dari <span className="font-medium">{totalPages}</span>
+                <div className="mt-4 text-sm text-muted-foreground">
+                  Halaman <span className="font-medium text-foreground">{currentPage}</span> dari <span className="font-medium text-foreground">{totalPages}</span>
                 </div>
               </div>
             )}
@@ -699,7 +701,7 @@ export default function MyMessagesIndex({
 
         {/* Asset Preview Modal */}
         {previewAsset && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setPreviewAsset(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/90" onClick={() => setPreviewAsset(null)}>
             <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center p-4">
               {previewAsset.file_type === 'video' ? (
                 <video
@@ -712,12 +714,13 @@ export default function MyMessagesIndex({
               ) : (
                 <img
                   src={`/storage/${previewAsset.file_path}`}
+                  alt="Lampiran gambar pada pesan ini, tampilan penuh"
                   className="max-w-full max-h-[90vh] object-contain"
                   onClick={(e) => e.stopPropagation()}
                 />
               )}
               <button
-                className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+                className="absolute right-4 top-4 rounded-full bg-ink-950/60 p-2 text-white transition-colors hover:bg-ink-950/80 focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2"
                 onClick={() => setPreviewAsset(null)}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,375 +1,614 @@
-/* Import Material Icons */
+/* ============================================================================
+   TowerTrack — SEMARANG MAROON design tokens
+   Target: Tailwind CSS v3.4
+   ----------------------------------------------------------------------------
+   FORMAT RULE. Values are BARE HSL triplets: "H S% L%", space-separated, with
+   no hsl() wrapper and no commas. Required so that hsl(var(--token) /
+   <alpha-value>) in tailwind.config.js resolves opacity modifiers such as
+   bg-primary/50 and ring-ring/40.
+   Do NOT convert these to oklch(): Tailwind v3's colour parser has no oklch
+   regex and silently drops the alpha, with no build error.
+
+   THE -strong CONTRACT. The bare token is a FILL, calibrated so its
+   *-foreground sits on top of it. `-strong` is the TEXT / ICON / 1px-OUTLINE
+   colour for light surfaces. They are never interchangeable.
+   ========================================================================== */
+
+/* Material Icons — still loaded because 34 call sites use the ligature font.
+   Phase 0c installed lucide-react; this @import is retired in Phase 2 once
+   those sites are converted, along with its render-blocking third-party fetch. */
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Outlined');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Leaflet Map Styles */
-.leaflet-map {
-    z-index: 1;
-}
+@layer base {
+    :root {
+        color-scheme: light;
 
-/* Ensure polyline is visible */
-.leaflet-interactive {
-    pointer-events: auto;
-}
+        /* ---- BRAND RAMP · Semarang Maroon ---------------------------------
+           Taken from the regency's own PPID property (webppid.semarangkab.go.id),
+           read out of its stylesheet rather than sampled by eye: #800000 appears
+           20 times there, with #8D0000, #6A0000, #C50A0A, #3B0000 and the tint
+           #F3DFDF making up the rest. Step 800 IS that #800000.
 
-/* Distance label styles */
-.distance-label {
-    z-index: 1000 !important;
-}
+           Deeper than the #B71C1C it replaces, which turns out to help: the
+           brand now sits at 10.95:1 while destructive sits at 6.14:1, so the two
+           reds finally separate by lightness instead of relying on wording
+           alone. Contrast figures are against white.                          */
+        --brand-50:  0 73.3% 97.1%;      /* #FDF2F2   1.10:1                   */
+        --brand-100: 0 73.3% 94.1%;      /* #FBE5E5   1.20:1                   */
+        --brand-200: 0 45.5% 91.4%;      /* #F3DFDF   1.28:1  from the source   */
+        --brand-300: 0 48.6% 78.6%;      /* #E3AEAE   1.92:1                   */
+        --brand-400: 0 49.0% 60.8%;      /* #CC6A6A   3.60:1                   */
+        --brand-500: 0 90.3% 40.6%;      /* #C50A0A   6.14:1  destructive fill  */
+        --brand-600: 0 93.0% 33.5%;      /* #A50606   7.99:1                   */
+        --brand-700: 0 100% 27.6%;       /* #8D0000   9.85:1                   */
+        --brand-800: 0 100% 25.1%;       /* #800000  10.95:1  <- --primary      */
+        --brand-900: 0 100% 20.8%;       /* #6A0000  13.02:1                   */
+        --brand-950: 0 100% 11.6%;       /* #3B0000  17.71:1  deepest ground    */
 
-/* Better distance label box for readability and number fit */
-.distance-label-box {
-    background: #dc2626;
-    color: #fff;
-    padding: 4px 8px;
-    line-height: 1.1;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 700;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
-    border: 2px solid #ffffff;
-    white-space: nowrap;
-}
+        /* ---- NEUTRAL RAMP · Ink (warm stone) ------------------------------
+           Warm, not cool. A blue-tinted grey under a red brand reads as two
+           colour systems fighting; stone shares the brand's warm hue family,
+           so the ~2,000 neutral surfaces sit WITH the brand.                  */
+        --ink-50:  60 9.1% 97.8%;        /* #FAFAF9  canvas / page ground      */
+        --ink-100: 60 4.8% 95.9%;        /* #F5F5F4  muted / secondary/ accent */
+        --ink-200: 20 5.9% 90%;          /* #E7E5E4  1.21:1  HAIRLINES ONLY    */
+        --ink-300: 24 5.7% 82.9%;        /* #D6D3D1  1.46:1  DISABLED borders  */
+        --ink-400: 24 5.4% 53.3%;        /* #8A8580  3.55:1 on white — clears
+                                            the 3:1 floor for SC 1.4.11.       */
+        --ink-500: 25 5.3% 44.7%;        /* #78716C  PLACEHOLDERS ONLY         */
+        --ink-600: 33 5.5% 32.4%;        /* #57534E  7.62:1  <- muted-fg       */
+        --ink-700: 30 6.3% 25.1%;        /* #44403C 10.45:1  default map pin   */
+        --ink-800: 12 6.5% 15.1%;        /* #292524 14.90:1                    */
+        --ink-900: 24 9.8% 10%;          /* #1C1917 16.98:1  <- --foreground   */
+        --ink-950: 20 14.3% 4.1%;        /* #0C0A09 19.49:1                    */
 
-/* Ensure measure layer is above other layers */
-.leaflet-overlay-pane {
-    z-index: 400;
-}
+        /* ---- SURFACES ---------------------------------------------------- */
+        --canvas:             60 9.1% 97.8%;
+        --background:         0 0% 100%;
+        --foreground:         24 9.8% 10%;
+        --card:               0 0% 100%;
+        --card-foreground:    24 9.8% 10%;
+        --popover:            0 0% 100%;
+        --popover-foreground: 24 9.8% 10%;
+        /* The inset plane. Darker than BOTH canvas and card, so a table header,
+           a filter rail or an empty state reads as recessed rather than as one
+           more floating white box. Three grounds is the ceiling — a fourth
+           reads as noise. */
+        --well:               34 14% 93%;          /* #F0EEEB                  */
 
-/* Make sure polylines are visible */
-.leaflet-overlay-pane svg {
-    z-index: 400;
-}
+        /* ---- BRAND ROLES · target: under 5% of pixels on any screen ------- */
+        --primary:            0 100% 25.1%;        /* #800000 10.95:1 AAA      */
+        --primary-foreground: 0 0% 100%;           /* white on primary 10.95:1 */
+        --primary-hover:      0 100% 20.8%;        /* #6A0000 13.02:1          */
+        --primary-active:     0 100% 11.6%;        /* #3B0000 17.71:1          */
+        --primary-soft:       0 73.3% 97.1%;       /* #FDF2F2                  */
+        --primary-border:     0 45.5% 91.4%;       /* #F3DFDF                  */
+        --primary-strong:     0 100% 27.6%;        /* #8D0000  9.85:1          */
 
-/* App Bar styles */
-.app-bar {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-}
+        --secondary:            60 4.8% 95.9%;
+        --secondary-foreground: 30 6.3% 25.1%;   /* 9.45:1 on secondary      */
+        --muted:                60 4.8% 95.9%;
+        --muted-foreground:     33 5.5% 32.4%; /* ink-600, AAA reading tier*/
+        --placeholder:          25 5.3% 44.7%;
 
-/* Prevent image distortion in AppBar */
-.app-bar img {
-    object-fit: contain;
-    max-width: 100%;
-    height: auto;
-}
+        /* accent = NEUTRAL hover, so brand stays scarce                       */
+        --accent:            60 4.8% 95.9%;
+        --accent-foreground: 24 9.8% 10%;
+        /* selected = the one place brand is allowed to tint a surface         */
+        --selected:            0 73.3% 97.1%;
+        --selected-foreground: 0 100% 25.1%;       /* 10.4:1 on selected       */
 
-/* Ensure logo container maintains aspect ratio */
-.app-bar .logo-container {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-}
+        /* ---- LINES -------------------------------------------------------- */
+        --border:        20 5.9% 90%;  /* hairlines / dividers ONLY      */
+        --border-strong: 24 5.7% 82.9%;  /* emphasised divider, disabled   */
+        --input:         24 5.4% 53.3%;    /* enabled control boundary.
+                                                CEILING 3.33 white / 3.18
+                                                canvas / 3.04 ink-100.         */
+        --ring:          0 90.3% 40.6%;  /* #C50A0A, used at /40           */
 
-/* Responsive text truncation for AppBar */
-.app-bar .truncate-responsive {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+        /* ---- SEMANTIC · bare = FILL, -strong = TEXT/ICON/OUTLINE ----------
+           NOTE ON RED. The brand IS red here, so hue alone cannot separate
+           "this is ours" from "this deletes something". --destructive sits at
+           the bright end of the ramp (#DC2626) and --primary at the deep end
+           (#B71C1C), but that gap is not large enough to carry the meaning by
+           itself. Every destructive control MUST therefore also carry an icon
+           and an explicit verb ("Hapus", "Nonaktifkan"). Colour is the second
+           channel here, never the only one.                                   */
+        --success:            162.9 93.5% 24.3%; /* #047857  white 5.48:1 AA   */
+        --success-foreground: 0 0% 100%;
+        --success-soft:       151.8 81% 95.9%;
+        --success-border:     152.4 76% 80.4%;
+        --success-strong:     163.1 88.1% 19.8%; /* #065F46  7.68 white        */
 
-/* Tablet-specific optimizations (640px - 1023px) */
-@media (min-width: 640px) and (max-width: 1023px) {
-    .app-bar {
-        /* Ensure proper spacing on tablets */
-        min-height: 48px;
+        --warning:            37.7 92.1% 50.2%;  /* #F59E0B  only 2.15 vs white
+                                                    -> every warning FILL MUST
+                                                    carry a 1px -strong outline*/
+        --warning-foreground: 24 9.8% 10%; /* 8.31:1  DARK, not white    */
+        --warning-soft:       48 100% 96.1%;
+        --warning-border:     48 96.6% 76.7%;
+        --warning-strong:     22.7 82.5% 31.4%;  /* #92400E  7.09 white        */
+
+        --destructive:            0 90.3% 40.6%; /* #C50A0A  white 6.14:1 AA.
+                                                    Brighter AND lighter than
+                                                    --primary #800000, so the
+                                                    two reds separate.        */
+        --destructive-foreground: 0 0% 100%;
+        --destructive-soft:       0 73.3% 94.1%; /* #FBE5E5                    */
+        --destructive-border:     0 48.6% 78.6%;  /* #E3AEAE                    */
+        --destructive-strong:     0 93.0% 33.5%; /* #A50606  7.99 white        */
+
+        /* Info resolves to the WARM NEUTRAL, not cyan. The palette is
+           deliberately red + green + neutral: an informational state such as
+           "Sedang Diproses" is not an alarm and does not need a hue of its own.
+           The token name is kept so no call site has to change.               */
+        --info:            33 5.5% 32.4%;        /* #57534E  white 7.62:1 AAA  */
+        --info-foreground: 0 0% 100%;
+        --info-soft:       60 4.8% 95.9%;        /* #F5F5F4                    */
+        --info-border:     20 5.9% 90%;          /* #E7E5E4                    */
+        --info-strong:     30 6.3% 25.1%;        /* #44403C 10.45 white        */
+
+        --neutral:            33 5.5% 32.4%; /* ink-600  white 7.58:1 AAA  */
+        --neutral-foreground: 0 0% 100%;
+        --neutral-soft:       60 4.8% 95.9%;
+        --neutral-border:     20 5.9% 90%;
+        --neutral-strong:     30 6.3% 25.1%;   /* ink-700 10.35 white        */
+
+        /* ---- CEREMONIAL · Sun Gold ---------------------------------------- */
+        --gold:            50.6 100% 50%;        /* #FFD700  1.40 on white —
+                                                    HARD BAN on light surfaces.
+                                                    12.73 ink-900 / 14.38
+                                                    ink-950 / 10.48 brand-950. */
+        --gold-foreground: 222.2 47.4% 11.2%;
+        --gold-strong:     45.5 100% 22%;        /* #705500  7.03:1 AAA.
+                                                    OKLCH hue 88, same family. */
+
+        /* ---- CATEGORICAL DATA · charts + Leaflet --------------------------- */
+        /* HARD CAP 5. Verified worst-case pairwise OKLab dE across normal +
+           deuteranopia + protanopia = 17.0. Category 6+ is carried by DASH
+           PATTERN instead: 5 colours x 4 dashes = 20 distinct identities.      */
+        --data-1: 15.4 100% 29.8%;   /* #982700 terracotta   8.00:1 on casing  */
+        --data-2: 182.5 100% 27.8%;  /* #00888E teal         4.28:1            */
+        --data-3: 308.4 100% 21%;    /* #6B005C plum        11.80:1            */
+        --data-4: 83.7 100% 30.8%;   /* #5F9D00 olive-lime   3.33:1            */
+        --data-5: 274.1 100% 71.4%;  /* #C06DFF orchid       3.06:1  last      */
+
+        /* Charts have no basemap beneath them, so chart-1 MAY be brand blue.   */
+        --chart-1: 221.2 83.2% 53.3%;
+        --chart-2: 15.4 100% 29.8%;
+        --chart-3: 182.5 100% 27.8%;
+        --chart-4: 308.4 100% 21%;
+        --chart-5: 83.7 100% 30.8%;
+
+        /* ---- MAP CHROME ---------------------------------------------------- */
+        --map-casing:          0 0% 100%;
+        --map-marker:          30 6.3% 25.1%;   /* #334155 towers are DATA   */
+        --map-marker-selected: 46.6 100% 33.3%;   /* #AA8400 dark Sun Gold.
+                                                     dE 35.8 from brand. MUST
+                                                     also scale 1.25x + ring.  */
+        --map-measure:         24 9.8% 10%; /* ink-900 dashed, not red   */
+        --map-side:            30 6.3% 25.1%;   /* kiri AND kanan — neutral  */
+
+        /* ---- SIDEBAR -------------------------------------------------------- */
+        --sidebar-background:         60 9.1% 97.8%;
+        --sidebar-foreground:         30 6.3% 25.1%;
+        --sidebar-primary:            0 100% 25.1%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent:             0 73.3% 97.1%;
+        --sidebar-accent-foreground:  0 100% 27.6%;
+        --sidebar-border:             20 5.9% 90%;
+        --sidebar-ring:               0 90.3% 40.6%;
+
+        /* ---- MOTION -------------------------------------------------------
+           Durations and easings as tokens so a component never invents its own.
+           M3 emphasized curves: decelerate on enter, accelerate on exit.
+           The 800ms Leaflet flyTo is the one deliberate exception — that is
+           spatial navigation, not interface feedback.                         */
+        --dur-press:  80ms;
+        --dur-hover: 140ms;
+        --dur-sm:    200ms;
+        --dur-md:    260ms;
+        --dur-lg:    320ms;
+        --dur-md-out: 180ms;
+        --dur-lg-out: 220ms;
+
+        --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+        --ease-exit:  cubic-bezier(0.3, 0, 0.8, 0.15);
+        --ease-state: cubic-bezier(0.2, 0, 0, 1);
+        --ease-soft:  cubic-bezier(0.4, 0, 0.2, 1);
+
+        --travel: 8px;
+
+        /* ---- SHAPE & ELEVATION ---------------------------------------------- */
+        /* 0.5rem keeps rounded-lg/md/xl byte-identical to today (8/6/12px), so
+           the token layer lands with zero radius diff. `sm` is deliberately not
+           overridden — see the note in tailwind.config.js.                     */
+        --radius: 0.5rem;
+
+        /* Shadows tinted with ink-900 (15 23 42), never pure black.            */
+        --shadow-xs: 0 1px 2px 0 rgb(28 25 23 / 0.07);
+        --shadow-sm: 0 1px 3px 0 rgb(28 25 23 / 0.10), 0 1px 2px -1px rgb(28 25 23 / 0.07);
+        --shadow-md: 0 4px 12px -2px rgb(28 25 23 / 0.08), 0 2px 4px -2px rgb(28 25 23 / 0.06),
+                     0 0 0 1px rgb(28 25 23 / 0.05);
+        --shadow-lg: 0 16px 32px -8px rgb(28 25 23 / 0.12), 0 8px 16px -8px rgb(28 25 23 / 0.08),
+                     0 0 0 1px rgb(28 25 23 / 0.05);
     }
-    
-    .app-bar .container {
-        /* Prevent horizontal overflow */
-        max-width: 100%;
-        overflow-x: hidden;
-    }
-    
-    /* Ensure buttons don't overflow */
-    .app-bar button,
-    .app-bar a {
-        max-width: 100%;
-        overflow: hidden;
-    }
-}
 
-/* Map marker styles */
-.map-marker-green {
-    background-color: #22c55e;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
+    /* ======================================================================
+       DARK THEME — defined now, SHIPPED LAST.
+       Zero of 148 files carry a `dark:` utility today. Enabling the toggle
+       before the surface migration completes turns every unmigrated screen
+       into a white rectangle. Treat .dark as the completion certificate,
+       not a feature. Activating it also needs a blocking inline script in
+       app.blade.php to avoid a flash of the wrong theme.
+       ====================================================================== */
+    .dark {
+        color-scheme: dark;
 
-.map-marker-red {
-    background-color: #ef4444;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
+        --canvas:             20 14.3% 4.1%;
+        --background:         20 14.3% 4.1%;
+        --foreground:         60 9.1% 97.8%;
+        --card:               24 9.8% 10%;
+        --card-foreground:    60 9.1% 97.8%;
+        --popover:            24 9.8% 10%;
+        --popover-foreground: 60 9.1% 97.8%;
+        --well:               12 6.5% 15.1%;       /* inset is LIGHTER on dark */
 
-.map-marker-yellow {
-    background-color: #f59e0b;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
+        --primary:            0 49.0% 60.8%;       /* #CC6A6A on dark ground   */
+        --primary-foreground: 20 14.3% 4.1%;
+        --primary-hover:      0 48.6% 78.6%;
+        --primary-active:     0 45.5% 91.4%;
+        --primary-soft:       0 100% 11.6%;
+        --primary-border:     0 100% 20.8%;
+        --primary-strong:     0 48.6% 78.6%;
 
-/* Custom route marker styles */
-.custom-marker {
-    border: none;
-    background: transparent;
-}
+        --secondary:            12 6.5% 15.1%;
+        --secondary-foreground: 60 9.1% 97.8%;
+        --muted:                12 6.5% 15.1%;
+        --muted-foreground:     24 5.7% 82.9%;
+        --placeholder:          25 5.3% 44.7%;
+        --accent:               12 6.5% 15.1%;
+        --accent-foreground:    60 9.1% 97.8%;
+        --selected:             0 74.7% 15.5%;
+        --selected-foreground:  0 48.6% 78.6%;
 
-.custom-marker div {
-    pointer-events: none;
-    user-select: none;
-}
+        --border:        12 6.5% 15.1%;
+        --border-strong: 33 5.5% 32.4%;
+        --input:         25 5.3% 44.7%;
+        --ring:          0 49.0% 60.8%;
 
-/* Toast animations */
-.toast-enter {
-    opacity: 0;
-    transform: translateX(100%);
-}
+        --success:            158.1 64.4% 51.6%;  --success-foreground: 20 14.3% 4.1%;
+        --success-soft:       164.2 85.7% 16.5%;  --success-border:     163.1 88.1% 19.8%;
+        --success-strong:     158.1 64.4% 51.6%;
 
-.toast-enter-active {
-    opacity: 1;
-    transform: translateX(0);
-    transition: opacity 300ms, transform 300ms;
-}
+        --warning:            47.9 95.8% 53.1%;   --warning-foreground: 20 14.3% 4.1%;
+        --warning-soft:       21.7 77.8% 26.5%;   --warning-border:     22.7 82.5% 31.4%;
+        --warning-strong:     47.9 95.8% 53.1%;
 
-.toast-exit {
-    opacity: 1;
-}
+        --destructive:            0 93.5% 81.8%;  --destructive-foreground: 20 14.3% 4.1%;
+        --destructive-soft:       0 100% 20.8%;   --destructive-border:     0 93.0% 33.5%;
+        --destructive-strong:     0 93.5% 81.8%;
 
-.toast-exit-active {
-    opacity: 0;
-    transform: translateX(100%);
-    transition: opacity 300ms, transform 300ms;
-}
+        --info:            24 5.7% 82.9%;         --info-foreground: 20 14.3% 4.1%;
+        --info-soft:       12 6.5% 15.1%;         --info-border:     30 6.3% 25.1%;
+        --info-strong:     24 5.7% 82.9%;
 
-/* Utility classes for text truncation */
-.line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    -webkit-box-orient: vertical;
-}
+        --neutral:            24 5.7% 82.9%;      --neutral-foreground: 20 14.3% 4.1%;
+        --neutral-soft:       12 6.5% 15.1%;      --neutral-border:     30 6.3% 25.1%;
+        --neutral-strong:     24 5.7% 82.9%;
 
-.line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-}
+        --gold:            50.6 100% 50%;
+        --gold-foreground: 20 14.3% 4.1%;
+        --gold-strong:     50.6 100% 50%;
 
-.line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-}
+        --chart-1: 0 90.6% 70.8%;
 
-/* Enhanced table hover effects */
-.table-row-hover:hover {
-    background-color: #f9fafb;
-    transition: background-color 0.2s ease;
-}
+        --map-casing:          24 9.8% 10%;
+        --map-marker:          24 5.7% 82.9%;
+        --map-marker-selected: 47.9 95.8% 53.1%;
+        --map-measure:         24 5.7% 82.9%;
+        --map-side:            24 5.7% 82.9%;
 
-/* Loading skeleton animations */
-@keyframes skeleton-loading {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.6;
-    }
-    100% {
-        opacity: 1;
-    }
-}
+        --sidebar-background:         24 9.8% 10%;
+        --sidebar-foreground:         60 9.1% 97.8%;
+        --sidebar-primary:            0 49.0% 60.8%;
+        --sidebar-primary-foreground: 20 14.3% 4.1%;
+        --sidebar-accent:             12 6.5% 15.1%;
+        --sidebar-accent-foreground:  60 9.1% 97.8%;
+        --sidebar-border:             12 6.5% 15.1%;
+        --sidebar-ring:               0 49.0% 60.8%;
 
-.skeleton-loading {
-    animation: skeleton-loading 1.5s ease-in-out infinite;
-}
-
-/* Better focus states for accessibility */
-.focus-ring:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-/* Enhanced button transitions */
-.btn-transition {
-    transition: all 0.2s ease-in-out;
-}
-
-.btn-transition:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.btn-transition:active {
-    transform: translateY(0);
-}
-
-/* Card shadow enhancements */
-.card-shadow {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.card-shadow-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Better mobile form styling */
-@media (max-width: 640px) {
-    .mobile-form-spacing > * + * {
-        margin-top: 1rem;
-    }
-    
-    .mobile-button-stack {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .mobile-button-stack button {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-/* ===================================
-   SELECT DROPDOWN FIX - Remove default browser arrow
-   =================================== */
-/* Remove default select arrow on all browsers including mobile */
-select.appearance-none,
-select[class*="appearance-none"] {
-  /* Standard property first (for modern browsers) */
-  appearance: none !important;
-  /* Vendor prefixes for older browsers */
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-  background-image: none !important;
-  background: white !important;
-}
-
-/* Additional fix for iOS Safari */
-@supports (-webkit-touch-callout: none) {
-  select.appearance-none,
-  select[class*="appearance-none"] {
-    appearance: none !important;
-    -webkit-appearance: none !important;
-    background-image: none !important;
-    background: white !important;
-  }
-}
-
-/* ===================================
-   HERO SECTION ANIMATIONS
-   Performance optimized - moved from inline styles
-   =================================== */
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(40px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Animation classes with GPU acceleration */
-.animate-fade-in-up {
-    animation: fadeInUp 1s ease-out forwards;
-    /* Use GPU acceleration for smoother animations */
-    will-change: opacity, transform;
-}
-
-.animate-fade-in-up-delay-1 {
-    animation: fadeInUp 1s ease-out 0.2s both;
-    will-change: opacity, transform;
-}
-
-.animate-fade-in-up-delay-2 {
-    animation: fadeInUp 1s ease-out 0.4s both;
-    will-change: opacity, transform;
-}
-
-.animate-fade-in-up-delay-3 {
-    animation: fadeInUp 1s ease-out 0.6s both;
-    will-change: opacity, transform;
-}
-
-/* Hero text shadows - moved from inline styles */
-.hero-title-shadow {
-    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.hero-subtitle-shadow {
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* Reset will-change after animation completes to save GPU memory */
-.animate-fade-in-up,
-.animate-fade-in-up-delay-1,
-.animate-fade-in-up-delay-2,
-.animate-fade-in-up-delay-3 {
-    animation-fill-mode: both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .animate-fade-in-up,
-    .animate-fade-in-up-delay-1,
-    .animate-fade-in-up-delay-2,
-    .animate-fade-in-up-delay-3 {
-        animation: none;
-        opacity: 1;
-        transform: none;
-        will-change: auto;
+        --shadow-xs: 0 0 0 1px rgb(255 255 255 / 0.05);
+        --shadow-sm: 0 0 0 1px rgb(255 255 255 / 0.06);
+        --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
+        --shadow-lg: 0 16px 32px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.08);
     }
 }
 
-/* ===================================
-   CUSTOM TOOLTIP STYLES FOR MAP
-   Compact, user-friendly tooltip design
-   =================================== */
+/* ============================================================================
+   NON-TAILWIND CONSUMERS — Leaflet, markers, labels.
+   Plain CSS reads the same custom properties: this is how the hardcoded
+   #dc2626 / #22c55e / #ef4444 / #f59e0b that used to live in this file retire.
+   ========================================================================== */
+@layer components {
+    .map-marker {
+        background: hsl(var(--map-marker));
+        box-shadow: 0 0 0 3px hsl(var(--map-casing)), 0 1px 3px rgb(28 25 23 / 0.35);
+    }
+    .map-marker--selected {
+        background: hsl(var(--map-marker-selected));
+        transform: scale(1.25);           /* size is the second channel        */
+    }
+    .map-marker--success { background: hsl(var(--success)); }
+    .map-marker--warning {
+        background: hsl(var(--warning));
+        /* MANDATORY: amber is 2.15:1 vs white and fails SC 1.4.11 as a bare
+           graphical object. The outline is what makes the boundary visible.   */
+        outline: 1px solid hsl(var(--warning-strong));
+        outline-offset: -1px;
+    }
+    .map-marker--danger { background: hsl(var(--destructive)); }
+    /* Colour is never the only channel: every status marker renders a glyph.  */
+    .map-marker__glyph { color: hsl(var(--map-casing)); }
 
+    .distance-label-box {
+        background: hsl(var(--popover));
+        color: hsl(var(--popover-foreground));
+        border: 1px solid hsl(var(--border));
+        border-radius: calc(var(--radius) - 2px);
+        box-shadow: var(--shadow-md);
+        font-variant-numeric: tabular-nums;
+        padding: 4px 8px;
+        line-height: 1.1;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+        background: hsl(var(--popover));
+        color: hsl(var(--popover-foreground));
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+    }
+
+    .leaflet-bar a,
+    .leaflet-control-zoom a {
+        background: hsl(var(--card));
+        color: hsl(var(--foreground));
+        border-color: hsl(var(--border));
+    }
+    .leaflet-bar a:hover { background: hsl(var(--accent)); }
+
+    /* ONE focus recipe. The solid border recolour carries SC 1.4.11; the
+       translucent halo carries visibility. This is what replaces the 121
+       focus:outline-none sites, the 80 focus:ring-4 sites, and the four
+       1.36:1 focus:ring-[#FFD700] rings in Admin/Reports/Show.tsx and
+       Admin/Feedback/Show.tsx.                                                */
+    .focus-ring {
+        outline: none;
+        border-color: hsl(var(--ring));
+        box-shadow: 0 0 0 3px hsl(var(--ring) / 0.40);
+    }
+}
+
+/* ============================================================================
+   LEAFLET STRUCTURAL — stacking and hit-testing only, no colour.
+   ========================================================================== */
+.leaflet-map { z-index: 1; }
+.leaflet-interactive { pointer-events: auto; }
+.distance-label { z-index: 1000 !important; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-overlay-pane svg { z-index: 400; }
+
+.custom-marker { border: none; background: transparent; }
+.custom-marker div { pointer-events: none; user-select: none; }
+
+/* Compact map tooltip. Colour comes from the popover tokens above. */
 .custom-tooltip .leaflet-tooltip {
-    background: white;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
     padding: 0;
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     max-width: 260px;
     white-space: normal;
     word-wrap: break-word;
     line-height: 1.4;
 }
+.custom-tooltip .leaflet-tooltip-top::before,
+.custom-tooltip .leaflet-tooltip-bottom::before,
+.custom-tooltip .leaflet-tooltip-left::before,
+.custom-tooltip .leaflet-tooltip-right::before {
+    border-color: hsl(var(--border)) transparent;
+}
+.custom-tooltip .leaflet-tooltip-content { margin: 0; padding: 0; }
 
-.custom-tooltip .leaflet-tooltip-top:before,
-.custom-tooltip .leaflet-tooltip-bottom:before,
-.custom-tooltip .leaflet-tooltip-left:before,
-.custom-tooltip .leaflet-tooltip-right:before {
-    border-color: rgba(0, 0, 0, 0.1) transparent;
+/* ============================================================================
+   APP BAR — layout only.
+   ========================================================================== */
+.app-bar { position: sticky; top: 0; z-index: 30; }
+.app-bar img { object-fit: contain; max-width: 100%; height: auto; }
+.app-bar .logo-container { display: flex; align-items: center; flex-shrink: 0; }
+.app-bar .truncate-responsive { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 640px) and (max-width: 1023px) {
+    .app-bar { min-height: 48px; }
+    .app-bar .container { max-width: 100%; overflow-x: hidden; }
+    .app-bar button,
+    .app-bar a { max-width: 100%; overflow: hidden; }
 }
 
-.custom-tooltip .leaflet-tooltip-top:after,
-.custom-tooltip .leaflet-tooltip-bottom:after,
-.custom-tooltip .leaflet-tooltip-left:after,
-.custom-tooltip .leaflet-tooltip-right:after {
-    border-color: white transparent;
+/* ============================================================================
+   TEXT TRUNCATION — kept because Tailwind's line-clamp plugin is not enabled.
+   ========================================================================== */
+.line-clamp-1,
+.line-clamp-2,
+.line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+}
+.line-clamp-1 { -webkit-line-clamp: 1; line-clamp: 1; }
+.line-clamp-2 { -webkit-line-clamp: 2; line-clamp: 2; }
+.line-clamp-3 { -webkit-line-clamp: 3; line-clamp: 3; }
+
+/* ============================================================================
+   PREREQUISITE FIX — narrowed from `background: white !important`.
+   The old rule set an opaque white BACKGROUND on every select.appearance-none
+   (in two duplicate blocks), which outranked every bg-* utility on all 50
+   native <select> elements in the app. Any palette or dark-theme change would
+   have silently failed on every one of them, with no build error. Only the
+   background-IMAGE suppression was ever wanted.
+   ========================================================================== */
+select.appearance-none,
+select[class*='appearance-none'] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: none !important;
 }
 
-/* Ensure tooltip content is properly styled */
-.custom-tooltip .leaflet-tooltip-content {
-    margin: 0;
-    padding: 0;
+/* ============================================================================
+   HERO ANIMATION — legacy alias
+
+   `.animate-fade-in-up` was the last animation in the codebase reading neither
+   the duration nor the easing tokens: `ttHeroFadeInUp 1s ease-out`, with a 40px
+   travel. That is 3x --dur-lg and 5x --travel, on a curve the scale does not
+   contain. It is now the same entrance as .tt-enter-up, on the same tokens.
+
+   The class itself now comes from tailwind.config.js like every other
+   animation utility, reading --dur-lg and --ease-enter. There is no rule here
+   any more: the whole reason the config entry was dead was that this file
+   redefined the class after @tailwind utilities and won the cascade. Removing
+   the override is what actually un-breaks it.
+
+   It survives at all only because five MyMessages pages use it. New code uses
+   .tt-enter-up; when those five are next touched, the config entry can go.
+
+   DELETED HERE, all verified zero-use:
+     .animate-fade-in-up-delay-1/2/3 — no call sites in resources/js
+     .hero-title-shadow, .hero-subtitle-shadow — shadows for white type on a
+       dark photographic hero, which HeroSection.tsx stopped having when it
+       moved onto the page's own light ground.
+   ========================================================================== */
+
+/* Nothing may scroll the page sideways. Tables, diagrams and the map each own
+   their own overflow container; a body-level horizontal scrollbar is always a
+   bug, and on a 390px phone it makes the whole layout feel broken. */
+body { overflow-x: clip; }
+
+/* ============================================================================
+   ENTRANCE ANIMATIONS
+   Compositor-only properties. Each instance reads its own --tt-delay and
+   --tt-duration, which is how staggering works without a class per step.
+   ========================================================================== */
+@keyframes ttEnterUp    { from { opacity: 0; transform: translateY(12px); }  to { opacity: 1; transform: none; } }
+@keyframes ttEnterLeft  { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes ttEnterRight { from { opacity: 0; transform: translateX(12px); }  to { opacity: 1; transform: none; } }
+@keyframes ttEnterScale { from { opacity: 0; transform: scale(0.97); }       to { opacity: 1; transform: none; } }
+
+.tt-enter-up,
+.tt-enter-left,
+.tt-enter-right,
+.tt-enter-scale {
+    animation-duration: var(--tt-duration, 260ms);
+    animation-delay: var(--tt-delay, 0ms);
+    animation-timing-function: var(--ease-enter);
+    animation-fill-mode: both;
+}
+.tt-enter-up    { animation-name: ttEnterUp; }
+.tt-enter-left  { animation-name: ttEnterLeft; }
+.tt-enter-right { animation-name: ttEnterRight; }
+.tt-enter-scale { animation-name: ttEnterScale; }
+
+/* ============================================================================
+   LANDING HERO MAP — CSS, deliberately, not JS
+
+   These three animations belong to the SVG in Components/Landing/HeroDotMap.
+   They were written with Motion first, and that was wrong for one specific
+   reason: Motion applies its `initial` state as an inline style and then needs
+   requestAnimationFrame to move off it. Anywhere rAF does not advance — a
+   headless screenshot, a link-preview crawler, a tab that never gets a frame
+   because it was opened in the background — the 118 tower dots stayed at
+   `opacity: 0`, and the dots ARE the data this page exists to show.
+
+   That is the same failure StaggeredContainer.tsx documents having caused with
+   the stat tiles and the map, and §5 rule 4 of the redesign plan exists because
+   of it: content must never depend on an animation to be readable.
+
+   A CSS keyframe with `animation-fill-mode: both` cannot fail that way. It
+   needs no script, and the reduced-motion block immediately below collapses it
+   to a static end state for free. It also takes 118 elements off Motion's
+   animation loop, which the mid-range Android target notices.
+
+   Per-element stagger comes from --tt-delay, the same mechanism .tt-enter-*
+   already uses.
+   ========================================================================== */
+@keyframes ttDotIn {
+    from { opacity: 0; transform: scale(0.4); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes ttDraw    { to { stroke-dashoffset: 0; } }
+@keyframes ttFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+
+.tt-dot-in {
+    /* fill-box makes `transform-origin: center` mean the circle's own centre
+       rather than the SVG viewport's, which is what keeps a dot growing in
+       place instead of flying in from the top-left. */
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ttDotIn var(--dur-md) var(--ease-enter) both;
+    animation-delay: var(--tt-delay, 0ms);
+}
+
+/* Requires pathLength="1" on the element, so the dash maths is independent of
+   the path's real length in user units. */
+.tt-draw-in {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: ttDraw var(--tt-duration, 1500ms) var(--ease-soft) both;
+    animation-delay: var(--tt-delay, 0ms);
+}
+
+.tt-fade-in {
+    animation: ttFadeIn var(--dur-lg) var(--ease-enter) both;
+    animation-delay: var(--tt-delay, 0ms);
+}
+
+/* ============================================================================
+   REDUCED MOTION — a concrete WCAG obligation for a public-sector product
+   carrying hero animations and a Leaflet map.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .animate-fade-in-up,
+    .animate-fade-in-up-delay-1,
+    .animate-fade-in-up-delay-2,
+    .animate-fade-in-up-delay-3,
+    .tt-enter-up,
+    .tt-enter-left,
+    .tt-enter-right,
+    .tt-enter-scale {
+        /* Land them at the finished state rather than merely shortening the
+           animation — `both` fill mode would otherwise hold opacity: 0. */
+        animation: none !important;
+        opacity: 1;
+        transform: none;
+        will-change: auto;
+    }
 }

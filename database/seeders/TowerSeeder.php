@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Support\KecamatanSemarang;
 
 class TowerSeeder extends Seeder
 {
@@ -79,6 +80,11 @@ class TowerSeeder extends Seeder
                 $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
             }
             
+            // The district is DERIVED, not invented: nearest centre to the
+            // real coordinates. See App\Support\KecamatanSemarang for why
+            // nearest-centre and not a polygon test.
+            $kecamatan = KecamatanSemarang::nearest($latitude, $longitude);
+
             // Generate DUMMY information
             $towers[] = [
                 'site_id' => 'SITE' . str_pad($towerCounter, 4, '0', STR_PAD_LEFT),
@@ -90,7 +96,8 @@ class TowerSeeder extends Seeder
                 'tinggi_bangunan' => !empty(trim($row[9])) ? (float) trim($row[9]) : (rand(0, 50) + (rand(0, 99) / 100)),
                 'jumlah_pengguna' => !empty(trim($row[10])) ? (int) trim($row[10]) : rand(100, 5000),
                 'jumlah_kaki' => !empty(trim($row[11])) ? (int) trim($row[11]) : rand(3, 4),
-                'alamat_menara' => 'Jl. Dummy Street No. ' . $towerCounter . ', Kelurahan Dummy, Kecamatan Dummy, Kota Dummy', // DUMMY
+                'alamat_menara' => 'Jl. Dummy No. ' . $towerCounter . ', Kec. ' . $kecamatan . ', Kabupaten Semarang', // DUMMY street, REAL district
+                'kecamatan' => $kecamatan,
                 'tower_type' => !empty(trim($row[13])) ? trim($row[13]) : $towerTypes[array_rand($towerTypes)],
                 'site_type' => !empty(trim($row[14])) ? trim($row[14]) : $siteTypes[array_rand($siteTypes)],
                 'no_ijin' => 'IJIN/' . date('Y') . '/' . str_pad($towerCounter, 4, '0', STR_PAD_LEFT), // DUMMY
@@ -144,6 +151,7 @@ class TowerSeeder extends Seeder
             $longitude = $baseLon + (rand(-500, 500) / 10000);
             $tanggalIjin = Carbon::now()->subYears(rand(1, 5))->subDays(rand(0, 365));
             $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
+            $kecamatan = KecamatanSemarang::nearest($latitude, $longitude);
             
             $towers[] = [
                 'site_id' => 'SITE' . str_pad($i, 4, '0', STR_PAD_LEFT),
@@ -155,7 +163,8 @@ class TowerSeeder extends Seeder
                 'tinggi_bangunan' => rand(0, 50) + (rand(0, 99) / 100),
                 'jumlah_pengguna' => rand(100, 5000),
                 'jumlah_kaki' => rand(3, 4),
-                'alamat_menara' => 'Jl. Dummy Street No. ' . $i . ', Kelurahan Dummy, Kecamatan Dummy, Kota Dummy',
+                'alamat_menara' => 'Jl. Dummy No. ' . $i . ', Kec. ' . $kecamatan . ', Kabupaten Semarang',
+                'kecamatan' => $kecamatan,
                 'tower_type' => $towerTypes[array_rand($towerTypes)],
                 'site_type' => $siteTypes[array_rand($siteTypes)],
                 'no_ijin' => 'IJIN/' . date('Y') . '/' . str_pad($i, 4, '0', STR_PAD_LEFT),
@@ -199,6 +208,12 @@ class TowerSeeder extends Seeder
             $counter = $startCounter + $i;
             $tanggalIjin = Carbon::now()->subYears(rand(1, 5))->subDays(rand(0, 365));
             $berlakuHingga = $tanggalIjin->copy()->addYears(rand(1, 3));
+            // These rows exist to exercise the "Belum Terdata" paths, so there
+            // is no coordinate to derive a district from. The district is still
+            // set: a tower whose location was never surveyed is normally still
+            // known to be IN a district, and leaving it null here would make
+            // the null case untestable in the other direction.
+            $kecamatan = KecamatanSemarang::random();
             
             $towers[] = [
                 'site_id' => 'SITE' . str_pad($counter, 4, '0', STR_PAD_LEFT),
@@ -210,7 +225,8 @@ class TowerSeeder extends Seeder
                 'tinggi_bangunan' => rand(0, 50) + (rand(0, 99) / 100),
                 'jumlah_pengguna' => rand(100, 5000),
                 'jumlah_kaki' => rand(3, 4),
-                'alamat_menara' => 'Jl. Dummy Street No. ' . $counter . ', Kelurahan Dummy, Kecamatan Dummy, Kota Dummy',
+                'alamat_menara' => 'Jl. Dummy No. ' . $counter . ', Kec. ' . $kecamatan . ', Kabupaten Semarang',
+                'kecamatan' => $kecamatan,
                 'tower_type' => $towerTypes[array_rand($towerTypes)],
                 'site_type' => $siteTypes[array_rand($siteTypes)],
                 'no_ijin' => 'IJIN/' . date('Y') . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT),

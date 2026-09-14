@@ -55,13 +55,13 @@ export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }:
   
   return (
     <div className="mt-3">
-      <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="bg-white rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <div className="flex items-start gap-4">
           {/* Avatar */}
           <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-sm ${
             isGuest 
-              ? 'bg-gradient-to-br from-gray-400 to-gray-500' 
-              : 'bg-gradient-to-br from-orange-500 to-orange-600'
+              ? 'bg-neutral'
+              : 'bg-primary'
           }`}>
             {isGuest ? (
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,28 +78,28 @@ export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }:
           <div className="flex-1 min-w-0">
             {/* Reply Indicator - Show if this is a reply */}
             {isReplyComment && parentAuthorName && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
-                <svg className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <svg className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                 </svg>
-                <span className="font-medium text-orange-600">
+                <span className="font-medium text-warning-strong">
                   Membalas <span className="font-semibold">{parentAuthorName}</span>
                 </span>
               </div>
             )}
             
             <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-semibold text-gray-900">{authorName}</h4>
+              <h4 className="font-semibold text-foreground">{authorName}</h4>
               {isGuest && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-warning-soft text-warning-strong border border-warning-border">
                   Tamu
                 </span>
               )}
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {formatDateWithTime(comment.created_at)}
               </span>
             </div>
-            <div className="text-gray-900 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-3 border border-gray-100">
+            <div className="text-foreground whitespace-pre-wrap leading-relaxed bg-muted rounded-lg p-3 border border-border">
               {comment.message}
             </div>
             
@@ -109,7 +109,7 @@ export default function CommentItem({ comment, onReply, replyingTo, depth = 0 }:
                 <button
                   type="button"
                   onClick={() => onReply(comment.id, authorName)}
-                  className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 rounded px-2 py-1"
+                  className="text-sm text-warning-strong hover:text-warning-strong font-medium transition-colors focus:outline-none focus:ring-2 focus-visible:ring focus:ring-offset-2 rounded px-2 py-1"
                   aria-label={`Balas komentar dari ${authorName}`}
                 >
                   Balas

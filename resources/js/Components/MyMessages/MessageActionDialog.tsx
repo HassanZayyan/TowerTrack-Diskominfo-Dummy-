@@ -87,15 +87,15 @@ export default function MessageActionDialog({
 
       <Modal show={resolvedOpen} onClose={handleClose} maxWidth={maxWidth}>
         <div className="flex h-full flex-col bg-white">
-          <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white/95 px-4 sm:px-6 py-4 backdrop-blur flex-shrink-0">
+          <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-white/95 px-4 sm:px-6 py-4 backdrop-blur flex-shrink-0">
             <div className="min-w-0 flex-1 pr-4">
-              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-              {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+              {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
             </div>
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 flex-shrink-0"
+              className="rounded-md p-1.5 text-placeholder transition-colors hover:bg-accent hover:text-accent-foreground hover:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/40 flex-shrink-0"
               aria-label="Tutup dialog"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

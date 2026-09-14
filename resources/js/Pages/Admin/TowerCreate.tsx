@@ -1,7 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import AnimatedButton from '@/Components/AnimatedButton';
+import PageHeader from '@/Components/PageHeader';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
+import { Card } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
 import { SITE_TYPE_OPTIONS } from '@/constants/towerOptions';
 
 interface Owner {
@@ -39,6 +43,54 @@ interface FormData {
   owner_alamat: string;
 }
 
+/* ---------------------------------------------------------------------------
+   One label recipe, one control recipe. The previous version repeated
+   `block text-sm font-medium text-foreground mb-2` twenty times in this file
+   alone, which is both a token violation and the reason nothing on the form
+   could be restyled in one place.
+   ------------------------------------------------------------------------- */
+const FIELD_LABEL = 'block text-sm font-medium text-foreground';
+
+const fieldId = (field: keyof FormData) => `tower-${field}`;
+
+/** Which tab owns which field — drives the per-tab error counters. */
+const TAB_FIELDS: Record<string, Array<keyof FormData>> = {
+  basic: ['site_name', 'site_id', 'site_sap', 'site_type', 'owner_id'],
+  location: ['longitude', 'latitude', 'alamat_menara'],
+  technical: ['tinggi_menara', 'tinggi_bangunan', 'jumlah_pengguna', 'jumlah_kaki', 'tower_type', 'prs', 'prs_id'],
+  permits: ['no_ijin', 'jenis_ijin', 'tanggal_ijin', 'berlaku_hingga', 'status_ijin'],
+};
+
+const TABS: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'basic', label: 'Info Dasar' },
+  { id: 'location', label: 'Lokasi' },
+  { id: 'technical', label: 'Teknis' },
+  { id: 'permits', label: 'Perijinan' },
+];
+
+/** Label + control + optional hint. Replaces 20 hand-typed label divs. */
+const Field: React.FC<{
+  label: string;
+  htmlFor: string;
+  required?: boolean;
+  hint?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ label, htmlFor, required = false, hint, className, children }) => (
+  <div className={cn('space-y-1.5', className)}>
+    <label htmlFor={htmlFor} className={FIELD_LABEL}>
+      {label}
+      {required && (
+        <span className="ml-1 font-semibold text-destructive" title="Wajib diisi" aria-hidden="true">
+          *
+        </span>
+      )}
+    </label>
+    {children}
+    {hint && <p className="text-xs leading-snug text-muted-foreground">{hint}</p>}
+  </div>
+);
+
 // Move FormInput component outside to prevent re-creation
 const FormInput: React.FC<{
   field: keyof FormData;
@@ -51,15 +103,37 @@ const FormInput: React.FC<{
   onChange: (field: keyof FormData, value: string) => void;
   error?: string;
 }> = ({ field, type = 'text', placeholder, options, rows, required = false, value, onChange, error }) => {
-  const baseClass = `w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent transition-colors ${
-    error ? 'border-red-500 bg-red-50' : 'border-gray-300'
-  }`;
+  // Validation stays on destructive tokens, and is never signalled by colour
+  // alone: the message below carries an icon and words.
+  const baseClass = cn(
+    'w-full rounded-md border bg-card px-3 text-sm text-foreground placeholder:text-placeholder',
+    'transition-colors duration-140 ease-state',
+    'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+    error ? 'border-destructive bg-destructive-soft' : 'border-input',
+  );
+
+  const message = error ? (
+    <p id={`${fieldId(field)}-error`} className="mt-1.5 flex items-start gap-1.5 text-xs text-destructive-strong">
+      <svg className="mt-px h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{error}</span>
+    </p>
+  ) : null;
+
+  const a11y = {
+    id: fieldId(field),
+    required,
+    'aria-invalid': error ? true : undefined,
+    'aria-describedby': error ? `${fieldId(field)}-error` : undefined,
+  } as const;
 
   if (options) {
     return (
       <div>
         <select
-          className={baseClass}
+          {...a11y}
+          className={cn(baseClass, 'h-11')}
           value={value}
           onChange={(e) => onChange(field, e.target.value)}
         >
@@ -68,7 +142,7 @@ const FormInput: React.FC<{
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {message}
       </div>
     );
   }
@@ -77,13 +151,14 @@ const FormInput: React.FC<{
     return (
       <div>
         <textarea
-          className={`${baseClass} resize-none`}
+          {...a11y}
+          className={cn(baseClass, 'resize-none py-2.5')}
           rows={rows}
           value={value}
           onChange={(e) => onChange(field, e.target.value)}
           placeholder={placeholder}
         />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {message}
       </div>
     );
   }
@@ -91,13 +166,14 @@ const FormInput: React.FC<{
   return (
     <div>
       <input
+        {...a11y}
         type={type}
-        className={baseClass}
+        className={cn(baseClass, 'h-11')}
         value={value}
         onChange={(e) => onChange(field, e.target.value)}
         placeholder={placeholder}
       />
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {message}
     </div>
   );
 };
@@ -136,7 +212,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
     if (field === 'latitude' || field === 'longitude') {
       // Remove any non-numeric characters except decimal point and minus sign
       const cleanedValue = value.replace(/[^0-9.-]/g, '');
-      
+
       // Ensure only one decimal point
       const parts = cleanedValue.split('.');
       if (parts.length > 2) {
@@ -144,7 +220,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
       } else {
         value = cleanedValue;
       }
-      
+
       // Limit decimal places to 8
       if (value.includes('.')) {
         const [integer, decimal] = value.split('.');
@@ -153,9 +229,9 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
         }
       }
     }
-    
+
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Handle owner selection
     if (field === 'owner_id') {
       if (value === '') {
@@ -163,15 +239,15 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
       } else {
         const selectedOwner = owners.find(owner => owner.id.toString() === value);
         if (selectedOwner) {
-          setFormData(prev => ({ 
-            ...prev, 
-            owner_name: selectedOwner.name, 
-            owner_alamat: selectedOwner.alamat 
+          setFormData(prev => ({
+            ...prev,
+            owner_name: selectedOwner.name,
+            owner_alamat: selectedOwner.alamat
           }));
         }
       }
     }
-    
+
     // Clear error when user starts typing
     setErrors(prev => {
       if (prev[field]) {
@@ -200,7 +276,7 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
         newErrors.latitude = 'Latitude maksimal 8 digit desimal';
       }
     }
-    
+
     if (formData.longitude) {
       const lngValue = Number(formData.longitude);
       if (isNaN(lngValue)) {
@@ -226,13 +302,13 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     // Convert empty strings to null for numeric fields
     const submitData = {
       ...formData,
@@ -258,386 +334,448 @@ const TowerCreatePage: React.FC<Props> = ({ owners }) => {
     });
   };
 
-
+  // Errors are cleared to '' rather than deleted, so count truthy values only.
+  const errorCountFor = (tabId: string) =>
+    (TAB_FIELDS[tabId] ?? []).filter((f) => Boolean(errors[f])).length;
+  const totalErrorCount = TABS.reduce((sum, tab) => sum + errorCountFor(tab.id), 0);
 
   return (
-    <AdminLayout title="Tambah Tower">
-      <Head title="Tambah Tower" />
-      
-      {/* Enhanced Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl shadow-2xl mb-8 overflow-hidden">
-        <div className="px-4 sm:px-8 py-6 sm:py-8 text-white relative">
-          <div className="absolute inset-0 bg-black opacity-10"></div>
-          <div className="relative z-10">
-            {/* Mobile-First Header Layout */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="p-3 sm:p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm self-start">
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-2 leading-tight">Tambah Tower Baru</h1>
-                  <p className="text-red-100 text-sm sm:text-lg leading-relaxed">
-                    Masukkan informasi lengkap tower telekomunikasi yang akan didaftarkan
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => router.get(route('admin.towers.index'))}
-                className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors w-full sm:w-auto"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Kembali
-              </button>
+    <AdminLayout title="Tambah Menara">
+      <Head title="Tambah Menara" />
+
+      <PageHeader
+        title="Tambah Menara Baru"
+        description="Masukkan informasi lengkap menara telekomunikasi yang akan didaftarkan"
+        showLogo={false}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.get(route('admin.towers.index'))}
+            className="h-11"
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Kembali
+          </Button>
+        }
+      />
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Validation summary: on a four-tab form an inline message alone can sit
+            on a tab the user is not looking at. */}
+        {totalErrorCount > 0 && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 rounded-md border border-destructive-border bg-destructive-soft p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p className="flex items-start gap-2 text-sm text-destructive-strong">
+              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                <span className="font-semibold tabular-nums">{totalErrorCount}</span> kolom belum valid.
+                Periksa tab yang ditandai.
+              </span>
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {TABS.filter((tab) => errorCountFor(tab.id) > 0).map((tab) => (
+                <Badge key={tab.id} variant="destructive">
+                  {tab.label} ({errorCountFor(tab.id)})
+                </Badge>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Main Form Container */}
-      <div className="bg-white shadow-2xl rounded-2xl border border-gray-100 overflow-hidden">
-        <form onSubmit={handleSubmit}>
-          {/* Tab Navigation */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
-            <nav className="overflow-x-hidden">
-              <div className="grid grid-cols-4 gap-1 sm:gap-2">
-                {[
-                  { id: 'basic', label: 'Info Dasar', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                  { id: 'location', label: 'Lokasi', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
-                  { id: 'technical', label: 'Teknis', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-                  { id: 'permits', label: 'Perijinan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
-                ].map((tab) => (
+        <Card padding="none">
+          {/* Tab bar. A rule with an active underline, not a coloured band of
+              pill cards — the panel below is the content, the bar is a switch. */}
+          <div className="overflow-x-auto border-b border-border-strong bg-well">
+            <nav className="flex min-w-max" aria-label="Bagian formulir menara">
+              {TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const count = errorCountFor(tab.id);
+                return (
                   <button
                     key={tab.id}
                     type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`tower-panel-${tab.id}`}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-col items-center justify-center px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-red-100 text-red-700 border border-red-300'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={cn(
+                      'relative inline-flex h-11 items-center gap-2 whitespace-nowrap px-4 text-sm font-medium',
+                      'transition-colors duration-140 ease-state',
+                      'focus-visible:outline-none focus-visible:ring focus-visible:ring-inset',
+                      isActive
+                        ? 'bg-card text-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    )}
+                    title={tab.label}
                   >
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                    </svg>
-                    <span className="text-center leading-tight">{tab.label}</span>
+                    <span>{tab.label}</span>
+                    {count > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-destructive-border bg-destructive-soft px-1 text-xs font-semibold tabular-nums text-destructive-strong">
+                        {count}
+                      </span>
+                    )}
+                    {isActive && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary animate-bar-grow"
+                      />
+                    )}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </nav>
           </div>
 
-          {/* Tab Content */}
-          <div className="space-y-6 sm:space-y-8 p-4 sm:p-8">
+          <div className="p-5">
             {activeTab === 'basic' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Site
-                  </label>
-                  <FormInput 
-                    field="site_name" 
-                    placeholder="Masukkan nama site" 
+              <div
+                id="tower-panel-basic"
+                role="tabpanel"
+                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                <Field label="Nama Site" htmlFor={fieldId('site_name')}>
+                  <FormInput
+                    field="site_name"
+                    placeholder="Masukkan nama site"
                     value={formData.site_name}
                     onChange={updateField}
                     error={errors.site_name}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Site ID</label>
-                  <FormInput 
-                    field="site_id" 
-                    placeholder="Site ID" 
+                </Field>
+
+                <Field label="Site ID" htmlFor={fieldId('site_id')}>
+                  <FormInput
+                    field="site_id"
+                    placeholder="Site ID"
                     value={formData.site_id}
                     onChange={updateField}
                     error={errors.site_id}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Site SAP</label>
-                  <FormInput 
-                    field="site_sap" 
-                    placeholder="Site SAP" 
+                </Field>
+
+                <Field label="Site SAP" htmlFor={fieldId('site_sap')}>
+                  <FormInput
+                    field="site_sap"
+                    placeholder="Site SAP"
                     value={formData.site_sap}
                     onChange={updateField}
                     error={errors.site_sap}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Site Type</label>
-                  <FormInput 
-                    field="site_type" 
-                    options={SITE_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))} 
-                    placeholder="Pilih site type" 
+                </Field>
+
+                <Field label="Site Type" htmlFor={fieldId('site_type')}>
+                  <FormInput
+                    field="site_type"
+                    options={SITE_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+                    placeholder="Pilih site type"
                     value={formData.site_type}
                     onChange={updateField}
                     error={errors.site_type}
                   />
-                  <div className="text-xs text-gray-500 mt-1 space-y-1">
-                    {SITE_TYPE_OPTIONS.map((option) => (
-                      <p key={option.value}>
-                        <span className="font-medium">{option.label}:</span> {option.description}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
-                  <FormInput 
-                    field="owner_id" 
-                    options={owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))} 
-                    placeholder="Pilih owner" 
+                </Field>
+
+                <Field label="Owner" htmlFor={fieldId('owner_id')}>
+                  <FormInput
+                    field="owner_id"
+                    options={owners.map(owner => ({ value: owner.id.toString(), label: owner.name }))}
+                    placeholder="Pilih owner"
                     value={formData.owner_id}
                     onChange={updateField}
                     error={errors.owner_id}
                   />
-                </div>
+                </Field>
+
                 {formData.owner_id && (
-                  <div className="sm:col-span-2">
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Detail Owner</h4>
-                      <p className="text-xs sm:text-sm text-gray-600"><strong>Nama:</strong> {formData.owner_name}</p>
-                      <p className="text-xs sm:text-sm text-gray-600"><strong>Alamat:</strong> {formData.owner_alamat}</p>
-                    </div>
-                  </div>
+                  <Card variant="well" padding="dense" className="sm:col-span-2 lg:col-span-1">
+                    <h4 className="text-sm font-semibold text-foreground">Detail Owner</h4>
+                    <dl className="mt-2 space-y-1 text-sm">
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-medium text-muted-foreground">Nama:</dt>
+                        <dd className="min-w-0 truncate text-foreground" title={formData.owner_name}>
+                          {formData.owner_name}
+                        </dd>
+                      </div>
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-medium text-muted-foreground">Alamat:</dt>
+                        <dd className="min-w-0 text-foreground">{formData.owner_alamat}</dd>
+                      </div>
+                    </dl>
+                  </Card>
                 )}
+
+                {/* Reference for the Site Type list — one compact table instead
+                    of four loose lines of grey text under the select. */}
+                <Card variant="well" padding="dense" className="sm:col-span-2 lg:col-span-3">
+                  <h4 className="text-sm font-semibold text-foreground">Keterangan Site Type</h4>
+                  <dl className="mt-2 divide-y divide-border/70 text-xs">
+                    {SITE_TYPE_OPTIONS.map((option) => (
+                      <div key={option.value} className="flex flex-col gap-0.5 py-1.5 sm:flex-row sm:gap-3">
+                        <dt className="w-full shrink-0 font-semibold text-foreground sm:w-40">
+                          {option.label}
+                        </dt>
+                        <dd className="text-muted-foreground">{option.description}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Card>
               </div>
             )}
 
             {activeTab === 'location' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Longitude <span className="text-gray-500 text-xs">(X-axis)</span>
-                  </label>
-                  <FormInput 
-                    field="longitude" 
-                    type="number" 
-                    placeholder="Contoh: 110.4203" 
+              <div
+                id="tower-panel-location"
+                role="tabpanel"
+                className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+              >
+                <Field
+                  label="Longitude (X-axis)"
+                  htmlFor={fieldId('longitude')}
+                  hint="Range: -180° hingga 180°, maksimal 8 digit desimal"
+                >
+                  <FormInput
+                    field="longitude"
+                    type="number"
+                    placeholder="Contoh: 110.4203"
                     value={formData.longitude}
                     onChange={updateField}
                     error={errors.longitude}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Range: -180° hingga 180°, maksimal 8 digit desimal</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Latitude <span className="text-gray-500 text-xs">(Y-axis)</span>
-                  </label>
-                  <FormInput 
-                    field="latitude" 
-                    type="number" 
-                    placeholder="Contoh: -7.7956" 
+                </Field>
+
+                <Field
+                  label="Latitude (Y-axis)"
+                  htmlFor={fieldId('latitude')}
+                  hint="Range: -90° hingga 90°, maksimal 8 digit desimal"
+                >
+                  <FormInput
+                    field="latitude"
+                    type="number"
+                    placeholder="Contoh: -7.7956"
                     value={formData.latitude}
                     onChange={updateField}
                     error={errors.latitude}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Range: -90° hingga 90°, maksimal 8 digit desimal</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Menara <span className="text-red-500">*</span></label>
-                  <FormInput 
-                    field="alamat_menara" 
-                    rows={3} 
-                    placeholder="Alamat lengkap lokasi menara" 
+                </Field>
+
+                <Field
+                  label="Alamat Menara"
+                  htmlFor={fieldId('alamat_menara')}
+                  required
+                  className="sm:col-span-2"
+                >
+                  <FormInput
+                    field="alamat_menara"
+                    rows={3}
+                    placeholder="Alamat lengkap lokasi menara"
                     value={formData.alamat_menara}
                     onChange={updateField}
                     error={errors.alamat_menara}
                     required={true}
                   />
-                </div>
+                </Field>
               </div>
             )}
 
             {activeTab === 'technical' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Menara (m)</label>
-                  <FormInput 
-                    field="tinggi_menara" 
-                    type="number" 
-                    placeholder="Contoh: 42" 
+              <div
+                id="tower-panel-technical"
+                role="tabpanel"
+                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                <Field label="Tinggi Menara (m)" htmlFor={fieldId('tinggi_menara')}>
+                  <FormInput
+                    field="tinggi_menara"
+                    type="number"
+                    placeholder="Contoh: 42"
                     value={formData.tinggi_menara}
                     onChange={updateField}
                     error={errors.tinggi_menara}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tinggi Bangunan (m)</label>
-                  <FormInput 
-                    field="tinggi_bangunan" 
-                    type="number" 
-                    placeholder="Contoh: 15" 
+                </Field>
+
+                <Field label="Tinggi Bangunan (m)" htmlFor={fieldId('tinggi_bangunan')}>
+                  <FormInput
+                    field="tinggi_bangunan"
+                    type="number"
+                    placeholder="Contoh: 15"
                     value={formData.tinggi_bangunan}
                     onChange={updateField}
                     error={errors.tinggi_bangunan}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Pengguna</label>
-                  <FormInput 
-                    field="jumlah_pengguna" 
-                    type="number" 
-                    placeholder="Jumlah operator" 
+                </Field>
+
+                <Field label="Jumlah Pengguna" htmlFor={fieldId('jumlah_pengguna')}>
+                  <FormInput
+                    field="jumlah_pengguna"
+                    type="number"
+                    placeholder="Jumlah operator"
                     value={formData.jumlah_pengguna}
                     onChange={updateField}
                     error={errors.jumlah_pengguna}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Kaki</label>
-                  <FormInput 
-                    field="jumlah_kaki" 
-                    type="number" 
-                    placeholder="Contoh: 4" 
+                </Field>
+
+                <Field label="Jumlah Kaki" htmlFor={fieldId('jumlah_kaki')}>
+                  <FormInput
+                    field="jumlah_kaki"
+                    type="number"
+                    placeholder="Contoh: 4"
                     value={formData.jumlah_kaki}
                     onChange={updateField}
                     error={errors.jumlah_kaki}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tower Type</label>
-                  <FormInput 
-                    field="tower_type" 
-                    placeholder="Contoh: Lattice, Monopole" 
+                </Field>
+
+                <Field label="Jenis Menara" htmlFor={fieldId('tower_type')}>
+                  <FormInput
+                    field="tower_type"
+                    placeholder="Contoh: Lattice, Monopole"
                     value={formData.tower_type}
                     onChange={updateField}
                     error={errors.tower_type}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PRS</label>
-                  <FormInput 
-                    field="prs" 
-                    placeholder="PRS" 
+                </Field>
+
+                <Field label="PRS" htmlFor={fieldId('prs')}>
+                  <FormInput
+                    field="prs"
+                    placeholder="PRS"
                     value={formData.prs}
                     onChange={updateField}
                     error={errors.prs}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PRS ID</label>
-                  <FormInput 
-                    field="prs_id" 
-                    placeholder="PRS ID" 
+                </Field>
+
+                <Field label="PRS ID" htmlFor={fieldId('prs_id')}>
+                  <FormInput
+                    field="prs_id"
+                    placeholder="PRS ID"
                     value={formData.prs_id}
                     onChange={updateField}
                     error={errors.prs_id}
                   />
-                </div>
+                </Field>
               </div>
             )}
 
             {activeTab === 'permits' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Ijin</label>
-                  <FormInput 
-                    field="no_ijin" 
-                    placeholder="Nomor ijin" 
+              <div
+                id="tower-panel-permits"
+                role="tabpanel"
+                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                <Field label="Nomor Ijin" htmlFor={fieldId('no_ijin')}>
+                  <FormInput
+                    field="no_ijin"
+                    placeholder="Nomor ijin"
                     value={formData.no_ijin}
                     onChange={updateField}
                     error={errors.no_ijin}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Ijin</label>
-                  <FormInput 
-                    field="jenis_ijin" 
+                </Field>
+
+                <Field label="Jenis Ijin" htmlFor={fieldId('jenis_ijin')}>
+                  <FormInput
+                    field="jenis_ijin"
                     options={[
                       { value: 'IMB', label: 'IMB' },
                       { value: 'PBG', label: 'PBG' },
                       { value: 'Lainnya', label: 'Lainnya' }
-                    ]} 
-                    placeholder="Pilih jenis ijin" 
+                    ]}
+                    placeholder="Pilih jenis ijin"
                     value={formData.jenis_ijin}
                     onChange={updateField}
                     error={errors.jenis_ijin}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Ijin</label>
-                  <FormInput 
-                    field="tanggal_ijin" 
-                    type="date" 
-                    value={formData.tanggal_ijin}
-                    onChange={updateField}
-                    error={errors.tanggal_ijin}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Berlaku Hingga</label>
-                  <FormInput 
-                    field="berlaku_hingga" 
-                    type="date" 
-                    value={formData.berlaku_hingga}
-                    onChange={updateField}
-                    error={errors.berlaku_hingga}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status Ijin</label>
-                  <FormInput 
-                    field="status_ijin" 
+                </Field>
+
+                {/* status_ijin is a field on the record being edited — that is
+                    the one place it belongs. It is never aggregated into a KPI,
+                    because the seeded values are random. */}
+                <Field label="Status Ijin" htmlFor={fieldId('status_ijin')}>
+                  <FormInput
+                    field="status_ijin"
                     options={[
                       { value: 'Aktif', label: 'Aktif' },
                       { value: 'Tidak Aktif', label: 'Tidak Aktif' },
                       { value: 'Pending', label: 'Pending' },
                       { value: 'Expired', label: 'Expired' }
-                    ]} 
-                    placeholder="Pilih status ijin" 
+                    ]}
+                    placeholder="Pilih status ijin"
                     value={formData.status_ijin}
                     onChange={updateField}
                     error={errors.status_ijin}
                   />
-                </div>
+                </Field>
+
+                <Field label="Tanggal Ijin" htmlFor={fieldId('tanggal_ijin')}>
+                  <FormInput
+                    field="tanggal_ijin"
+                    type="date"
+                    value={formData.tanggal_ijin}
+                    onChange={updateField}
+                    error={errors.tanggal_ijin}
+                  />
+                </Field>
+
+                <Field label="Berlaku Hingga" htmlFor={fieldId('berlaku_hingga')}>
+                  <FormInput
+                    field="berlaku_hingga"
+                    type="date"
+                    value={formData.berlaku_hingga}
+                    onChange={updateField}
+                    error={errors.berlaku_hingga}
+                  />
+                </Field>
               </div>
             )}
           </div>
+        </Card>
 
-          {/* Submit Buttons */}
-          <div className="bg-white border-t border-gray-200 px-4 sm:px-8 py-4 sm:py-6 mt-6 sm:mt-8">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {/* Submit Buttons */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Pastikan semua data sudah benar sebelum menyimpan</span>
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => router.get(route('admin.towers.index'))}
+              className="w-full sm:w-auto"
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Batal
+            </Button>
+            <Button type="submit" size="lg" disabled={isSubmitting} className="w-full sm:w-auto">
+              {isSubmitting ? (
+                <svg className="animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span>Pastikan semua data sudah benar sebelum menyimpan</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => router.get(route('admin.towers.index'))}
-                  className="px-4 sm:px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-100 transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Batal
-                </button>
-                <AnimatedButton
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  animation="scale"
-                  loading={isSubmitting}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  }
-                >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Tower'}
-                </AnimatedButton>
-              </div>
-            </div>
+              ) : (
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Menara'}
+            </Button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </AdminLayout>
   );
 };

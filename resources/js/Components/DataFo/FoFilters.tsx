@@ -32,24 +32,23 @@ export default function FoFilters({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-6">
-      <h3 className="text-lg font-medium mb-4" style={{ color: '#212121' }}>Filter Data Fiber Optic</h3>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="rounded-lg border border-border bg-card p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {/* Area Selector */}
         <div className="w-full">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Area</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Pilih Area</label>
           <div className="flex gap-2">
             {['ungaran'].map((area) => (
               <button
                 key={area}
                 onClick={() => onAreaChange(area)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex-1 ${
+                aria-pressed={selectedArea === area}
+                className={`h-9 flex-1 rounded-md px-3 text-sm font-medium transition-colors duration-140 focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 ${
                   selectedArea === area
-                    ? 'text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary-hover'
+                    : 'border border-input bg-background text-foreground hover:bg-accent'
                 }`}
-                style={selectedArea === area ? { backgroundColor: '#B71C1C' } : {}}
+                
               >
                 Ungaran
               </button>
@@ -60,9 +59,9 @@ export default function FoFilters({
         {/* Search Filter */}
         {onSearchChange && (
           <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Pencarian</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Pencarian</label>
             <form onSubmit={handleSearch} className="w-full">
-              <div className="flex items-stretch rounded-lg overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-[#B71C1C]">
+              <div className="flex items-stretch rounded-lg overflow-hidden border border-input focus-within:border-ring focus-within:ring">
                 <input 
                   type="text"
                   placeholder="Cari titik atau jalur FO"
@@ -72,8 +71,7 @@ export default function FoFilters({
                 />
                 <button 
                   type="submit" 
-                  className="text-white px-3 flex items-center justify-center shrink-0" 
-                  style={{ backgroundColor: '#B71C1C' }}
+                  className="text-white px-3 flex items-center justify-center shrink-0"
                   aria-label="Cari"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
@@ -88,11 +86,11 @@ export default function FoFilters({
         {/* Type Filter */}
         {onTypeChange && (
           <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Titik</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Tipe Titik</label>
             <select
               value={selectedType}
               onChange={(e) => onTypeChange(e.target.value)}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
+              className="w-full rounded-lg border-input shadow-sm focus:border-ring focus:ring text-sm"
             >
               <option value="all">Semua Tipe</option>
               <option value="pole_isp_junction">Pole + ISP + Junction Box</option>
@@ -109,11 +107,11 @@ export default function FoFilters({
         {/* Status Filter */}
         {onStatusChange && (
           <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Status</label>
             <select
               value={selectedStatus}
               onChange={(e) => onStatusChange(e.target.value)}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
+              className="w-full rounded-lg border-input shadow-sm focus:border-ring focus:ring text-sm"
             >
               <option value="all">Semua Status</option>
               <option value="active">Aktif</option>
@@ -126,16 +124,16 @@ export default function FoFilters({
         {/* Side of Road Filter */}
         {onSideChange && (
           <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sisi Jalan</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Sisi Jalan</label>
             <select
               value={selectedSide}
               onChange={(e) => onSideChange(e.target.value)}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] text-sm"
+              className="w-full rounded-lg border-input shadow-sm focus:border-ring focus:ring text-sm"
             >
               <option value="all">Semua Sisi</option>
-              <option value="left">⬅️ Kiri</option>
-              <option value="right">➡️ Kanan</option>
-              <option value="unknown">❓ Belum Diketahui</option>
+              <option value="left">Kiri</option>
+              <option value="right">Kanan</option>
+              <option value="unknown">Belum Diketahui</option>
             </select>
           </div>
         )}

@@ -41,12 +41,12 @@ export default forwardRef(function PasswordInput(
             <input
                 {...props}
                 type={showPassword ? 'text' : 'password'}
-                className={`rounded-md border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] pr-12 ${className}`}
+                className={`rounded-md border-input shadow-sm focus:border-ring focus:ring pr-12 ${className}`}
                 ref={localRef}
             />
             <button
                 type="button"
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors duration-200"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-placeholder hover:text-muted-foreground focus:outline-none focus:text-muted-foreground transition-colors duration-200"
                 onClick={togglePasswordVisibility}
                 tabIndex={-1}
                 aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}

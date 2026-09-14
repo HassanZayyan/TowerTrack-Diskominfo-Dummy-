@@ -104,15 +104,15 @@ export default function CommentForm({
       <form onSubmit={submit} className="space-y-4">
         {/* Reply indicator */}
         {replyingTo && (
-          <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-orange-700">
+          <div className="mb-3 p-3 bg-warning-soft border border-warning-border rounded-lg flex items-center justify-between">
+            <span className="text-sm text-warning-strong">
               Membalas ke <strong>{replyingTo}</strong>
             </span>
             {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
-                className="text-sm text-orange-600 hover:text-orange-800 font-medium transition-colors"
+                className="text-sm text-warning-strong hover:text-warning-strong font-medium transition-colors"
               >
                 Batal
               </button>

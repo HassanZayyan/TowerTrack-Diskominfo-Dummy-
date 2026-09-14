@@ -42,28 +42,22 @@ export const FO_AREAS = ['ungaran'] as const;
 /**
  * Get status label with optional emoji
  */
-export const getStatusLabel = (status: string, withEmoji: boolean = false): string => {
-  const label = STATUS_LABELS[status] || status;
-  
-  if (!withEmoji) {
-    return label;
-  }
-  
-  const emoji = status === 'active' ? '✅' : status === 'inactive' ? '❌' : '🔧';
-  return `${emoji} ${label}`;
+export const getStatusLabel = (status: string, _withEmoji: boolean = false): string => {
+  // The emoji variant is gone. A status is already carried by a Badge with a
+  // semantic fill; prefixing the label with ✅ / ❌ / 🔧 added a second, less
+  // accessible encoding of the same thing — screen readers announce the emoji
+  // name, and the glyphs render differently on every platform.
+  // The parameter is kept so the existing call sites still compile.
+  return STATUS_LABELS[status] || status;
 };
 
 /**
  * Get type label with optional emoji
  */
-export const getTypeLabel = (type: string, withEmoji: boolean = false): string => {
-  const label = TYPE_LABELS[type] || type;
-  
-  if (!withEmoji) {
-    return label;
-  }
-  
-  return `🔧 ${label}`;
+export const getTypeLabel = (type: string, _withEmoji: boolean = false): string => {
+  // Same reasoning as getStatusLabel — and this one prefixed EVERY type with
+  // the same 🔧, so it distinguished nothing at all.
+  return TYPE_LABELS[type] || type;
 };
 
 /**
@@ -83,10 +77,14 @@ export type TypeBadgeConfig = {
  */
 export function getTypeBadgeConfig(type: string): TypeBadgeConfig {
   const typeConfig: Record<string, TypeBadgeConfig> = {
-    hub: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Hub' },
-    junction: { bg: 'bg-green-100', text: 'text-green-800', label: 'Junction' },
-    pole: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Pole' },
-    endpoint: { bg: 'bg-red-100', text: 'text-red-800', label: 'Endpoint' },
+    // Neutral on purpose. These are CATEGORIES, and the label next to the chip
+    // already names each one. The previous map spent green on "Junction" and
+    // red on "Endpoint" — the two colours that mean success and danger
+    // everywhere else in this app — so an ordinary point type read as a status.
+    hub: { bg: 'bg-muted', text: 'text-neutral-strong', label: 'Hub' },
+    junction: { bg: 'bg-muted', text: 'text-neutral-strong', label: 'Junction' },
+    pole: { bg: 'bg-muted', text: 'text-neutral-strong', label: 'Pole' },
+    endpoint: { bg: 'bg-muted', text: 'text-neutral-strong', label: 'Endpoint' },
   };
   
   return typeConfig[type] || typeConfig.hub;

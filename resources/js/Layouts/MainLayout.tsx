@@ -17,7 +17,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   headerSlot
 }) => {
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-canvas flex flex-col">
       <Head title={title} />
 
       {/* App Bar */}
@@ -28,7 +28,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
       {/* Main Content */}
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8 flex-1 w-full">
-        <main className="py-4 sm:py-6">{children}</main>
+        <main className="py-6 sm:py-8">{children}</main>
       </div>
 
       {/* Footer - Full Width */}

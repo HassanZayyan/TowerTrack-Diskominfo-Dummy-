@@ -1,4 +1,5 @@
 import { InputHTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
 
 export default function Checkbox({
     className = '',
@@ -8,7 +9,11 @@ export default function Checkbox({
         <input
             {...props}
             type="checkbox"
-            className={'rounded border-gray-300 text-[#B71C1C] shadow-sm focus:ring-[#B71C1C] ' + className}
+            className={cn(
+                'rounded border-input text-primary shadow-xs',
+                'focus:ring focus:ring-offset-0',
+                className,
+            )}
         />
     );
 }

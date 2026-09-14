@@ -40,13 +40,13 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
   const backUrl = '/my-messages/my-posts';
 
   const headerContent = (
-    <div className="bg-red-700 border-b border-red-800 w-full shadow-md relative z-10 overflow-hidden">
+    <div className="bg-primary border-b border-primary-hover w-full shadow-md relative z-10 overflow-hidden">
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
         <div className="flex-1 text-center md:text-left">
           <div className="mb-4">
             <button
               onClick={() => router.visit(backUrl)}
-              className="inline-flex items-center px-5 py-2.5 bg-yellow-400 text-red-900 font-bold rounded-lg shadow-lg hover:bg-yellow-300 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
+              className="inline-flex items-center px-5 py-2.5 bg-white text-primary font-semibold rounded-lg shadow-sm hover:bg-white/90 transform hover:-translate-y-0.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/80 focus-visible:ring-offset-primary"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -59,9 +59,9 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
           </h1>
         </div>
         <div className="hidden md:block flex-shrink-0">
-          <div className="bg-yellow-400 p-3 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-300">
+          <div className="bg-white p-3 rounded-xl shadow-sm transform hover:scale-105 transition-transform duration-300">
             <img
-              src="/images/kab-smg-logo.png"
+              src="/images/kab-smg-logo.webp"
               alt="Logo Kabupaten Semarang"
               className="h-20 w-auto object-contain drop-shadow-sm"
             />
@@ -78,27 +78,27 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
       <div className="animate-fade-in-up">
 
         {/* Sender Information Card */}
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm mb-6">
-          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
-            <h4 className="text-base font-bold text-gray-900">Informasi Pengirim</h4>
+        <div className="bg-card rounded-lg p-5 border border-border shadow-sm mb-6">
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
+            <h4 className="text-base font-bold text-foreground">Informasi Pengirim</h4>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">Nama</div>
+              <div className="text-sm font-medium text-muted-foreground mb-1">Nama</div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900 text-base">
+                <span className="font-semibold text-foreground text-base">
                   {report.user?.name || report.reporter_name || 'Anonymous'}
                 </span>
                 {!report.user_id && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-soft text-warning-strong">
                     Tamu
                   </span>
                 )}
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">Waktu Kirim</div>
-              <div className="font-semibold text-gray-900 text-base">
+              <div className="text-sm font-medium text-muted-foreground mb-1">Waktu Kirim</div>
+              <div className="font-semibold text-foreground text-base">
                 {formatDateWithTime(report.created_at)}
               </div>
             </div>
@@ -112,22 +112,22 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
             reportable={report.reportable}
             reportableType={report.reportable_type}
           />
-          <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
-              <h5 className="text-sm font-bold text-gray-900">Kategori</h5>
+          <div className="bg-card rounded-lg p-5 border border-border shadow-sm">
+            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-border">
+              <h5 className="text-sm font-bold text-foreground">Kategori</h5>
             </div>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-orange-50 text-orange-700 border border-orange-100">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-muted text-foreground border border-border">
               {report.category ?? '-'}
             </span>
           </div>
         </div>
 
         {/* Message Content */}
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm mb-6">
-          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
-            <h5 className="text-sm font-bold text-gray-900">Isi Pesan</h5>
+        <div className="bg-card rounded-lg p-5 border border-border shadow-sm mb-6">
+          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-border">
+            <h5 className="text-sm font-bold text-foreground">Isi Pesan</h5>
           </div>
-          <div className="text-gray-900 whitespace-pre-wrap leading-relaxed text-base">
+          <div className="text-foreground whitespace-pre-wrap leading-relaxed text-base">
             {report.message}
           </div>
         </div>
@@ -144,11 +144,11 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
 
         {canRespond && (
           <div className="mb-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-lg font-bold text-gray-900">Balas Keluhan</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h3 className="text-lg font-bold text-foreground">Balas Keluhan</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Kirim update penanganan secara pribadi kepada pelapor keluhan ini.
                   </p>
                 </div>
@@ -163,7 +163,7 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
                     triggerVariant="primary"
                     triggerSize="md"
                     triggerFullWidth={true}
-                    triggerClassName="w-full sm:w-auto whitespace-nowrap bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-4 py-2 flex items-center justify-center gap-2 font-medium transition-colors"
+                    triggerClassName="w-full sm:w-auto whitespace-nowrap bg-neutral hover:bg-neutral text-white rounded-lg px-4 py-2 flex items-center justify-center gap-2 font-medium transition-colors"
                     title="Kirim Balasan"
                     maxWidth="3xl"
                     isOpen={isResponseModalOpen}
@@ -200,7 +200,6 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
               status={report.status}
               statusResolver={responseStatusResolver}
               heading="Riwayat Balasan"
-              accentColorClass="from-red-500 to-red-600"
               onPreviewAsset={(asset) => setPreviewAsset(asset)}
             />
           </div>
@@ -221,6 +220,7 @@ export default function ShowPrivateReport({ report, statuses = [] }: ShowPrivate
               ) : (
                 <img
                   src={`/storage/${previewAsset.file_path}`}
+                  alt="Lampiran gambar pada pesan ini, tampilan penuh"
                   className="max-w-full max-h-[90vh] object-contain"
                   onClick={(e) => e.stopPropagation()}
                 />

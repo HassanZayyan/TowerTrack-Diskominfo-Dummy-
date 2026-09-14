@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import HeroSection from '@/Components/HeroSection';
+import PageHeader from '@/Components/PageHeader';
 import { useBodyScrollLock } from '@/Hooks/useBodyScrollLock';
 import ModalBackdrop from '@/Components/ModalBackdrop';
 import ModalContainer from '@/Components/ModalContainer';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
+import { Card } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface Provider {
   id: number;
@@ -37,6 +42,63 @@ interface PageProps {
   csrfToken: string;
   [key: string]: any;
 }
+
+/**
+ * Shared control recipe for the inputs in this page's filter bar and modals.
+ * h-11 = 44px touch target; the single 3px token ring, never ring-2.
+ */
+const FIELD_CLASS =
+  'block h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-placeholder transition-colors duration-140 ease-state focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2';
+
+/** Textarea needs its own height, so it gets the recipe without h-11. */
+const TEXTAREA_CLASS =
+  'block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-placeholder transition-colors duration-140 ease-state focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2';
+
+const LABEL_CLASSES = 'mb-1 block text-xs font-medium text-muted-foreground';
+const MODAL_LABEL_CLASSES = 'mb-1 block text-sm font-medium text-foreground';
+
+/** Header cell recipe — one string for every column on the page. */
+const TH_CLASSES = 'h-10 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground';
+/** Body cell recipe — 12px horizontal, rows land on 44px. */
+const TD_CLASSES = 'px-3 py-2 align-middle';
+
+/** 40px card head on the inset ground, strong bottom rule. */
+const TableHead = ({ title, meta }: { title: string; meta: string }) => (
+  <div className="flex min-h-[40px] flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border-strong bg-well px-3 py-2">
+    <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+    <span className="text-xs tabular-nums text-muted-foreground">{meta}</span>
+  </div>
+);
+
+/** Stat tile: figure, label, no icon disc. */
+const StatTile = ({ label, value, toneClass, index }: {
+  label: string;
+  value: number;
+  toneClass?: string;
+  index: number;
+}) => (
+  <Card
+    padding="dense"
+    className="tt-enter-up"
+    style={{ '--tt-delay': `${index * 40}ms` } as React.CSSProperties}
+  >
+    <p className="text-sm text-muted-foreground">{label}</p>
+    <p className={cn('mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground', toneClass)}>
+      {value}
+    </p>
+  </Card>
+);
+
+/** One empty state, used by both the desktop table and the mobile list. */
+const EmptyProviders = () => (
+  <div className="flex flex-col items-center justify-center gap-2 p-6 text-center">
+    <svg className="h-8 w-8 text-placeholder" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+    <p className="text-sm font-medium text-foreground">Tidak ada provider ditemukan</p>
+    <p className="max-w-sm text-sm text-muted-foreground">Coba ubah filter atau tambah provider baru</p>
+  </div>
+);
 
 export default function ProvidersIndex() {
   const { props } = usePage<PageProps>();
@@ -74,12 +136,12 @@ export default function ProvidersIndex() {
     // Status filter
     if (filterStatus === 'active' && !provider.is_active) return false;
     if (filterStatus === 'inactive' && provider.is_active) return false;
-    
+
     // Search filter
     if (searchQuery && !provider.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    
+
     return true;
   });
 
@@ -99,7 +161,7 @@ export default function ProvidersIndex() {
 
     const pointsCount = provider.points_count || 0;
     const isUsed = pointsCount > 0;
-    
+
     setShowDeleteModal({ provider, isUsed });
     setDeleteAction(isUsed ? 'deactivate' : 'delete');
   };
@@ -161,61 +223,149 @@ export default function ProvidersIndex() {
     inactive: providers.filter(p => !p.is_active).length,
   };
 
+  const openEdit = (provider: Provider) => {
+    setEditForm({
+      name: provider.name,
+      description: provider.description || '',
+      default_sort_order: provider.default_sort_order,
+      is_active: provider.is_active,
+    });
+    setShowEditModal(provider);
+  };
+
+  /**
+   * Row actions. The destructive control keeps its token, its icon AND an
+   * explicit verb — it used to be an unlabelled red trash glyph, which is the
+   * one place colour alone was carrying "dangerous".
+   */
+  const RowActions = ({ provider, className, showDetail }: {
+    provider: Provider;
+    className?: string;
+    showDetail?: boolean;
+  }) => (
+    <div className={cn('flex flex-wrap items-center gap-1', className)}>
+      {showDetail && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11"
+          onClick={() => setShowDetailModal(provider)}
+          title="Lihat Detail"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Detail
+        </Button>
+      )}
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-11"
+        onClick={() => openEdit(provider)}
+        title="Edit Provider"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+        Edit
+      </Button>
+
+      {/* Restore/Delete Button - Saling menggantikan berdasarkan status */}
+      {!provider.is_active ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 text-success-strong hover:bg-success-soft hover:text-success-strong"
+          onClick={() => handleRestore(provider)}
+          title="Aktifkan Kembali Provider"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Aktifkan
+        </Button>
+      ) : (
+        /* Semantic red: destructive action, kept red on destructive tokens. */
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 text-destructive hover:bg-destructive-soft hover:text-destructive-strong"
+          onClick={() => handleDelete(provider)}
+          title="Nonaktifkan/Hapus Provider"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span className="truncate">Nonaktifkan</span>
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <AdminLayout title="Manajemen Provider">
       <Head title="Manajemen Provider" />
-      
-      {/* Flash Messages */}
-      {flash?.success && (
-        <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          {flash.success}
-        </div>
-      )}
 
-      {flash?.error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          {flash.error}
-        </div>
-      )}
+      <div className="space-y-4 sm:space-y-5">
+        {/* Flash Messages */}
+        {flash?.success && (
+          <div className="flex items-center gap-2 rounded-md border border-success-border bg-success-soft px-3 py-2 text-sm text-success-strong">
+            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {flash.success}
+          </div>
+        )}
 
-      {errors?.provider && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {errors.provider}
-        </div>
-      )}
+        {/* Semantic red: a failed action. Stays red, on destructive tokens. */}
+        {flash?.error && (
+          <div className="flex items-center gap-2 rounded-md border border-destructive-border bg-destructive-soft px-3 py-2 text-sm text-destructive-strong">
+            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            {flash.error}
+          </div>
+        )}
 
-      {/* Hero Section */}
-      <div className="mb-8">
-        <HeroSection
+        {/* Semantic red: validation error. */}
+        {errors?.provider && (
+          <div className="flex items-center gap-2 rounded-md border border-destructive-border bg-destructive-soft px-3 py-2 text-sm text-destructive-strong">
+            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.provider}
+          </div>
+        )}
+
+        {/*
+          Was a HeroSection band; the page header is now type plus a hairline
+          rule and owns the only action zone on the screen.
+        */}
+        <PageHeader
           title="Manajemen Provider"
-          subtitle="Kelola master provider untuk titik-titik FO"
-          variant="brand"
-          align="left"
+          description="Kelola master provider untuk titik-titik FO"
+          showLogo={false}
+          className="mb-0 pb-4"
           actions={
             canEdit ? (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  href={route('admin.fo-management.routes.list')}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white font-medium rounded-lg hover:bg-white/30 transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Kembali ke Jalur
-                </Link>
-                <button
+              <>
+                <Button asChild variant="outline" className="h-11">
+                  <Link href={route('admin.fo-management.routes.list')}>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Kembali ke Jalur
+                  </Link>
+                </Button>
+                {/* Brand chrome: was gold on deep red. Now the page's primary action. */}
+                <Button
+                  className="h-11"
                   onClick={() => {
                     // Get max sort order for new provider
-                    const maxSortOrder = providers.length > 0 
+                    const maxSortOrder = providers.length > 0
                       ? Math.max(...providers.map(p => p.default_sort_order))
                       : 0;
                     setCreateForm({
@@ -226,340 +376,145 @@ export default function ProvidersIndex() {
                     });
                     setShowCreateModal(true);
                   }}
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors shadow-sm"
-                  style={{ 
-                    backgroundColor: '#FFD700', 
-                    color: '#B71C1C'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFC107';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFD700';
-                  }}
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Tambah Provider
-                </button>
-              </div>
+                </Button>
+              </>
             ) : null
           }
         />
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
+        {/* Stats: three real counts, no 48px icon tiles. */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatTile index={0} label="Total Provider" value={stats.total} />
+          <StatTile index={1} label="Aktif" value={stats.active} toneClass="text-success-strong" />
+          <StatTile index={2} label="Nonaktif" value={stats.inactive} />
+        </div>
+
+        {/* Filters and Search — one inset rail, two controls. */}
+        <Card variant="well" padding="dense">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <p className="text-sm text-blue-700 font-medium">Total Provider</p>
-              <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
+              <label htmlFor="search" className={LABEL_CLASSES}>Cari Provider</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari berdasarkan nama..."
+                  className={cn(FIELD_CLASS, 'pl-9')}
+                />
+                <svg
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-placeholder"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
             </div>
-            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-700 font-medium">Aktif</p>
-              <p className="text-2xl font-bold text-green-900">{stats.active}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-700 font-medium">Nonaktif</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.inactive}</p>
-            </div>
-            <div className="w-12 h-12 bg-gray-500 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <label htmlFor="status" className={LABEL_CLASSES}>Filter Status</label>
+              <select
+                id="status"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+                className={FIELD_CLASS}
+              >
+                <option value="all">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+              </select>
             </div>
           </div>
-        </div>
-      </div>
+        </Card>
 
-      {/* Filters and Search */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-              Cari Provider
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari berdasarkan nama..."
-                className="w-full px-4 py-2 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
-              />
-              <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </div>
+        {/* Providers Table */}
+        <Card padding="none">
+          <TableHead title="Daftar Provider" meta={`${sortedProviders.length} dari ${stats.total} provider`} />
 
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-              Filter Status
-            </label>
-            <select
-              id="status"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all appearance-none bg-white"
-            >
-              <option value="all">Semua Status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
-            </select>
-          </div>
-        </div>
-      </div>
+          {sortedProviders.length > 0 ? (
+            <>
+              {/* Desktop Table - Semua Kolom */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border-strong bg-well">
+                      <th scope="col" className={TH_CLASSES}>Nama Provider</th>
+                      <th scope="col" className={TH_CLASSES}>Deskripsi</th>
+                      <th scope="col" className={TH_CLASSES}>Status</th>
+                      <th scope="col" className={cn(TH_CLASSES, 'text-right')}>Jumlah Titik FO</th>
+                      <th scope="col" className={cn(TH_CLASSES, 'text-right')}>Urutan</th>
+                      {canEdit && (
+                        <th scope="col" className={cn(TH_CLASSES, 'text-right')}>Aksi</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/70">
+                    {sortedProviders.map((provider) => (
+                      <tr key={provider.id} className="transition-colors duration-140 ease-state hover:bg-well/60">
+                        <td className={cn(TD_CLASSES, 'max-w-[220px]')}>
+                          <div className="truncate text-sm font-medium text-foreground" title={provider.name}>
+                            {provider.name}
+                          </div>
+                        </td>
+                        <td className={cn(TD_CLASSES, 'max-w-[360px]')}>
+                          <div className="truncate text-sm text-muted-foreground" title={provider.description || '-'}>
+                            {provider.description || '-'}
+                          </div>
+                        </td>
+                        <td className={cn(TD_CLASSES, 'whitespace-nowrap')}>
+                          <Badge variant={provider.is_active ? 'success' : 'neutral'}>
+                            {provider.is_active ? 'Aktif' : 'Nonaktif'}
+                          </Badge>
+                        </td>
+                        <td className={cn(TD_CLASSES, 'whitespace-nowrap text-right text-sm tabular-nums text-foreground')}>
+                          {provider.points_count || 0} titik
+                        </td>
+                        <td className={cn(TD_CLASSES, 'whitespace-nowrap text-right text-sm tabular-nums text-muted-foreground')}>
+                          {provider.default_sort_order}
+                        </td>
+                        {canEdit && (
+                          <td className={cn(TD_CLASSES, 'whitespace-nowrap')}>
+                            <RowActions provider={provider} className="justify-end" />
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-      {/* Providers Table */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-        {/* Desktop Table - Semua Kolom */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full divide-y divide-gray-200">
-            <thead className="bg-gradient-to-r from-red-50 to-red-100">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Nama Provider
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Deskripsi
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Jumlah Titik FO
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Urutan
-                </th>
-                {canEdit && (
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Aksi
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedProviders.length > 0 ? (
-                sortedProviders.map((provider) => (
-                  <tr key={provider.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{provider.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 max-w-md truncate" title={provider.description || '-'}>
-                        {provider.description || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        provider.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {provider.is_active ? 'Aktif' : 'Nonaktif'}
+              {/* Mobile list - nama + status, sisa kolom lewat Detail */}
+              <ul className="divide-y divide-border/70 md:hidden">
+                {sortedProviders.map((provider) => (
+                  <li key={provider.id} className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="truncate text-sm font-medium text-foreground" title={provider.name}>
+                        {provider.name}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {provider.points_count || 0} titik
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{provider.default_sort_order}</div>
-                    </td>
-                    {canEdit && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* Edit Button */}
-                          <button
-                            onClick={() => {
-                              setEditForm({
-                                name: provider.name,
-                                description: provider.description || '',
-                                default_sort_order: provider.default_sort_order,
-                                is_active: provider.is_active,
-                              });
-                              setShowEditModal(provider);
-                            }}
-                            className="text-blue-600 hover:text-blue-900 transition-colors"
-                            title="Edit Provider"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          
-                          {/* Restore/Delete Button - Saling menggantikan berdasarkan status */}
-                          {!provider.is_active ? (
-                            <button
-                              onClick={() => handleRestore(provider)}
-                              className="text-green-600 hover:text-green-900 transition-colors"
-                              title="Aktifkan Kembali Provider"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleDelete(provider)}
-                              className="text-red-600 hover:text-red-900 transition-colors"
-                              title="Nonaktifkan/Hapus Provider"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={canEdit ? 6 : 5} className="px-6 py-12 text-center">
-                    <div className="text-gray-500">
-                      <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <p className="text-lg font-medium">Tidak ada provider ditemukan</p>
-                      <p className="text-sm mt-1">Coba ubah filter atau tambah provider baru</p>
+                      <Badge variant={provider.is_active ? 'success' : 'neutral'}>
+                        {provider.is_active ? 'Aktif' : 'Nonaktif'}
+                      </Badge>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Table - Hanya Nama Provider dan Aksi */}
-        <div className="md:hidden overflow-hidden">
-          <table className="w-full divide-y divide-gray-200">
-            <thead className="bg-gradient-to-r from-red-50 to-red-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Nama Provider
-                </th>
-                {canEdit && (
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Aksi
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedProviders.length > 0 ? (
-                sortedProviders.map((provider) => (
-                  <tr key={provider.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-gray-900">{provider.name}</div>
-                    </td>
-                    {canEdit && (
-                      <td className="px-4 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* View Button - Hanya Mobile */}
-                          <button
-                            onClick={() => setShowDetailModal(provider)}
-                            className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                            title="Lihat Detail"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </button>
-                          
-                          {/* Edit Button */}
-                          <button
-                            onClick={() => {
-                              setEditForm({
-                                name: provider.name,
-                                description: provider.description || '',
-                                default_sort_order: provider.default_sort_order,
-                                is_active: provider.is_active,
-                              });
-                              setShowEditModal(provider);
-                            }}
-                            className="text-blue-600 hover:text-blue-900 transition-colors"
-                            title="Edit Provider"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          
-                          {/* Restore/Delete Button - Saling menggantikan berdasarkan status */}
-                          {!provider.is_active ? (
-                            <button
-                              onClick={() => handleRestore(provider)}
-                              className="text-green-600 hover:text-green-900 transition-colors"
-                              title="Aktifkan Kembali Provider"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleDelete(provider)}
-                              className="text-red-600 hover:text-red-900 transition-colors"
-                              title="Nonaktifkan/Hapus Provider"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={canEdit ? 2 : 1} className="px-4 py-12 text-center">
-                    <div className="text-gray-500">
-                      <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <p className="text-lg font-medium">Tidak ada provider ditemukan</p>
-                      <p className="text-sm mt-1">Coba ubah filter atau tambah provider baru</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    {canEdit && <RowActions provider={provider} showDetail className="mt-2" />}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <EmptyProviders />
+          )}
+        </Card>
       </div>
 
       {/* Create Provider Modal */}
+      {/* AnimatePresence keeps the tree alive for the leave animation; without it React unmounts on the same paint and the dialog cuts out. */}
+      <AnimatePresence>
       {showCreateModal && (
         <ModalBackdrop
           onClick={() => {
@@ -570,27 +525,30 @@ export default function ProvidersIndex() {
           zIndex={50}
         >
           <ModalContainer maxWidth="2xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 flex justify-between items-center flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-border-strong bg-well px-4 py-2.5">
+              <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">
+                <svg className="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Tambah Provider Baru
               </h3>
-              <button 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => {
                   setShowCreateModal(false);
                   setCreateForm({ name: '', description: '', default_sort_order: 0, is_active: true });
                 }}
-                className="text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
+                className="h-11 w-11 flex-shrink-0 text-muted-foreground"
+                title="Tutup"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
             </div>
-            <div 
-              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+            <div
+              className="min-h-0 flex-1 overflow-y-auto p-4"
               style={{
                 maxHeight: 'calc(100vh - 12rem)',
                 WebkitOverflowScrolling: 'touch',
@@ -606,56 +564,51 @@ export default function ProvidersIndex() {
                   },
                 });
               }} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nama Provider <span className="text-red-500">*</span>
+                <div>
+                  <label className={MODAL_LABEL_CLASSES}>
+                    {/* Semantic red: required-field marker. */}
+                    Nama Provider <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
                     value={createForm.name}
                     onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all"
+                    className={FIELD_CLASS}
                     placeholder="Masukkan nama provider"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Deskripsi
-                  </label>
+                <div>
+                  <label className={MODAL_LABEL_CLASSES}>Deskripsi</label>
                   <textarea
                     value={createForm.description}
                     onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all resize-none"
+                    className={cn(TEXTAREA_CLASS, 'resize-none')}
                     placeholder="Masukkan deskripsi provider (opsional)"
                     rows={4}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Urutan Sort
-                    </label>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={MODAL_LABEL_CLASSES}>Urutan Sort</label>
                     <input
                       type="number"
                       value={createForm.default_sort_order}
                       onChange={(e) => setCreateForm({ ...createForm, default_sort_order: parseInt(e.target.value) || 0 })}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all"
+                      className={FIELD_CLASS}
                       placeholder="0"
                       min="0"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Status
-                    </label>
+                  <div>
+                    <label className={MODAL_LABEL_CLASSES}>Status</label>
                     <select
                       value={createForm.is_active ? 'active' : 'inactive'}
                       onChange={(e) => setCreateForm({ ...createForm, is_active: e.target.value === 'active' })}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all appearance-none bg-white"
+                      className={FIELD_CLASS}
                     >
                       <option value="active">Aktif</option>
                       <option value="inactive">Nonaktif</option>
@@ -663,31 +616,32 @@ export default function ProvidersIndex() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-end pt-4 space-y-2 sm:space-y-0 sm:space-x-3">
-                  <button
+                <div className="flex flex-col justify-end gap-2 border-t border-border/70 pt-4 sm:flex-row">
+                  <Button
                     type="button"
+                    variant="outline"
+                    className="h-11 w-full sm:w-auto"
                     onClick={() => {
                       setShowCreateModal(false);
                       setCreateForm({ name: '', description: '', default_sort_order: 0, is_active: true });
                     }}
-                    className="w-full sm:w-auto px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl font-medium"
-                  >
+                  </Button>
+                  <Button type="submit" className="h-11 w-full sm:w-auto">
                     Tambah Provider
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
           </ModalContainer>
         </ModalBackdrop>
       )}
+      </AnimatePresence>
 
       {/* Edit Provider Modal */}
+      {/* AnimatePresence keeps the tree alive for the leave animation; without it React unmounts on the same paint and the dialog cuts out. */}
+      <AnimatePresence>
       {showEditModal && (
         <ModalBackdrop
           onClick={() => {
@@ -698,27 +652,31 @@ export default function ProvidersIndex() {
           zIndex={50}
         >
           <ModalContainer maxWidth="2xl" maxHeight="90vh" className="my-4" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex justify-between items-center flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Brand chrome: the old red gradient header band is now the inset ground. */}
+            <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-border-strong bg-well px-4 py-2.5">
+              <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">
+                <svg className="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Provider
               </h3>
-              <button 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => {
                   setShowEditModal(null);
                   setEditForm({ name: '', description: '', default_sort_order: 0, is_active: true });
                 }}
-                className="text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
+                className="h-11 w-11 flex-shrink-0 text-muted-foreground"
+                title="Tutup"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
             </div>
-            <div 
-              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0"
+            <div
+              className="min-h-0 flex-1 overflow-y-auto p-4"
               style={{
                 maxHeight: 'calc(100vh - 12rem)',
                 WebkitOverflowScrolling: 'touch',
@@ -734,56 +692,51 @@ export default function ProvidersIndex() {
                   },
                 });
               }} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nama Provider <span className="text-red-500">*</span>
+                <div>
+                  <label className={MODAL_LABEL_CLASSES}>
+                    {/* Semantic red: required-field marker. */}
+                    Nama Provider <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                    className={FIELD_CLASS}
                     placeholder="Masukkan nama provider"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Deskripsi
-                  </label>
+                <div>
+                  <label className={MODAL_LABEL_CLASSES}>Deskripsi</label>
                   <textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
+                    className={cn(TEXTAREA_CLASS, 'resize-none')}
                     placeholder="Masukkan deskripsi provider (opsional)"
                     rows={4}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Urutan Sort
-                    </label>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={MODAL_LABEL_CLASSES}>Urutan Sort</label>
                     <input
                       type="number"
                       value={editForm.default_sort_order}
                       onChange={(e) => setEditForm({ ...editForm, default_sort_order: parseInt(e.target.value) || 0 })}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                      className={FIELD_CLASS}
                       placeholder="0"
                       min="0"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Status
-                    </label>
+                  <div>
+                    <label className={MODAL_LABEL_CLASSES}>Status</label>
                     <select
                       value={editForm.is_active ? 'active' : 'inactive'}
                       onChange={(e) => setEditForm({ ...editForm, is_active: e.target.value === 'active' })}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all appearance-none bg-white"
+                      className={FIELD_CLASS}
                     >
                       <option value="active">Aktif</option>
                       <option value="inactive">Nonaktif</option>
@@ -791,224 +744,224 @@ export default function ProvidersIndex() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-end pt-4 space-y-2 sm:space-y-0 sm:space-x-3">
-                  <button
+                <div className="flex flex-col justify-end gap-2 border-t border-border/70 pt-4 sm:flex-row">
+                  <Button
                     type="button"
+                    variant="outline"
+                    className="h-11 w-full sm:w-auto"
                     onClick={() => {
                       setShowEditModal(null);
                       setEditForm({ name: '', description: '', default_sort_order: 0, is_active: true });
                     }}
-                    className="w-full sm:w-auto px-6 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-medium"
-                  >
+                  </Button>
+                  <Button type="submit" className="h-11 w-full sm:w-auto">
                     Update Provider
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
           </ModalContainer>
         </ModalBackdrop>
       )}
+      </AnimatePresence>
 
       {/* Restore Confirmation Modal */}
+      {/* AnimatePresence keeps the tree alive for the leave animation; without it React unmounts on the same paint and the dialog cuts out. */}
+      <AnimatePresence>
       {showRestoreModal && (
         <ModalBackdrop onClick={() => setShowRestoreModal(null)} opacity={50} zIndex={50}>
-          <ModalContainer maxWidth="md" maxHeight="90vh" className="p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <ModalContainer maxWidth="md" maxHeight="90vh" className="p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-start gap-3">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-success-border bg-success-soft">
+                <svg className="h-5 w-5 text-success-strong" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Konfirmasi Aktifkan Provider</h3>
-                <p className="text-sm text-gray-600">Provider: <span className="font-semibold">{showRestoreModal.name}</span></p>
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold tracking-tight text-foreground">Konfirmasi Aktifkan Provider</h3>
+                <p className="mt-0.5 truncate text-sm text-muted-foreground" title={showRestoreModal.name}>
+                  Provider: <span className="font-medium text-foreground">{showRestoreModal.name}</span>
+                </p>
               </div>
             </div>
 
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-green-800">
-                    Provider akan diaktifkan kembali dan akan muncul di dropdown saat menambah atau mengedit titik FO.
-                  </p>
-                  {showRestoreModal.points_count && showRestoreModal.points_count > 0 && (
-                    <p className="text-xs text-green-700 mt-1">
-                      Provider ini digunakan oleh {showRestoreModal.points_count} titik FO.
-                    </p>
-                  )}
-                </div>
-              </div>
+            <div className="mb-4 rounded-md border border-success-border bg-success-soft p-3">
+              <p className="text-sm text-success-strong">
+                Provider akan diaktifkan kembali dan akan muncul di dropdown saat menambah atau mengedit titik FO.
+              </p>
+              {showRestoreModal.points_count && showRestoreModal.points_count > 0 && (
+                <p className="mt-1 text-xs text-success-strong">
+                  Provider ini digunakan oleh {showRestoreModal.points_count} titik FO.
+                </p>
+              )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-end">
-              <button
-                onClick={() => setShowRestoreModal(null)}
-                className="px-4 py-2 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
+            <div className="flex flex-col justify-end gap-2 sm:flex-row">
+              <Button variant="outline" className="h-11" onClick={() => setShowRestoreModal(null)}>
                 Batal
-              </button>
-              <button
-                onClick={confirmRestore}
-                className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-              >
+              </Button>
+              <Button variant="success" className="h-11" onClick={confirmRestore}>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 Aktifkan Provider
-              </button>
+              </Button>
             </div>
           </ModalContainer>
         </ModalBackdrop>
       )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
+      {/* AnimatePresence keeps the tree alive for the leave animation; without it React unmounts on the same paint and the dialog cuts out. */}
+      <AnimatePresence>
       {showDeleteModal && (
         <ModalBackdrop onClick={() => setShowDeleteModal(null)} opacity={50} zIndex={50}>
-          <ModalContainer maxWidth="md" maxHeight="90vh" className="p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <ModalContainer maxWidth="md" maxHeight="90vh" className="p-5" onClick={(e) => e.stopPropagation()}>
+            {/* Semantic red throughout: this dialog confirms an irreversible action. */}
+            <div className="mb-4 flex items-start gap-3">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-destructive-border bg-destructive-soft">
+                <svg className="h-5 w-5 text-destructive-strong" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Konfirmasi Hapus Provider</h3>
-                <p className="text-sm text-gray-600">Provider: <span className="font-semibold">{showDeleteModal.provider.name}</span></p>
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold tracking-tight text-foreground">Konfirmasi Hapus Provider</h3>
+                <p className="mt-0.5 truncate text-sm text-muted-foreground" title={showDeleteModal.provider.name}>
+                  Provider: <span className="font-medium text-foreground">{showDeleteModal.provider.name}</span>
+                </p>
               </div>
             </div>
 
             {showDeleteModal.isUsed ? (
-              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-yellow-800">
-                      Provider ini masih digunakan oleh {showDeleteModal.provider.points_count || 0} titik FO.
-                    </p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      Provider akan dinonaktifkan (tidak akan muncul di dropdown, tapi data tetap tersimpan).
-                    </p>
-                  </div>
-                </div>
+              <div className="mb-4 rounded-md border border-warning-border bg-warning-soft p-3">
+                <p className="text-sm font-medium text-warning-strong">
+                  Provider ini masih digunakan oleh {showDeleteModal.provider.points_count || 0} titik FO.
+                </p>
+                <p className="mt-1 text-xs text-warning-strong">
+                  Provider akan dinonaktifkan (tidak akan muncul di dropdown, tapi data tetap tersimpan).
+                </p>
               </div>
             ) : (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">
+              <div className="mb-4 rounded-md border border-destructive-border bg-destructive-soft p-3">
+                <p className="text-sm text-destructive-strong">
                   Provider ini tidak digunakan oleh titik FO manapun. Data akan dihapus permanen dan tidak dapat dikembalikan.
                 </p>
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteModal(null)}
-                className="px-4 py-2 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
+            <div className="flex flex-col justify-end gap-2 sm:flex-row">
+              <Button variant="outline" className="h-11" onClick={() => setShowDeleteModal(null)}>
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
                 onClick={confirmDelete}
-                className={`px-4 py-2 font-medium rounded-lg transition-colors ${
-                  showDeleteModal.isUsed
-                    ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                    : 'bg-red-600 text-white hover:bg-red-700'
-                }`}
+                className={cn(
+                  'h-11',
+                  showDeleteModal.isUsed && 'bg-warning text-warning-foreground hover:bg-warning-strong',
+                )}
               >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {showDeleteModal.isUsed ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  )}
+                </svg>
                 {showDeleteModal.isUsed ? 'Nonaktifkan Provider' : 'Hapus Permanen'}
-              </button>
+              </Button>
             </div>
           </ModalContainer>
         </ModalBackdrop>
       )}
+      </AnimatePresence>
 
       {/* Detail Modal - Mobile Only - Untuk lihat kolom tersembunyi */}
+      {/* AnimatePresence keeps the tree alive for the leave animation; without it React unmounts on the same paint and the dialog cuts out. */}
+      <AnimatePresence>
       {showDetailModal && (
         <ModalBackdrop onClick={() => setShowDetailModal(null)} opacity={50} zIndex={50} className="md:hidden">
           <ModalContainer maxWidth="sm" maxHeight="85vh" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex justify-between items-center flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Brand chrome: the old red gradient header band is now the inset ground. */}
+            <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-border-strong bg-well px-4 py-2.5">
+              <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">
+                <svg className="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Detail Provider
               </h3>
-              <button 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowDetailModal(null)}
-                className="text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
+                className="h-11 w-11 flex-shrink-0 text-muted-foreground"
+                title="Tutup"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
             </div>
-            <div 
-              className="p-4 overflow-y-auto flex-1 min-h-0"
+            <div
+              className="min-h-0 flex-1 overflow-y-auto p-4"
               style={{
                 maxHeight: 'calc(100vh - 12rem)',
                 WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain'
               }}
             >
-              <div className="space-y-4">
+              <dl className="divide-y divide-border/70">
                 {/* Nama Provider */}
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Provider</label>
-                  <p className="mt-1 text-sm font-medium text-gray-900">{showDetailModal.name}</p>
+                <div className="flex items-start justify-between gap-3 py-2">
+                  <dt className="text-sm text-muted-foreground">Nama Provider</dt>
+                  <dd className="min-w-0 text-right text-sm font-medium text-foreground">{showDetailModal.name}</dd>
                 </div>
 
                 {/* Deskripsi */}
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</label>
-                  <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">{showDetailModal.description || '-'}</p>
+                <div className="py-2">
+                  <dt className="text-sm text-muted-foreground">Deskripsi</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-sm text-foreground">{showDetailModal.description || '-'}</dd>
                 </div>
 
                 {/* Status */}
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</label>
-                  <div className="mt-1">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      showDetailModal.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <dt className="text-sm text-muted-foreground">Status</dt>
+                  <dd>
+                    <Badge variant={showDetailModal.is_active ? 'success' : 'neutral'}>
                       {showDetailModal.is_active ? 'Aktif' : 'Nonaktif'}
-                    </span>
-                  </div>
+                    </Badge>
+                  </dd>
                 </div>
 
                 {/* Jumlah Titik FO */}
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Titik FO</label>
-                  <p className="mt-1 text-sm text-gray-900">{showDetailModal.points_count || 0} titik</p>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <dt className="text-sm text-muted-foreground">Jumlah Titik FO</dt>
+                  <dd className="text-sm tabular-nums text-foreground">{showDetailModal.points_count || 0} titik</dd>
                 </div>
 
                 {/* Urutan */}
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Urutan</label>
-                  <p className="mt-1 text-sm text-gray-600">{showDetailModal.default_sort_order}</p>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <dt className="text-sm text-muted-foreground">Urutan</dt>
+                  <dd className="text-sm tabular-nums text-foreground">{showDetailModal.default_sort_order}</dd>
                 </div>
-              </div>
+              </dl>
             </div>
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex-shrink-0">
-              <button
+            <div className="flex-shrink-0 border-t border-border bg-well px-4 py-2.5">
+              <Button
+                variant="secondary"
+                className="h-11 w-full"
                 onClick={() => setShowDetailModal(null)}
-                className="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
               >
                 Tutup
-              </button>
+              </Button>
             </div>
           </ModalContainer>
         </ModalBackdrop>
       )}
+      </AnimatePresence>
     </AdminLayout>
   );
 }
-

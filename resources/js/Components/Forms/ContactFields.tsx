@@ -72,7 +72,7 @@ export default function ContactFields({
   className = '',
 }: ContactFieldsProps) {
   const containerClasses = showBackground
-    ? 'grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50 border border-blue-100 rounded-lg p-4'
+    ? 'grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted border border-border rounded-lg p-4'
     : 'grid grid-cols-1 sm:grid-cols-2 gap-4';
 
   return (

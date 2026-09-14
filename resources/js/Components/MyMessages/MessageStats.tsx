@@ -26,9 +26,9 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       ),
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-100'
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted',
+      borderColor: 'border-border'
     },
     {
       label: 'Menunggu',
@@ -38,9 +38,9 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-100'
+      color: 'text-warning-strong',
+      bgColor: 'bg-warning-soft',
+      borderColor: 'border-warning-border'
     },
     {
       label: 'Diproses',
@@ -50,9 +50,9 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-100'
+      color: 'text-info-strong',
+      bgColor: 'bg-info-soft',
+      borderColor: 'border-info-border'
     },
     {
       label: 'Selesai',
@@ -62,9 +62,9 @@ export default function MessageStats({ items }: MessageStatsProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-100'
+      color: 'text-success-strong',
+      bgColor: 'bg-success-soft',
+      borderColor: 'border-success-border'
     }
   ];
 
@@ -73,7 +73,7 @@ export default function MessageStats({ items }: MessageStatsProps) {
       {stats.map((stat, index) => (
         <div
           key={index}
-          className={`bg-white rounded-xl p-5 shadow-sm border ${stat.borderColor} transition-all duration-300 hover:-translate-y-1 hover:shadow-md group`}
+          className={`bg-card rounded-lg p-5 shadow-xs border ${stat.borderColor} transition-colors group`}
         >
           <div className="flex items-center justify-between mb-3">
             <div className={`p-2.5 rounded-lg ${stat.bgColor} group-hover:bg-opacity-80 transition-colors`}>
@@ -82,10 +82,10 @@ export default function MessageStats({ items }: MessageStatsProps) {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors">{stat.value}</div>
+              <div className="text-3xl font-bold text-foreground group-hover:text-foreground transition-colors">{stat.value}</div>
             </div>
           </div>
-          <div className="text-sm font-semibold text-gray-600 group-hover:text-gray-800 transition-colors">{stat.label}</div>
+          <div className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">{stat.label}</div>
         </div>
       ))}
     </div>

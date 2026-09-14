@@ -19,16 +19,16 @@ interface FileUploadWithProgressProps {
 
 const colorSchemes = {
   indigo: {
-    fileButton: 'file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100',
-    progress: 'bg-indigo-500',
+    fileButton: 'file:bg-muted file:text-neutral-strong hover:file:bg-muted',
+    progress: 'bg-neutral',
   },
   blue: {
-    fileButton: 'file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100',
-    progress: 'bg-blue-500',
+    fileButton: 'file:bg-muted file:text-neutral-strong hover:file:bg-muted',
+    progress: 'bg-neutral',
   },
   red: {
-    fileButton: 'file:bg-red-50 file:text-red-700 hover:file:bg-red-100',
-    progress: 'bg-red-500',
+    fileButton: 'file:bg-destructive-soft file:text-destructive-strong hover:file:bg-destructive-soft',
+    progress: 'bg-destructive',
   },
 };
 
@@ -89,10 +89,10 @@ export default function FileUploadWithProgress({
         ref={fileInputRef}
         onChange={handleFileChange}
         multiple={!!maxFiles && maxFiles > 1}
-        className={`mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold ${colors.fileButton}`}
+        className={`mt-2 block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold ${colors.fileButton}`}
         accept={acceptedTypes}
       />
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         Format yang didukung: jpg, jpeg, png, mp4, mov, avi, mkv (maks {maxSizeMB}MB per file)
         {maxFiles && `, maksimal ${maxFiles} file`}
       </p>
@@ -100,11 +100,11 @@ export default function FileUploadWithProgress({
       <InputError message={fieldError} className="mt-1" />
 
       {files.length > 0 && (
-        <div className="mt-3 flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-600">
+        <div className="mt-3 flex items-center justify-between bg-muted border border-border rounded-md px-3 py-2 text-sm text-muted-foreground">
           <span>{files.length} file siap diunggah</span>
           <button
             type="button"
-            className="text-xs text-red-600 hover:text-red-800 font-medium"
+            className="text-xs text-destructive-strong hover:text-destructive-strong font-medium"
             onClick={handleRemoveFile}
           >
             Hapus
@@ -112,10 +112,23 @@ export default function FileUploadWithProgress({
         </div>
       )}
 
+      {/* The bar was `transition-colors` while `width` was the thing changing.
+          `transition-colors` covers colour, background, border, decoration,
+          fill and stroke, so width was never transitioned and the bar jumped
+          from one upload chunk to the next. `transition-[width]` is what makes
+          it actually fill. The track was `bg-gray-200`, stock Tailwind left
+          over from before the token migration. */}
       {typeof progress === 'number' && progress > 0 && (
-        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+        <div
+          className="mt-2 h-2 w-full rounded-full bg-muted"
+          role="progressbar"
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Progres unggah berkas"
+        >
           <div
-            className={`${colors.progress} h-2 rounded-full transition-all`}
+            className={`${colors.progress} h-2 rounded-full transition-[width] duration-200 ease-state motion-reduce:transition-none`}
             style={{ width: `${progress}%` }}
           />
         </div>

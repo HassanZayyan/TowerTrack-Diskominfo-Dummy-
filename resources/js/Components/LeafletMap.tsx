@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useMemo, useCallback, useState } from 'react';
 import L from 'leaflet';
+import { COVERAGE } from '@/lib/map-palette';
+// Leaflet's stylesheet belongs to whoever renders a Leaflet map, not to the
+// application entry. It used to be imported in app.tsx, which made the entry
+// chunk a static importer of the whole mapping library: every page — login,
+// profile, the landing page, every form — modulepreloaded 153KB (44.5KB gzip)
+// of Leaflet it never called. Imported here, Vite attaches the <link> to
+// whichever chunk pulls this component in, which is the lazy one.
+import 'leaflet/dist/leaflet.css';
 import { isTowerSelected, createTowerMarkerIcon } from '@/utils/towerIconUtils';
 import { createFoMarkerIcon } from '@/utils/foIconUtils'; // Add this import
 
@@ -78,11 +86,11 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
             const container = scale.getContainer();
             if (container) {
                 container.style.backgroundColor = '#FFFFFF';
-                container.style.border = '1px solid #212121';
+                container.style.border = '1px solid #1C1917'; // --foreground
                 container.style.borderRadius = '8px';
                 container.style.padding = '4px 8px';
                 container.style.margin = '8px';
-                container.style.color = '#212121';
+                container.style.color = '#1C1917'; // --foreground
                 container.style.boxShadow = '0 1px 2px rgba(0,0,0,0.08)';
                 container.style.fontWeight = '600';
                 container.style.fontSize = '11px';
@@ -100,7 +108,7 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                     line.style.margin = '0';
                     line.style.padding = '0';
                     line.style.display = 'inline';
-                    line.style.color = '#212121';
+                    line.style.color = '#1C1917'; // --foreground
                     line.style.whiteSpace = 'nowrap';
                 });
             }
@@ -616,10 +624,11 @@ const LeafletMap = forwardRef<any, LeafletMapProps>(({
                 }
                 const circle = L.circle(m.position, {
                     radius: m.radiusMeters ?? defaultRadiusMeters,
-                    color: '#2563eb',
+                    color: COVERAGE.stroke,
+                    opacity: COVERAGE.strokeOpacity,
                     weight: 1,
-                    fillColor: '#3b82f6',
-                    fillOpacity: 0.15,
+                    fillColor: COVERAGE.fill,
+                    fillOpacity: COVERAGE.fillOpacity,
                 });
                 circle.addTo(coverageLayer);
             });

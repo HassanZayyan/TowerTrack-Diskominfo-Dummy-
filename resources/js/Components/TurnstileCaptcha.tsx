@@ -18,9 +18,9 @@ export interface TurnstileCaptchaRef {
 }
 
 /**
- * Reusable Cloudflare Turnstile CAPTCHA component
- * DRY: Single source of truth for CAPTCHA implementation
- */
+* Reusable Cloudflare Turnstile CAPTCHA component
+* DRY: Single source of truth for CAPTCHA implementation
+*/
 const TurnstileCaptcha = forwardRef<TurnstileCaptchaRef, TurnstileCaptchaProps>(
   ({ 
     siteKey, 
@@ -82,11 +82,11 @@ const TurnstileCaptcha = forwardRef<TurnstileCaptchaRef, TurnstileCaptchaProps>(
     if (!siteKey) {
       if (showErrorOnLoad) {
         return (
-          <div className={`p-4 bg-red-50 border-2 border-red-200 rounded-lg ${className}`}>
-            <p className="text-sm text-red-800 font-medium">
-              ⚠️ Error: CAPTCHA tidak dapat dimuat. Site key tidak tersedia.
+          <div className={`p-4 bg-destructive-soft border-2 border-destructive-border rounded-lg ${className}`}>
+            <p className="text-sm text-destructive-strong font-medium">
+              Error: CAPTCHA tidak dapat dimuat. Site key tidak tersedia.
             </p>
-            <p className="text-xs text-red-600 mt-1">
+            <p className="text-xs text-destructive-strong mt-1">
               Silakan refresh halaman atau hubungi administrator.
             </p>
           </div>

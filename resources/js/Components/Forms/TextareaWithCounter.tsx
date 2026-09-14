@@ -17,9 +17,9 @@ interface TextareaWithCounterProps {
 }
 
 const focusColors = {
-  blue: 'focus:border-blue-500 focus:ring-blue-500',
-  indigo: 'focus:border-indigo-500 focus:ring-indigo-500',
-  red: 'focus:border-red-500 focus:ring-red-500',
+  blue: 'focus:border-border-strong focus-visible:ring',
+  indigo: 'focus:border-border-strong focus-visible:ring',
+  red: 'focus:border-destructive-strong focus:ring-destructive',
 };
 
 /**
@@ -62,14 +62,14 @@ export default function TextareaWithCounter({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`mt-1 block w-full border-gray-300 ${focusColors[focusColor]} rounded-md shadow-sm`}
+        className={`mt-1 block w-full border-input ${focusColors[focusColor]} rounded-md shadow-sm`}
         rows={rows}
         placeholder={placeholder}
         required={required}
         maxLength={maxLength}
       />
       <InputError message={error} className="mt-1" />
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         {value.length}/{maxLength} karakter
       </p>
     </div>

@@ -20,12 +20,15 @@ export default function ConfirmPassword() {
     };
 
     return (
-        <GuestLayout>
-            <Head title="Confirm Password" />
+        <GuestLayout
+            title="Konfirmasi Password"
+            subtitle="Masukkan kembali password Anda untuk melanjutkan"
+        >
+            <Head title="Konfirmasi Password" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                This is a secure area of the application. Please confirm your
-                password before continuing.
+            <div className="mb-4 text-sm text-muted-foreground">
+                Bagian ini dilindungi. Mohon konfirmasi password Anda sebelum
+                melanjutkan.
             </div>
 
             <form onSubmit={submit}>

@@ -564,7 +564,7 @@ export function validateLocationQuality(
       recommendations.push('Coba restart aplikasi atau browser');
     } else {
       // Tower has no coordinates - accuracy is less critical, just warn
-      issues.push('Akurasi GPS rendah (±500m+) - tidak mempengaruhi validasi karena tower tidak memiliki koordinat');
+      issues.push('Akurasi GPS rendah (±500m+) - tidak mempengaruhi validasi karena menara tidak memiliki koordinat');
       confidence = 'medium'; // Don't block submission
       recommendations.push('Akurasi GPS rendah, namun tidak mempengaruhi pengiriman laporan');
     }
@@ -592,7 +592,7 @@ export function validateLocationQuality(
     if (distance > 10) { // More than 10km seems suspicious
       issues.push(`Jarak ke tower sangat jauh (${distance.toFixed(2)} km)`);
       confidence = 'low';
-      recommendations.push('Pastikan Anda berada di lokasi tower yang benar');
+      recommendations.push('Pastikan Anda berada di lokasi menara yang benar');
       recommendations.push('Coba refresh lokasi atau restart GPS');
     }
   }

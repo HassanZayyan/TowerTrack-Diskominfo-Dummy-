@@ -115,7 +115,7 @@ class FeedbackController extends MessageableController
                     $type = $request->input('feedbackable_type');
                     if ($type === 'App\\Models\\Tower') {
                         if (!Tower::find($value)) {
-                            $fail('Tower tidak ditemukan.');
+                            $fail('Menara tidak ditemukan.');
                         }
                     } elseif ($type === 'App\\Models\\FoPoint') {
                         if (!FoPoint::find($value)) {

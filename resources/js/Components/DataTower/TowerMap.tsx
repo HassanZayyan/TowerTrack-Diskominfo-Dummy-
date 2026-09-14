@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { router } from '@inertiajs/react';
+import { towerMastSvg } from '@/utils/towerIconUtils';
+import { TOWER_ICON_COLORS, COVERAGE } from '@/lib/map-palette';
 
 // Lazy load LeafletMap for better initial page load performance
 const LeafletMap = lazy(() => import('@/Components/LeafletMap'));
@@ -117,15 +119,15 @@ export default function TowerMap({
 
   return (
     <div id="map-section" className="bg-white rounded-lg shadow mb-6 overflow-hidden">
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         {/* Header Content - Responsive Layout */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {/* Title and Description Section */}
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-medium text-gray-900">Peta Lokasi Tower</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Peta Lokasi Menara</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {ownerFilter !== 'all' ? (
-                <>Filter aktif: <span className="font-semibold text-blue-600">{ownerFilter}</span>
+                <>Filter aktif: <span className="font-semibold text-neutral-strong">{ownerFilter}</span>
                   <button 
                     onClick={() => {
                       setOwnerFilter('all');
@@ -133,12 +135,12 @@ export default function TowerMap({
                       const params = buildFilterParams({ owner: 'all', page: 1 });
                       router.get('/data-tower', params, { preserveState: true, preserveScroll: true, replace: true });
                     }}
-                    className="ml-2 text-xs text-red-600 hover:underline"
+                    className="ml-2 text-xs text-destructive-strong hover:underline"
                   >
                     Hapus filter
                   </button></>
               ) : (
-                'Visualisasi tower dan coverage area di Kabupaten Semarang'
+                'Visualisasi menara dan area jangkauan di Kabupaten Semarang'
               )}
             </p>
           </div>
@@ -148,9 +150,9 @@ export default function TowerMap({
             {/* Distance Display */}
             {measureEnabled && (
               <div className="flex items-center justify-center sm:justify-start">
-                <span className="text-sm text-gray-700 whitespace-nowrap">
+                <span className="text-sm text-foreground whitespace-nowrap">
                   Jarak:
-                  <span className="font-semibold ml-1" style={{ color: '#B71C1C' }}>
+                  <span className="font-semibold ml-1 text-primary">
                     {distance > 0 ? `${distance.toFixed(1)} m${distance > 1000 ? ` (${(distance/1000).toFixed(2)} km)` : ''}` : '-'}
                   </span>
                 </span>
@@ -166,11 +168,11 @@ export default function TowerMap({
                   onClick={() => setMeasureEnabled(!measureEnabled)}
                   className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors w-full sm:w-auto ${
                     measureEnabled
-                      ? 'text-white' 
-                      : 'text-gray-800 bg-white border-gray-300 hover:bg-gray-50'
+                      ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover'
+                      : 'text-foreground bg-background border-input hover:bg-accent hover:text-accent-foreground'
                   }`}
-                  style={measureEnabled ? { backgroundColor: '#B71C1C', borderColor: '#B71C1C' } : undefined}
-                  title={measureEnabled ? 'Pengukuran aktif: Klik marker untuk memilih dua titik. Detail tower dinonaktifkan.' : 'Aktifkan untuk mengukur jarak antar marker.'}
+                  aria-pressed={measureEnabled}
+                  title={measureEnabled ? 'Pengukuran aktif: Klik marker untuk memilih dua titik. Detail menara dinonaktifkan.' : 'Aktifkan untuk mengukur jarak antar marker.'}
                 >
                   Ukur Jarak
                 </button>
@@ -179,13 +181,13 @@ export default function TowerMap({
                   onClick={() => setShowCoverage(!showCoverage)}
                   className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors w-full sm:w-auto ${
                     showCoverage
-                      ? 'text-white' 
-                      : 'text-gray-800 bg-white border-gray-300 hover:bg-gray-50'
+                      ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover'
+                      : 'text-foreground bg-background border-input hover:bg-accent hover:text-accent-foreground'
                   }`}
-                  style={showCoverage ? { backgroundColor: '#0ea5e9', borderColor: '#0ea5e9' } : undefined}
+                  aria-pressed={showCoverage}
                   title={showCoverage ? 'Radius coverage ditampilkan' : 'Tampilkan radius coverage di peta'}
                 >
-                  Radius Coverage
+                  Radius Jangkauan
                 </button>
               </div>
               
@@ -196,18 +198,31 @@ export default function TowerMap({
                   <button
                     type="button"
                     onClick={() => setResetLinesCounter(c => c + 1)}
-                    className="px-3 py-2 rounded-full text-sm font-medium border hover:opacity-90 w-full sm:w-auto"
-                    style={{ backgroundColor: '#FFFFFF', color: '#212121', borderColor: '#212121' }}
+                    /* Was `border hover:opacity-90` with no border colour, no
+                       background and no transition property: an unstyled box
+                       whose hover effect could not animate. */
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors duration-140 ease-state hover:bg-accent hover:text-accent-foreground sm:w-auto"
                   >
                     Reset
                   </button>
                 )}
-                
-                {/* Fullscreen Button */}
-                <button 
+
+                {/* Fullscreen Button.
+
+                    THIS BUTTON WAS INVISIBLE. Its classes were
+                    `text-white ... hover:opacity-90 transition-colors` with no
+                    background of any kind, so white label and white-stroked
+                    icon sat on the card's white surface. The only way to find
+                    it was to hover blindly along the toolbar.
+
+                    It now matches the other two controls in this row. The dead
+                    `transition-colors`/`hover:opacity-90` pairing is gone with
+                    it: opacity is not a colour, so it never transitioned. */}
+                <button
+                  type="button"
                   onClick={handleFullscreen}
-                  className="px-3 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto" 
-                  style={{ backgroundColor: '#B71C1C' }}
+                  className="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors duration-140 ease-state hover:bg-accent hover:text-accent-foreground sm:w-auto"
+                  aria-pressed={isFullscreen}
                   title={isFullscreen ? "Keluar dari fullscreen" : "Masuk ke mode fullscreen"}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -239,10 +254,10 @@ export default function TowerMap({
           }}
         >
           <Suspense fallback={
-            <div className="flex items-center justify-center h-full bg-gray-50">
+            <div className="flex items-center justify-center h-full bg-muted">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-                <p className="text-gray-600 font-medium">Memuat peta...</p>
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                <p className="text-muted-foreground font-medium">Memuat peta...</p>
               </div>
             </div>
           }>
@@ -267,11 +282,11 @@ export default function TowerMap({
         {isFullscreen && measureEnabled && distance > 0 && (
           (() => {
             const cardElement = (
-              <div className="fixed top-4 left-4 z-[60] bg-white rounded-lg shadow-lg p-4 border border-gray-200">
-                <div className="text-sm font-medium text-gray-700">
-                  Jarak: <span className="font-semibold text-gray-900">{distance.toFixed(1)} m</span>
+              <div className="fixed top-4 left-4 z-[60] bg-white rounded-lg shadow-lg p-4 border border-border">
+                <div className="text-sm font-medium text-foreground">
+                  Jarak: <span className="font-semibold text-foreground">{distance.toFixed(1)} m</span>
                   {distance > 1000 && (
-                    <span className="text-gray-600"> ({(distance / 1000).toFixed(2)} km)</span>
+                    <span className="text-muted-foreground"> ({(distance / 1000).toFixed(2)} km)</span>
                   )}
                 </div>
               </div>
@@ -288,36 +303,66 @@ export default function TowerMap({
           })()
         )}
         
-        {/* Controls overlay */}
-        <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2">
-          <div className="text-xs text-gray-600">
-            Zoom: Mouse wheel | Pan: Drag
+        {/* Controls overlay — desktop only, and in the same language as
+            the rest of the page.
+
+            It read "Zoom: Mouse wheel | Pan: Drag" on every device. On a phone
+            there is no mouse wheel, so the one overlay sitting on top of the
+            map was explaining a control the reader does not have — and on a
+            358px map that chip covers the north-east corner of the regency.
+            Touch needs no instruction for a map: pinch and drag are how every
+            map on the device already works. */}
+        <div className="absolute top-4 right-4 z-10 hidden rounded-lg bg-white p-2 shadow-lg sm:block">
+          <div className="text-xs text-muted-foreground">
+            Scroll untuk zoom · seret untuk menggeser
           </div>
         </div>
       </div>
       
       {/* Map Legend */}
-      <div className="p-4 bg-gray-50 border-t border-gray-200">
-        <h4 className="text-sm font-medium text-gray-900 mb-3">Legenda:</h4>
-        <div className="flex flex-wrap gap-6 items-center">
-          {/* Tower Marker */}
+      <div className="p-4 bg-muted border-t border-border">
+        <h4 className="text-sm font-medium text-foreground mb-3">Legenda:</h4>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          {/*
+            The mast, drawn by the SAME function the map draws its markers with.
+            This swatch was a filled circle with a white dot — the marker this
+            page used BEFORE it became a lattice mast, left behind when the
+            marker changed. A legend showing a shape that is nowhere on the map
+            is worse than none: the reader believes it.
+
+            dangerouslySetInnerHTML is deliberate and safe here. The only input
+            is a colour constant from map-palette; the alternative is a second
+            hand-written copy of the mast in JSX, which is exactly the drift
+            that produced the circle.
+          */}
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            <span className="text-sm text-gray-700">Tower</span>
+            <span
+              className="inline-flex h-7 w-6 items-center justify-center"
+              dangerouslySetInnerHTML={{
+                __html: towerMastSvg(TOWER_ICON_COLORS.default, 21, 27, false),
+              }}
+            />
+            <span className="text-sm text-foreground">Menara</span>
           </div>
-          
+
           {/* Coverage Radius */}
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-blue-500 border-dashed rounded-full bg-blue-100"></div>
-            <span className="text-sm text-gray-700">Radius</span>
+            <div
+              className="h-4 w-4 rounded-full border-2 border-dashed"
+              style={{ borderColor: COVERAGE.stroke, background: 'hsl(var(--primary) / 0.08)' }}
+            ></div>
+            <span className="text-sm text-foreground">Radius jangkauan</span>
           </div>
-          
+
           {/* Measurement Line */}
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-red-500"></div>
-            <span className="text-sm text-gray-700">Line</span>
+            {/* Was `bg-destructive`, which said "error" about a ruler. The map
+                draws this line in the measurement ink, and so does this. */}
+            <div
+              className="h-0.5 w-5"
+              style={{ background: TOWER_ICON_COLORS.measurement }}
+            ></div>
+            <span className="text-sm text-foreground">Garis ukur</span>
           </div>
         </div>
       </div>

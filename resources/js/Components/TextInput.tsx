@@ -5,6 +5,7 @@ import {
     useImperativeHandle,
     useRef,
 } from 'react';
+import { cn } from '@/lib/utils';
 
 export default forwardRef(function TextInput(
     {
@@ -31,7 +32,15 @@ export default forwardRef(function TextInput(
         <input
             {...props}
             type={type}
-            className={'rounded-md border-gray-300 shadow-sm focus:border-[#B71C1C] focus:ring-[#B71C1C] ' + className}
+            className={cn(
+                'rounded-md shadow-xs transition-colors',
+                // border-input is 3.33:1 on white. The old border-gray-300
+                // was 1.48:1, which failed SC 1.4.11 as a control boundary.
+                'border-input bg-background text-foreground placeholder:text-placeholder',
+                'focus:border-ring focus:ring focus:ring-offset-0',
+                'disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground',
+                className,
+            )}
             ref={localRef}
         />
     );

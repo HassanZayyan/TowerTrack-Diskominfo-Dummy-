@@ -8,6 +8,8 @@ import AlertDialog from '@/Components/AlertDialog';
 import PageHeader from '@/Components/PageHeader';
 import AnimatedButton from '@/Components/AnimatedButton';
 import TurnstileCaptcha, { TurnstileCaptchaRef } from '@/Components/TurnstileCaptcha';
+import { Button } from '@/Components/ui/button';
+import { cn } from '@/lib/utils';
 import { Tower, FoPoint, LocationType } from '@/types/messages';
 import { requestLocationAndValidate, requestUserLocationForReporting, hasValidTowerCoordinates, getLocationForAccountSwitching } from '@/utils/locationUtils';
 import { handlePrivateSelection, restoreFormState, shouldSelectPrivate } from '@/utils/privateMessageUtils';
@@ -65,7 +67,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   const isTowerOwner = !!(auth?.user && auth.user.role === 'tower_owner');
   const isProviderOwner = !!(auth?.user && auth.user.role === 'provider_owner');
   const isAuthenticatedUser = isComplainant || isTowerOwner || isProviderOwner;
-  
+
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
     nama: isAuthenticatedUser ? (auth?.user?.name || '') : INITIAL_FORM_STATE.nama,
@@ -77,11 +79,11 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const [isAutoFilled, setIsAutoFilled] = useState(false);
   const [autoFilledLocationType, setAutoFilledLocationType] = useState<'tower' | 'fo_point' | null>(null);
-  
+
   // CAPTCHA states
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const captchaRef = useRef<TurnstileCaptchaRef>(null);
-  
+
   // Redirect staff users immediately
   useEffect(() => {
     if (isStaff) {
@@ -94,7 +96,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     if (isAuthenticatedUser) {
       const restoredState = restoreFormState();
       const shouldSelectPrivateFlag = shouldSelectPrivate();
-      
+
       if (restoredState && restoredState.type === 'complaint') {
         // Restore form data
         setForm(prev => ({
@@ -103,7 +105,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
           // Ensure private is selected if it was selected before or flag is set
           is_public: shouldSelectPrivateFlag ? false : (restoredState.form.is_public ?? false),
         }));
-        
+
         // Restore files if any (Note: File objects can't be serialized, so this might need adjustment)
         if (restoredState.files && restoredState.files.length > 0) {
           // Files can't be restored from JSON, but we can show a message
@@ -115,7 +117,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
       }
     }
   }, [isAuthenticatedUser]);
-  
+
   // Dialog states
   const [showDialog, setShowDialog] = useState(false);
   const [dialogType, setDialogType] = useState<'success' | 'error' | 'warning'>('error');
@@ -138,16 +140,23 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     setShowDialog(true);
   }, []);
 
+  const showSuccessDialog = useCallback((title: string, message: string) => {
+    setDialogType('success');
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setShowDialog(true);
+  }, []);
+
   const sanitizePhoneNumber = useCallback((value: string): string => {
     // Remove all non-digit characters except + at the beginning
     let cleaned = value.replace(/[^\d+]/g, '');
-    
+
     // Ensure + only appears at the beginning
     if (cleaned.includes('+')) {
       const parts = cleaned.split('+');
       cleaned = '+' + parts.join('');
     }
-    
+
     // Limit length to 20 characters
     return cleaned.slice(0, 20);
   }, []);
@@ -155,14 +164,14 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-    
+
     // Special sanitization for phone number
     if (name === 'telepon' && typeof newValue === 'string') {
       newValue = sanitizePhoneNumber(newValue);
     }
-    
+
     setForm(prev => ({ ...prev, [name]: newValue }));
-    
+
     // Clear validation error if typing
     if (validation[name as keyof typeof validation] !== undefined) {
       setValidation(prev => ({ ...prev, [name]: false }));
@@ -172,7 +181,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   const handleLocationSelect = useCallback((location: Tower | FoPoint, type: LocationType) => {
     let displayName = '';
     let reportableType: 'App\\Models\\Tower' | 'App\\Models\\FoPoint';
-    
+
     if (type === 'tower') {
       const tower = location as TowerWithCoords;
       displayName = `${tower.site_name}${tower.alamat_menara ? ' - ' + tower.alamat_menara : ''}`;
@@ -182,7 +191,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
       displayName = `${foPoint.name}${foPoint.area ? ' - ' + foPoint.area : ''}${foPoint.route_name ? ' (' + foPoint.route_name + ')' : ''}`;
       reportableType = 'App\\Models\\FoPoint';
     }
-    
+
     setForm((prev) => ({
       ...prev,
       reportable_type: reportableType,
@@ -190,19 +199,19 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
       lokasi_tower: type === 'tower' ? (location as Tower).site_name : (location as FoPoint).name,
       lokasi_tower_display: displayName,
     }));
-    
+
     if (validation.lokasi_tower) {
       setValidation((prev) => ({ ...prev, lokasi_tower: false }));
     }
   }, [validation]);
 
   const handleLocationClear = useCallback(() => {
-    setForm(prev => ({ 
-      ...prev, 
-      lokasi_tower: '', 
-      lokasi_tower_display: '', 
+    setForm(prev => ({
+      ...prev,
+      lokasi_tower: '',
+      lokasi_tower_display: '',
       reportable_type: '' as '' | 'App\\Models\\Tower' | 'App\\Models\\FoPoint',
-      reportable_id: '' 
+      reportable_id: ''
     }));
   }, []);
 
@@ -214,13 +223,13 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     const foPointId = urlParams.get('fo_point_id');
     const foPointName = urlParams.get('fo_point_name');
     const locationType = urlParams.get('location_type');
-    
+
     // Handle tower auto-fill
     // Check for tower: either with location_type='tower' or without location_type (backward compatibility)
     if (towerId && towerName && (locationType === 'tower' || !locationType)) {
       // Find the tower in the towers array to get complete data
       const selectedTower = towers.find(tower => tower.id.toString() === towerId);
-      
+
       if (selectedTower) {
         // Use the handleLocationSelect function to properly set the form data
         handleLocationSelect(selectedTower, 'tower');
@@ -242,12 +251,12 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         setAutoFilledLocationType('tower');
       }
     }
-    
+
     // Handle FO point auto-fill
     if (foPointId && foPointName && locationType === 'fo_point') {
       // Find the FO point in the foPoints array to get complete data
       const selectedFoPoint = foPoints.find(point => point.id.toString() === foPointId);
-      
+
       if (selectedFoPoint) {
         // Use the handleLocationSelect function to properly set the form data
         handleLocationSelect(selectedFoPoint, 'fo_point');
@@ -281,7 +290,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     // International: +[country code][number] (7-15 digits total)
     const phoneRegex = /^(\+?62|0)[0-9]{9,12}$|^\+?[1-9]\d{7,14}$/;
     const cleanedPhone = form.telepon.replace(/[^\d+]/g, '');
-    
+
     const newValidation = {
       nama: isAuthenticatedUser ? false : !form.nama.trim(), // Skip name validation for authenticated users
       telepon: !form.telepon.trim() || !phoneRegex.test(cleanedPhone),
@@ -290,7 +299,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
       pesan: !form.pesan.trim(),
       email: isAuthenticatedUser ? false : (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) // Email is now required for anonymous users
     };
-    
+
     setValidation(newValidation);
     return !Object.values(newValidation).some(Boolean);
   }, [form, isAuthenticatedUser]);
@@ -328,7 +337,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!validateForm()) {
       showErrorDialog('Form Tidak Lengkap', 'Silakan lengkapi semua field yang wajib diisi dengan benar');
@@ -338,7 +347,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
     // Validate private message access for guest users
     if (!form.is_public && !isAuthenticatedUser) {
       showErrorDialog(
-        'Login Diperlukan', 
+        'Login Diperlukan',
         'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'
       );
       // Redirect to register
@@ -359,15 +368,15 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
       showErrorDialog('Verifikasi Diperlukan', 'Mohon selesaikan verifikasi CAPTCHA terlebih dahulu.');
       return;
     }
-    
+
     // Find selected location (tower or FO point) to get coordinates
     let selectedLocation: TowerWithCoords | FoPointWithCoords | undefined;
     let locationHasCoordinates = false;
-    
+
     if (form.reportable_type === 'App\\Models\\Tower') {
       selectedLocation = towers.find(tower => tower.id.toString() === form.reportable_id);
       if (!selectedLocation) {
-        showErrorDialog('Data Tower Tidak Tersedia', 'Tower yang dipilih tidak ditemukan');
+        showErrorDialog('Data Menara Tidak Tersedia', 'Menara yang dipilih tidak ditemukan');
         return;
       }
       locationHasCoordinates = hasValidTowerCoordinates(selectedLocation as TowerWithCoords);
@@ -385,32 +394,32 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         Math.abs(lat) <= 90 && Math.abs(lon) <= 180
       );
     } else {
-      showErrorDialog('Lokasi Tidak Valid', 'Silakan pilih lokasi (Tower atau FO Point)');
+      showErrorDialog('Lokasi Tidak Valid', 'Silakan pilih lokasi (Menara atau Titik FO)');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       let locationValidation;
       let userLocationCaptured = false;
       let userLocationResult: Awaited<ReturnType<typeof getLocationForAccountSwitching>> | undefined;
-      
+
       // Always request user location for documentation and validation
       // Use advanced account-switching optimized location capture with location validation
       userLocationResult = await getLocationForAccountSwitching(
-        auth?.user?.id, 
+        auth?.user?.id,
         locationHasCoordinates ? {
           latitude: Number(selectedLocation.latitude),
           longitude: Number(selectedLocation.longitude)
         } : undefined,
         5 // Use more attempts for better accuracy
       );
-      
+
       if (!userLocationResult.success) {
         let locationTitle = 'Lokasi Diperlukan';
         let locationMessage = userLocationResult.message;
-        
+
         if (userLocationResult.message.includes('Izin lokasi ditolak')) {
           locationTitle = 'Izin Lokasi Diperlukan';
           locationMessage = 'Untuk mengirim keluhan, Anda perlu mengizinkan akses lokasi. Silakan aktifkan izin lokasi di browser dan coba lagi.';
@@ -430,12 +439,12 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
           locationTitle = 'GPS Tidak Responsif';
           locationMessage = 'GPS tidak dapat memberikan lokasi yang akurat. Pastikan GPS aktif, tidak dalam mode hemat daya, dan coba restart aplikasi.';
         }
-        
+
         showWarningDialog(locationTitle, locationMessage);
         setIsSubmitting(false);
         return;
       }
-      
+
       // Store user location for documentation
       if (userLocationResult.coordinates) {
         const updatedForm = {
@@ -446,19 +455,19 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         };
         setForm(updatedForm);
       }
-      
+
       userLocationCaptured = true;
-      
+
       // Show detailed location feedback based on validation results
       if (userLocationResult.validation && userLocationResult.validation.issues.length > 0) {
         const issues = userLocationResult.validation.issues;
         const recommendations = userLocationResult.validation.recommendations;
-        
+
         // Only block submission if GPS confidence is low AND tower has coordinates
         // If tower has no coordinates, we can't validate distance anyway, so allow submission
         if (userLocationResult.validation.confidence === 'low' && locationHasCoordinates) {
           showWarningDialog(
-            'Masalah Lokasi GPS Ditemukan', 
+            'Masalah Lokasi GPS Ditemukan',
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
           setIsSubmitting(false);
@@ -466,19 +475,19 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         } else if (userLocationResult.validation.confidence === 'low' && !locationHasCoordinates) {
           // Tower has no coordinates - GPS accuracy is less critical, just warn but allow submission
           showWarningDialog(
-            'Akurasi Lokasi Rendah', 
+            'Akurasi Lokasi Rendah',
             `${issues.join('. ')}. ${recommendations.join('. ')}. Karena tower tidak memiliki koordinat, validasi jarak tidak diperlukan dan pengiriman tetap dapat dilakukan.`
           );
           // Allow submission to continue
         } else if (userLocationResult.validation.confidence === 'medium') {
-          showWarningDialog(
-            'Akurasi Lokasi Sedang', 
+          showSuccessDialog(
+            'Akurasi Lokasi Sedang',
             `${issues.join('. ')}. ${recommendations.join('. ')}`
           );
           // Medium confidence allows submission but warns user
         }
       }
-      
+
       if (locationHasCoordinates) {
         // Additional validation against location coordinates for distance check
         // Reuse coordinates from first GPS capture to avoid double capture
@@ -490,19 +499,19 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
           1, // 1 km maximum distance
           userLocationResult?.coordinates // Reuse coordinates from first capture
         );
-        
+
         if (!locationValidation.success) {
           // Provide more informative location error messages
           let locationTitle = 'Validasi Lokasi Gagal';
           let locationMessage = locationValidation.message;
-          
+
           if (locationValidation.message.includes('terlalu jauh')) {
             locationTitle = 'Jarak Terlalu Jauh';
             locationMessage = `${locationValidation.message} Silakan mendekati tower atau hubungi admin jika Anda yakin berada di lokasi yang benar.`;
           } else {
-            locationMessage = 'Gagal memvalidasi jarak ke tower. Silakan coba lagi.';
+            locationMessage = 'Gagal memvalidasi jarak ke menara. Silakan coba lagi.';
           }
-          
+
           showWarningDialog(locationTitle, locationMessage);
           setIsSubmitting(false);
           return;
@@ -511,10 +520,10 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         // Location has no coordinates, just log for documentation
         locationValidation = { success: true, message: 'Lokasi berhasil diperoleh untuk dokumentasi' };
       }
-      
+
       // Create form data to handle file uploads
       const formData = new FormData();
-      
+
       // Use the updated form data if coordinates were captured
       const formDataToUse = userLocationCaptured && userLocationResult?.coordinates ? {
         ...form,
@@ -522,7 +531,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         reporter_longitude: userLocationResult.coordinates.longitude.toString(),
         reporter_accuracy: userLocationResult.accuracy?.toString() || ''
       } : form;
-      
+
       // Append form fields with trimmed values, excluding email for authenticated users
       Object.entries(formDataToUse).forEach(([key, value]) => {
         // Skip email field for authenticated users to avoid 'prohibited' validation error
@@ -542,23 +551,23 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         }
         formData.append(key, typeof value === 'string' ? value.trim() : value);
       });
-      
+
       // For authenticated users, use their authenticated name
       if (isAuthenticatedUser) {
         formData.set('nama', auth?.user?.name || '');
         // Don't set email field for authenticated users - backend will use user's email automatically
       }
-      
+
       // Append CAPTCHA token only for guest users
       if (!isAuthenticatedUser && captchaToken) {
         formData.append('cf-turnstile-response', captchaToken);
       }
-      
+
       // Append files
       files.forEach((file, index) => {
         formData.append(`foto[${index}]`, file);
       });
-      
+
       // Submit using Inertia router
       router.post('/complaint', formData, {
         onSuccess: () => {
@@ -571,17 +580,17 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
         },
         onError: (errors: Record<string, string>) => {
           console.error('Form submission errors:', errors);
-          
+
           // Reset CAPTCHA if there's an error
           if (captchaRef.current) {
             captchaRef.current.reset();
             setCaptchaToken('');
           }
-          
+
           // Handle specific validation errors with user-friendly messages
           let errorTitle = 'Gagal Mengirim';
           let errorMessage = '';
-          
+
           if (errors.captcha) {
             errorTitle = 'Verifikasi Gagal';
             errorMessage = errors.captcha;
@@ -593,7 +602,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
             errorMessage = 'Nomor telepon tidak valid. Pastikan menggunakan format yang benar (contoh: 08123456789).';
           } else if (errors.reportable_id || errors.reportable_type) {
             errorTitle = 'Lokasi Tidak Valid';
-            errorMessage = 'Lokasi yang dipilih tidak valid. Silakan pilih lokasi (Tower atau FO Point) yang tersedia.';
+            errorMessage = 'Lokasi yang dipilih tidak valid. Silakan pilih lokasi (Menara atau Titik FO) yang tersedia.';
           } else if (errors.pesan) {
             errorTitle = 'Pesan Tidak Valid';
             errorMessage = 'Pesan terlalu panjang atau mengandung karakter yang tidak diizinkan.';
@@ -607,7 +616,7 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
               errorMessage = 'Terjadi kesalahan validasi. Silakan periksa kembali data yang diisi.';
             }
           }
-          
+
           showErrorDialog(errorTitle, errorMessage);
         },
         onFinish: () => {
@@ -627,106 +636,116 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
   return (
     <MainLayout title="Form Keluhan" currentPage="/complaint">
       <Head title="Form Keluhan" />
-      
+
       <div className="p-3 sm:p-4 md:p-6">
         <PageHeader
           title={isAuthenticatedUser ? 'Form Keluhan - Sampaikan Keluhan Anda' : 'Guest Complain - Sampaikan Keluhan Anda'}
-          description="Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait tower telekomunikasi"
+          description="Silakan isi form di bawah ini untuk menyampaikan keluhan atau laporan terkait menara telekomunikasi"
           showLogo
         />
-        
-        <div className="bg-white rounded-lg shadow-md">
+
+        <div className="bg-card rounded-lg border border-border shadow-xs">
           <div className="p-3 sm:p-4 md:p-6">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-600 mb-4 sm:mb-6">Form Keluhan</h2>
-            
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground mb-4 sm:mb-6">Form Keluhan</h2>
+
             {isAuthenticatedUser && (
-              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800 text-xs sm:text-sm">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-info-soft border border-info-border rounded-lg">
+                <p className="text-info-strong text-xs sm:text-sm">
                   <strong>Info:</strong> Nama dan email Anda akan otomatis digunakan dari akun yang terdaftar, tidak perlu mengisi field tersebut.
                 </p>
               </div>
             )}
-            
+
             {isAutoFilled && (
-              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-success-soft border border-success-border rounded-lg">
                 <div className="flex items-start sm:items-center">
-                  <span className="material-icons-outlined text-green-600 mr-2 text-base sm:text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-green-800 text-xs sm:text-sm">
+                  <span className="material-icons-outlined text-success-strong mr-2 text-base sm:text-lg flex-shrink-0">check_circle</span>
+                  <p className="text-success-strong text-xs sm:text-sm">
                     <strong>{autoFilledLocationType === 'fo_point' ? 'Fiber Optik Dipilih Otomatis:' : 'Tower Dipilih Otomatis:'}</strong> Data lokasi {autoFilledLocationType === 'fo_point' ? 'fiber optik' : 'tower'} <strong>{form.lokasi_tower_display || form.lokasi_tower}</strong> telah diisi otomatis berdasarkan pilihan Anda sebelumnya.
                   </p>
                 </div>
               </div>
             )}
-            
+
             <form onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
-                    Nama Lengkap <span className="text-red-600">*</span>
+                  <label className="block text-foreground font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
+                    Nama Lengkap <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
                     name="nama"
                     value={isAuthenticatedUser ? (auth?.user?.name || '') : form.nama}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.nama ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base ${isAuthenticatedUser ? 'bg-gray-100' : ''}`}
+                    className={cn(
+                      'w-full rounded-md border p-2.5 sm:p-3 text-sm sm:text-base text-foreground placeholder:text-placeholder',
+                      'focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2',
+                      validation.nama ? 'border-destructive' : 'border-input',
+                      isAuthenticatedUser ? 'bg-muted' : 'bg-background'
+                    )}
                     placeholder="Masukkan nama lengkap"
                     maxLength={100}
                     readOnly={isAuthenticatedUser}
                   />
                   {validation.nama && (
-                    <p className="text-red-500 text-xs sm:text-sm mt-1">Nama lengkap harus diisi</p>
+                    <p className="text-destructive text-xs sm:text-sm mt-1">Nama lengkap harus diisi</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
-                    No. Telepon <span className="text-red-600">*</span>
+                  <label className="block text-foreground font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
+                    No. Telepon <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="tel"
                     name="telepon"
                     value={form.telepon}
                     onChange={handleChange}
-                    className={`w-full rounded-lg border ${validation.telepon ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base`}
+                    className={`w-full rounded-md border bg-background text-foreground placeholder:text-placeholder ${validation.telepon ? 'border-destructive' : 'border-input'} focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 p-2.5 sm:p-3 text-sm sm:text-base`}
                     placeholder="Masukkan nomor telepon"
                     maxLength={15}
                   />
                   {validation.telepon && (
-                    <p className="text-red-500 text-xs sm:text-sm mt-1">
-                      {!form.telepon.trim() 
-                        ? 'Nomor telepon harus diisi' 
+                    <p className="text-destructive text-xs sm:text-sm mt-1">
+                      {!form.telepon.trim()
+                        ? 'Nomor telepon harus diisi'
                         : 'Format nomor telepon tidak valid. Gunakan format: 08xx, 628xx, atau +628xx'}
                     </p>
                   )}
                 </div>
-                
+
                 {!isAuthenticatedUser && (
                   <div>
-                    <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
-                      Email <span className="text-red-600">*</span>
+                    <label className="block text-foreground font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
+                      Email <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="email"
                       name="email"
                       value={form.email}
                       onChange={handleChange}
-                      className={`w-full rounded-lg border ${validation.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 text-sm sm:text-base`}
+                      className={`w-full rounded-md border bg-background text-foreground placeholder:text-placeholder ${validation.email ? 'border-destructive' : 'border-input'} focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 p-2.5 sm:p-3 text-sm sm:text-base`}
                       placeholder="Masukkan email (untuk melacak status)"
                       maxLength={100}
                     />
                     {validation.email && (
-                      <p className="text-red-500 text-xs sm:text-sm mt-1">Email harus diisi dengan format yang valid</p>
+                      <p className="text-destructive text-xs sm:text-sm mt-1">Email harus diisi dengan format yang valid</p>
                     )}
                   </div>
                 )}
-                
+
                 <div className="md:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
-                    Tipe Laporan <span className="text-red-600">*</span>
+                  <label className="block text-foreground font-medium mb-2 sm:mb-3 text-sm sm:text-base">
+                    Tipe Laporan <span className="text-destructive">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.location_type_filter === 'tower' ? '#DC2626' : '#D1D5DB' }}>
+                    <label className={cn(
+                      'flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer flex-1 transition-colors',
+                      form.location_type_filter === 'tower'
+                        ? 'border-primary bg-primary-soft'
+                        : 'border-border hover:bg-accent hover:text-accent-foreground'
+                    )}>
                       <input
                         type="radio"
                         id="location_type_tower"
@@ -739,18 +758,22 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                           }
                           setForm(prev => ({ ...prev, location_type_filter: 'tower' }));
                         }}
-                        className="mt-1 sm:mt-0"
-                        style={{ accentColor: '#DC2626' }}
+                        className="mt-1 sm:mt-0 text-primary accent-primary"
                       />
                       <div className="ml-2 sm:ml-3 flex-1">
-                        <div className="font-medium text-gray-900 text-sm sm:text-base">Tower</div>
-                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
+                        <div className="font-medium text-foreground text-sm sm:text-base">Menara</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
                           Pilih lokasi tower untuk laporan
                         </div>
                       </div>
                     </label>
-                    
-                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.location_type_filter === 'fo_point' ? '#DC2626' : '#D1D5DB' }}>
+
+                    <label className={cn(
+                      'flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer flex-1 transition-colors',
+                      form.location_type_filter === 'fo_point'
+                        ? 'border-primary bg-primary-soft'
+                        : 'border-border hover:bg-accent hover:text-accent-foreground'
+                    )}>
                       <input
                         type="radio"
                         id="location_type_fo"
@@ -763,43 +786,51 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                           }
                           setForm(prev => ({ ...prev, location_type_filter: 'fo_point' }));
                         }}
-                        className="mt-1 sm:mt-0"
-                        style={{ accentColor: '#DC2626' }}
+                        className="mt-1 sm:mt-0 text-primary accent-primary"
                       />
                       <div className="ml-2 sm:ml-3 flex-1">
-                        <div className="font-medium text-gray-900 text-sm sm:text-base">Fiber Optik</div>
-                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
+                        <div className="font-medium text-foreground text-sm sm:text-base">Fiber Optik</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
                           Pilih lokasi FO Point untuk laporan
                         </div>
                       </div>
                     </label>
                   </div>
                 </div>
-                
+
                 <div className="md:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
-                    Visibilitas Laporan <span className="text-red-600">*</span>
+                  <label className="block text-foreground font-medium mb-2 sm:mb-3 text-sm sm:text-base">
+                    Visibilitas Laporan <span className="text-destructive">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: form.is_public ? '#DC2626' : '#D1D5DB' }}>
+                    <label className={cn(
+                      'flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer flex-1 transition-colors',
+                      form.is_public
+                        ? 'border-primary bg-primary-soft'
+                        : 'border-border hover:bg-accent hover:text-accent-foreground'
+                    )}>
                       <input
                         type="radio"
                         id="is_public_public"
                         name="is_public"
                         checked={form.is_public}
                         onChange={() => setForm(prev => ({ ...prev, is_public: true }))}
-                        className="mt-1 sm:mt-0"
-                        style={{ accentColor: '#DC2626' }}
+                        className="mt-1 sm:mt-0 text-primary accent-primary"
                       />
                       <div className="ml-2 sm:ml-3 flex-1">
-                        <div className="font-medium text-gray-900 text-sm sm:text-base">Terbuka (Public)</div>
-                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
+                        <div className="font-medium text-foreground text-sm sm:text-base">Terbuka (Public)</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
                           Keluhan dapat dilihat oleh pengguna lain. Membantu transparansi dan berbagi informasi.
                         </div>
                       </div>
                     </label>
-                    
-                    <label className="flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 flex-1" style={{ borderColor: !form.is_public ? '#DC2626' : '#D1D5DB' }}>
+
+                    <label className={cn(
+                      'flex items-start sm:items-center p-3 sm:p-4 border-2 rounded-lg cursor-pointer flex-1 transition-colors',
+                      !form.is_public
+                        ? 'border-primary bg-primary-soft'
+                        : 'border-border hover:bg-accent hover:text-accent-foreground'
+                    )}>
                       <input
                         type="radio"
                         id="is_public_private"
@@ -819,13 +850,12 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                             setForm(prev => ({ ...prev, is_public: false }));
                           }
                         }}
-                        className="mt-1 sm:mt-0"
-                        style={{ accentColor: '#DC2626' }}
+                        className="mt-1 sm:mt-0 text-primary accent-primary"
                       />
                       <div className="ml-2 sm:ml-3 flex-1">
-                        <div className="font-medium text-gray-900 text-sm sm:text-base">Tertutup (Private)</div>
-                        <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
-                          {isAuthenticatedUser 
+                        <div className="font-medium text-foreground text-sm sm:text-base">Tertutup (Private)</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+                          {isAuthenticatedUser
                             ? 'Hanya Anda dan admin yang dapat melihat keluhan ini.'
                             : 'Pesan private hanya tersedia untuk pengguna yang sudah login. Silakan daftar atau login terlebih dahulu.'}
                         </div>
@@ -833,17 +863,17 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                     </label>
                   </div>
                 </div>
-                
+
                 <div>
-                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
-                    Kategori Keluhan <span className="text-red-600">*</span>
+                  <label className="block text-foreground font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
+                    Kategori Keluhan <span className="text-destructive">*</span>
                   </label>
                   {!isOtherCategory ? (
                     <select
                       name="kategori"
                       value={form.kategori}
                       onChange={handleCategoryChange}
-                      className={`w-full rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 text-sm sm:text-base p-2.5 sm:p-3`}
+                      className={`w-full rounded-md border bg-background text-foreground placeholder:text-placeholder ${validation.kategori ? 'border-destructive' : 'border-input'} focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 text-sm sm:text-base p-2.5 sm:p-3`}
                     >
                       <option value="">Pilih kategori</option>
                       <option value="Kerusakan">Kerusakan</option>
@@ -858,25 +888,25 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                         name="kategori"
                         value={form.kategori}
                         onChange={handleChange}
-                        className={`flex-1 rounded-lg border ${validation.kategori ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-3`}
+                        className={`flex-1 rounded-md border bg-background text-foreground placeholder:text-placeholder ${validation.kategori ? 'border-destructive' : 'border-input'} focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 p-3`}
                         placeholder="Masukkan kategori keluhan lainnya"
                         maxLength={50}
                       />
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={handleCancelOtherCategory}
-                        className="px-3 py-2 rounded-lg hover:opacity-90 text-white bg-gray-600"
                       >
                         Batal
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {validation.kategori && (
-                    <p className="text-red-500 text-sm mt-1">Kategori harus dipilih</p>
+                    <p className="text-destructive text-sm mt-1">Kategori harus dipilih</p>
                   )}
                 </div>
               </div>
-              
+
               <LocationSelectionInput
                 towers={form.location_type_filter === 'tower' ? towers : []}
                 foPoints={form.location_type_filter === 'fo_point' ? foPoints : []}
@@ -891,36 +921,36 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
                 errorMessage="Lokasi harus dipilih"
                 className="mb-6"
               />
-              
+
               <FileUpload
                 files={files}
                 onFilesChange={setFiles}
                 onError={handleFileError}
                 className="mb-6"
               />
-              
+
               <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
-                  Pesan/Keluhan <span className="text-red-600">*</span>
+                <label className="block text-foreground font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">
+                  Pesan/Keluhan <span className="text-destructive">*</span>
                 </label>
                 <textarea
                   name="pesan"
                   value={form.pesan}
                   onChange={handleChange}
-                  className={`w-full rounded-lg border ${validation.pesan ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 p-2.5 sm:p-3 resize-vertical text-sm sm:text-base`}
+                  className={`w-full rounded-md border bg-background text-foreground placeholder:text-placeholder ${validation.pesan ? 'border-destructive' : 'border-input'} focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2 p-2.5 sm:p-3 resize-vertical text-sm sm:text-base`}
                   rows={5}
                   placeholder="Jelaskan keluhan Anda secara detail..."
                   maxLength={1000}
                   minLength={10}
                 />
                 {validation.pesan && (
-                  <p className="text-red-500 text-xs sm:text-sm mt-1">Pesan harus diisi</p>
+                  <p className="text-destructive text-xs sm:text-sm mt-1">Pesan harus diisi</p>
                 )}
-                <p className="text-gray-500 text-xs sm:text-sm mt-1">
+                <p className="text-muted-foreground text-xs sm:text-sm mt-1">
                   {form.pesan.length}/1000 karakter
                 </p>
               </div>
-              
+
               {/* CAPTCHA widget - only for guest users */}
               {!isAuthenticatedUser && (
                 <div className="mb-4 sm:mb-6">
@@ -966,9 +996,9 @@ export default function ComplaintCreate({ towers = [], foPoints = [] }: Complain
           </div>
         </div>
       </div>
-      
 
-      
+
+
       <AlertDialog
         show={showDialog}
         onClose={handleDialogClose}

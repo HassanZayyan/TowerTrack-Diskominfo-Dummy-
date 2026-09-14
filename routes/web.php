@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TowerController;
 use App\Http\Controllers\FeedbackController;
@@ -19,9 +20,7 @@ use App\Http\Controllers\Admin\FoManagementController;
 use App\Http\Controllers\MyMessagesController;
 use App\Services\PublicMessageQueryService;
 
-Route::get('/', function () {
-    return redirect()->route('data.tower');
-});
+Route::get('/', [LandingController::class, 'index'])->name('home');
 
 Route::get('/dashboard', function () {
     $user = auth()->user();

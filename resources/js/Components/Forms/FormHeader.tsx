@@ -8,13 +8,15 @@ interface FormHeaderProps {
   className?: string;
 }
 
+// Icon tile grounds. Every key resolves to a token now; the map is kept so the
+// existing `color` prop on call sites still compiles.
 const iconBgColors = {
-  blue: 'bg-gradient-to-br from-blue-500 to-blue-600',
-  indigo: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
-  red: 'bg-gradient-to-br from-red-500 to-red-600',
-  green: 'bg-gradient-to-br from-green-500 to-green-600',
-  purple: 'bg-gradient-to-br from-purple-500 to-purple-600',
-  orange: 'bg-gradient-to-br from-orange-500 to-orange-600',
+  blue: 'bg-muted',
+  indigo: 'bg-muted',
+  red: 'bg-destructive-soft',
+  green: 'bg-success-soft',
+  purple: 'bg-muted',
+  orange: 'bg-warning-soft',
 };
 
 /**
@@ -46,9 +48,9 @@ export default function FormHeader({
         </div>
       </div>
       <div>
-        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+        <h3 className="text-lg font-bold text-foreground">{title}</h3>
         {description && (
-          <p className="text-sm text-gray-500 mt-1">{description}</p>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
       </div>
     </div>

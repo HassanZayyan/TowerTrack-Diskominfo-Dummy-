@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface StaggeredContainerProps {
   children: React.ReactNode;
@@ -9,90 +10,52 @@ interface StaggeredContainerProps {
   hoverEffect?: boolean;
 }
 
-// Simplified animation classes - reduced complexity for better performance
-const ANIMATION_CLASSES = {
-  hidden: {
-    fadeInUp: 'opacity-0 translate-y-8',
-    fadeInLeft: 'opacity-0 -translate-x-8',
-    fadeInRight: 'opacity-0 translate-x-8',
-    scaleIn: 'opacity-0 scale-95'
-  },
-  visible: {
-    fadeInUp: 'opacity-100 translate-y-0',
-    fadeInLeft: 'opacity-100 translate-x-0',
-    fadeInRight: 'opacity-100 translate-x-0',
-    scaleIn: 'opacity-100 scale-100'
-  }
-} as const;
+/**
+ * Entrance animation for a block of content.
+ *
+ * TWO BUGS THIS FIXES.
+ *
+ * 1. It never animated. The class list was `transition-colors` while the
+ *    component toggled `opacity-0 translate-y-8` → `opacity-100 translate-y-0`.
+ *    `transition-colors` transitions colour/background/border/fill/stroke and
+ *    nothing else, so opacity and transform snapped, and the inline
+ *    `transitionDuration: 300ms` applied to no property at all. All nine call
+ *    sites popped.
+ *
+ * 2. It was gated on IntersectionObserver, so content sat at `opacity-0` until
+ *    it was scrolled into view. On the public pages that meant the stat tiles
+ *    and the map were invisible in the first painted frame — the frame a
+ *    thumbnail, a shared link and an impatient reader all get. Scroll-triggered
+ *    reveals of ordinary body content are a tell, not a feature.
+ *
+ * Now: a CSS keyframe that runs once on mount, offset by `delay`. No observer,
+ * no scroll coupling, and compositor-only properties (transform + opacity) so
+ * it does not thrash layout on a mid-range Android.
+ */
+const ANIMATION: Record<NonNullable<StaggeredContainerProps['animationType']>, string> = {
+  fadeInUp: 'tt-enter-up',
+  fadeInLeft: 'tt-enter-left',
+  fadeInRight: 'tt-enter-right',
+  scaleIn: 'tt-enter-scale',
+};
 
-// Optimized StaggeredContainer - simplified animations and better IntersectionObserver usage
 const StaggeredContainer: React.FC<StaggeredContainerProps> = ({
   children,
   delay = 0,
-  duration = 300,
+  duration = 260,
   className = '',
   animationType = 'fadeInUp',
-  hoverEffect = false
+  hoverEffect = false,
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const elementRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    // Early return if already animated
-    if (hasAnimated) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          // Clear any existing timeout
-          if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-          }
-          
-          timeoutRef.current = setTimeout(() => {
-            setIsVisible(true);
-            setHasAnimated(true);
-          }, delay);
-        }
-      },
-      {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-      }
-    );
-
-    const element = elementRef.current;
-    if (element) {
-      observer.observe(element);
-    }
-
-    return () => {
-      if (element) {
-        observer.unobserve(element);
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      observer.disconnect();
-    };
-  }, [delay, hasAnimated]);
-
-  // Simplified animation class generation
-  const animationClasses = [
-    'transition-all ease-out',
-    isVisible ? ANIMATION_CLASSES.visible[animationType] : ANIMATION_CLASSES.hidden[animationType],
-    hoverEffect && isVisible ? 'hover:scale-105 hover:shadow-lg hover:-translate-y-1' : ''
-  ].filter(Boolean).join(' ');
-
   return (
     <div
-      ref={elementRef}
-      className={`${animationClasses} ${className}`}
-      style={{
-        transitionDuration: `${duration}ms`
-      }}
+      className={cn(ANIMATION[animationType], hoverEffect && 'transition-shadow duration-140 hover:shadow-md', className)}
+      style={
+        {
+          '--tt-delay': `${delay}ms`,
+          '--tt-duration': `${duration}ms`,
+        } as React.CSSProperties
+      }
     >
       {children}
     </div>

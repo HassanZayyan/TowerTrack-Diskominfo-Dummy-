@@ -37,14 +37,28 @@ class FoManagementController extends Controller
     public function routesList(Request $request): Response
     {
         $area = $request->get('area', 'ungaran');
+        $search = trim((string) $request->get('search', ''));
+        $status = $request->get('status', 'all');
         $user = auth()->user();
 
         // Get FO Routes with pagination (excluding heavy path_coordinates field)
+        //
+        // SEARCH AND STATUS ARE APPLIED HERE, NOT IN THE PAGE.
+        //
+        // RoutesList.tsx sends all three filters through `router.get`, but this
+        // action only ever read `area` and the page re-filtered what came back
+        // in memory. That was invisible while the list was paginated at 50,
+        // because no area has 50 routes and every row was therefore on the one
+        // page. At a real page size the same code searches only the rows
+        // currently on screen, so a route on page 2 cannot be found from
+        // page 1. Filtering belongs where the pagination happens.
         $foRoutesQuery = FoRoute::select([
             'id', 'name', 'area', 'status', 'color', 'total_distance',
             'total_points', 'description', 'created_at', 'updated_at',
         ])
-            ->when($area, fn ($q) => $q->where('area', $area));
+            ->when($area, fn ($q) => $q->where('area', $area))
+            ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($status !== 'all' && $status !== null, fn ($q) => $q->where('status', $status));
 
         // For provider_owner, only show routes that have points with their provider
         if ($user && $user->isProviderOwner()) {
@@ -56,7 +70,7 @@ class FoManagementController extends Controller
             });
         }
 
-        $foRoutes = $foRoutesQuery->orderBy('name')->paginate(50)
+        $foRoutes = $foRoutesQuery->orderBy('name')->paginate(10)->withQueryString()
             ->through(function ($route) {
                 return [
                     'id' => $route->id,
@@ -101,6 +115,15 @@ class FoManagementController extends Controller
             'stats' => $stats,
             'currentArea' => $area,
             'availableAreas' => ['ungaran'],
+            // Echoed back so the controls can show what is actually applied.
+            // Without this the page seeded its filter state to empty on every
+            // load, so following a pagination link blanked the search box while
+            // the results stayed filtered — and the next change to any other
+            // control then silently posted an empty search and wiped it.
+            'filters' => [
+                'search' => $search,
+                'status' => $status ?? 'all',
+            ],
         ]);
     }
 
