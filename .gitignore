@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Data survei asli. Seeder membacanya dari akar proyek bila ada, dan memakai
+# data dummy bila tidak — jadi repositori tidak pernah perlu memuatnya.
+/Data_menara_rev.csv
+/Pemetaan jalur FO ISP.csv
+/public/images/foto*
