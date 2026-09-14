@@ -284,7 +284,7 @@ const AdminDashboard: React.FC = () => {
           className="mb-0"
           showLogo={false}
           title="Dashboard Admin"
-          description={`Kelola sistem tagging tower dan pantau aktivitas. Halo, ${user?.name || 'Admin'}.`}
+          description={`Kelola data menara dan jalur fiber optik, serta pantau aktivitas. Halo, ${user?.name || 'Admin'}.`}
           actions={
             <Button variant="outline" size="sm" className="h-11 sm:h-9" asChild>
               <Link href="/admin/towers">

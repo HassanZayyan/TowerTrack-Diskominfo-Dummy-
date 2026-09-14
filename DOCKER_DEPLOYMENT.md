@@ -1,4 +1,4 @@
-# 🐳 Panduan Deployment Docker - Tagging Tower Kominfo
+# 🐳 Panduan Deployment Docker - TowerTrack
 
 Dokumentasi ini untuk **karyawan kantor** yang akan melakukan deployment aplikasi ke server production.
 
@@ -92,8 +92,8 @@ docker compose version
 cd /var/www
 
 # Clone repository
-git clone <URL_REPOSITORY> tagging_tower
-cd tagging_tower
+git clone <URL_REPOSITORY> towertrack
+cd towertrack
 
 # Switch ke branch production (jika menggunakan branch production)
 git checkout production
@@ -103,7 +103,7 @@ git checkout production
 
 ```bash
 # Dari komputer lokal, upload project ke server
-scp -r /path/to/project user@server-ip:/var/www/tagging_tower
+scp -r /path/to/project user@server-ip:/var/www/towertrack
 ```
 
 ### Langkah 2: Buat File Environment
@@ -155,10 +155,10 @@ docker compose ps
 
 ```
 NAME                    STATUS              PORTS
-tagging_tower_app       Up (healthy)        9000/tcp
-tagging_tower_db        Up (healthy)        0.0.0.0:3306->3306/tcp
-tagging_tower_nginx     Up (healthy)        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
-tagging_tower_queue     Up
+towertrack_app       Up (healthy)        9000/tcp
+towertrack_db        Up (healthy)        0.0.0.0:3306->3306/tcp
+towertrack_nginx     Up (healthy)        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+towertrack_queue     Up
 ```
 
 **Catatan Penting:**
@@ -215,9 +215,9 @@ docker compose exec app chmod -R 775 /var/www/html/bootstrap/cache
 docker compose ps
 
 # Verifikasi health checks
-docker inspect --format='{{.State.Health.Status}}' tagging_tower_app
-docker inspect --format='{{.State.Health.Status}}' tagging_tower_nginx
-docker inspect --format='{{.State.Health.Status}}' tagging_tower_db
+docker inspect --format='{{.State.Health.Status}}' towertrack_app
+docker inspect --format='{{.State.Health.Status}}' towertrack_nginx
+docker inspect --format='{{.State.Health.Status}}' towertrack_db
 
 # Output yang diharapkan: "healthy"
 
@@ -238,7 +238,7 @@ File `.env` harus dikonfigurasi dengan benar sebelum menjalankan aplikasi. Berik
 ### Konfigurasi Aplikasi
 
 ```env
-APP_NAME="Tagging Tower Kominfo"
+APP_NAME="TowerTrack"
 APP_ENV=production
 APP_KEY=                    # Akan di-generate dengan: php artisan key:generate
 APP_DEBUG=false             # HARUS false di production!
@@ -251,8 +251,8 @@ APP_URL=http://YOUR_SERVER_IP_OR_DOMAIN
 DB_CONNECTION=mysql
 DB_HOST=db                  # Nama service di docker-compose.yml (JANGAN DIUBAH!)
 DB_PORT=3306
-DB_DATABASE=tagging_tower_db
-DB_USERNAME=tagging_tower_user
+DB_DATABASE=towertrack_db
+DB_USERNAME=towertrack_user
 DB_PASSWORD=your_secure_password_here
 DB_ROOT_PASSWORD=your_root_password_here  # Password untuk root MySQL
 ```
@@ -273,7 +273,7 @@ MAIL_USERNAME=infrastruktursemarangkab@gmail.com
 MAIL_PASSWORD=                        # App Password Gmail (isi dengan App Password Anda)
 MAIL_ENCRYPTION=ssl                    # SSL untuk port 465
 MAIL_FROM_ADDRESS=infrastruktursemarangkab@gmail.com
-MAIL_FROM_NAME="Tagging Tower Kominfo"
+MAIL_FROM_NAME="TowerTrack"
 ```
 
 **⚠️ CATATAN:**
@@ -350,7 +350,7 @@ Setup ini sudah dilengkapi dengan **health checks** untuk semua services. Health
 docker compose ps
 
 # Check health status detail untuk specific service
-docker inspect tagging_tower_app | grep -A 10 Health
+docker inspect towertrack_app | grep -A 10 Health
 
 # Monitor health status real-time
 watch -n 2 'docker compose ps'
@@ -363,7 +363,7 @@ watch -n 2 'docker compose ps'
 docker stats
 
 # Check resource usage untuk specific services
-docker stats tagging_tower_app tagging_tower_nginx tagging_tower_db tagging_tower_queue
+docker stats towertrack_app towertrack_nginx towertrack_db towertrack_queue
 
 # Stop monitoring (tekan Ctrl+C)
 ```
@@ -449,7 +449,7 @@ docker compose logs
 docker compose ps
 
 # Check health status detail
-docker inspect tagging_tower_app | grep -A 10 Health
+docker inspect towertrack_app | grep -A 10 Health
 
 # Rebuild dari awal
 docker compose down
@@ -463,13 +463,13 @@ Jika service menunjukkan status `(unhealthy)`, ikuti langkah-langkah berikut:
 
 ```bash
 # Check health check logs detail
-docker inspect tagging_tower_app | grep -A 20 Health
+docker inspect towertrack_app | grep -A 20 Health
 
 # Check service logs
 docker compose logs app
 
 # Check resource usage (mungkin resource limit tercapai)
-docker stats tagging_tower_app
+docker stats towertrack_app
 
 # Restart specific service
 docker compose restart app

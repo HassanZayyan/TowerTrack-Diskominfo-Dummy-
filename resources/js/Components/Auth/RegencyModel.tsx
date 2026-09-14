@@ -15,14 +15,20 @@ import { cn } from '@/lib/utils';
  * Kabupaten Semarang as a solid object: an extruded slab, lit from above, with
  * the register's masts standing on it, turning slowly.
  *
- * WHY IT IS NOT THE LANDING PAGE'S IsoMap.
+ * WHY IT READS AS AN OBJECT AND NOT AS A CHART.
  *
- * Same projection, different job. IsoMap is a data graphic the reader steers:
- * flat ground, an operator legend, a colour per mast, and a drag handle. This
- * one sits behind a login form and has to read as an OBJECT at a glance, from
- * across a desk, while someone types a password. So it gains a thickness, a
- * cast shadow and a 5km graticule — the three things that make a shape look
- * solid — and loses the legend, the colour coding and every control.
+ * It sits behind a login form, so it has to be legible at a glance, from across
+ * a desk, while someone types a password. That is a different job from a data
+ * graphic, and it is drawn differently: a thickness, a cast shadow and a 5km
+ * graticule — the three things that make a shape look solid — and no legend, no
+ * colour coding, no controls.
+ *
+ * The landing page used to carry a sibling of this, a flat isometric map the
+ * reader could drag. It was removed: it drew the same towers the hero already
+ * drew, and took 27% of the page to encode one variable (mast height) that a
+ * resident does not arrive asking about. This one survives because a login
+ * screen has no competing content and nothing better to say than whose system
+ * this is.
  *
  * It is also deliberately not interactive. A drag target beside a password
  * field competes with text selection and can swallow a stray trackpad gesture;

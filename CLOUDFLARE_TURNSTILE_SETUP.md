@@ -18,7 +18,7 @@ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 3. Buka "Turnstile" di sidebar
 4. Klik "Add Site"
 5. Isi:
-   - Site name: "Tagging Tower Kominfo"
+   - Site name: "TowerTrack"
    - Domain: domain production Anda
    - Widget mode: "Managed" (recommended)
 6. Klik "Create"

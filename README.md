@@ -25,8 +25,8 @@ Butuh PHP 8.2+, Composer, Node.js 18+, dan MySQL.
 **1. Clone dan pasang dependensi**
 
 ```bash
-git clone https://github.com/HassanZayyan/Tagging-Tower-Kominfo.git
-cd Tagging-Tower-Kominfo
+git clone https://github.com/HassanZayyan/TowerTrack-Diskominfo-Dummy-.git
+cd TowerTrack-Diskominfo-Dummy-
 composer install
 npm install
 ```
@@ -41,7 +41,7 @@ php artisan key:generate
 Buat database MySQL kosong, lalu sesuaikan di `.env`:
 
 ```env
-DB_DATABASE=tagging_tower_kominfo
+DB_DATABASE=towertrack
 DB_USERNAME=root
 DB_PASSWORD=
 ```

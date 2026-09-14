@@ -66,9 +66,26 @@ const LandingHero: React.FC<LandingHeroProps> = ({
             <div className="relative mx-auto w-full max-w-screen-2xl px-4 py-14 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
                 <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-14">
                     <div className="min-w-0 lg:max-w-xl">
+                        {/*
+                            THE OFFICIAL NAME SITS HERE, NOT IN THE HEADLINE.
+
+                            "Sistem Monitoring Infrastruktur Kabupaten Semarang"
+                            is what this system IS CALLED. A headline's job is
+                            different: it has to tell a resident who arrived from
+                            a search result what they can do here, in the two
+                            seconds before they decide to leave. A name does not
+                            do that — it labels a filing cabinet.
+
+                            Putting it in the eyebrow gets both. The reader sees
+                            the official name first, then the headline tells them
+                            what it offers, and "Kabupaten Semarang" is already
+                            in the headline so the full name still reads straight
+                            down the page. This is also the pairing the login
+                            screen uses, so the two entrances agree.
+                        */}
                         <p className="tt-enter-up">
                             <span className="inline-flex items-center rounded-full border border-primary-border bg-primary-soft px-3 py-1 text-xs font-medium tracking-wide text-primary-strong">
-                                Kabupaten Semarang
+                                Sistem Monitoring Infrastruktur
                             </span>
                         </p>
 

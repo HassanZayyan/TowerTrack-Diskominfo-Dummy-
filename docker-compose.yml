@@ -7,14 +7,14 @@ services:
       context: .
       dockerfile: Dockerfile
       target: php-base
-    container_name: tagging_tower_app
+    container_name: towertrack_app
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
       - ./storage:/var/www/html/storage
     networks:
-      - tagging_tower_network
+      - towertrack_network
     depends_on:
       db:
         condition: service_healthy
@@ -51,7 +51,7 @@ services:
   # Nginx Web Server
   nginx:
     image: nginx:alpine
-    container_name: tagging_tower_nginx
+    container_name: towertrack_nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -60,7 +60,7 @@ services:
       - ./:/var/www/html
       - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
     networks:
-      - tagging_tower_network
+      - towertrack_network
     depends_on:
       app:
         condition: service_healthy
@@ -87,7 +87,7 @@ services:
   # MySQL Database
   db:
     image: mysql:8.0
-    container_name: tagging_tower_db
+    container_name: towertrack_db
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -99,7 +99,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     networks:
-      - tagging_tower_network
+      - towertrack_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
@@ -126,13 +126,13 @@ services:
       context: .
       dockerfile: Dockerfile
       target: php-base
-    container_name: tagging_tower_queue
+    container_name: towertrack_queue
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
     networks:
-      - tagging_tower_network
+      - towertrack_network
     depends_on:
       db:
         condition: service_healthy
@@ -160,7 +160,7 @@ services:
         max-file: "3"
 
 networks:
-  tagging_tower_network:
+  towertrack_network:
     driver: bridge
 
 volumes:

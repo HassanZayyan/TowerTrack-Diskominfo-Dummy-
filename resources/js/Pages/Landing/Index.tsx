@@ -4,7 +4,6 @@ import AppBar from '@/Components/AppBar';
 import Footer from '@/Components/Footer';
 import LandingHero from '@/Components/Landing/LandingHero';
 import StatsBand, { type Stat } from '@/Components/Landing/StatsBand';
-import SebaranSection from '@/Components/Landing/SebaranSection';
 import HowItWorks from '@/Components/Landing/HowItWorks';
 import ServiceCards from '@/Components/Landing/ServiceCards';
 import type { TowerPoint } from '@/lib/geo';
@@ -79,7 +78,6 @@ export default function LandingIndex({ stats, towerPoints, owners }: LandingProp
                     kecamatanCount={stats.kecamatanCount}
                 />
                 <StatsBand stats={tiles} />
-                <SebaranSection points={towerPoints} owners={owners} />
                 <HowItWorks />
                 <ServiceCards />
             </main>
