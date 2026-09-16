@@ -138,20 +138,6 @@ export default function AuthShowcase({ data, className }: AuthShowcaseProps) {
                                 {total.toLocaleString('id-ID')} menara terdata
                             </span>
                         )}
-                        {/* The exaggeration is declared, here and on the landing
-                            page. An undeclared one is a lie told with a chart:
-                            a reader is entitled to know that the masts are not
-                            to scale with the ground they stand on.
-
-                            Conditional, because the password-reset screens send
-                            no positions and draw a regency with nothing standing
-                            on it. A note about mast heights under an empty slab
-                            describes something that is not there. */}
-                        {points.length > 0 && (
-                            <span className="text-xs text-brand-300">
-                                Tinggi batang dilebihkan agar terbaca
-                            </span>
-                        )}
                     </div>
                 </footer>
             </div>
